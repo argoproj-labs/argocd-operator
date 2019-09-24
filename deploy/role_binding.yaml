@@ -1,0 +1,11 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: argocd-operator
+subjects:
+- kind: ServiceAccount
+  name: argocd-operator
+roleRef:
+  kind: Role
+  name: argocd-operator
+  apiGroup: rbac.authorization.k8s.io
