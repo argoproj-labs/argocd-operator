@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // newSecret retuns a new Secret instance.
@@ -30,6 +31,10 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 	if found {
 		// ConfigMap found, do nothing
 		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), secret)
 }

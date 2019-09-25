@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // newService retuns a new Service instance.
@@ -50,6 +51,10 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromInt(5557),
 		},
 	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), svc)
 }
 
@@ -73,6 +78,10 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromInt(8082),
 		},
 	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), svc)
 }
 
@@ -94,6 +103,10 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 			Port:       6379,
 			TargetPort: intstr.FromInt(6379),
 		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), svc)
 }
@@ -123,6 +136,10 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromInt(8084),
 		},
 	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), svc)
 }
 
@@ -145,6 +162,10 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(8083),
 		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), svc)
 }
@@ -173,6 +194,10 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(8080),
 		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), svc)
 }

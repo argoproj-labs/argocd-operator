@@ -66,7 +66,7 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
 		// ConfigMap found, do nothing
 		return nil
 	}
-	// Set ArgoCD instance as the owner and controller
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
 	}
@@ -79,6 +79,10 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 	if found {
 		// ConfigMap found, do nothing
 		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), cm)
 }
@@ -94,6 +98,10 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	cm.Data = map[string]string{
 		"ssh_known_hosts": defaultKnownHosts,
 	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), cm)
 }
 
@@ -103,6 +111,10 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 	if found {
 		// ConfigMap found, do nothing
 		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), cm)
 }

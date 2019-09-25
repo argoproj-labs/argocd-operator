@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // newDeployment retuns a new Deployment instance.
@@ -87,6 +88,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 	}}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = deploy.Name
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), deploy)
 }
 
@@ -156,7 +161,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 		Image:           "argoproj/argocd:latest",
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            "dex",
+		Name:            "copyutil",
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -171,6 +176,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), deploy)
 }
 
@@ -199,6 +207,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), deploy)
 }
 
@@ -280,6 +291,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 		},
 	}
 
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), deploy)
 }
 
@@ -306,8 +320,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 					Port: intstr.FromInt(8080),
 				},
 			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
+			InitialDelaySeconds: 3,
+			PeriodSeconds:       30,
 		},
 		Name: deploy.Name,
 		Ports: []corev1.ContainerPort{
@@ -321,11 +335,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz",
-					Port: intstr.FromInt(8082),
+					Port: intstr.FromInt(8080),
 				},
 			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
+			InitialDelaySeconds: 3,
+			PeriodSeconds:       30,
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -361,5 +375,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 		},
 	}
 
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), deploy)
 }
