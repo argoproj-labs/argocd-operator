@@ -12,10 +12,11 @@ import (
 )
 
 // newDeployment retuns a new Deployment instance.
-func newDeployment(name string, component string) *appsv1.Deployment {
+func newDeployment(name string, namespace string, component string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/component": component,
 				"app.kubernetes.io/name":      name,
@@ -40,7 +41,7 @@ func newDeployment(name string, component string) *appsv1.Deployment {
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-application-controller", "application-controller")
+	deploy := newDeployment("argocd-application-controller", cr.Namespace, "application-controller")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
 		// Service found, do nothing
@@ -119,7 +120,7 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-dex-server", "dex-server")
+	deploy := newDeployment("argocd-dex-server", cr.Namespace, "dex-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
 		// Service found, do nothing
@@ -174,7 +175,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-redis", "redis")
+	deploy := newDeployment("argocd-redis", cr.Namespace, "redis")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
 		// Service found, do nothing
@@ -202,7 +203,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-repo-server", "repo-server")
+	deploy := newDeployment("argocd-repo-server", cr.Namespace, "repo-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
 		// Service found, do nothing
@@ -283,7 +284,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-server", "server")
+	deploy := newDeployment("argocd-server", cr.Namespace, "server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
 		// Service found, do nothing

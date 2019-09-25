@@ -22,10 +22,11 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 )
 
 // newConfigMap retuns a new ConfigMap instance.
-func newConfigMap(name string) *corev1.ConfigMap {
+func newConfigMap(name string, namespace string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/name":    name,
 				"app.kubernetes.io/part-of": "argocd",
@@ -59,7 +60,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-cm")
+	cm := newConfigMap("argocd-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		// ConfigMap found, do nothing
@@ -73,7 +74,7 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-rbac-cm")
+	cm := newConfigMap("argocd-rbac-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		// ConfigMap found, do nothing
@@ -83,7 +84,7 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-ssh-known-hosts-cm")
+	cm := newConfigMap("argocd-ssh-known-hosts-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		// ConfigMap found, do nothing
@@ -97,7 +98,7 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-tls-certs-cm")
+	cm := newConfigMap("argocd-tls-certs-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		// ConfigMap found, do nothing

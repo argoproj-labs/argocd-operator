@@ -11,10 +11,11 @@ import (
 )
 
 // newService retuns a new Service instance.
-func newService(name string, component string) *corev1.Service {
+func newService(name string, namespace string, component string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/component": component,
 				"app.kubernetes.io/name":      name,
@@ -25,7 +26,7 @@ func newService(name string, component string) *corev1.Service {
 }
 
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-dex-server", "dex-server")
+	svc := newService("argocd-dex-server", cr.Namespace, "dex-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
@@ -53,7 +54,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-metrics", "metrics")
+	svc := newService("argocd-metrics", cr.Namespace, "metrics")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
@@ -76,7 +77,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-redis", "redis")
+	svc := newService("argocd-redis", cr.Namespace, "redis")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
@@ -98,7 +99,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-repo-server", "repo-server")
+	svc := newService("argocd-repo-server", cr.Namespace, "repo-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
@@ -126,7 +127,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-server-metrics", "server")
+	svc := newService("argocd-server-metrics", cr.Namespace, "server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
@@ -149,7 +150,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 }
 
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-server", "server")
+	svc := newService("argocd-server", cr.Namespace, "server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
 	if found {
 		// Service found, do nothing
