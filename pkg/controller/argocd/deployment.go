@@ -45,7 +45,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 	deploy := newDeployment("argocd-application-controller", cr.Namespace, "application-controller")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Service found, do nothing
+		// Deployment found, do nothing
 		return nil
 	}
 
@@ -128,7 +128,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-dex-server", cr.Namespace, "dex-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Service found, do nothing
+		// Deployment found, do nothing
 		return nil
 	}
 
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-redis", cr.Namespace, "redis")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Service found, do nothing
+		// Deployment found, do nothing
 		return nil
 	}
 
@@ -217,7 +217,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-repo-server", cr.Namespace, "repo-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Service found, do nothing
+		// Deployment found, do nothing
 		return nil
 	}
 
@@ -301,7 +301,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-server", cr.Namespace, "server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Service found, do nothing
+		// Deployment found, do nothing
 		return nil
 	}
 
