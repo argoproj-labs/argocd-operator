@@ -22,12 +22,12 @@ func (r *ReconcileArgoCD) isObjectFound(nsname types.NamespacedName, obj runtime
 	return true
 }
 
-func isOpenshift() bool {
+func isOpenShift() bool {
 	return isOpenshiftCluster
 }
 
-// VerifyOpenshift will verift that the OpenShift API is present, indicating an OpenShift cluster.
-func VerifyOpenshift() error {
+// VerifyOpenShift will verift that the OpenShift API is present, indicating an OpenShift cluster.
+func VerifyOpenShift() error {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "unable to get k8s config")

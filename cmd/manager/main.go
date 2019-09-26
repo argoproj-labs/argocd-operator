@@ -69,7 +69,7 @@ func main() {
 	printVersion()
 
 	// Verify availability of the OpenShift API
-	err := argocd.VerifyOpenshift()
+	err := argocd.VerifyOpenShift()
 	if err != nil {
 		log.Info("unable to verify openshift")
 	}
