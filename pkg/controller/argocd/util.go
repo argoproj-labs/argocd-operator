@@ -46,6 +46,9 @@ func VerifyOpenShift() error {
 	}
 
 	err = discovery.ServerSupportsVersion(k8s, gv)
-	isOpenshiftCluster = (err == nil)
+	if err == nil {
+		log.Info("openshift verified")
+		isOpenshiftCluster = true
+	}
 	return nil
 }
