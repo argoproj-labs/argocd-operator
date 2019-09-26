@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	if isOpenshift() {
+	if isOpenShift() {
 		err = c.Watch(&source.Kind{Type: &routev1.Route{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &argoproj.ArgoCD{},
@@ -143,6 +143,13 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.reconcileDeployments(instance)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	if isOpenShift() {
+		err = r.reconcileRoutes(instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{}, nil
