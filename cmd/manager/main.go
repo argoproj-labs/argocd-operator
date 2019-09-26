@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmckind/argocd-operator/pkg/apis"
 	"github.com/jmckind/argocd-operator/pkg/controller"
+	"github.com/jmckind/argocd-operator/pkg/controller/argocd"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -66,6 +67,12 @@ func main() {
 	logf.SetLogger(zap.Logger())
 
 	printVersion()
+
+	// Verify availability of the OpenShift API
+	err := argocd.VerifyOpenshift()
+	if err != nil {
+		log.Info("unable to verify openshift")
+	}
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {

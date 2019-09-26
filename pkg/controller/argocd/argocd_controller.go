@@ -4,6 +4,7 @@ import (
 	"context"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -75,6 +76,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if isOpenshift() {
+		err = c.Watch(&source.Kind{Type: &routev1.Route{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
