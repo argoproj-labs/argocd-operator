@@ -51,8 +51,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("https"),
 	}
-	route.Spec.TLS.Termination = routev1.TLSTerminationPassthrough
-	route.Spec.TLS.InsecureEdgeTerminationPolicy = routev1.InsecureEdgeTerminationPolicyNone
+	route.Spec.TLS = &routev1.TLSConfig{
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
+		Termination:                   routev1.TLSTerminationPassthrough,
+	}
 
 	return r.client.Create(context.TODO(), route)
 }
