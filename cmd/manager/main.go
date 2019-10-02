@@ -15,6 +15,8 @@ import (
 	"github.com/jmckind/argocd-operator/pkg/controller"
 	"github.com/jmckind/argocd-operator/pkg/controller/argocd"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -112,6 +114,19 @@ func main() {
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
+	}
+
+	// Setup Scheme for OpenShift resources if available.
+	if argocd.IsOpenShift() {
+		if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+
+		if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
 	}
 
 	// Setup all Controllers
