@@ -3,7 +3,7 @@ package argocd
 import (
 	"context"
 
-	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,11 +22,12 @@ func (r *ReconcileArgoCD) isObjectFound(nsname types.NamespacedName, obj runtime
 	return true
 }
 
-func isOpenShift() bool {
+// IsOpenShift returns true if the operator is running in an OpenShift environment.
+func IsOpenShift() bool {
 	return isOpenshiftCluster
 }
 
-// VerifyOpenShift will verift that the OpenShift API is present, indicating an OpenShift cluster.
+// VerifyOpenShift will verify that the OpenShift API is present, indicating an OpenShift cluster.
 func VerifyOpenShift() error {
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -41,8 +42,8 @@ func VerifyOpenShift() error {
 	}
 
 	gv := schema.GroupVersion{
-		Group:   configv1.GroupName,
-		Version: configv1.GroupVersion.Version,
+		Group:   routev1.GroupName,
+		Version: routev1.GroupVersion.Version,
 	}
 
 	err = discovery.ServerSupportsVersion(k8s, gv)
