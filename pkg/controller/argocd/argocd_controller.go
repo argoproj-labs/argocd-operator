@@ -127,27 +127,38 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 
 	err = r.reconcileConfigMaps(instance)
 	if err != nil {
+		reqLogger.Error(err, "unable to reconcile configmaps")
 		return reconcile.Result{}, err
 	}
 
 	err = r.reconcileSecrets(instance)
 	if err != nil {
+		reqLogger.Error(err, "unable to reconcile secrets")
 		return reconcile.Result{}, err
 	}
 
 	err = r.reconcileServices(instance)
 	if err != nil {
+		reqLogger.Error(err, "unable to reconcile services")
 		return reconcile.Result{}, err
 	}
 
 	err = r.reconcileDeployments(instance)
 	if err != nil {
+		reqLogger.Error(err, "unable to reconcile deployments")
 		return reconcile.Result{}, err
 	}
 
 	if isOpenShift() {
 		err = r.reconcileRoutes(instance)
 		if err != nil {
+			reqLogger.Error(err, "unable to reconcile routes")
+			return reconcile.Result{}, err
+		}
+
+		err = r.reconcilePrometheus(instance)
+		if err != nil {
+			reqLogger.Error(err, "unable to reconcile prometheus")
 			return reconcile.Result{}, err
 		}
 	}
