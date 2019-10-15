@@ -2,6 +2,9 @@ package argocd
 
 import (
 	"context"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,26 +39,31 @@ func newConfigMap(name string, namespace string) *corev1.ConfigMap {
 }
 
 func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
-	err := r.reconcileConfiguration(cr)
-	if err != nil {
+	if err := r.reconcileConfiguration(cr); err != nil {
 		return err
 	}
 
-	err = r.reconcileRBAC(cr)
-	if err != nil {
+	if err := r.reconcileRBAC(cr); err != nil {
 		return err
 	}
 
-	err = r.reconcileSSHKnownHosts(cr)
-	if err != nil {
+	if err := r.reconcileSSHKnownHosts(cr); err != nil {
 		return err
 	}
 
-	err = r.reconcileTLSCerts(cr)
-	if err != nil {
+	if err := r.reconcileTLSCerts(cr); err != nil {
 		return err
 	}
 
+	if IsOpenShift() {
+		if err := r.reconcileGrafanaConfiguration(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileGrafanaDashboards(cr); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -63,9 +71,75 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
 	cm := newConfigMap("argocd-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
-		// ConfigMap found, do nothing
-		return nil
+		return nil // ConfigMap found, do nothing
 	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), cm)
+}
+
+func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
+	cm := newConfigMap("argocd-grafana-config", cr.Namespace)
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
+	if found {
+		return nil // ConfigMap found, do nothing
+	}
+
+	grafanaConfig := GrafanaConfig{
+		Security: GrafanaSecurityConfig{
+			AdminUser:     "admin",
+			AdminPassword: "secret",
+			SecretKey:     "SW2YcwTIb9zpOOhoPsMm",
+		},
+	} // TODO: Pull these values from CR!
+
+	data, err := loadGrafanaConfigs()
+	if err != nil {
+		return err
+	}
+
+	tmpls, err := loadGrafanaTemplates(&grafanaConfig)
+	if err != nil {
+		return err
+	}
+
+	for key, val := range tmpls {
+		data[key] = val
+	}
+	cm.Data = data
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), cm)
+}
+
+func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
+	cm := newConfigMap("argocd-grafana-dashboards", cr.Namespace)
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
+	if found {
+		return nil // ConfigMap found, do nothing
+	}
+
+	dashboards, err := filepath.Glob("/var/lib/grafana/dashboards/*.json")
+	if err != nil {
+		return err
+	}
+
+	data := make(map[string]string)
+	for _, f := range dashboards {
+		dashboard, err := ioutil.ReadFile(f)
+		if err != nil {
+			return err
+		}
+
+		parts := strings.Split(f, "/")
+		filename := parts[len(parts)-1]
+		data[filename] = string(dashboard)
+	}
+	cm.Data = data
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
@@ -77,8 +151,7 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 	cm := newConfigMap("argocd-rbac-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
-		// ConfigMap found, do nothing
-		return nil
+		return nil // ConfigMap found, do nothing
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
@@ -91,8 +164,7 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMap("argocd-ssh-known-hosts-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
-		// ConfigMap found, do nothing
-		return nil
+		return nil // ConfigMap found, do nothing
 	}
 
 	cm.Data = map[string]string{
@@ -109,8 +181,7 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMap("argocd-tls-certs-cm", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
-		// ConfigMap found, do nothing
-		return nil
+		return nil // ConfigMap found, do nothing
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {

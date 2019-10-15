@@ -15,7 +15,6 @@ spec:
       serviceAccountName: argocd-operator
       containers:
         - name: argocd-operator
-          # Replace this with the built image name
           image: quay.io/john_mckenzie/argocd-operator:latest
           command:
           - argocd-operator

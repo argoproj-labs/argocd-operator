@@ -10,6 +10,9 @@ COPY build/_output/bin/argocd-operator ${OPERATOR}
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 
+# install grafana artifacts
+COPY grafana /var/lib/grafana
+
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}

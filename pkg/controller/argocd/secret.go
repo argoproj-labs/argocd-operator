@@ -29,7 +29,7 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 	secret := newSecret("argocd-secret", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: secret.Name}, secret)
 	if found {
-		// ConfigMap found, do nothing
+		// Secret found, do nothing
 		return nil
 	}
 

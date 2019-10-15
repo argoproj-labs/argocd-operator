@@ -3,7 +3,9 @@ package argocd
 import (
 	"context"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -77,6 +79,32 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	if IsOpenShift() {
+		err = c.Watch(&source.Kind{Type: &routev1.Route{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.Watch(&source.Kind{Type: &monitoringv1.Prometheus{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.Watch(&source.Kind{Type: &monitoringv1.ServiceMonitor{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -114,24 +142,14 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	err = r.reconcileConfigMaps(instance)
-	if err != nil {
+	if err := r.reconcileResources(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	err = r.reconcileSecrets(instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	err = r.reconcileServices(instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	err = r.reconcileDeployments(instance)
-	if err != nil {
-		return reconcile.Result{}, err
+	if IsOpenShift() {
+		if err := r.reconcileOpenShiftResources(instance); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{}, nil

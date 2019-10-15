@@ -1,0 +1,11 @@
+apiVersion: 1
+datasources:
+- name: Prometheus
+  type: prometheus
+  access: proxy
+  orgId: 1
+  url: http://prometheus-operated:9090
+  withCredentials:
+  isDefault: true
+  version: 1
+  editable: true
