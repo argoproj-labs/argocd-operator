@@ -24,13 +24,6 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - servicemonitors
-  verbs:
-  - get
-  - create
-- apiGroups:
   - apps
   resourceNames:
   - argocd-operator
@@ -66,6 +59,7 @@ rules:
   - monitoring.coreos.com
   resources:
   - prometheuses
+  - servicemonitors
   verbs:
   - '*'
 ---
