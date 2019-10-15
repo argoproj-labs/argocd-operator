@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 
+	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -50,6 +51,48 @@ func VerifyOpenShift() error {
 	if err == nil {
 		log.Info("openshift verified")
 		isOpenshiftCluster = true
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileOpenShiftResources(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileRoutes(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheus(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileMetricsServiceMonitor(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRepoServerServiceMonitor(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServerMetricsServiceMonitor(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileConfigMaps(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileSecrets(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServices(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileDeployments(cr); err != nil {
+		return err
 	}
 	return nil
 }

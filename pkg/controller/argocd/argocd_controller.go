@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -86,6 +87,22 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		if err != nil {
 			return err
 		}
+
+		err = c.Watch(&source.Kind{Type: &monitoringv1.Prometheus{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.Watch(&source.Kind{Type: &monitoringv1.ServiceMonitor{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoproj.ArgoCD{},
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -125,40 +142,12 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	err = r.reconcileConfigMaps(instance)
-	if err != nil {
-		reqLogger.Error(err, "unable to reconcile configmaps")
-		return reconcile.Result{}, err
-	}
-
-	err = r.reconcileSecrets(instance)
-	if err != nil {
-		reqLogger.Error(err, "unable to reconcile secrets")
-		return reconcile.Result{}, err
-	}
-
-	err = r.reconcileServices(instance)
-	if err != nil {
-		reqLogger.Error(err, "unable to reconcile services")
-		return reconcile.Result{}, err
-	}
-
-	err = r.reconcileDeployments(instance)
-	if err != nil {
-		reqLogger.Error(err, "unable to reconcile deployments")
+	if err := r.reconcileResources(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if IsOpenShift() {
-		err = r.reconcileRoutes(instance)
-		if err != nil {
-			reqLogger.Error(err, "unable to reconcile routes")
-			return reconcile.Result{}, err
-		}
-
-		err = r.reconcilePrometheus(instance)
-		if err != nil {
-			reqLogger.Error(err, "unable to reconcile prometheus")
+		if err := r.reconcileOpenShiftResources(instance); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
