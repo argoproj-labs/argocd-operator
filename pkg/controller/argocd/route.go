@@ -26,24 +26,44 @@ func newRoute(name string, namespace string) *routev1.Route {
 }
 
 func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
-	err := r.reconcileServerRoute(cr)
-	if err != nil {
-		log.Error(err, "unable to reconcile server route")
+	if err := r.reconcileGrafanaRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServerRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheusRoute(cr); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
+	route := newRoute("argocd-grafana", cr.Namespace)
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
+	if found {
+		return nil // Route found, do nothing
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "argocd-grafana"
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("http"),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), route)
 }
 
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	route := newRoute("argocd-server-route", cr.Namespace)
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
 	if found {
-		// Route found, do nothing
-		return nil
-	}
-
-	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
-		return err
+		return nil // Route found, do nothing
 	}
 
 	route.Spec.To.Kind = "Service"
@@ -56,5 +76,27 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		Termination:                   routev1.TLSTerminationPassthrough,
 	}
 
+	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), route)
+}
+
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+	route := newRoute("argocd-prometheus", cr.Namespace)
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
+	if found {
+		return nil // Route found, do nothing
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "prometheus-operated"
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("web"),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), route)
 }

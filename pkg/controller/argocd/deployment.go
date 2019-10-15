@@ -45,8 +45,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 	deploy := newDeployment("argocd-application-controller", cr.Namespace, "application-controller")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Deployment found, do nothing
-		return nil
+		return nil // Deployment found, do nothing
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -57,7 +56,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 			"--operation-processors",
 			"10",
 		},
-		Image:           "argoproj/argocd:latest",
+		Image:           "argoproj/argocd:v1.2.3",
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
 		LivenessProbe: &corev1.Probe{
@@ -121,6 +120,13 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	if IsOpenShift() {
+		err = r.reconcileGrafanaDeployment(cr)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -128,8 +134,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-dex-server", cr.Namespace, "dex-server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Deployment found, do nothing
-		return nil
+		return nil // Deployment found, do nothing
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -159,7 +164,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/usr/local/bin/argocd-util",
 			"/shared",
 		},
-		Image:           "argoproj/argocd:latest",
+		Image:           "argoproj/argocd:v1.2.3",
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		VolumeMounts: []corev1.VolumeMount{{
@@ -182,12 +187,105 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), deploy)
 }
 
+func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
+	deploy := newDeployment("argocd-grafana", cr.Namespace, "grafana")
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	if found {
+		return nil // Deployment found, do nothing
+	}
+
+	var replicas int32 = 1
+	deploy.Spec.Replicas = &replicas
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Image:           "grafana/grafana:6.4.2",
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            deploy.Name,
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 3000,
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "grafana-config",
+				MountPath: "/etc/grafana",
+			}, {
+				Name:      "grafana-datasources-config",
+				MountPath: "/etc/grafana/provisioning/datasources",
+			}, {
+				Name:      "grafana-dashboards-config",
+				MountPath: "/etc/grafana/provisioning/dashboards",
+			}, {
+				Name:      "grafana-dashboard-templates",
+				MountPath: "/var/lib/grafana/dashboards",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "grafana-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-grafana-config",
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "grafana.ini",
+						Path: "grafana.ini",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-datasources-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-grafana-config",
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "datasource.yaml",
+						Path: "datasource.yaml",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-dashboards-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-grafana-config",
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "provider.yaml",
+						Path: "provider.yaml",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-dashboard-templates",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-grafana-dashboards",
+					},
+				},
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), deploy)
+}
+
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-redis", cr.Namespace, "redis")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Deployment found, do nothing
-		return nil
+		return nil // Deployment found, do nothing
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -230,7 +328,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			"--redis",
 			"argocd-redis:6379",
 		},
-		Image:           "argoproj/argocd:latest",
+		Image:           "argoproj/argocd:v1.2.3",
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -301,8 +399,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeployment("argocd-server", cr.Namespace, "server")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
 	if found {
-		// Deployment found, do nothing
-		return nil
+		return nil // Deployment found, do nothing
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -311,7 +408,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			"--staticassets",
 			"/shared/app",
 		},
-		Image:           "argoproj/argocd:latest",
+		Image:           "argoproj/argocd:v1.2.3",
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{

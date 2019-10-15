@@ -58,6 +58,32 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), svc)
 }
 
+func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
+	svc := newService("argocd-grafana", cr.Namespace, "grafana")
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
+	if found {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		"app.kubernetes.io/name": "argocd-grafana",
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "http",
+			Port:       80,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(3000),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), svc)
+}
+
 func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	svc := newService("argocd-metrics", cr.Namespace, "metrics")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
@@ -231,6 +257,13 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 	err = r.reconcileServerService(cr)
 	if err != nil {
 		return err
+	}
+
+	if IsOpenShift() {
+		err = r.reconcileGrafanaService(cr)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
