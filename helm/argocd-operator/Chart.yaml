@@ -1,0 +1,14 @@
+apiVersion: v1
+appVersion: "0.0.1"
+description: A Helm chart for Argo CD Operator
+name: argocd-operator
+version: 0.0.1
+keywords:
+- argo-cd
+- argocd-operator
+home: https://github.com/jmckind/argocd-operator
+source:
+- https://github.com/jmckind/argocd-operator
+maintainers:
+- name: John McKenzie
+  email: argocd-operator@noreply.github.com
