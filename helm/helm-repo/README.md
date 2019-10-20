@@ -1,4 +1,4 @@
-# Helm Repositroy
+# Helm Repository
 
 ## Create new GitHub Helm Repository project with GitHub Pages enabled 
 
