@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorSource
+metadata:
+  name: argocd-operators
+  namespace: openshift-marketplace
+spec:
+  type: appregistry
+  endpoint: https://quay.io/cnr
+  registryNamespace: disposab1e
+  displayName: "Argo CD Operators"
+  publisher: "John McKenzie"
