@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -38,20 +39,31 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 `
 )
 
-// newConfigMap retuns a new ConfigMap instance.
-func newConfigMap(name string, namespace string) *corev1.ConfigMap {
+// newConfigMap retuns a new ConfigMap instance for the given ArgoCD.
+func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/name":    name,
-				"app.kubernetes.io/part-of": "argocd",
-			},
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
 		},
 	}
 }
 
+// newConfigMapWithName creates a new ConfigMap with the given name for the given ArgCD.
+func newConfigMapWithName(cr *argoproj.ArgoCD, name string) *corev1.ConfigMap {
+	cm := newConfigMap(cr)
+	cm.ObjectMeta.Name = name
+	return cm
+}
+
+// newConfigMapWithName creates a new ConfigMap with the given suffix appended to the name.
+// The name for the CongifMap is based on the name of the given ArgCD.
+func newConfigMapWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.ConfigMap {
+	return newConfigMapWithName(cr, fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix))
+}
+
+// reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
 func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileConfiguration(cr); err != nil {
 		return err
@@ -81,8 +93,33 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+// reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
+// This ConfigMap holds the CA Certificate data for client use.
+func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
+	cm := newConfigMapWithSuffix(cr, "ca")
+	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
+	if found {
+		return nil // ConfigMap found, do nothing
+	}
+
+	caSecret, err := r.getSecret(cr, "argocd-ca-secret")
+	if err != nil {
+		return err
+	}
+
+	cm.Data = map[string]string{
+		TLSCACertKey: string(caSecret.Data[TLSCertKey]),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), cm)
+}
+
+// reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-cm", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "cm")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
@@ -94,8 +131,9 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), cm)
 }
 
+// reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-grafana-config", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "grafana-config")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
@@ -130,8 +168,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 	return r.client.Create(context.TODO(), cm)
 }
 
+// reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-grafana-dashboards", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "grafana-dashboards")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
@@ -161,8 +200,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 	return r.client.Create(context.TODO(), cm)
 }
 
+// reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-rbac-cm", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "rbac-cm")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
@@ -174,8 +214,9 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), cm)
 }
 
+// reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-ssh-known-hosts-cm", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "ssh-known-hosts-cm")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
@@ -191,8 +232,9 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), cm)
 }
 
+// reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
-	cm := newConfigMap("argocd-tls-certs-cm", cr.Namespace)
+	cm := newConfigMapWithSuffix(cr, "tls-certs-cm")
 	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: cm.Name}, cm)
 	if found {
 		return nil // ConfigMap found, do nothing
