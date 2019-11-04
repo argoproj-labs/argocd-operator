@@ -65,10 +65,18 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "ArgoCDSpec defines the desired state of ArgoCD",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"tls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLS defines the TLS options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
+						},
+					},
+				},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 

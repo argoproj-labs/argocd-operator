@@ -26,6 +26,9 @@ import (
 type ArgoCDSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// TLS defines the TLS options for ArgoCD.
+	TLS ArgoCDTLSSpec `json:"tls,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD
@@ -59,4 +62,24 @@ type ArgoCDList struct {
 
 func init() {
 	SchemeBuilder.Register(&ArgoCD{}, &ArgoCDList{})
+}
+
+// ArgoCDTLSSpec defines the TLS options for ArgCD.
+type ArgoCDTLSSpec struct {
+	CA ArgoCDCASpec `json:"ca,omitempty"`
+}
+
+// ArgoCDCASpec defines the CA options for ArgCD.
+type ArgoCDCASpec struct {
+	// ConfigMapName is the name of the ConfigMap containing the CA Certificate.
+	ConfigMapName string `json:"configMapName"`
+
+	// SecretName is the name of the Secret containing the CA Certificate and Key.
+	SecretName string `json:"secretName"`
+}
+
+// ArgoCDCertificateSpec defines the options for the ArgoCD certificates.
+type ArgoCDCertificateSpec struct {
+	// SecretName is the name of the Secret containing the Certificate and Key.
+	SecretName string `json:"secretName"`
 }
