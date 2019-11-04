@@ -17,110 +17,15 @@ package argocd
 import (
 	"context"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	routev1 "github.com/openshift/api/route/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-var log = logf.Log.WithName("controller_argocd")
-
-// Add creates a new ArgoCD Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
-}
-
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileArgoCD{client: mgr.GetClient(), scheme: mgr.GetScheme()}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New("argocd-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to primary resource ArgoCD
-	err = c.Watch(&source.Kind{Type: &argoproj.ArgoCD{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource Pods and requeue the owner ArgoCD
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoproj.ArgoCD{},
-	})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoproj.ArgoCD{},
-	})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoproj.ArgoCD{},
-	})
-	if err != nil {
-		return err
-	}
-
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoproj.ArgoCD{},
-	})
-	if err != nil {
-		return err
-	}
-
-	if IsOpenShift() {
-		err = c.Watch(&source.Kind{Type: &routev1.Route{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
-		})
-		if err != nil {
-			return err
-		}
-
-		err = c.Watch(&source.Kind{Type: &monitoringv1.Prometheus{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
-		})
-		if err != nil {
-			return err
-		}
-
-		err = c.Watch(&source.Kind{Type: &monitoringv1.ServiceMonitor{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
 
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
@@ -133,6 +38,35 @@ type ReconcileArgoCD struct {
 	scheme *runtime.Scheme
 }
 
+var log = logf.Log.WithName("controller_argocd")
+
+// Add creates a new ArgoCD Controller and adds it to the Manager. The Manager will set fields on the Controller
+// and Start it when the Manager is Started.
+func Add(mgr manager.Manager) error {
+	return add(mgr, newReconciler(mgr))
+}
+
+// add adds a new Controller to mgr with r as the reconcile.Reconciler
+func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	// Create a new controller
+	c, err := controller.New("argocd-controller", mgr, controller.Options{Reconciler: r})
+	if err != nil {
+		return err
+	}
+
+	// Register watches for all controller resources
+	if err := watchResources(c); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	return &ReconcileArgoCD{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+}
+
 // Reconcile reads that state of the cluster for a ArgoCD object and makes changes based on the state read
 // and what is in the ArgoCD.Spec
 // Note:
@@ -142,9 +76,8 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 	reqLogger := log.WithValues("namespace", request.Namespace, "name", request.Name)
 	reqLogger.Info("Reconciling ArgoCD")
 
-	// Fetch the ArgoCD instance
-	instance := &argoproj.ArgoCD{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	argocd := &argoproj.ArgoCD{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -156,15 +89,11 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	if err := r.reconcileResources(instance); err != nil {
+	if err := r.reconcileResources(argocd); err != nil {
+		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	if IsOpenShift() {
-		if err := r.reconcileOpenShiftResources(instance); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
+	// Return and don't requeue
 	return reconcile.Result{}, nil
 }
