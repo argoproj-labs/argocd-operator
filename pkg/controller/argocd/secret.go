@@ -24,19 +24,17 @@ import (
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *ReconcileArgoCD) getSecret(cr *argoproj.ArgoCD, name string) (secret *corev1.Secret, err error) {
-	secret = newSecret(name, cr)
-	err = r.client.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Name}, secret)
-	return
+func (r *ReconcileArgoCD) getSecret(name string, cr *argoproj.ArgoCD) (*corev1.Secret, error) {
+	secret := newSecretWithName(name, cr)
+	return secret, r.fetchObject(cr.Namespace, name, secret)
 }
 
-// newCASecret creates a new CA secret for the given RethinkDBCluster.
-func newCASecret(name string, cr *argoproj.ArgoCD) (*corev1.Secret, error) {
-	secret := newTLSSecret(cr, name)
+// newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
+func newCASecret(cr *argoproj.ArgoCD) (*corev1.Secret, error) {
+	secret := newTLSSecret("ca", cr)
 
 	key, err := newPrivateKey()
 	if err != nil {
@@ -56,9 +54,9 @@ func newCASecret(name string, cr *argoproj.ArgoCD) (*corev1.Secret, error) {
 	return secret, nil
 }
 
-// newCertificateSecret creates a new secret for a TLS certificate.
-func newCertificateSecret(cr *argoproj.ArgoCD, name string, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*corev1.Secret, error) {
-	secret := newTLSSecret(cr, name)
+// newCertificateSecret creates a new secret using the given name suffix for the given TLS certificate.
+func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoproj.ArgoCD) (*corev1.Secret, error) {
+	secret := newTLSSecret(suffix, cr)
 
 	key, err := newPrivateKey()
 	if err != nil {
@@ -66,9 +64,9 @@ func newCertificateSecret(cr *argoproj.ArgoCD, name string, caCert *x509.Certifi
 	}
 
 	cfg := &tlsutil.CertConfig{
-		CertName:     name,
+		CertName:     secret.Name,
 		CertType:     tlsutil.ClientAndServingCert,
-		CommonName:   name,
+		CommonName:   secret.Name,
 		Organization: []string{cr.ObjectMeta.Namespace},
 	}
 
@@ -91,10 +89,10 @@ func newCertificateSecret(cr *argoproj.ArgoCD, name string, caCert *x509.Certifi
 }
 
 // newSecret retuns a new Secret instance.
-func newSecret(name string, cr *argoproj.ArgoCD) *corev1.Secret {
+func newSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    labelsForCluster(cr),
 		},
@@ -102,18 +100,30 @@ func newSecret(name string, cr *argoproj.ArgoCD) *corev1.Secret {
 	}
 }
 
-// newTLSSecret creates a new TLS secret with the given name for the given RethinkDBCluster.
-func newTLSSecret(cr *argoproj.ArgoCD, name string) *corev1.Secret {
-	secret := newSecret("argocd-tls-secret", cr)
+// newSecretWithName creates a new Secret with the given name for the given ArgCD.
+func newSecretWithName(name string, cr *argoproj.ArgoCD) *corev1.Secret {
+	secret := newSecret(cr)
 	secret.ObjectMeta.Name = name
+	return secret
+}
+
+// newSecretWithSuffix creates a new Secret with the given suffix appended to the name.
+// The name for the Secret is based on the name of the given ArgCD.
+func newSecretWithSuffix(suffix string, cr *argoproj.ArgoCD) *corev1.Secret {
+	return newSecretWithName(fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix), cr)
+}
+
+// newTLSSecret creates a new TLS secret with the given suffix for the given ArgoCD.
+func newTLSSecret(suffix string, cr *argoproj.ArgoCD) *corev1.Secret {
+	secret := newSecretWithSuffix(suffix, cr)
 	secret.Type = corev1.SecretTypeTLS
 	return secret
 }
 
 // reconcileArgoSecret will ensure that the ArgoCD Secret is present.
 func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
-	secret := newSecret("argocd-secret", cr)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: secret.Name}, secret)
+	secret := newSecretWithName(ArgoCDSecretName, cr)
+	found := r.isObjectFound(cr.Namespace, secret.Name, secret)
 	if found {
 		return nil // Secret found, do nothing
 	}
@@ -126,13 +136,14 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 
 // reconcileArgoTLSSecret ensures the TLS Secret is created for the ArgoCD Service.
 func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoproj.ArgoCD) error {
-	secret := newSecret("argocd-tls-secret", cr)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: secret.Name}, secret)
+	secret := newTLSSecret("tls", cr)
+	found := r.isObjectFound(cr.Namespace, secret.Name, secret)
 	if found {
 		return nil // Secret found, do nothing
 	}
 
-	caSecret, err := r.getSecret(cr, "argocd-ca-secret")
+	caSecret := newSecretWithSuffix("ca", cr)
+	caSecret, err := r.getSecret(caSecret.Name, cr)
 	if err != nil {
 		return err
 	}
@@ -147,7 +158,7 @@ func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	secret, err = newCertificateSecret(cr, secret.Name, caCert, caKey)
+	secret, err = newCertificateSecret("tls", caCert, caKey, cr)
 	if err != nil {
 		return err
 	}
@@ -161,13 +172,12 @@ func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoproj.ArgoCD) error {
 
 // reconcileCASecret ensures the CA Secret is created.
 func (r *ReconcileArgoCD) reconcileCASecret(cr *argoproj.ArgoCD) error {
-	secret := newSecret("argocd-ca-secret", cr)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: secret.Name}, secret)
-	if found {
+	secret := newSecretWithSuffix("ca", cr)
+	if r.isObjectFound(cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
-	secret, err := newCASecret(secret.Name, cr)
+	secret, err := newCASecret(cr)
 	if err != nil {
 		return err
 	}
@@ -180,9 +190,8 @@ func (r *ReconcileArgoCD) reconcileCASecret(cr *argoproj.ArgoCD) error {
 
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
 func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
-	secret := newSecret("argocd-grafana-secret", cr)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: secret.Name}, secret)
-	if found {
+	secret := newSecretWithSuffix("grafana", cr)
+	if r.isObjectFound(cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
