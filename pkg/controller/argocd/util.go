@@ -47,6 +47,30 @@ const (
 	// ArgoCDGrafanaDashboardConfigMapSuffix is the default suffix for the Grafana dashboards ConfigMap.
 	ArgoCDGrafanaDashboardConfigMapSuffix = "grafana-dashboards"
 
+	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
+	ArgoCDDefaultArgoImage = "argoproj/argocd"
+
+	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
+	ArgoCDDefaultArgoVersion = "1.2.3"
+
+	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
+	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
+
+	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
+	ArgoCDDefaultDexVersion = "v2.14.0"
+
+	// ArgoCDDefaultGrafanaImage is the Grafana container image to use when not specified.
+	ArgoCDDefaultGrafanaImage = "grafana/grafana"
+
+	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
+	ArgoCDDefaultGrafanaVersion = "6.4.2"
+
+	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
+	ArgoCDDefaultRedisImage = "redis"
+
+	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
+	ArgoCDDefaultRedisVersion = "5.0.3"
+
 	// ArgoCDKnownHostsConfigMapName is the upstream hard-coded SSH known hosts data ConfigMap name.
 	ArgoCDKnownHostsConfigMapName = "argocd-ssh-known-hosts-cm"
 
@@ -75,6 +99,62 @@ var isOpenshiftCluster = false
 // The result will be stored in the given object.
 func (r *ReconcileArgoCD) fetchObject(namespace string, name string, obj runtime.Object) error {
 	return r.client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
+}
+
+// getArgoContainerImage will return the container image for ArgoCD.
+func getArgoContainerImage(cr *argoproj.ArgoCD) string {
+	img := cr.Spec.Image
+	if len(img) <= 0 {
+		img = ArgoCDDefaultArgoImage
+	}
+
+	tag := cr.Spec.Version
+	if len(tag) <= 0 {
+		tag = ArgoCDDefaultArgoVersion
+	}
+	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getDexContainerImage will return the container image for the Dex server.
+func getDexContainerImage(cr *argoproj.ArgoCD) string {
+	img := cr.Spec.Dex.Image
+	if len(img) <= 0 {
+		img = ArgoCDDefaultDexImage
+	}
+
+	tag := cr.Spec.Dex.Version
+	if len(tag) <= 0 {
+		tag = ArgoCDDefaultDexVersion
+	}
+	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getGrafanaContainerImage will return the container image for the Grafana server.
+func getGrafanaContainerImage(cr *argoproj.ArgoCD) string {
+	img := cr.Spec.Grafana.Image
+	if len(img) <= 0 {
+		img = ArgoCDDefaultGrafanaImage
+	}
+
+	tag := cr.Spec.Grafana.Version
+	if len(tag) <= 0 {
+		tag = ArgoCDDefaultGrafanaVersion
+	}
+	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getRedisContainerImage will return the container image for the Redis server.
+func getRedisContainerImage(cr *argoproj.ArgoCD) string {
+	img := cr.Spec.Redis.Image
+	if len(img) <= 0 {
+		img = ArgoCDDefaultRedisImage
+	}
+
+	tag := cr.Spec.Redis.Version
+	if len(tag) <= 0 {
+		tag = ArgoCDDefaultRedisVersion
+	}
+	return fmt.Sprintf("%s:%s", img, tag)
 }
 
 // isObjectFound will perform a basic check that the given object exists via the Kubernetes API.

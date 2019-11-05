@@ -83,7 +83,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 			"--operation-processors",
 			"10",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
 		LivenessProbe: &corev1.Probe{
@@ -191,7 +191,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/usr/local/bin/argocd-util",
 			"/shared",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		VolumeMounts: []corev1.VolumeMount{{
@@ -225,7 +225,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 	deploy.Spec.Replicas = &replicas
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image:           "grafana/grafana:6.4.2",
+		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
 		Ports: []corev1.ContainerPort{
@@ -355,7 +355,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			"--redis",
 			"argocd-redis:6379",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -435,7 +435,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			"--staticassets",
 			"/shared/app",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
