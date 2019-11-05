@@ -2,7 +2,7 @@
 
 A Kubernetes operator for managing Argo CD deployments.
 
-## Usage
+## Basic Usage
 
 Set up RBAC for the operator
 
@@ -12,11 +12,15 @@ kubectl create -f deploy/role.yaml
 kubectl create -f deploy/role_binding.yaml
 ```
 
-Add the CRDs to the cluster
+Add the Argo CD server CRDs to the cluster.
 
 ```bash
-kubectl create -f deploy/crds/argoproj_v1alpha1_application_crd.yaml
-kubectl create -f deploy/crds/argoproj_v1alpha1_appproject_crd.yaml
+kubectl create -f deploy/argo-cd
+```
+
+Add the ArgoCD Operator CRD to the cluster
+
+```bash
 kubectl create -f deploy/crds/argoproj_v1alpha1_argocd_crd.yaml
 ```
 
@@ -26,28 +30,24 @@ Deploy the operator
 kubectl create -f deploy/operator.yaml
 ```
 
-Once the operator is deployed, create a new Argo CD custom resource.
+Once the operator is deployed, create a new ArgoCD custom resource.
 
 ```bash
-kubectl create -f deploy/crds/argoproj_v1alpha1_argocd_cr.yaml
+kubectl create -f examples/argocd-minimal.yaml
 ```
 
-## Development
+## Deployment Guides
 
-The requirements for building the operator are fairly minimal.
+See the [deployment guides][deploy_guides] for different platforms.
 
- * Go 1.12+
- * Operator SDK 0.10+
+## Contributing
 
-Ensure Go module support is enabled in your environment.
+See the [development documentation][dev_docs] for information on how to contribute!
 
-```bash
-export GO111MODULE=on
+## License
 
-```
+ArgoCD Operator is released under the Apache 2.0 license. See the [LICENSE][license_file] file for details.
 
-Run the build subcommand that is part of the Operator SDK to build the operator.
-
-```bash
-operator-sdk build <YOUR_IMAGE_REPO>/argocd-operator
-```
+[deploy_guides]:./docs/guides/
+[dev_docs]:./docs/development.md
+[license_file]:./LICENSE
