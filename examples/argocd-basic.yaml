@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd-basic
+  labels:
+    purpose: example
+    example: basic
+    description: A basic ArgoCD example that builds on minimal.
+spec:
+  version: 1.2.3
