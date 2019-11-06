@@ -38,6 +38,9 @@ const (
 	// ArgoCDAppName is the application name for labels.
 	ArgoCDAppName = "argocd"
 
+	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
+	ArgoCDCASuffix = "ca"
+
 	// ArgoCDConfigMapName is the upstream hard-coded ArgoCD ConfigMap name.
 	ArgoCDConfigMapName = "argocd-cm"
 
@@ -58,6 +61,9 @@ const (
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "v2.14.0"
+
+	// ArgoCDDefaultGrafanaAdminUsername is the Grafana admin username to use when not specified.
+	ArgoCDDefaultGrafanaAdminUsername = "admin"
 
 	// ArgoCDDefaultGrafanaImage is the Grafana container image to use when not specified.
 	ArgoCDDefaultGrafanaImage = "grafana/grafana"
@@ -82,6 +88,9 @@ const (
 
 	// ArgoCDKeyPartOf is the resource part-of key for labels.
 	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
+
+	// ArgoCDKeySSHKnownHosts is the resource ssh_known_hosts key for labels.
+	ArgoCDKeySSHKnownHosts = "ssh_known_hosts"
 
 	// ArgoCDRBACConfigMapName is the upstream hard-coded RBAC ConfigMap name.
 	ArgoCDRBACConfigMapName = "argocd-rbac-cm"
