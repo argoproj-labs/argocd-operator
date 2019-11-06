@@ -66,17 +66,49 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Description: "ArgoCDSpec defines the desired state of ArgoCD",
 				Properties: map[string]spec.Schema{
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image is the ArgoCD container image.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the tag to use with the ArgoCD container image.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS defines the TLS options for ArgoCD.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
 						},
 					},
+					"dex": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Dex defines the Dex server options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec"),
+						},
+					},
+					"grafana": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Grafana defines the Grafana server options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
+						},
+					},
+					"redis": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Redis defines the Redis server options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 

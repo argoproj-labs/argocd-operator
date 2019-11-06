@@ -28,6 +28,70 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            dex:
+              description: Dex defines the Dex server options for ArgoCD.
+              properties:
+                image:
+                  type: string
+                version:
+                  type: string
+              required:
+              - image
+              - version
+              type: object
+            grafana:
+              description: Grafana defines the Grafana server options for ArgoCD.
+              properties:
+                image:
+                  type: string
+                version:
+                  type: string
+              required:
+              - image
+              - version
+              type: object
+            image:
+              description: Image is the ArgoCD container image.
+              type: string
+            redis:
+              description: Redis defines the Redis server options for ArgoCD.
+              properties:
+                image:
+                  type: string
+                version:
+                  type: string
+              required:
+              - image
+              - version
+              type: object
+            tls:
+              description: TLS defines the TLS options for ArgoCD.
+              properties:
+                ca:
+                  description: CA defines the CA options.
+                  properties:
+                    configMapName:
+                      description: ConfigMapName is the name of the ConfigMap containing
+                        the CA Certificate.
+                      type: string
+                    secretName:
+                      description: SecretName is the name of the Secret containing
+                        the CA Certificate and Key.
+                      type: string
+                  required:
+                  - configMapName
+                  - secretName
+                  type: object
+                enabled:
+                  description: Enabled toggles TLS globally.
+                  type: boolean
+              required:
+              - enabled
+              type: object
+            version:
+              description: Version is the tag to use with the ArgoCD container image.
+              type: string
           type: object
         status:
           type: object
