@@ -54,7 +54,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
-	ArgoCDDefaultArgoVersion = "1.2.3"
+	ArgoCDDefaultArgoVersion = "v1.2.3"
 
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
 	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
@@ -178,6 +178,11 @@ func (r *ReconcileArgoCD) isObjectFound(namespace string, name string, obj runti
 // IsOpenShift returns true if the operator is running in an OpenShift environment.
 func IsOpenShift() bool {
 	return isOpenshiftCluster
+}
+
+// isTLSEnabled returns the TLS toggle flag for the given ArgoCD.
+func isTLSEnabled(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.TLS.Enabled
 }
 
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {

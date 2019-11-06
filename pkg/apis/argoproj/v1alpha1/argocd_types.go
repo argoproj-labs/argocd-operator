@@ -111,5 +111,9 @@ type ArgoCDStatus struct {
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
 type ArgoCDTLSSpec struct {
+	// Enabled toggles TLS globally.
+	Enabled bool `json:"enabled"`
+
+	// CA defines the CA options.
 	CA ArgoCDCASpec `json:"ca,omitempty"`
 }

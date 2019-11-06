@@ -38,6 +38,13 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 `
 )
 
+func getCAConfigMapName(cr *argoproj.ArgoCD) string {
+	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
+		return cr.Spec.TLS.CA.ConfigMapName
+	}
+	return nameWithSuffix(ArgoCDCASuffix, cr)
+}
+
 // newConfigMap retuns a new ConfigMap instance for the given ArgoCD.
 func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
@@ -95,7 +102,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 // reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
 // This ConfigMap holds the CA Certificate data for client use.
 func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
-	cm := newConfigMapWithSuffix(ArgoCDCASuffix, cr)
+	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 	if r.isObjectFound(cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, do nothing
 	}
