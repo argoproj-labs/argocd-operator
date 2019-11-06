@@ -20,7 +20,6 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -56,7 +55,7 @@ func newServiceMonitor(name string, namespace string) *monitoringv1.ServiceMonit
 
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus("argocd-prometheus", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: prometheus.Name}, prometheus)
+	found := r.isObjectFound(cr.Namespace, prometheus.Name, prometheus)
 	if found {
 		return nil // Prometheus found, do nothing
 	}
@@ -74,7 +73,7 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitor("argocd-metrics", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: sm.Name}, sm)
+	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
 	if found {
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -98,7 +97,7 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 
 func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitor("argocd-repo-server-metrics", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: sm.Name}, sm)
+	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
 	if found {
 		return nil // ServiceMonitor found, do nothing
 	}
@@ -122,7 +121,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitor("argocd-server-metrics", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: sm.Name}, sm)
+	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
 	if found {
 		return nil // ServiceMonitor found, do nothing
 	}

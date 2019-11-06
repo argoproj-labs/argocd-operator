@@ -16,40 +16,53 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// newService retuns a new Service instance.
-func newService(name string, namespace string, component string) *corev1.Service {
+// newService returns a new Service for the given ArgoCD instance.
+func newService(cr *argoproj.ArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/component": component,
-				"app.kubernetes.io/name":      name,
-				"app.kubernetes.io/part-of":   "argocd",
-			},
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
 		},
 	}
 }
 
+// newService retuns a new Service instance.
+func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
+	svc := newService(cr)
+	svc.ObjectMeta.Name = name
+
+	lbls := svc.ObjectMeta.Labels
+	lbls[ArgoCDKeyComponent] = component
+	svc.ObjectMeta.Labels = lbls
+
+	return svc
+}
+
+// newServiceWithSuffix retuns a new Service instance for the given ArgoCD using the given suffix.
+func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *corev1.Service {
+	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+}
+
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-dex-server", cr.Namespace, "dex-server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
+	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
+	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
 	if found {
 		// Service found, do nothing
 		return nil
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-dex-server",
+		ArgoCDKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -73,14 +86,14 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-grafana", cr.Namespace, "grafana")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
+	svc := newServiceWithSuffix("grafana", "grafana", cr)
+	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
 	if found {
 		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-grafana",
+		ArgoCDKeyName: nameWithSuffix("grafana", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -99,15 +112,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-metrics", cr.Namespace, "metrics")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
+	svc := newServiceWithSuffix("metrics", "metrics", cr)
+	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
 	if found {
 		// Service found, do nothing
 		return nil
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-application-controller",
+		ArgoCDKeyName: nameWithSuffix("application-controller", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -126,15 +139,13 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-redis", cr.Namespace, "redis")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
-	if found {
-		// Service found, do nothing
-		return nil
+	svc := newServiceWithSuffix("redis", "redis", cr)
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-redis",
+		ArgoCDKeyName: nameWithSuffix("redis", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -152,15 +163,13 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-repo-server", cr.Namespace, "repo-server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
-	if found {
-		// Service found, do nothing
-		return nil
+	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-repo-server",
+		ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -184,15 +193,13 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-server-metrics", cr.Namespace, "server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
-	if found {
-		// Service found, do nothing
-		return nil
+	svc := newServiceWithSuffix("server-metrics", "server", cr)
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-server",
+		ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -211,15 +218,13 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 }
 
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
-	svc := newService("argocd-server", cr.Namespace, "server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: svc.Name}, svc)
-	if found {
-		// Service found, do nothing
-		return nil
+	svc := newServiceWithSuffix("server", "server", cr)
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		"app.kubernetes.io/name": "argocd-server",
+		ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

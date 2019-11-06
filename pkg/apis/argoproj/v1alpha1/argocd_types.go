@@ -18,22 +18,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func init() {
+	SchemeBuilder.Register(&ArgoCD{}, &ArgoCDList{})
+}
+
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 // Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-
-// ArgoCDSpec defines the desired state of ArgoCD
-// +k8s:openapi-gen=true
-type ArgoCDSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-}
-
-// ArgoCDStatus defines the observed state of ArgoCD
-// +k8s:openapi-gen=true
-type ArgoCDStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -48,6 +38,33 @@ type ArgoCD struct {
 	Status ArgoCDStatus `json:"status,omitempty"`
 }
 
+// ArgoCDCASpec defines the CA options for ArgCD.
+type ArgoCDCASpec struct {
+	// ConfigMapName is the name of the ConfigMap containing the CA Certificate.
+	ConfigMapName string `json:"configMapName"`
+
+	// SecretName is the name of the Secret containing the CA Certificate and Key.
+	SecretName string `json:"secretName"`
+}
+
+// ArgoCDCertificateSpec defines the options for the ArgoCD certificates.
+type ArgoCDCertificateSpec struct {
+	// SecretName is the name of the Secret containing the Certificate and Key.
+	SecretName string `json:"secretName"`
+}
+
+// ArgoCDDexSpec defines the desired state for the Dex server component.
+type ArgoCDDexSpec struct {
+	Image   string `json:"image"`
+	Version string `json:"version"`
+}
+
+// ArgoCDGrafanaSpec defines the desired state for the Grafana server component.
+type ArgoCDGrafanaSpec struct {
+	Image   string `json:"image"`
+	Version string `json:"version"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ArgoCDList contains a list of ArgoCD
@@ -57,6 +74,42 @@ type ArgoCDList struct {
 	Items           []ArgoCD `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ArgoCD{}, &ArgoCDList{})
+// ArgoCDRedisSpec defines the desired state for the Redis server component.
+type ArgoCDRedisSpec struct {
+	Image   string `json:"image"`
+	Version string `json:"version"`
+}
+
+// ArgoCDSpec defines the desired state of ArgoCD
+// +k8s:openapi-gen=true
+type ArgoCDSpec struct {
+	// Image is the ArgoCD container image.
+	Image string `json:"image,omitempty"`
+
+	// Version is the tag to use with the ArgoCD container image.
+	Version string `json:"version,omitempty"`
+
+	// TLS defines the TLS options for ArgoCD.
+	TLS ArgoCDTLSSpec `json:"tls,omitempty"`
+
+	// Dex defines the Dex server options for ArgoCD.
+	Dex ArgoCDDexSpec `json:"dex,omitempty"`
+
+	// Grafana defines the Grafana server options for ArgoCD.
+	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
+
+	// Redis defines the Redis server options for ArgoCD.
+	Redis ArgoCDRedisSpec `json:"redis,omitempty"`
+}
+
+// ArgoCDStatus defines the observed state of ArgoCD
+// +k8s:openapi-gen=true
+type ArgoCDStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+}
+
+// ArgoCDTLSSpec defines the TLS options for ArgCD.
+type ArgoCDTLSSpec struct {
+	CA ArgoCDCASpec `json:"ca,omitempty"`
 }

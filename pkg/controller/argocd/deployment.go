@@ -16,49 +16,62 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// newDeployment retuns a new Deployment instance.
-func newDeployment(name string, namespace string, component string) *appsv1.Deployment {
+// newDeployment retuns a new Deployment instance for the given ArgoCD.
+func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/component": component,
-				"app.kubernetes.io/name":      name,
-				"app.kubernetes.io/part-of":   "argocd",
-			},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": name,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app.kubernetes.io/name": name,
-					},
-				},
-			},
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
 		},
 	}
 }
 
+// newDeploymentWithName retuns a new Deployment instance for the given ArgoCD using the given name.
+func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+	deploy := newDeployment(cr)
+	deploy.ObjectMeta.Name = name
+
+	deploy.Spec = appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				ArgoCDKeyName: name,
+			},
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					ArgoCDKeyName: name,
+				},
+			},
+		},
+	}
+
+	lbls := deploy.ObjectMeta.Labels
+	lbls[ArgoCDKeyComponent] = component
+	deploy.ObjectMeta.Labels = lbls
+
+	return deploy
+}
+
+// newDeploymentWithSuffix retuns a new Deployment instance for the given ArgoCD using the given suffix.
+func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+}
+
 func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-application-controller", cr.Namespace, "application-controller")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
-	if found {
+	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -70,7 +83,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 			"--operation-processors",
 			"10",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
 		LivenessProbe: &corev1.Probe{
@@ -100,7 +113,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 		},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = deploy.Name
+	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-application-controller"
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
@@ -145,8 +158,8 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-dex-server", cr.Namespace, "dex-server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
 	if found {
 		return nil // Deployment found, do nothing
 	}
@@ -178,7 +191,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/usr/local/bin/argocd-util",
 			"/shared",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		VolumeMounts: []corev1.VolumeMount{{
@@ -187,7 +200,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		}},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = deploy.Name
+	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-dex-server"
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
 		Name: "static-files",
 		VolumeSource: corev1.VolumeSource{
@@ -202,8 +215,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-grafana", cr.Namespace, "grafana")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
+	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
 	if found {
 		return nil // Deployment found, do nothing
 	}
@@ -212,7 +225,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 	deploy.Spec.Replicas = &replicas
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Image:           "grafana/grafana:6.4.2",
+		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
 		Ports: []corev1.ContainerPort{
@@ -243,7 +256,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-grafana-config",
+						Name: nameWithSuffix("grafana-config", cr),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "grafana.ini",
@@ -256,7 +269,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-grafana-config",
+						Name: nameWithSuffix("grafana-config", cr),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "datasource.yaml",
@@ -269,7 +282,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-grafana-config",
+						Name: nameWithSuffix("grafana-config", cr),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "provider.yaml",
@@ -282,7 +295,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-grafana-dashboards",
+						Name: nameWithSuffix("grafana-dashboards", cr),
 					},
 				},
 			},
@@ -296,8 +309,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 }
 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-redis", cr.Namespace, "redis")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	deploy := newDeploymentWithSuffix("redis", "redis", cr)
+	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
 	if found {
 		return nil // Deployment found, do nothing
 	}
@@ -326,8 +339,8 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-repo-server", cr.Namespace, "repo-server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
 	if found {
 		// Deployment found, do nothing
 		return nil
@@ -342,7 +355,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			"--redis",
 			"argocd-redis:6379",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -387,7 +400,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-ssh-known-hosts-cm",
+						Name: ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -396,7 +409,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-tls-certs-cm",
+						Name: ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},
@@ -410,8 +423,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
-	deploy := newDeployment("argocd-server", cr.Namespace, "server")
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: deploy.Name}, deploy)
+	deploy := newDeploymentWithSuffix("server", "server", cr)
+	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
 	if found {
 		return nil // Deployment found, do nothing
 	}
@@ -422,7 +435,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			"--staticassets",
 			"/shared/app",
 		},
-		Image:           "argoproj/argocd:v1.2.3",
+		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -463,14 +476,15 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 		},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = deploy.Name
+	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-server"
+
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-ssh-known-hosts-cm",
+						Name: ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -479,7 +493,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "argocd-tls-certs-cm",
+						Name: ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},

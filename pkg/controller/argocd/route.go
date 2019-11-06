@@ -20,7 +20,6 @@ import (
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -56,7 +55,7 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRoute("argocd-grafana", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
+	found := r.isObjectFound(cr.Namespace, route.Name, route)
 	if found {
 		return nil // Route found, do nothing
 	}
@@ -75,7 +74,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	route := newRoute("argocd-server-route", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
+	found := r.isObjectFound(cr.Namespace, route.Name, route)
 	if found {
 		return nil // Route found, do nothing
 	}
@@ -98,7 +97,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	route := newRoute("argocd-prometheus", cr.Namespace)
-	found := r.isObjectFound(types.NamespacedName{Namespace: cr.Namespace, Name: route.Name}, route)
+	found := r.isObjectFound(cr.Namespace, route.Name, route)
 	if found {
 		return nil // Route found, do nothing
 	}
