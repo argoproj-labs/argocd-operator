@@ -180,6 +180,11 @@ func IsOpenShift() bool {
 	return isOpenshiftCluster
 }
 
+// isTLSEnabled returns the TLS toggle flag for the given ArgoCD.
+func isTLSEnabled(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.TLS.Enabled
+}
+
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", cr.Name, suffix)
 }

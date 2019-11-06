@@ -26,6 +26,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// getArgoRepoCommand will return the command for the ArgoCD Repo component.
+func getArgoRepoCommand(cr *argoproj.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-server")
+
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
+
+	return cmd
+}
+
+// getArgoServerCommand will return the command for the ArgoCD server component.
+func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-server")
+
+	if !isTLSEnabled(cr) {
+		cmd = append(cmd, "--insecure")
+	}
+
+	cmd = append(cmd, "--staticassets")
+	cmd = append(cmd, "/shared/app")
+
+	return cmd
+}
+
 // newDeployment retuns a new Deployment instance for the given ArgoCD.
 func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
@@ -69,6 +95,7 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoC
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
+// reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
 func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
@@ -82,7 +109,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 			"20",
 			"--operation-processors",
 			"10",
-		},
+		}, // TODO: Move these to options on the CRD Spec.
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            deploy.Name,
@@ -121,6 +148,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 	return r.client.Create(context.TODO(), deploy)
 }
 
+// reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 	err := r.reconcileApplicationControllerDeployment(cr)
 	if err != nil {
@@ -157,10 +185,10 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+// reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
-	if found {
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -169,7 +197,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/shared/argocd-util",
 			"rundex",
 		},
-		Image:           "quay.io/dexidp/dex:v2.14.0",
+		Image:           getDexContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "dex",
 		Ports: []corev1.ContainerPort{
@@ -214,10 +242,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), deploy)
 }
 
+// reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
-	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
-	if found {
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -308,10 +336,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 	return r.client.Create(context.TODO(), deploy)
 }
 
+// reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
-	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
-	if found {
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -322,7 +350,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 			"--appendonly",
 			"no",
 		},
-		Image:           "redis:5.0.3",
+		Image:           getRedisContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
@@ -338,23 +366,18 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), deploy)
 }
 
+// reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
 func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
-	if found {
-		// Deployment found, do nothing
-		return nil
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+		return nil // Deployment found, do nothing
 	}
 
 	automountToken := false
 	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command: []string{
-			"argocd-repo-server",
-			"--redis",
-			"argocd-redis:6379",
-		},
+		Command:         getArgoRepoCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
@@ -422,19 +445,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), deploy)
 }
 
+// reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
-	found := r.isObjectFound(cr.Namespace, deploy.Name, deploy)
-	if found {
+	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command: []string{
-			"argocd-server",
-			"--staticassets",
-			"/shared/app",
-		},
+		Command:         getArgoServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
