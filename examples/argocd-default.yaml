@@ -5,13 +5,14 @@ metadata:
   labels:
     purpose: example
     example: default
-    description: An ArgoCD example that includes all options with the default values.
 spec:
   image: argoproj/argocd
-  version: 1.2.3
+  version: v1.2.3
   dex:
     image: quay.io/dexidp/dex
     version: v2.14.0
   redis:
     image: redis
     version: 5.0.3
+  tls:
+    enabled: true

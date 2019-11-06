@@ -5,4 +5,3 @@ metadata:
   labels:
     purpose: example
     example: minimal
-    description: A minimal ArgoCD example.

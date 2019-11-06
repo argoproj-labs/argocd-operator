@@ -1,9 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
-  name: argocd-basic
+  name: argocd-tls
   labels:
     purpose: example
-    example: basic
+    example: tls
 spec:
-  version: 1.2.3
+  tls:
+    enabled: true
