@@ -15,14 +15,14 @@ oc create -f deploy/role_binding.yaml
 ### Cluster Admin
 
 By default Argo CD prefers to run with the cluster-admin role. Give cluster-admin access to the Argo CD Application Controller.
+Be sure to update `ARGO_NS` to use the actual namespace where you have the operator installed.
 
 ```bash
 export ARGO_NS=argocd
 oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:${ARGO_NS}:argocd-application-controller
 ```
 
-Argo CD uses several custom Kubernetes resources (CRDs) to manage workloads. As a cluster-admin, 
-add the CRDs for Argo CD to the cluster. Be sure to update `ARGO_NS` to use the actual namespace where you have the operator installed.
+Argo CD uses several custom Kubernetes resources (CRDs) to manage workloads. As a cluster-admin, add the CRDs for Argo CD to the cluster.
 
 ```bash
 oc create -f deploy/argo-cd
