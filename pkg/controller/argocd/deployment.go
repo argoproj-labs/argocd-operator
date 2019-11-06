@@ -29,7 +29,7 @@ import (
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
 func getArgoRepoCommand(cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-server")
+	cmd = append(cmd, "argocd-repo-server")
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
