@@ -5,26 +5,35 @@
 
 The requirements for building the operator are fairly minimal.
 
+ * Bash or equivalent 
  * Go 1.12+
  * Operator SDK 0.10+
 
 ### Building from Source
 
-Ensure Go module support is enabled in your environment.
+There are several shell scripts provided in the `hack` directory to build and release the operator binaries from source.
+
+#### Environment
+
+There are environment variables defined in `hack/env.sh` that can be overridden as needed.
+
+ * `ARGOCD_OPERATOR_REPO` is the container image repository path.
+ * `ARGOCD_OPERATOR_TAG` is the container image version tag.
+
+Have a look at the scripts in the `hack` directory for all of the environment variables and how they are used.
+
+#### Build
+
+Run the provided shell script to build the operator. A container image wil be created locally.
 
 ```bash
-export GO111MODULE=on
-
+hack/build.sh
 ```
 
-Run the build subcommand that is part of the Operator SDK to build the operator.
+### Release
+
+Push a locally created container image to a container registry for deployment.
 
 ```bash
-operator-sdk build <YOUR_IMAGE_REPO>/argocd-operator:latest
-```
-
-Push the image to a container registry for deployment.
-
-```bash
-docker push <YOUR_IMAGE_REPO>/argocd-operator:latest
+hack/push.sh
 ```
