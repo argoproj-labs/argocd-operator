@@ -38,6 +38,8 @@ Add the ArgoCD Operator CRD to the cluster
 kubectl create -f deploy/crds/argoproj_v1alpha1_argocd_crd.yaml
 ```
 
+If you are deploying to OpenShift, there are [additional steps](./install-openshift.md#cluster-admin) that are needed.
+
 ### Deploy
 
 Deploy the operator
