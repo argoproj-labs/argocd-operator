@@ -1,6 +1,18 @@
 # Basic Install
 
-The following steps can be used to install the operator on Kubernetes.
+The following basic steps can be used to install the operator on any Kubernetes environment.
+
+Several of the steps in this process require the `cluster-admin` ClusterRole or equivalent.
+
+### Namespace
+
+It is a good idea to create a new namespace for the operator.
+
+```bash
+kubectl create namespace argocd
+```
+
+Once the namespace is created, set up the local context to use the new namespace.
 
 ### RBAC
 
@@ -14,7 +26,7 @@ kubectl create -f deploy/role_binding.yaml
 
 ### CRDs
 
-Add the Argo CD server CRDs to the cluster.
+Add the Argo CD CRDs to the cluster.
 
 ```bash
 kubectl create -f deploy/argo-cd
