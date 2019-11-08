@@ -37,10 +37,33 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD) []string {
 	return cmd
 }
 
+// getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
+func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-application-controller")
+
+	cmd = append(cmd, "--operation-processors")
+	cmd = append(cmd, "10") // TODO: Move this to the CRD Spec.
+
+	cmd = append(cmd, "--repo-server")
+	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
+
+	cmd = append(cmd, "--status-processors")
+	cmd = append(cmd, "20") // TODO: Move this to the CRD Spec.
+
+	return cmd
+}
+
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
+
+	cmd = append(cmd, "--dex-server")
+	cmd = append(cmd, nameWithSuffix("dex-server:5556", cr))
+
+	cmd = append(cmd, "--repo-server")
+	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
 
 	if !isTLSEnabled(cr) {
 		cmd = append(cmd, "--insecure")
@@ -103,13 +126,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command: []string{
-			"argocd-application-controller",
-			"--status-processors",
-			"20",
-			"--operation-processors",
-			"10",
-		}, // TODO: Move these to options on the CRD Spec.
+		Command:         getArgoApplicationControllerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-application-controller",
