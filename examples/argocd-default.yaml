@@ -11,6 +11,9 @@ spec:
   dex:
     image: quay.io/dexidp/dex
     version: v2.14.0
+  grafana:
+    image: grafana/grafana
+    version: 6.4.2
   prometheus:
     size: 1
   redis:
