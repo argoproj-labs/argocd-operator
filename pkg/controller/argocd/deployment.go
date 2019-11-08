@@ -45,6 +45,9 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--operation-processors")
 	cmd = append(cmd, "10") // TODO: Move this to the CRD Spec.
 
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
+
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
 
@@ -61,6 +64,9 @@ func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
 
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, nameWithSuffix("dex-server:5556", cr))
+
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
 
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
