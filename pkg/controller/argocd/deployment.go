@@ -112,7 +112,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 		}, // TODO: Move these to options on the CRD Spec.
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            deploy.Name,
+		Name:            "argocd-application-controller",
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -255,7 +255,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            deploy.Name,
+		Name:            "grafana",
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 3000,
@@ -389,7 +389,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Name: deploy.Name,
+		Name: "argocd-repo-server",
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8081,
@@ -466,7 +466,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			InitialDelaySeconds: 3,
 			PeriodSeconds:       30,
 		},
-		Name: deploy.Name,
+		Name: "argocd-server",
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8080,

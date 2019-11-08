@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -23,45 +24,86 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// newPrometheus retuns a new Prometheus instance.
-func newPrometheus(name string, namespace string) *monitoringv1.Prometheus {
+// getPrometheusSize will return the size value for the Prometheus replica count.
+func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
+	replicas := ArgoCDDefaultPrometheusReplicas
+	if cr.Spec.Prometheus.Size > replicas {
+		replicas = cr.Spec.Prometheus.Size
+	}
+	return &replicas
+}
+
+// newPrometheus retuns a new Prometheus instance for the given ArgoCD.
+func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"prometheus":                "k8s",
-				"app.kubernetes.io/name":    name,
-				"app.kubernetes.io/part-of": "argocd",
-			},
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
 		},
 	}
 }
 
 // newServiceMonitor retuns a new ServiceMonitor instance.
-func newServiceMonitor(name string, namespace string) *monitoringv1.ServiceMonitor {
+func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/name":    name,
-				"app.kubernetes.io/part-of": "argocd",
-				"release":                   "prometheus-operator",
-			},
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
 		},
 	}
 }
 
+// newServiceMonitorWithName retuns a new ServiceMonitor instance for the given ArgoCD using the given name.
+func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
+	svcmon := newServiceMonitor(cr)
+	svcmon.ObjectMeta.Name = name
+
+	lbls := svcmon.ObjectMeta.Labels
+	lbls[ArgoCDKeyRelease] = "prometheus-operator"
+	svcmon.ObjectMeta.Labels = lbls
+
+	return svcmon
+}
+
+// newServiceMonitorWithSuffix retuns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
+func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
+	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+}
+
+// reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
+func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
+	sm := newServiceMonitorWithSuffix(ArgoCDKeyMetrics, cr)
+	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			ArgoCDKeyName: nameWithSuffix(ArgoCDKeyMetrics, cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), sm)
+}
+
+// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
-	prometheus := newPrometheus("argocd-prometheus", cr.Namespace)
-	found := r.isObjectFound(cr.Namespace, prometheus.Name, prometheus)
-	if found {
+	prometheus := newPrometheus(cr)
+	if r.isObjectFound(cr.Namespace, prometheus.Name, prometheus) {
 		return nil // Prometheus found, do nothing
 	}
 
-	var replicas int32 = 2
-	prometheus.Spec.Replicas = &replicas
+	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
 	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
 	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
 
@@ -71,45 +113,21 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), prometheus)
 }
 
-func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitor("argocd-metrics", cr.Namespace)
-	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
-	if found {
-		return nil // ServiceMonitor found, do nothing
-	}
-
-	sm.Spec.Selector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"app.kubernetes.io/name": "argocd-metrics",
-		},
-	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: "metrics",
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, sm, r.scheme); err != nil {
-		return err
-	}
-	return r.client.Create(context.TODO(), sm)
-}
-
+// reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
 func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitor("argocd-repo-server-metrics", cr.Namespace)
-	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
-	if found {
+	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
+	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
 		return nil // ServiceMonitor found, do nothing
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			"app.kubernetes.io/name": "argocd-repo-server",
+			ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: "metrics",
+			Port: ArgoCDKeyMetrics,
 		},
 	}
 
@@ -119,21 +137,21 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	return r.client.Create(context.TODO(), sm)
 }
 
+// reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitor("argocd-server-metrics", cr.Namespace)
-	found := r.isObjectFound(cr.Namespace, sm.Name, sm)
-	if found {
+	sm := newServiceMonitorWithSuffix("server-metrics", cr)
+	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
 		return nil // ServiceMonitor found, do nothing
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			"app.kubernetes.io/name": "argocd-server-metrics",
+			ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: "metrics",
+			Port: ArgoCDKeyMetrics,
 		},
 	}
 

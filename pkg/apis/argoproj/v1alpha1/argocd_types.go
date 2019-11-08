@@ -74,6 +74,12 @@ type ArgoCDList struct {
 	Items           []ArgoCD `json:"items"`
 }
 
+// ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
+type ArgoCDPrometheusSpec struct {
+	// Size is the replica count for the Prometheus StatefulSet.
+	Size int32 `json:"size"`
+}
+
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
 	Image   string `json:"image"`
@@ -97,6 +103,9 @@ type ArgoCDSpec struct {
 
 	// Grafana defines the Grafana server options for ArgoCD.
 	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
+
+	// Prometheus defines the Prometheus server options for ArgoCD.
+	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
 
 	// Redis defines the Redis server options for ArgoCD.
 	Redis ArgoCDRedisSpec `json:"redis,omitempty"`

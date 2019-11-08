@@ -54,7 +54,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
-	ArgoCDDefaultArgoVersion = "v1.2.3"
+	ArgoCDDefaultArgoVersion = "v1.2.5"
 
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
 	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
@@ -71,6 +71,9 @@ const (
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
 
+	// ArgoCDDefaultPrometheusReplicas is the default Prometheus replica count.
+	ArgoCDDefaultPrometheusReplicas = int32(1)
+
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
 	ArgoCDDefaultRedisImage = "redis"
 
@@ -83,11 +86,20 @@ const (
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
 
+	// ArgoCDKeyMetrics is the resource metrics key for labels.
+	ArgoCDKeyMetrics = "metrics"
+
 	// ArgoCDKeyName is the resource name key for labels.
 	ArgoCDKeyName = "app.kubernetes.io/name"
 
 	// ArgoCDKeyPartOf is the resource part-of key for labels.
 	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
+
+	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
+	ArgoCDKeyPrometheus = "prometheus"
+
+	// ArgoCDKeyRelease is the prometheus release key for labels.
+	ArgoCDKeyRelease = "release"
 
 	// ArgoCDKeySSHKnownHosts is the resource ssh_known_hosts key for labels.
 	ArgoCDKeySSHKnownHosts = "ssh_known_hosts"

@@ -98,6 +98,12 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
 						},
 					},
+					"prometheus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Prometheus defines the Prometheus server options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec"),
+						},
+					},
 					"redis": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Redis defines the Redis server options for ArgoCD.",
@@ -108,7 +114,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 
