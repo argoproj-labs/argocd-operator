@@ -24,6 +24,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// getPrometheusSize will return the size value for the Prometheus replica count.
+func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
+	replicas := ArgoCDDefaultPrometheusReplicas
+	if cr.Spec.Prometheus.Size > replicas {
+		replicas = cr.Spec.Prometheus.Size
+	}
+	return &replicas
+}
+
 // newPrometheus retuns a new Prometheus instance for the given ArgoCD.
 func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
@@ -94,8 +103,7 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		return nil // Prometheus found, do nothing
 	}
 
-	var replicas int32 = 2
-	prometheus.Spec.Replicas = &replicas
+	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
 	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
 	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
 

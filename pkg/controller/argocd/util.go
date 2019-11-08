@@ -71,6 +71,9 @@ const (
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
 
+	// ArgoCDDefaultPrometheusReplicas is the default Prometheus replica count.
+	ArgoCDDefaultPrometheusReplicas = int32(1)
+
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
 	ArgoCDDefaultRedisImage = "redis"
 

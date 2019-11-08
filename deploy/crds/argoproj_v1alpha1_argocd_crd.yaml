@@ -54,6 +54,16 @@ spec:
             image:
               description: Image is the ArgoCD container image.
               type: string
+            prometheus:
+              description: Prometheus defines the Prometheus server options for ArgoCD.
+              properties:
+                size:
+                  description: Size is the replica count for the Prometheus StatefulSet.
+                  format: int32
+                  type: integer
+              required:
+              - size
+              type: object
             redis:
               description: Redis defines the Redis server options for ArgoCD.
               properties:
