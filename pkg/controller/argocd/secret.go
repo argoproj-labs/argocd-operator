@@ -104,6 +104,11 @@ func newSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 func newSecretWithName(name string, cr *argoproj.ArgoCD) *corev1.Secret {
 	secret := newSecret(cr)
 	secret.ObjectMeta.Name = name
+
+	lbls := secret.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
+	secret.ObjectMeta.Labels = lbls
+
 	return secret
 }
 

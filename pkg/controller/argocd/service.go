@@ -42,6 +42,7 @@ func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *cor
 	svc.ObjectMeta.Name = name
 
 	lbls := svc.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
 	lbls[ArgoCDKeyComponent] = component
 	svc.ObjectMeta.Labels = lbls
 

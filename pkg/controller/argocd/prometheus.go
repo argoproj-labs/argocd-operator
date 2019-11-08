@@ -61,6 +61,7 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 	svcmon.ObjectMeta.Name = name
 
 	lbls := svcmon.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
 	lbls[ArgoCDKeyRelease] = "prometheus-operator"
 	svcmon.ObjectMeta.Labels = lbls
 

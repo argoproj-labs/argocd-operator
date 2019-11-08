@@ -40,6 +40,11 @@ func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
 	route := newRoute(cr)
 	route.ObjectMeta.Name = name
+
+	lbls := route.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
+	route.ObjectMeta.Labels = lbls
+
 	return route
 }
 

@@ -91,6 +91,11 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
 
+	lbls := deploy.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
+	lbls[ArgoCDKeyComponent] = component
+	deploy.ObjectMeta.Labels = lbls
+
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -105,10 +110,6 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 			},
 		},
 	}
-
-	lbls := deploy.ObjectMeta.Labels
-	lbls[ArgoCDKeyComponent] = component
-	deploy.ObjectMeta.Labels = lbls
 
 	return deploy
 }

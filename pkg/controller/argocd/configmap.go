@@ -60,6 +60,11 @@ func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	cm := newConfigMap(cr)
 	cm.ObjectMeta.Name = name
+
+	lbls := cm.ObjectMeta.Labels
+	lbls[ArgoCDKeyName] = name
+	cm.ObjectMeta.Labels = lbls
+
 	return cm
 }
 
