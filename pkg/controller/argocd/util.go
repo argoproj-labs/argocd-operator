@@ -83,11 +83,20 @@ const (
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
 
+	// ArgoCDKeyMetrics is the resource metrics key for labels.
+	ArgoCDKeyMetrics = "metrics"
+
 	// ArgoCDKeyName is the resource name key for labels.
 	ArgoCDKeyName = "app.kubernetes.io/name"
 
 	// ArgoCDKeyPartOf is the resource part-of key for labels.
 	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
+
+	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
+	ArgoCDKeyPrometheus = "prometheus"
+
+	// ArgoCDKeyRelease is the prometheus release key for labels.
+	ArgoCDKeyRelease = "release"
 
 	// ArgoCDKeySSHKnownHosts is the resource ssh_known_hosts key for labels.
 	ArgoCDKeySSHKnownHosts = "ssh_known_hosts"
