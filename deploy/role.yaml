@@ -178,11 +178,14 @@ rules:
   resources:
   - '*'
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
 - nonResourceURLs:
   - '*'
   verbs:
-  - '*'
+  - get
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -198,9 +201,7 @@ rules:
   resources:
   - '*'
   verbs:
-  - delete
   - get
-  - patch
 - apiGroups:
   - ""
   resources:
