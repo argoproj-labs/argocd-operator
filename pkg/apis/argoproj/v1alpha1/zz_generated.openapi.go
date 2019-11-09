@@ -66,24 +66,10 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			SchemaProps: spec.SchemaProps{
 				Description: "ArgoCDSpec defines the desired state of ArgoCD",
 				Properties: map[string]spec.Schema{
-					"image": {
+					"controller": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image is the ArgoCD container image.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"version": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Version is the tag to use with the ArgoCD container image.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tls": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TLS defines the TLS options for ArgoCD.",
-							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
+							Description: "Controller defines the Application Controller options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec"),
 						},
 					},
 					"dex": {
@@ -98,6 +84,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
 						},
 					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image is the ArgoCD container image for all ArgoCD components.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prometheus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prometheus defines the Prometheus server options for ArgoCD.",
@@ -110,11 +103,30 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
 						},
 					},
+					"server": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Server defines the options for the ArgoCD Server component.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec"),
+						},
+					},
+					"tls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLS defines the TLS options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the tag to use with the ArgoCD container image for all ArgoCD components.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 

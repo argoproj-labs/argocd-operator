@@ -29,12 +29,36 @@ spec:
           type: object
         spec:
           properties:
+            controller:
+              description: Controller defines the Application Controller options for
+                ArgoCD.
+              properties:
+                processors:
+                  properties:
+                    operation:
+                      description: Operation is the number of application operation
+                        processors.
+                      format: int32
+                      type: integer
+                    status:
+                      description: Status is the number of application status processors.
+                      format: int32
+                      type: integer
+                  required:
+                  - operation
+                  - status
+                  type: object
+              required:
+              - processors
+              type: object
             dex:
               description: Dex defines the Dex server options for ArgoCD.
               properties:
                 image:
+                  description: Image is the Dex container image.
                   type: string
                 version:
+                  description: Version is the Dex container image tag.
                   type: string
               required:
               - image
@@ -44,15 +68,22 @@ spec:
               description: Grafana defines the Grafana server options for ArgoCD.
               properties:
                 image:
+                  description: Image is the Grafana container image.
                   type: string
+                size:
+                  description: Size is the replica count for the Grafana Deployment.
+                  format: int32
+                  type: integer
                 version:
+                  description: Version is the Grafana container image tag.
                   type: string
               required:
               - image
+              - size
               - version
               type: object
             image:
-              description: Image is the ArgoCD container image.
+              description: Image is the ArgoCD container image for all ArgoCD components.
               type: string
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
@@ -68,12 +99,23 @@ spec:
               description: Redis defines the Redis server options for ArgoCD.
               properties:
                 image:
+                  description: Image is the Redis container image.
                   type: string
                 version:
+                  description: Version is the Redis container image tag.
                   type: string
               required:
               - image
               - version
+              type: object
+            server:
+              description: Server defines the options for the ArgoCD Server component.
+              properties:
+                insecure:
+                  description: Insecure toggles the insecure flag.
+                  type: boolean
+              required:
+              - insecure
               type: object
             tls:
               description: TLS defines the TLS options for ArgoCD.
@@ -93,14 +135,10 @@ spec:
                   - configMapName
                   - secretName
                   type: object
-                enabled:
-                  description: Enabled toggles TLS globally.
-                  type: boolean
-              required:
-              - enabled
               type: object
             version:
-              description: Version is the tag to use with the ArgoCD container image.
+              description: Version is the tag to use with the ArgoCD container image
+                for all ArgoCD components.
               type: string
           type: object
         status:
