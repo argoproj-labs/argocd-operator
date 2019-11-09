@@ -135,11 +135,6 @@ spec:
                   - configMapName
                   - secretName
                   type: object
-                enabled:
-                  description: Enabled toggles TLS globally.
-                  type: boolean
-              required:
-              - enabled
               type: object
             version:
               description: Version is the tag to use with the ArgoCD container image

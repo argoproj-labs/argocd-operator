@@ -98,23 +98,23 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("server", cr)
 
-	if cr.Spec.TLS.Enabled {
-		// TLS enabled, pass through to let ArgoCD handle TLS.
-		route.Spec.Port = &routev1.RoutePort{
-			TargetPort: intstr.FromString("https"),
-		}
-		route.Spec.TLS = &routev1.TLSConfig{
-			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
-			Termination:                   routev1.TLSTerminationPassthrough,
-		}
-	} else {
-		// TLS disabled, use edge termination.
+	if cr.Spec.Server.Insecure {
+		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("http"),
 		}
 		route.Spec.TLS = &routev1.TLSConfig{
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationEdge,
+		}
+	} else {
+		// Server is using TLS configure passthrough.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("https"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
+			Termination:                   routev1.TLSTerminationPassthrough,
 		}
 	}
 
