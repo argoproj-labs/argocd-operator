@@ -30,6 +30,8 @@ kubectl config set-context argocd/minikube --cluster argocd --namespace argocd -
 kubectl config use-context argocd/minikube
 ```
 
+The remaining resources will now be created in the new namespace.
+
 ### RBAC
 
 Set up RBAC for the ArgoCD operator and components.
