@@ -38,6 +38,20 @@ type ArgoCD struct {
 	Status ArgoCDStatus `json:"status,omitempty"`
 }
 
+// ArgoCDApplicationControllerProcessorsSpec defines the options for the ArgoCD Application Controller processors.
+type ArgoCDApplicationControllerProcessorsSpec struct {
+	// Operation is the number of application operation processors.
+	Operation int32 `json:"operation"`
+
+	// Status is the number of application status processors.
+	Status int32 `json:"status"`
+}
+
+// ArgoCDApplicationControllerSpec defines the options for the ArgoCD Application Controller component.
+type ArgoCDApplicationControllerSpec struct {
+	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors"`
+}
+
 // ArgoCDCASpec defines the CA options for ArgCD.
 type ArgoCDCASpec struct {
 	// ConfigMapName is the name of the ConfigMap containing the CA Certificate.
@@ -55,13 +69,22 @@ type ArgoCDCertificateSpec struct {
 
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
-	Image   string `json:"image"`
+	// Image is the Dex container image.
+	Image string `json:"image"`
+
+	// Version is the Dex container image tag.
 	Version string `json:"version"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana server component.
 type ArgoCDGrafanaSpec struct {
-	Image   string `json:"image"`
+	// Image is the Grafana container image.
+	Image string `json:"image"`
+
+	// Size is the replica count for the Grafana Deployment.
+	Size int32 `json:"size"`
+
+	// Version is the Grafana container image tag.
 	Version string `json:"version"`
 }
 
@@ -82,21 +105,18 @@ type ArgoCDPrometheusSpec struct {
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
-	Image   string `json:"image"`
+	// Image is the Redis container image.
+	Image string `json:"image"`
+
+	// Version is the Redis container image tag.
 	Version string `json:"version"`
 }
 
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
-	// Image is the ArgoCD container image.
-	Image string `json:"image,omitempty"`
-
-	// Version is the tag to use with the ArgoCD container image.
-	Version string `json:"version,omitempty"`
-
-	// TLS defines the TLS options for ArgoCD.
-	TLS ArgoCDTLSSpec `json:"tls,omitempty"`
+	// Controller defines the Application Controller options for ArgoCD.
+	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
 
 	// Dex defines the Dex server options for ArgoCD.
 	Dex ArgoCDDexSpec `json:"dex,omitempty"`
@@ -104,11 +124,29 @@ type ArgoCDSpec struct {
 	// Grafana defines the Grafana server options for ArgoCD.
 	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
 
+	// Image is the ArgoCD container image for all ArgoCD components.
+	Image string `json:"image,omitempty"`
+
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
 
 	// Redis defines the Redis server options for ArgoCD.
 	Redis ArgoCDRedisSpec `json:"redis,omitempty"`
+
+	// Server defines the options for the ArgoCD Server component.
+	Server ArgoCDServerSpec `json:"server,omitempty"`
+
+	// TLS defines the TLS options for ArgoCD.
+	TLS ArgoCDTLSSpec `json:"tls,omitempty"`
+
+	// Version is the tag to use with the ArgoCD container image for all ArgoCD components.
+	Version string `json:"version,omitempty"`
+}
+
+// ArgoCDServerSpec defines the options for the ArgoCD Server component.
+type ArgoCDServerSpec struct {
+	// Insecure toggles the insecure flag.
+	Insecure bool `json:"insecure"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD

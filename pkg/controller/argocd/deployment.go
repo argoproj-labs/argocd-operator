@@ -43,7 +43,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "argocd-application-controller")
 
 	cmd = append(cmd, "--operation-processors")
-	cmd = append(cmd, "10") // TODO: Move this to the CRD Spec.
+	cmd = append(cmd, fmt.Sprint(getArgoServerOperationProcessors(cr)))
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
@@ -52,7 +52,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
 
 	cmd = append(cmd, "--status-processors")
-	cmd = append(cmd, "20") // TODO: Move this to the CRD Spec.
+	cmd = append(cmd, fmt.Sprint(getArgoServerStatusProcessors(cr)))
 
 	return cmd
 }
@@ -71,7 +71,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
 
-	if !isTLSEnabled(cr) {
+	if getArgoServerInsecure(cr) {
 		cmd = append(cmd, "--insecure")
 	}
 

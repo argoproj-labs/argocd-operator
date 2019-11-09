@@ -53,6 +53,12 @@ const (
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
+	// ArgoCDDefaultArgoServerOperationProcessors is the number of ArgoCD Server Operation Processors to use when not specified.
+	ArgoCDDefaultArgoServerOperationProcessors = int32(10)
+
+	// ArgoCDDefaultArgoServerStatusProcessors is the number of ArgoCD Server Status Processors to use when not specified.
+	ArgoCDDefaultArgoServerStatusProcessors = int32(20)
+
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
 	ArgoCDDefaultArgoVersion = "v1.2.5"
 
@@ -67,6 +73,9 @@ const (
 
 	// ArgoCDDefaultGrafanaImage is the Grafana container image to use when not specified.
 	ArgoCDDefaultGrafanaImage = "grafana/grafana"
+
+	// ArgoCDDefaultGrafanaReplicas is the default Grafana replica count.
+	ArgoCDDefaultGrafanaReplicas = int32(1)
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
@@ -136,6 +145,29 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s:%s", img, tag)
 }
 
+// getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
+func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
+	return cr.Spec.Server.Insecure
+}
+
+// getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
+func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
+	op := ArgoCDDefaultArgoServerOperationProcessors
+	if cr.Spec.Controller.Processors.Operation > op {
+		op = cr.Spec.Controller.Processors.Operation
+	}
+	return op
+}
+
+// getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
+func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) *int32 {
+	sp := ArgoCDDefaultArgoServerStatusProcessors
+	if cr.Spec.Controller.Processors.Status > sp {
+		sp = cr.Spec.Controller.Processors.Status
+	}
+	return &sp
+}
+
 // getDexContainerImage will return the container image for the Dex server.
 func getDexContainerImage(cr *argoproj.ArgoCD) string {
 	img := cr.Spec.Dex.Image
@@ -190,11 +222,6 @@ func (r *ReconcileArgoCD) isObjectFound(namespace string, name string, obj runti
 // IsOpenShift returns true if the operator is running in an OpenShift environment.
 func IsOpenShift() bool {
 	return isOpenshiftCluster
-}
-
-// isTLSEnabled returns the TLS toggle flag for the given ArgoCD.
-func isTLSEnabled(cr *argoproj.ArgoCD) bool {
-	return cr.Spec.TLS.Enabled
 }
 
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
