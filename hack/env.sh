@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export ARGOCD_OPERATOR_REPO=${ARGOCD_OPERATOR_REPO:-"quay.io/john_mckenzie/argocd-operator"}
+export ARGOCD_OPERATOR_REPO=${ARGOCD_OPERATOR_REPO:-"quay.io/jmckind/argocd-operator"}
 export ARGOCD_OPERATOR_TAG=${ARGOCD_OPERATOR_TAG:-"latest"}
 export ARGOCD_OPERATOR_IMAGE=${ARGOCD_OPERATOR_IMAGE:-"${ARGOCD_OPERATOR_REPO}:${ARGOCD_OPERATOR_TAG}"}
 
