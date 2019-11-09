@@ -44,7 +44,7 @@ kubectl create -f deploy/role_binding.yaml
 
 ### CRDs
 
-Add the Argo CD CRDs to the cluster.
+Add the ArgoCD CRDs to the cluster.
 
 ```bash
 kubectl create -f deploy/argo-cd
