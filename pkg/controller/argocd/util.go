@@ -160,12 +160,12 @@ func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 }
 
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
-func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) *int32 {
+func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 	sp := ArgoCDDefaultArgoServerStatusProcessors
 	if cr.Spec.Controller.Processors.Status > sp {
 		sp = cr.Spec.Controller.Processors.Status
 	}
-	return &sp
+	return sp
 }
 
 // getDexContainerImage will return the container image for the Dex server.
