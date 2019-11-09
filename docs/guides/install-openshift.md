@@ -15,7 +15,11 @@ Once the cluster is up and running, log in as the `cluster-admin` user.
 oc login -u kubeadmin
 ```
 
-### Namespace
+### Manual Install
+
+The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes manifests.
+
+#### Namespace
 
 It is a good idea to create a new namespace for the operator.
 
@@ -25,7 +29,7 @@ oc new-project argocd
 
 The remaining resources will now be created in the new namespace.
 
-### RBAC
+#### RBAC
 
 Provision the ServiceAccounts, Roles and RoleBindings to set up RBAC for the operator.
 
@@ -35,7 +39,7 @@ oc create -f deploy/role.yaml
 oc create -f deploy/role_binding.yaml
 ```
 
-### Cluster Admin
+#### Cluster Admin
 
 By default Argo CD prefers to run with the cluster-admin role. Give cluster-admin access to the Argo CD Application Controller.
 Be sure to update `ARGO_NS` to use the actual namespace where you have the operator installed.
@@ -45,34 +49,34 @@ export ARGO_NS=argocd
 oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:${ARGO_NS}:argocd-application-controller
 ```
 
-### CRDs
+#### CRDs
 
-Add the ArgoCD CRDs to the cluster.
+Add the Argo CD CRDs to the cluster.
 
 ```bash
 oc create -f deploy/argo-cd
 ```
 
-Add the ArgoCD Operator CRD to the cluster
+Add the Argo CD Operator CRD to the cluster
 
 ```bash
 oc create -f deploy/crds/argoproj_v1alpha1_argocd_crd.yaml
 ```
 
-There should be three CRDs present for ArgoCD on the cluster.
+There should be three CRDs present for Argo CD on the cluster.
 
 ```bash
-oc get crd
+oc get crd | grep argo
 ```
 
 ```bash
 NAME                       CREATED AT
-applications.argoproj.io   2019-11-09T02:35:47Z
-appprojects.argoproj.io    2019-11-09T02:35:47Z
-argocds.argoproj.io        2019-11-09T02:36:02Z
+applications.argoproj.io   2019-11-09T06:36:59Z
+appprojects.argoproj.io    2019-11-09T06:36:59Z
+argocds.argoproj.io        2019-11-09T06:37:06Z
 ```
 
-### Deploy Operator
+#### Deploy Operator
 
 Provision the operator using a Deployment manifest.
 
@@ -91,7 +95,7 @@ NAME                              READY   STATUS    RESTARTS   AGE
 argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
 ```
 
-### ArgoCD
+#### ArgoCD Instance
 
 Once the operator is deployed and running, create a new ArgoCD custom resource.
 The following example shows the minimal required to create a new ArgoCD
@@ -116,32 +120,22 @@ argocd-minimal-server-7d56c5bf4d-9wxz6                   1/1     Running   0    
 argocd-operator-758dd86fb-qshll                          1/1     Running   0          51s
 ```
 
-The ArgoCD Server should be available via a Service.
+The ArgoCD Server should be available via an OpenShift Route.
 
 ```bash
-oc get svc
+oc get routes
 ```
 
 ```bash
-NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
-argocd-minimal-dex-server       ClusterIP   10.105.36.155    <none>        5556/TCP,5557/TCP   2m28s
-argocd-minimal-metrics          ClusterIP   10.102.88.192    <none>        8082/TCP            2m28s
-argocd-minimal-redis            ClusterIP   10.101.29.123    <none>        6379/TCP            2m28s
-argocd-minimal-repo-server      ClusterIP   10.103.229.32    <none>        8081/TCP,8084/TCP   2m28s
-argocd-minimal-server           ClusterIP   10.100.186.222   <none>        80/TCP,443/TCP      2m28s
-argocd-minimal-server-metrics   ClusterIP   10.100.185.144   <none>        8083/TCP            2m28s
-argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/TCP,8686/TCP   23m
-kubernetes                      ClusterIP   10.96.0.1        <none>        443/TCP             44m
+NAME                        HOST/PORT                                               PATH   SERVICES                 PORT   TERMINATION     WILDCARD
+argocd-minimal-grafana      argocd-minimal-grafana-argocd.apps.test.runk8s.com             argocd-minimal-grafana   http                   None
+argocd-minimal-prometheus   argocd-minimal-prometheus-argocd.apps.test.runk8s.com          prometheus-operated      web                    None
+argocd-minimal-server       argocd-minimal-server-argocd.apps.test.runk8s.com              argocd-minimal-server    http   edge/Redirect   None
 ```
 
-Forward the server port to the local machine.
-
-```bash
-oc port-forward service/argocd-minimal-server 8443:443
-```
-
-The server UI should be available at https://localhost:8443/ and the admin
-password is the name for the server Pod from above (`argocd-minimal-server-7d56c5bf4d-9wxz6` in this example).
+The Route is `argocd-minimal-server` in this example and should be available at
+the HOST/PORT value listed. The admin password is the name for the server Pod
+from above (`argocd-minimal-server-7d56c5bf4d-9wxz6` in this example).
 
 Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) 
 to create a new application from the UI.
