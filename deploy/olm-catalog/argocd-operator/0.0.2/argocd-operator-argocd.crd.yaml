@@ -1,0 +1,150 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: argocds.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: ArgoCD
+    listKind: ArgoCDList
+    plural: argocds
+    singular: argocd
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            controller:
+              description: Controller defines the Application Controller options for
+                ArgoCD.
+              properties:
+                processors:
+                  properties:
+                    operation:
+                      description: Operation is the number of application operation
+                        processors.
+                      format: int32
+                      type: integer
+                    status:
+                      description: Status is the number of application status processors.
+                      format: int32
+                      type: integer
+                  required:
+                  - operation
+                  - status
+                  type: object
+              required:
+              - processors
+              type: object
+            dex:
+              description: Dex defines the Dex server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Dex container image.
+                  type: string
+                version:
+                  description: Version is the Dex container image tag.
+                  type: string
+              required:
+              - image
+              - version
+              type: object
+            grafana:
+              description: Grafana defines the Grafana server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Grafana container image.
+                  type: string
+                size:
+                  description: Size is the replica count for the Grafana Deployment.
+                  format: int32
+                  type: integer
+                version:
+                  description: Version is the Grafana container image tag.
+                  type: string
+              required:
+              - image
+              - size
+              - version
+              type: object
+            image:
+              description: Image is the ArgoCD container image for all ArgoCD components.
+              type: string
+            prometheus:
+              description: Prometheus defines the Prometheus server options for ArgoCD.
+              properties:
+                size:
+                  description: Size is the replica count for the Prometheus StatefulSet.
+                  format: int32
+                  type: integer
+              required:
+              - size
+              type: object
+            redis:
+              description: Redis defines the Redis server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Redis container image.
+                  type: string
+                version:
+                  description: Version is the Redis container image tag.
+                  type: string
+              required:
+              - image
+              - version
+              type: object
+            server:
+              description: Server defines the options for the ArgoCD Server component.
+              properties:
+                insecure:
+                  description: Insecure toggles the insecure flag.
+                  type: boolean
+              required:
+              - insecure
+              type: object
+            tls:
+              description: TLS defines the TLS options for ArgoCD.
+              properties:
+                ca:
+                  description: CA defines the CA options.
+                  properties:
+                    configMapName:
+                      description: ConfigMapName is the name of the ConfigMap containing
+                        the CA Certificate.
+                      type: string
+                    secretName:
+                      description: SecretName is the name of the Secret containing
+                        the CA Certificate and Key.
+                      type: string
+                  required:
+                  - configMapName
+                  - secretName
+                  type: object
+              type: object
+            version:
+              description: Version is the tag to use with the ArgoCD container image
+                for all ArgoCD components.
+              type: string
+          type: object
+        status:
+          type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
