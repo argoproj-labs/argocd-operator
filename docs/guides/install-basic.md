@@ -68,6 +68,7 @@ applications.argoproj.io   2019-11-09T02:35:47Z
 appprojects.argoproj.io    2019-11-09T02:35:47Z
 argocds.argoproj.io        2019-11-09T02:36:02Z
 ```
+
 ### Deploy Operator
 
 Deploy the operator
