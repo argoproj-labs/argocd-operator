@@ -98,13 +98,13 @@ The following example shows the minimal required to create a new ArgoCD
 environment with the default configuration.
 
 ```bash
-kubectl create -f examples/argocd-minimal.yaml
+oc create -f examples/argocd-minimal.yaml
 ```
 
 There will be several resources created.
 
 ```bash
-kubectl get pods
+oc get pods
 ```
 ```bash
 NAME                                                     READY   STATUS    RESTARTS   AGE
@@ -119,7 +119,7 @@ argocd-operator-758dd86fb-qshll                          1/1     Running   0    
 The ArgoCD Server should be available via a Service.
 
 ```bash
-kubectl get svc
+oc get svc
 ```
 
 ```bash
@@ -137,7 +137,7 @@ kubernetes                      ClusterIP   10.96.0.1        <none>        443/T
 Forward the server port to the local machine.
 
 ```bash
-kubectl port-forward service/argocd-minimal-server 8443:443
+oc port-forward service/argocd-minimal-server 8443:443
 ```
 
 The server UI should be available at https://localhost:8443/ and the admin
