@@ -35,7 +35,7 @@ spec:
   description: | 
     The Argo CD Operator manages the full lifecycle for the Argo CD components.
     
-    The operator aims to provide the follwing.
+    The operator aims to provide the following.
   
     * Easy configuration and installation of the Argo CD components with sane defaults to get up and running quickly.
     * Provide seamless upgrades to the Argo CD components.

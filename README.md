@@ -4,7 +4,7 @@ A Kubernetes operator for managing Argo CD deployments.
 
 ## Oeverview
 
-The Argo CD Operator manages the full lifecycle for Argo CD and it's components. The operator aims to provide the follwing.
+The Argo CD Operator manages the full lifecycle for Argo CD and it's components. The operator aims to provide the following.
 
 * Easy configuration and installation of the Argo CD components with sane defaults to get up and running quickly.
 * Provide seamless upgrades to the Argo CD components.
