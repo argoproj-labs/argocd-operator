@@ -75,25 +75,37 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - secrets
+  - pods
+  - services
+  - services/finalizers
+  - endpoints
+  - events
   - configmaps
+  - secrets
   verbs:
-  - get
-  - list
-  - watch
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - CronJob
+  - Job
+  verbs:
+  - '*'
 - apiGroups:
   - argoproj.io
   resources:
   - applications
   - appprojects
   verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
+  - '*'
 - apiGroups:
   - ""
   resources:
@@ -101,6 +113,12 @@ rules:
   verbs:
   - create
   - list
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - '*'
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -178,11 +196,14 @@ rules:
   resources:
   - '*'
   verbs:
-  - '*'
+  - get
+  - list
+  - watch
 - nonResourceURLs:
   - '*'
   verbs:
-  - '*'
+  - get
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -198,9 +219,7 @@ rules:
   resources:
   - '*'
   verbs:
-  - delete
   - get
-  - patch
 - apiGroups:
   - ""
   resources:
