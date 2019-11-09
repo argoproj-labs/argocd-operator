@@ -7,15 +7,19 @@ Several of the steps in this process require the `cluster-admin` ClusterRole or 
 ### Cluster
 
 This guide uses [minikube](https://minikube.sigs.k8s.io/) to deploy a Kubernetes cluster locally, follow the 
-guide for your platform to install. 
+instructions for your platform to install. 
 
-Run minikube and adjust resources as needed for your platform. 
+Run minikube with a dedicated profile. Adjust the system resources as needed for your platform. 
 
 ```bash
 minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 ```
 
-### Namespace
+### Manual Install
+
+The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes manifests.
+
+#### Namespace
 
 It is a good idea to create a new namespace for the operator.
 
@@ -32,7 +36,7 @@ kubectl config use-context argocd/minikube
 
 The remaining resources will now be created in the new namespace.
 
-### RBAC
+#### RBAC
 
 Set up RBAC for the ArgoCD operator and components.
 
@@ -42,7 +46,7 @@ kubectl create -f deploy/role.yaml
 kubectl create -f deploy/role_binding.yaml
 ```
 
-### CRDs
+#### CRDs
 
 Add the ArgoCD CRDs to the cluster.
 
@@ -69,7 +73,7 @@ appprojects.argoproj.io    2019-11-09T02:35:47Z
 argocds.argoproj.io        2019-11-09T02:36:02Z
 ```
 
-### Deploy Operator
+#### Deploy Operator
 
 Deploy the operator
 
@@ -88,7 +92,7 @@ NAME                              READY   STATUS    RESTARTS   AGE
 argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
 ```
 
-### ArgoCD
+#### ArgoCD Instance
 
 Once the operator is deployed and running, create a new ArgoCD custom resource.
 The following example shows the minimal required to create a new ArgoCD
@@ -142,3 +146,11 @@ password is the name for the server Pod from above (`argocd-minimal-server-7d56c
 
 Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) 
 to create a new application from the UI.
+
+### OLM Install
+
+The following section outlines the steps necessary to deploy the ArgoCD Operator manually using the [Operator Lifecycle Manager][olm_install].
+
+[olm_install]:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/install/install.md
+
+TODO
