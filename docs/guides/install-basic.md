@@ -146,11 +146,3 @@ password is the name for the server Pod from above (`argocd-minimal-server-7d56c
 
 Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) 
 to create a new application from the UI.
-
-### OLM Install
-
-The following section outlines the steps necessary to deploy the ArgoCD Operator manually using the [Operator Lifecycle Manager][olm_install].
-
-[olm_install]:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/install/install.md
-
-TODO
