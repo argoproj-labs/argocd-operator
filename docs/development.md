@@ -37,3 +37,11 @@ Push a locally created container image to a container registry for deployment.
 ```bash
 hack/push.sh
 ```
+
+### Bundle
+
+Bundle the operator for usage in OLM as a CatalogSource.
+
+```bash
+hack/bundle.sh
+```
