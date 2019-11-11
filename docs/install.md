@@ -14,7 +14,9 @@ at the [OLM Install Guide][install_olm] for details on this approach.
 ## Manual Install
 
 The operator can be installed manually if desired. It is worth mentioning that using this method requires cluster 
-credentials that provide the `cluster-admin` ClusterRole or equivalent. The [Basic Install Guide][install_basic] provides the steps 
+credentials that provide the `cluster-admin` ClusterRole or equivalent.
+
+The [Basic Install Guide][install_basic] provides the steps 
 needed to install the operator on any Kubernetes cluster. OpenShift users should also see the [OpenShift Install Guide][install_openshift].
 
 [install_basic]:./guides/install-basic.md
