@@ -6,9 +6,6 @@ The Argo CD Operator was created with the intention of running through the [Oper
 That being said, the operator can be installed and provide the same functionality on any Kubernetes cluster. The 
 following methods are provided for installing the operator.
 
-* [OLM Install](#olm-install)
-* [Manual Install](#manual-install)
-
 ## OLM Install
 
 Using the Operator Lifecycle Manager to install and manage the Argo CD Operator is the preferred method. Have a look 
