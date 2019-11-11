@@ -1,12 +1,13 @@
-## OLM Install
+# OLM Install
 
 The following steps can be used to install the operator using the [Operator Lifecycle Manager][olm_home] on any Kubernetes 
 environment with minimal overhead.
 
-### Cluster
+## Cluster Setup
 
 This guide uses [minikube](https://minikube.sigs.k8s.io/) to deploy a Kubernetes cluster locally, follow the 
-instructions for your platform to install. 
+instructions for your platform to install. If you already have a Kubernetes cluster ready to go, skip to 
+the [OLM](#operator-lifecycle-manager) section.
 
 Run minikube with a dedicated profile. Adjust the system resources as needed for your platform. 
 
@@ -14,9 +15,9 @@ Run minikube with a dedicated profile. Adjust the system resources as needed for
 minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 ```
 
-### Operator Lifecycle Manager
+## Operator Lifecycle Manager
 
-Install the OLM components manually.
+Install the OLM components manually. If you already have OLM installed, skip to the [Operator](#operator-install) section.
 
 ```bash
 kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.12.0/crds.yaml
@@ -56,6 +57,10 @@ packageserver-fb649b58c-qn8vx       1/1     Running   0          2m45s
 
 That's it, OLM should be installed and availble to manage the Argo CD Operator.
 
+## Operator Install
+
+Use the following steps to install the operator using an OLM Catalog.
+
 ### Namespace
 
 Create a new namespace for the operator.
@@ -67,7 +72,7 @@ kubectl create namespace argocd
 ### Operator Catalog
 
 Create a `CatalogSource` in the `olm` namespace. This manifest references a container image that has the Argo CD 
-Operator packaged for use in OLM.
+Operator packaged for use in OLM. For more information on packaging the operator, see the [development][docs_dev] documentation.
 
 ```bash
 kubectl create -n olm -f deploy/catalog_source.yaml
@@ -156,6 +161,10 @@ NAME                               READY   STATUS    RESTARTS   AGE
 argocd-operator-746b886cd5-cd7m7   1/1     Running   0          4m27s
 ```
 
-Once the operator is installed and running, new `ArgoCD` resources can be created in the `argocd` namespace.
+## Usage 
 
+Once the operator is installed and running, see the [usage][docs_usage] documentation on how to create new `ArgoCD` resources.
+
+[docs_dev]:../development.md
+[docs_usage]:../usage.md
 [olm_home]:https://github.com/operator-framework/operator-lifecycle-manager
