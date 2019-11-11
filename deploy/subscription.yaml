@@ -5,5 +5,5 @@ metadata:
 spec:
   channel: alpha
   name: argocd-operator
-  source: argocd-operator-catalog
-  sourceNamespace: argocd
+  source: argocd-catalog
+  sourceNamespace: olm
