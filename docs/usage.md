@@ -52,7 +52,7 @@ pod/argocd-minimal-server-7d56c5bf4d-r5brr                   1/1     Running   0
 The ArgoCD Server component should be available via a Service.
 
 ```bash
-kubectl get svc-n argocd
+kubectl get svc -n argocd
 ```
 ```bash
 NAME                            TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE
