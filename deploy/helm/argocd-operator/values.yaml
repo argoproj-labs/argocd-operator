@@ -1,7 +1,0 @@
-image:
-    repository: "quay.io/disposab1e/argocd-operator"
-    tag: "latest"
-    pullPolicy: "IfNotPresent"
-
-debug:
-  enabled: false
