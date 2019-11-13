@@ -80,6 +80,9 @@ const (
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
 
+	// ArgoCDDefaultIngressPath is the path to use for the Ingress when not specified.
+	ArgoCDDefaultIngressPath = "/"
+
 	// ArgoCDDefaultPrometheusReplicas is the default Prometheus replica count.
 	ArgoCDDefaultPrometheusReplicas = int32(1)
 
@@ -94,6 +97,15 @@ const (
 
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
+
+	// ArgoCDKeyIngressClass is the ingress class key for labels.
+	ArgoCDKeyIngressClass = "kubernetes.io/ingress.class"
+
+	// ArgoCDKeyIngressSSLRedirect is the ssl force-redirect key for labels.
+	ArgoCDKeyIngressSSLRedirect = "nginx.ingress.kubernetes.io/force-ssl-redirect"
+
+	// ArgoCDKeyIngressSSLPassthrough is the ssl passthrough key for labels.
+	ArgoCDKeyIngressSSLPassthrough = "nginx.ingress.kubernetes.io/ssl-passthrough"
 
 	// ArgoCDKeyMetrics is the resource metrics key for labels.
 	ArgoCDKeyMetrics = "metrics"
@@ -124,6 +136,14 @@ const (
 )
 
 var isOpenshiftCluster = false
+
+// appendStringMap will append the map `add` to the given map `src` and return the result.
+func appendStringMap(src map[string]string, add map[string]string) map[string]string {
+	for key, val := range add {
+		src[key] = val
+	}
+	return src
+}
 
 // fetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
 // The result will be stored in the given object.

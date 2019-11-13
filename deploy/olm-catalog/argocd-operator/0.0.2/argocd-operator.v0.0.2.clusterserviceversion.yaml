@@ -86,6 +86,24 @@ spec:
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Ingress resources should created.
+        displayName: Enabled
+        path: ingress.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for the Ingress resource.
+        displayName: Host
+        path: ingress.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The path to use for the Ingress resource.
+        displayName: Path
+        path: ingress.path
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The desired number of Pods for Prometheus.
         displayName: Size
         path: prometheus.size
