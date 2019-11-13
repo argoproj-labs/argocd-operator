@@ -1,7 +1,0 @@
-image:
-    repository: "eu.gcr.io/argoproj/argocd-operator"
-    tag: "latest"
-    pullPolicy: "Always"
-
-debug:
-  enabled: true
