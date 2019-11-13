@@ -340,6 +340,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling ingresses")
+	if err := r.reconcileIngresses(cr); err != nil {
+		return err
+	}
+
 	if IsOpenShift() {
 		log.Info("reconciling openshift resources")
 		if err := r.reconcileOpenShiftResources(cr); err != nil {
