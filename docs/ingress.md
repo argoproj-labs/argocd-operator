@@ -37,7 +37,7 @@ minikube addons list -p argocd
 The addon is disabled by default, enable it if necessary.
 
 ```bash
-minikube addons enable ingress 
+minikube addons enable ingress -p argocd
 ```
 
 Verify that the ingress Pod is running.
