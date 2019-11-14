@@ -128,6 +128,15 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The type of Service for the Server component.
+        displayName: Service Type
+        path: server.service.type
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:ClusterIP'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:NodePort'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:LoadBalancer'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:ExternalName'
       - description: The name of the ConfigMap object that stores the CA certificate.
         displayName: CA ConfigMap Name 
         path: tls.ca.configMapName

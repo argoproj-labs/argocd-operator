@@ -48,9 +48,6 @@ spec:
                       description: Status is the number of application status processors.
                       format: int32
                       type: integer
-                  required:
-                  - operation
-                  - status
                   type: object
               required:
               - processors
@@ -64,9 +61,6 @@ spec:
                 version:
                   description: Version is the Dex container image tag.
                   type: string
-              required:
-              - image
-              - version
               type: object
             grafana:
               description: Grafana defines the Grafana server options for ArgoCD.
@@ -81,10 +75,6 @@ spec:
                 version:
                   description: Version is the Grafana container image tag.
                   type: string
-              required:
-              - image
-              - size
-              - version
               type: object
             image:
               description: Image is the ArgoCD container image for all ArgoCD components.
@@ -107,8 +97,6 @@ spec:
                 path:
                   description: Path is the path to use for the Ingress resource.
                   type: string
-              required:
-              - enabled
               type: object
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
@@ -129,9 +117,6 @@ spec:
                 version:
                   description: Version is the Redis container image tag.
                   type: string
-              required:
-              - image
-              - version
               type: object
             server:
               description: Server defines the options for the ArgoCD Server component.
@@ -139,8 +124,17 @@ spec:
                 insecure:
                   description: Insecure toggles the insecure flag.
                   type: boolean
-              required:
-              - insecure
+                service:
+                  description: Service defines the options for the Service backing
+                    the ArgoCD Server component.
+                  properties:
+                    type:
+                      description: Type is the ServiceType to use for the Service
+                        resource.
+                      type: string
+                  required:
+                  - type
+                  type: object
               type: object
             tls:
               description: TLS defines the TLS options for ArgoCD.
@@ -156,10 +150,9 @@ spec:
                       description: SecretName is the name of the Secret containing
                         the CA Certificate and Key.
                       type: string
-                  required:
-                  - configMapName
-                  - secretName
                   type: object
+              required:
+              - ca
               type: object
             version:
               description: Version is the tag to use with the ArgoCD container image
