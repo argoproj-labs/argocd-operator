@@ -7,3 +7,6 @@ metadata:
 spec:
   ingress:
     enabled: true
+  server:
+    insecure:
+      true

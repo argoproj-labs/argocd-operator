@@ -29,22 +29,32 @@ import (
 func getDefaultIngressAnnotations(cr *argoproj.ArgoCD) map[string]string {
 	annotations := make(map[string]string)
 	annotations[ArgoCDKeyIngressClass] = "nginx"
-	annotations[ArgoCDKeyIngressSSLRedirect] = "true"
-	annotations[ArgoCDKeyIngressSSLPassthrough] = "true"
 	return annotations
 }
 
 // getIngressAnnotations will retun the Ingress Annotations for the given ArgoCD.
 func getIngressAnnotations(cr *argoproj.ArgoCD) map[string]string {
+	atns := getDefaultIngressAnnotations(cr)
+
 	if len(cr.Spec.Ingress.Annotations) > 0 {
-		return cr.Spec.Ingress.Annotations
+		atns = appendStringMap(atns, cr.Spec.Ingress.Annotations)
 	}
-	return getDefaultIngressAnnotations(cr)
+
+	return atns
 }
 
 // getIngressHost will retun the Ingress host for the given ArgoCD.
 func getIngressHost(cr *argoproj.ArgoCD) string {
 	host := cr.Name
+	if len(cr.Spec.Ingress.Host) > 0 {
+		host = cr.Spec.Ingress.Host
+	}
+	return host
+}
+
+// getIngressGRPCHost will retun the Ingress GRPC host for the given ArgoCD.
+func getIngressGRPCHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("grpc", cr)
 	if len(cr.Spec.Ingress.Host) > 0 {
 		host = cr.Spec.Ingress.Host
 	}
@@ -97,21 +107,76 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileServerIngress(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileServerGRPCIngress(cr); err != nil {
+		return err
+	}
 	return nil
 }
 
 // reconcileServerIngress will ensure that the ArgoCD Server Ingress is present.
 func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
-	ingress := newIngressWithSuffix("server", cr)
+	ingress := newIngress(cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
 		return nil // Ingress found, do nothing
 	}
 
-	ingress.ObjectMeta.Annotations = getIngressAnnotations(cr)
+	// Add annotations
+	atns := getDefaultIngressAnnotations(cr)
+	atns[ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	ingress.ObjectMeta.Annotations = atns
 
+	// Add rules
 	ingress.Spec.Rules = []extv1beta1.IngressRule{
 		{
 			Host: getIngressHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: getIngressPath(cr),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: nameWithSuffix("server", cr),
+								ServicePort: intstr.FromString("http"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: ArgoCDSecretName,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), ingress)
+}
+
+// reconcileServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
+func (r *ReconcileArgoCD) reconcileServerGRPCIngress(cr *argoproj.ArgoCD) error {
+	ingress := newIngressWithSuffix("grpc", cr)
+	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+		return nil // Ingress found, do nothing
+	}
+
+	// Add annotations
+	atns := getDefaultIngressAnnotations(cr)
+	atns[ArgoCDKeyIngressBackendProtocol] = "GRPC"
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: getIngressGRPCHost(cr),
 			IngressRuleValue: extv1beta1.IngressRuleValue{
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
@@ -125,6 +190,14 @@ func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
 					},
 				},
 			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: ArgoCDSecretName,
 		},
 	}
 

@@ -98,6 +98,9 @@ const (
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
 
+	// ArgoCDKeyIngressBackendProtocol is the backend-protocol key for labels.
+	ArgoCDKeyIngressBackendProtocol = "nginx.ingress.kubernetes.io/backend-protocol"
+
 	// ArgoCDKeyIngressClass is the ingress class key for labels.
 	ArgoCDKeyIngressClass = "kubernetes.io/ingress.class"
 
