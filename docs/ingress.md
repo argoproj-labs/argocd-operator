@@ -105,6 +105,7 @@ By default, the Argo CD Operator creates two Ingress resources; one for the HTTP
 kubectl get ingress -n argocd
 ```
 ```bash
+NAME                  HOSTS                 ADDRESS          PORTS     AGE
 example-argocd        example-argocd        192.168.39.234   80, 443   68m
 example-argocd-grpc   example-argocd-grpc   192.168.39.234   80, 443   68m
 ```
