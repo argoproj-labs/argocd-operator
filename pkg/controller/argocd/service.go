@@ -25,6 +25,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// getArgoServerServiceType will return the server Service type for the ArgoCD.
+func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
+	typ := corev1.ServiceTypeClusterIP
+	if len(cr.Spec.Server.Service.Type) > 0 {
+		return cr.Spec.Server.Service.Type
+	}
+	return typ
+}
+
 // newService returns a new Service for the given ArgoCD instance.
 func newService(cr *argoproj.ArgoCD) *corev1.Service {
 	return &corev1.Service{
@@ -218,14 +227,11 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
 	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
 		return nil // Service found, do nothing
-	}
-
-	svc.Spec.Selector = map[string]string{
-		ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -242,12 +248,19 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		},
 	}
 
+	svc.Spec.Selector = map[string]string{
+		ArgoCDKeyName: nameWithSuffix("server", cr),
+	}
+
+	svc.Spec.Type = getArgoServerServiceType(cr)
+
 	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
 		return err
 	}
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileServices will ensure that all Services are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 	err := r.reconcileDexService(cr)
 	if err != nil {
