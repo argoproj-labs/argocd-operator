@@ -14,6 +14,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
+      description: ArgoCD is the Schema for the argocds API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -28,12 +29,15 @@ spec:
         metadata:
           type: object
         spec:
+          description: ArgoCDSpec defines the desired state of ArgoCD
           properties:
             controller:
               description: Controller defines the Application Controller options for
                 ArgoCD.
               properties:
                 processors:
+                  description: ArgoCDApplicationControllerProcessorsSpec defines the
+                    options for the ArgoCD Application Controller processors.
                   properties:
                     operation:
                       description: Operation is the number of application operation
@@ -85,6 +89,27 @@ spec:
             image:
               description: Image is the ArgoCD container image for all ArgoCD components.
               type: string
+            ingress:
+              description: Ingress defines the Ingress options for ArgoCD.
+              properties:
+                annotations:
+                  additionalProperties:
+                    type: string
+                  description: Annotations is the map of annotations to use for the
+                    Ingress resource.
+                  type: object
+                enabled:
+                  description: Enabled will toggle Ingress support globally for ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for the Ingress resource.
+                  type: string
+                path:
+                  description: Path is the path to use for the Ingress resource.
+                  type: string
+              required:
+              - enabled
+              type: object
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
               properties:
@@ -142,7 +167,9 @@ spec:
               type: string
           type: object
         status:
+          description: ArgoCDStatus defines the observed state of ArgoCD
           type: object
+      type: object
   version: v1alpha1
   versions:
   - name: v1alpha1

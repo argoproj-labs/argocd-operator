@@ -88,6 +88,21 @@ type ArgoCDGrafanaSpec struct {
 	Version string `json:"version"`
 }
 
+// ArgoCDIngressSpec defines the desired state for the Ingress resources.
+type ArgoCDIngressSpec struct {
+	// Annotations is the map of annotations to use for the Ingress resource.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Enabled will toggle Ingress support globally for ArgoCD.
+	Enabled bool `json:"enabled"`
+
+	// Host is the hostname to use for the Ingress resource.
+	Host string `json:"host,omitempty"`
+
+	// Path is the path to use for the Ingress resource.
+	Path string `json:"path,omitempty"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ArgoCDList contains a list of ArgoCD
@@ -126,6 +141,9 @@ type ArgoCDSpec struct {
 
 	// Image is the ArgoCD container image for all ArgoCD components.
 	Image string `json:"image,omitempty"`
+
+	// Ingress defines the Ingress options for ArgoCD.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
