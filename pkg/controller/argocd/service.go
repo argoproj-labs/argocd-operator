@@ -27,11 +27,10 @@ import (
 
 // getArgoServerServiceType will return the server Service type for the ArgoCD.
 func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
-	typ := corev1.ServiceTypeClusterIP
 	if len(cr.Spec.Server.Service.Type) > 0 {
 		return cr.Spec.Server.Service.Type
 	}
-	return typ
+	return corev1.ServiceTypeClusterIP
 }
 
 // newService returns a new Service for the given ArgoCD instance.
