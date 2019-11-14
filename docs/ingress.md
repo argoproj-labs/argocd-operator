@@ -76,7 +76,7 @@ In this example, the ingress controller is running in the `kube-system` namespac
 ## ArgoCD Resource
 
 Create an ArgoCD resource that enables ingress. Note that in this case we run the Argo CD server in insecure mode and 
-terminate TLS at the Ingress controller. See [examples/argocd-ingress.yaml] for this example.
+terminate TLS at the Ingress controller. See `examples/argocd-ingress.yaml` for this example.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
