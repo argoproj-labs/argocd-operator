@@ -142,7 +142,7 @@ argocd login example-argocd-grpc --insecure --username admin
 Context 'example-argocd-grpc' updated
 ```
 
-Create the example guestbook application from the Argo CD [documentation]().
+Create the example guestbook application based on the Argo CD [documentation][docs_argo].
 
 ```bash
 argocd app create guestbook \
@@ -179,3 +179,4 @@ The server UI should be available at https://example-argocd/ and the admin passw
 Pod (`example-argocd-server-d468768b-l5wnf` in this example).
 
 [install_olm]:./guides/install-olm.md
+[docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli
