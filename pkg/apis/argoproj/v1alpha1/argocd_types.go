@@ -79,6 +79,9 @@ type ArgoCDDexSpec struct {
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana server component.
 type ArgoCDGrafanaSpec struct {
+	// Enabled will toggle Grafana support globally for ArgoCD.
+	Enabled bool `json:"enabled"`
+
 	// Image is the Grafana container image.
 	Image string `json:"image,omitempty"`
 
@@ -95,7 +98,7 @@ type ArgoCDIngressSpec struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Enabled will toggle Ingress support globally for ArgoCD.
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled bool `json:"enabled"`
 
 	// Host is the hostname to use for the Ingress resource.
 	Host string `json:"host,omitempty"`
@@ -115,8 +118,11 @@ type ArgoCDList struct {
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
 type ArgoCDPrometheusSpec struct {
+	// Enabled will toggle Prometheus support globally for ArgoCD.
+	Enabled bool `json:"enabled"`
+
 	// Size is the replica count for the Prometheus StatefulSet.
-	Size int32 `json:"size"`
+	Size int32 `json:"size,omitempty"`
 }
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.

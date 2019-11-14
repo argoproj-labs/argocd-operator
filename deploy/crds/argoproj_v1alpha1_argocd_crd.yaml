@@ -65,6 +65,9 @@ spec:
             grafana:
               description: Grafana defines the Grafana server options for ArgoCD.
               properties:
+                enabled:
+                  description: Enabled will toggle Grafana support globally for ArgoCD.
+                  type: boolean
                 image:
                   description: Image is the Grafana container image.
                   type: string
@@ -75,6 +78,8 @@ spec:
                 version:
                   description: Version is the Grafana container image tag.
                   type: string
+              required:
+              - enabled
               type: object
             image:
               description: Image is the ArgoCD container image for all ArgoCD components.
@@ -97,16 +102,22 @@ spec:
                 path:
                   description: Path is the path to use for the Ingress resource.
                   type: string
+              required:
+              - enabled
               type: object
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
               properties:
+                enabled:
+                  description: Enabled will toggle Prometheus support globally for
+                    ArgoCD.
+                  type: boolean
                 size:
                   description: Size is the replica count for the Prometheus StatefulSet.
                   format: int32
                   type: integer
               required:
-              - size
+              - enabled
               type: object
             redis:
               description: Redis defines the Redis server options for ArgoCD.

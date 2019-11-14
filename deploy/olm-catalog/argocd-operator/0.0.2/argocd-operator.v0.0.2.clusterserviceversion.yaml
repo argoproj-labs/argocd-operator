@@ -74,6 +74,12 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex' 
         - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Grafana resources should created.
+        displayName: Enabled
+        path: grafana.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The container image name to use for Grafana.
         displayName: Image
         path: grafana.image
@@ -104,6 +110,12 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Prometheus resources should created.
+        displayName: Enabled
+        path: prometheus.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The desired number of Pods for Prometheus.
         displayName: Size
         path: prometheus.size
