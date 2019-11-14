@@ -138,7 +138,7 @@ example). The `--insecure` flag is required because we are using the default sel
 argocd login example-argocd-grpc --insecure --username admin 
 ```
 ```text
-admin' logged in successfully
+'admin' logged in successfully
 Context 'example-argocd-grpc' updated
 ```
 
@@ -165,6 +165,12 @@ argocd app list --insecure
 ```text
 NAME       CLUSTER                         NAMESPACE  PROJECT  STATUS  HEALTH   SYNCPOLICY  CONDITIONS  REPO                                                 PATH       TARGET
 guestbook  https://kubernetes.default.svc  argocd     default  Synced  Healthy  Auto        <none>      https://github.com/argoproj/argocd-example-apps.git  guestbook
+```
+
+Delete the application when finished.
+
+```bash
+argocd app delete guestbook --insecure
 ```
 
 ### UI
