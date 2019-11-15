@@ -15,6 +15,7 @@ spec:
     image: quay.io/dexidp/dex
     version: v2.14.0
   grafana:
+    enabled: false
     image: grafana/grafana
     version: 6.4.2
   ingress:
@@ -23,6 +24,7 @@ spec:
     host: example-argocd
     path: /
   prometheus:
+    enabled: false
     size: 1
   redis:
     image: redis
