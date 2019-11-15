@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: insights
+spec:
+  grafana:
+    enabled: true
+  prometheus:
+    enabled: true
