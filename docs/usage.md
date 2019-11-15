@@ -66,9 +66,14 @@ argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/
 kubernetes                      ClusterIP   10.96.0.1        <none>        443/TCP             44m
 ```
 
-### Server UI
+### Server API & UI
 
-Forward the server port to the local machine.
+The Argo CD server component exposes the API and UI. The operator creates a Service to expose this component and 
+can be accessed through the various methods available in Kubernetes.
+
+#### Local Machine
+
+In the most simple case, the Service port can be forwarded to the local machine.
 
 ```bash
 kubectl port-forward service/argocd-minimal-server 8443:443
@@ -76,3 +81,9 @@ kubectl port-forward service/argocd-minimal-server 8443:443
 
 The server UI should be available at https://localhost:8443/ and the admin password is the name for the Argo CD server 
 Pod (`argocd-minimal-server-7d56c5bf4d-r5brr` in this example).
+
+#### Ingress
+
+See the [ingress][docs_ingress] documentation for steps to enable and use the Ingress support provided by the operator. 
+
+[docs_ingress]:./ingress.md

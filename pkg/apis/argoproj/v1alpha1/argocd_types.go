@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,10 +42,10 @@ type ArgoCD struct {
 // ArgoCDApplicationControllerProcessorsSpec defines the options for the ArgoCD Application Controller processors.
 type ArgoCDApplicationControllerProcessorsSpec struct {
 	// Operation is the number of application operation processors.
-	Operation int32 `json:"operation"`
+	Operation int32 `json:"operation,omitempty"`
 
 	// Status is the number of application status processors.
-	Status int32 `json:"status"`
+	Status int32 `json:"status,omitempty"`
 }
 
 // ArgoCDApplicationControllerSpec defines the options for the ArgoCD Application Controller component.
@@ -55,10 +56,10 @@ type ArgoCDApplicationControllerSpec struct {
 // ArgoCDCASpec defines the CA options for ArgCD.
 type ArgoCDCASpec struct {
 	// ConfigMapName is the name of the ConfigMap containing the CA Certificate.
-	ConfigMapName string `json:"configMapName"`
+	ConfigMapName string `json:"configMapName,omitempty"`
 
 	// SecretName is the name of the Secret containing the CA Certificate and Key.
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // ArgoCDCertificateSpec defines the options for the ArgoCD certificates.
@@ -70,22 +71,37 @@ type ArgoCDCertificateSpec struct {
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
 	// Image is the Dex container image.
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
 
 	// Version is the Dex container image tag.
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana server component.
 type ArgoCDGrafanaSpec struct {
 	// Image is the Grafana container image.
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
 
 	// Size is the replica count for the Grafana Deployment.
-	Size int32 `json:"size"`
+	Size int32 `json:"size,omitempty"`
 
 	// Version is the Grafana container image tag.
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
+}
+
+// ArgoCDIngressSpec defines the desired state for the Ingress resources.
+type ArgoCDIngressSpec struct {
+	// Annotations is the map of annotations to use for the Ingress resource.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Enabled will toggle Ingress support globally for ArgoCD.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Host is the hostname to use for the Ingress resource.
+	Host string `json:"host,omitempty"`
+
+	// Path is the path to use for the Ingress resource.
+	Path string `json:"path,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -106,10 +122,10 @@ type ArgoCDPrometheusSpec struct {
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
 	// Image is the Redis container image.
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
 
 	// Version is the Redis container image tag.
-	Version string `json:"version"`
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDSpec defines the desired state of ArgoCD
@@ -126,6 +142,9 @@ type ArgoCDSpec struct {
 
 	// Image is the ArgoCD container image for all ArgoCD components.
 	Image string `json:"image,omitempty"`
+
+	// Ingress defines the Ingress options for ArgoCD.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
@@ -146,7 +165,16 @@ type ArgoCDSpec struct {
 // ArgoCDServerSpec defines the options for the ArgoCD Server component.
 type ArgoCDServerSpec struct {
 	// Insecure toggles the insecure flag.
-	Insecure bool `json:"insecure"`
+	Insecure bool `json:"insecure,omitempty"`
+
+	// Service defines the options for the Service backing the ArgoCD Server component.
+	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
+}
+
+// ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
+type ArgoCDServerServiceSpec struct {
+	// Type is the ServiceType to use for the Service resource.
+	Type corev1.ServiceType `json:"type"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD
@@ -159,5 +187,5 @@ type ArgoCDStatus struct {
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
 type ArgoCDTLSSpec struct {
 	// CA defines the CA options.
-	CA ArgoCDCASpec `json:"ca,omitempty"`
+	CA ArgoCDCASpec `json:"ca"`
 }
