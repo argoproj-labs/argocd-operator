@@ -78,6 +78,9 @@ const (
 	// ArgoCDDefaultGrafanaReplicas is the default Grafana replica count.
 	ArgoCDDefaultGrafanaReplicas = int32(1)
 
+	// ArgoCDDefaultGrafanaConfigPath is the default Grafana configuration directory when not specified.
+	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
+
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
 
