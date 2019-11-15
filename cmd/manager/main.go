@@ -84,10 +84,9 @@ func main() {
 
 	printVersion()
 
-	// Verify availability of the OpenShift API
-	err := argocd.VerifyOpenShift()
-	if err != nil {
-		log.Info("unable to verify openshift")
+	// Inspect cluster to verify availability of extra features
+	if err := argocd.InspectCluster(); err != nil {
+		log.Info("unable to inspect cluster")
 	}
 
 	namespace, err := k8sutil.GetWatchNamespace()
@@ -130,13 +129,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup Scheme for OpenShift resources if available.
-	if argocd.IsOpenShift() {
+	// Setup Scheme for Prometheus if available.
+	if argocd.IsPrometheusAPIAvailable() {
 		if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {
 			log.Error(err, "")
 			os.Exit(1)
 		}
+	}
 
+	// Setup Scheme for OpenShift Routes if available.
+	if argocd.IsRouteAPIAvailable() {
 		if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
 			log.Error(err, "")
 			os.Exit(1)

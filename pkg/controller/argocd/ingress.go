@@ -118,7 +118,11 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngress(cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
-		return nil // Ingress found, do nothing
+		if !cr.Spec.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
 	}
 
 	// Add annotations
@@ -165,7 +169,11 @@ func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileServerGRPCIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
-		return nil // Ingress found, do nothing
+		if !cr.Spec.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
 	}
 
 	// Add annotations

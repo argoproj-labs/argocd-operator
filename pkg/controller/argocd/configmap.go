@@ -92,15 +92,14 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		if err := r.reconcileGrafanaConfiguration(cr); err != nil {
-			return err
-		}
-
-		if err := r.reconcileGrafanaDashboards(cr); err != nil {
-			return err
-		}
+	if err := r.reconcileGrafanaConfiguration(cr); err != nil {
+		return err
 	}
+
+	if err := r.reconcileGrafanaDashboards(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
