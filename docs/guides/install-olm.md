@@ -168,3 +168,11 @@ Once the operator is installed and running, see the [usage][docs_usage] document
 [docs_dev]:../development.md
 [docs_usage]:../usage.md
 [olm_home]:https://github.com/operator-framework/operator-lifecycle-manager
+
+
+## Cleanup 
+
+kubectl delete -n argocd -f deploy/subscription.yaml
+kubectl delete -n argocd -f deploy/operator_group.yaml
+kubectl delete -n olm -f deploy/catalog_source.yaml
+kubectl delete namespace argocd
