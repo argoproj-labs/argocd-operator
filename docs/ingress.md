@@ -180,3 +180,10 @@ Pod (`example-argocd-server-d468768b-l5wnf` in this example).
 
 [install_olm]:./guides/install-olm.md
 [docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli
+
+
+## Cleanup
+
+```bash
+kubectl delete -n argocd -f examples/argocd-ingress.yaml
+```
