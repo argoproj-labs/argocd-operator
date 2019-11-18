@@ -452,7 +452,7 @@ func withClusterLabels(cr *argoproj.ArgoCD, addLabels map[string]string) map[str
 	return labels
 }
 
-// verifyAPI will verify that the given group/version is present.
+// verifyAPI will verify that the given group/version is present in the cluster.
 func verifyAPI(group string, version string) (bool, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -471,11 +471,11 @@ func verifyAPI(group string, version string) (bool, error) {
 		Version: version,
 	}
 
-	err = discovery.ServerSupportsVersion(k8s, gv)
-	if err == nil {
-		log.Info(fmt.Sprintf("%s/%s API verified", group, version))
-		return true, nil
+	if err = discovery.ServerSupportsVersion(k8s, gv); err != nil {
+		// error, API not available
+		return false, nil
 	}
 
-	return false, nil
+	log.Info(fmt.Sprintf("%s/%s API verified", group, version))
+	return true, nil
 }
