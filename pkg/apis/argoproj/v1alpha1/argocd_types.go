@@ -82,6 +82,9 @@ type ArgoCDGrafanaSpec struct {
 	// Enabled will toggle Grafana support globally for ArgoCD.
 	Enabled bool `json:"enabled"`
 
+	// Host is the hostname to use for Ingress/Route resources.
+	Host string `json:"host,omitempty"`
+
 	// Image is the Grafana container image.
 	Image string `json:"image,omitempty"`
 

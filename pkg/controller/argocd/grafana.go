@@ -44,6 +44,15 @@ type GrafanaSecurityConfig struct {
 	SecretKey string
 }
 
+// getGrafanaHost will return the hostname value for Grafana.
+func getGrafanaHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("grafana", cr)
+	if len(cr.Spec.Grafana.Host) > 0 {
+		host = cr.Spec.Grafana.Host
+	}
+	return host
+}
+
 // getGrafanaReplicas will return the size value for the Grafana replica count.
 func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultGrafanaReplicas

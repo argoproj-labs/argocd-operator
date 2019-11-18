@@ -68,6 +68,9 @@ spec:
                 enabled:
                   description: Enabled will toggle Grafana support globally for ArgoCD.
                   type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
                 image:
                   description: Image is the Grafana container image.
                   type: string

@@ -80,6 +80,12 @@ spec:
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Grafana.
+        displayName: Host
+        path: grafana.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image name to use for Grafana.
         displayName: Image
         path: grafana.image

@@ -104,18 +104,23 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 		return nil // Ingress not enabled, do nothing.
 	}
 
-	if err := r.reconcileServerIngress(cr); err != nil {
+	if err := r.reconcileArgoServerIngress(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileServerGRPCIngress(cr); err != nil {
+	if err := r.reconcileArgoServerGRPCIngress(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileGrafanaIngress(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-// reconcileServerIngress will ensure that the ArgoCD Server Ingress is present.
-func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
+// reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
+func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngress(cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled {
@@ -165,8 +170,8 @@ func (r *ReconcileArgoCD) reconcileServerIngress(cr *argoproj.ArgoCD) error {
 	return r.client.Create(context.TODO(), ingress)
 }
 
-// reconcileServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ReconcileArgoCD) reconcileServerGRPCIngress(cr *argoproj.ArgoCD) error {
+// reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
+func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled {
@@ -193,6 +198,57 @@ func (r *ReconcileArgoCD) reconcileServerGRPCIngress(cr *argoproj.ArgoCD) error 
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: nameWithSuffix("server", cr),
 								ServicePort: intstr.FromString("https"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: ArgoCDSecretName,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), ingress)
+}
+
+// reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
+func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
+	ingress := newIngressWithSuffix("grafana", cr)
+	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	// Add annotations
+	atns := getDefaultIngressAnnotations(cr)
+	atns[ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: getGrafanaHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: getIngressPath(cr),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: nameWithSuffix("grafana", cr),
+								ServicePort: intstr.FromString("http"),
 							},
 						},
 					},
