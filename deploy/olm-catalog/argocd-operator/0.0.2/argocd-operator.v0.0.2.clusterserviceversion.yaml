@@ -122,6 +122,12 @@ spec:
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Prometheus.
+        displayName: Host
+        path: prometheus.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The desired number of Pods for Prometheus.
         displayName: Size
         path: prometheus.size

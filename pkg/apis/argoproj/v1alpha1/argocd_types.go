@@ -124,6 +124,9 @@ type ArgoCDPrometheusSpec struct {
 	// Enabled will toggle Prometheus support globally for ArgoCD.
 	Enabled bool `json:"enabled"`
 
+	// Host is the hostname to use for Ingress/Route resources.
+	Host string `json:"host,omitempty"`
+
 	// Size is the replica count for the Prometheus StatefulSet.
 	Size int32 `json:"size,omitempty"`
 }

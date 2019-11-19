@@ -115,6 +115,9 @@ spec:
                   description: Enabled will toggle Prometheus support globally for
                     ArgoCD.
                   type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
                 size:
                   description: Size is the replica count for the Prometheus StatefulSet.
                   format: int32
