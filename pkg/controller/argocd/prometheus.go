@@ -26,6 +26,15 @@ import (
 
 var prometheusAPIFound = false
 
+// getPrometheusHost will return the hostname value for Prometheus.
+func getPrometheusHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("prometheus", cr)
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		host = cr.Spec.Prometheus.Host
+	}
+	return host
+}
+
 // getPrometheusSize will return the size value for the Prometheus replica count.
 func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultPrometheusReplicas

@@ -43,24 +43,6 @@ func getIngressAnnotations(cr *argoproj.ArgoCD) map[string]string {
 	return atns
 }
 
-// getIngressHost will retun the Ingress host for the given ArgoCD.
-func getIngressHost(cr *argoproj.ArgoCD) string {
-	host := cr.Name
-	if len(cr.Spec.Ingress.Host) > 0 {
-		host = cr.Spec.Ingress.Host
-	}
-	return host
-}
-
-// getIngressGRPCHost will retun the Ingress GRPC host for the given ArgoCD.
-func getIngressGRPCHost(cr *argoproj.ArgoCD) string {
-	host := nameWithSuffix("grpc", cr)
-	if len(cr.Spec.Ingress.Host) > 0 {
-		host = cr.Spec.Ingress.Host
-	}
-	return host
-}
-
 // getIngressPath will return the Ingress Path for the given ArgoCD.
 func getIngressPath(cr *argoproj.ArgoCD) string {
 	path := ArgoCDDefaultIngressPath
@@ -116,6 +98,9 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	if err := r.reconcilePrometheusIngress(cr); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -139,7 +124,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 	// Add rules
 	ingress.Spec.Rules = []extv1beta1.IngressRule{
 		{
-			Host: getIngressHost(cr),
+			Host: getArgoServerHost(cr),
 			IngressRuleValue: extv1beta1.IngressRuleValue{
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
@@ -189,7 +174,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 	// Add rules
 	ingress.Spec.Rules = []extv1beta1.IngressRule{
 		{
-			Host: getIngressGRPCHost(cr),
+			Host: getArgoServerGRPCHost(cr),
 			IngressRuleValue: extv1beta1.IngressRuleValue{
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
@@ -249,6 +234,57 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: nameWithSuffix("grafana", cr),
 								ServicePort: intstr.FromString("http"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: ArgoCDSecretName,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), ingress)
+}
+
+// reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
+func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
+	ingress := newIngressWithSuffix("prometheus", cr)
+	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	// Add annotations
+	atns := getDefaultIngressAnnotations(cr)
+	atns[ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: getPrometheusHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: getIngressPath(cr),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: "prometheus-operated",
+								ServicePort: intstr.FromString("web"),
 							},
 						},
 					},

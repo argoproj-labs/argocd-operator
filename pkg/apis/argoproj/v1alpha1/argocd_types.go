@@ -103,9 +103,6 @@ type ArgoCDIngressSpec struct {
 	// Enabled will toggle Ingress support globally for ArgoCD.
 	Enabled bool `json:"enabled"`
 
-	// Host is the hostname to use for the Ingress resource.
-	Host string `json:"host,omitempty"`
-
 	// Path is the path to use for the Ingress resource.
 	Path string `json:"path,omitempty"`
 }
@@ -140,6 +137,33 @@ type ArgoCDRedisSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ArgoCDServerGRPCSpec defines the desired state for the Argo CD Server GRPC options.
+type ArgoCDServerGRPCSpec struct {
+	// Host is the hostname to use for Ingress/Route resources.
+	Host string `json:"host"`
+}
+
+// ArgoCDServerSpec defines the options for the ArgoCD Server component.
+type ArgoCDServerSpec struct {
+	// GRPC defines the state for the Argo CD Server GRPC options.
+	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
+
+	// Host is the hostname to use for Ingress/Route resources.
+	Host string `json:"host,omitempty"`
+
+	// Insecure toggles the insecure flag.
+	Insecure bool `json:"insecure,omitempty"`
+
+	// Service defines the options for the Service backing the ArgoCD Server component.
+	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
+}
+
+// ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
+type ArgoCDServerServiceSpec struct {
+	// Type is the ServiceType to use for the Service resource.
+	Type corev1.ServiceType `json:"type"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -172,21 +196,6 @@ type ArgoCDSpec struct {
 
 	// Version is the tag to use with the ArgoCD container image for all ArgoCD components.
 	Version string `json:"version,omitempty"`
-}
-
-// ArgoCDServerSpec defines the options for the ArgoCD Server component.
-type ArgoCDServerSpec struct {
-	// Insecure toggles the insecure flag.
-	Insecure bool `json:"insecure,omitempty"`
-
-	// Service defines the options for the Service backing the ArgoCD Server component.
-	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
-}
-
-// ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
-type ArgoCDServerServiceSpec struct {
-	// Type is the ServiceType to use for the Service resource.
-	Type corev1.ServiceType `json:"type"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD

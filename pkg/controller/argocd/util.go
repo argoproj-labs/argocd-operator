@@ -175,6 +175,24 @@ func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
 }
 
+// getArgoServerGRPCHost will retun the GRPC host for the given ArgoCD.
+func getArgoServerGRPCHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("grpc", cr)
+	if len(cr.Spec.Server.GRPC.Host) > 0 {
+		host = cr.Spec.Server.GRPC.Host
+	}
+	return host
+}
+
+// getArgoServerHost will retun the host for the given ArgoCD.
+func getArgoServerHost(cr *argoproj.ArgoCD) string {
+	host := cr.Name
+	if len(cr.Spec.Server.Host) > 0 {
+		host = cr.Spec.Server.Host
+	}
+	return host
+}
+
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
 func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 	op := ArgoCDDefaultArgoServerOperationProcessors

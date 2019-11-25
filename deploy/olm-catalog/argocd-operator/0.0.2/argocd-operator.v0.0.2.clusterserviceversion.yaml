@@ -104,12 +104,6 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: The hostname to use for the Ingress resource.
-        displayName: Host
-        path: ingress.host
-        x-descriptors:
-        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
-        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The path to use for the Ingress resource.
         displayName: Path
         path: ingress.path
@@ -145,6 +139,18 @@ spec:
         path: redis.version
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server GRPC Ingress resource.
+        displayName: GRPC Host
+        path: server.grpc.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server Ingress resource.
+        displayName: Host
+        path: server.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if the Argo CD server is insecure.
         displayName: Insecure

@@ -99,9 +99,6 @@ spec:
                 enabled:
                   description: Enabled will toggle Ingress support globally for ArgoCD.
                   type: boolean
-                host:
-                  description: Host is the hostname to use for the Ingress resource.
-                  type: string
                 path:
                   description: Path is the path to use for the Ingress resource.
                   type: string
@@ -138,6 +135,19 @@ spec:
             server:
               description: Server defines the options for the ArgoCD Server component.
               properties:
+                grpc:
+                  description: GRPC defines the state for the Argo CD Server GRPC
+                    options.
+                  properties:
+                    host:
+                      description: Host is the hostname to use for Ingress/Route resources.
+                      type: string
+                  required:
+                  - host
+                  type: object
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
                 insecure:
                   description: Insecure toggles the insecure flag.
                   type: boolean
