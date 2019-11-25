@@ -8,5 +8,4 @@ spec:
   ingress:
     enabled: true
   server:
-    insecure:
-      true
+    insecure: true
