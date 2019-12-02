@@ -76,11 +76,11 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileServerRoute(cr); err != nil {
+	if err := r.reconcilePrometheusRoute(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcilePrometheusRoute(cr); err != nil {
+	if err := r.reconcileServerRoute(cr); err != nil {
 		return err
 	}
 	return nil
