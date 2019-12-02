@@ -138,6 +138,10 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		return nil // Prometheus found, do nothing
 	}
 
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
 	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
 	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
 	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
@@ -157,6 +161,10 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 			return r.client.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{
@@ -185,6 +193,10 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 			return r.client.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{
