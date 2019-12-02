@@ -103,6 +103,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 		return nil // Service found, do nothing
 	}
 
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
 	svc.Spec.Selector = map[string]string{
 		ArgoCDKeyName: nameWithSuffix("grafana", cr),
 	}
@@ -267,6 +271,11 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	err = r.reconcileGrafanaService(cr)
+	if err != nil {
+		return err
+	}
+
 	err = r.reconcileMetricsService(cr)
 	if err != nil {
 		return err
@@ -288,11 +297,6 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 	}
 
 	err = r.reconcileServerService(cr)
-	if err != nil {
-		return err
-	}
-
-	err = r.reconcileGrafanaService(cr)
 	if err != nil {
 		return err
 	}
