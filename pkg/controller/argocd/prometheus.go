@@ -110,6 +110,10 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 		return nil // ServiceMonitor found, do nothing
 	}
 
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			ArgoCDKeyName: nameWithSuffix(ArgoCDKeyMetrics, cr),
