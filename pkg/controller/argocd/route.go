@@ -90,13 +90,48 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if r.isObjectFound(cr.Namespace, route.Name, route) {
+		if !cr.Spec.Grafana.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.client.Delete(context.TODO(), route)
+		}
 		return nil // Route found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
 	}
 
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("grafana", cr)
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("http"),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), route)
+}
+
+// reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+	route := newRouteWithSuffix("prometheus", cr)
+	if r.isObjectFound(cr.Namespace, route.Name, route) {
+		if !cr.Spec.Prometheus.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.client.Delete(context.TODO(), route)
+		}
+		return nil // Route found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "prometheus-operated"
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("web"),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
@@ -133,25 +168,6 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 			Termination:                   routev1.TLSTerminationPassthrough,
 		}
-	}
-
-	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
-		return err
-	}
-	return r.client.Create(context.TODO(), route)
-}
-
-// reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
-func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
-	route := newRouteWithSuffix("prometheus", cr)
-	if r.isObjectFound(cr.Namespace, route.Name, route) {
-		return nil // Route found, do nothing
-	}
-
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = "prometheus-operated"
-	route.Spec.Port = &routev1.RoutePort{
-		TargetPort: intstr.FromString("web"),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {

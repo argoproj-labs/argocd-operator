@@ -209,11 +209,15 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Ingress.Enabled {
+		if !cr.Spec.Ingress.Enabled || !cr.Spec.Grafana.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
 	}
 
 	// Add annotations
@@ -260,11 +264,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
 	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Ingress.Enabled {
+		if !cr.Spec.Ingress.Enabled || !cr.Spec.Prometheus.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	// Add annotations
