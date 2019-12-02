@@ -3,9 +3,9 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: ingress
+    example: insights
 spec:
-  ingress:
+  grafana:
     enabled: true
-  server:
-    insecure: true
+  prometheus:
+    enabled: true

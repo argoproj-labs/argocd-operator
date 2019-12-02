@@ -24,6 +24,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+var prometheusAPIFound = false
+
+// getPrometheusHost will return the hostname value for Prometheus.
+func getPrometheusHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("prometheus", cr)
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		host = cr.Spec.Prometheus.Host
+	}
+	return host
+}
+
 // getPrometheusSize will return the size value for the Prometheus replica count.
 func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultPrometheusReplicas
@@ -31,6 +42,21 @@ func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 		replicas = cr.Spec.Prometheus.Size
 	}
 	return &replicas
+}
+
+// IsPrometheusAPIAvailable returns true if the Prometheus API is present.
+func IsPrometheusAPIAvailable() bool {
+	return prometheusAPIFound
+}
+
+// verifyPrometheusAPI will verify that the Prometheus API is present.
+func verifyPrometheusAPI() error {
+	found, err := verifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	prometheusAPIFound = found
+	return nil
 }
 
 // newPrometheus retuns a new Prometheus instance for the given ArgoCD.
@@ -77,6 +103,10 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(ArgoCDKeyMetrics, cr)
 	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.client.Delete(context.TODO(), sm)
+		}
 		return nil // ServiceMonitor found, do nothing
 	}
 
@@ -101,7 +131,15 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
 	if r.isObjectFound(cr.Namespace, prometheus.Name, prometheus) {
+		if !cr.Spec.Prometheus.Enabled {
+			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
+			return r.client.Delete(context.TODO(), prometheus)
+		}
 		return nil // Prometheus found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
@@ -118,7 +156,15 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
 	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.client.Delete(context.TODO(), sm)
+		}
 		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{
@@ -142,7 +188,15 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)
 	if r.isObjectFound(cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.client.Delete(context.TODO(), sm)
+		}
 		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
 	}
 
 	sm.Spec.Selector = metav1.LabelSelector{

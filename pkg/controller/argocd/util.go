@@ -23,6 +23,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -76,6 +77,9 @@ const (
 
 	// ArgoCDDefaultGrafanaReplicas is the default Grafana replica count.
 	ArgoCDDefaultGrafanaReplicas = int32(1)
+
+	// ArgoCDDefaultGrafanaConfigPath is the default Grafana configuration directory when not specified.
+	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
 	ArgoCDDefaultGrafanaVersion = "6.4.2"
@@ -138,8 +142,6 @@ const (
 	ArgoCDTLSCertsConfigMapName = "argocd-tls-certs-cm"
 )
 
-var isOpenshiftCluster = false
-
 // appendStringMap will append the map `add` to the given map `src` and return the result.
 func appendStringMap(src map[string]string, add map[string]string) map[string]string {
 	for key, val := range add {
@@ -171,6 +173,24 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
 func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
+}
+
+// getArgoServerGRPCHost will retun the GRPC host for the given ArgoCD.
+func getArgoServerGRPCHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("grpc", cr)
+	if len(cr.Spec.Server.GRPC.Host) > 0 {
+		host = cr.Spec.Server.GRPC.Host
+	}
+	return host
+}
+
+// getArgoServerHost will retun the host for the given ArgoCD.
+func getArgoServerHost(cr *argoproj.ArgoCD) string {
+	host := cr.Name
+	if len(cr.Spec.Server.Host) > 0 {
+		host = cr.Spec.Server.Host
+	}
+	return host
 }
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
@@ -242,38 +262,18 @@ func (r *ReconcileArgoCD) isObjectFound(namespace string, name string, obj runti
 	return true
 }
 
-// IsOpenShift returns true if the operator is running in an OpenShift environment.
-func IsOpenShift() bool {
-	return isOpenshiftCluster
-}
-
 func nameWithSuffix(suffix string, cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", cr.Name, suffix)
 }
 
-// VerifyOpenShift will verify that the OpenShift API is present, indicating an OpenShift cluster.
-func VerifyOpenShift() error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
+// InspectCluster will verify the availability of extra features.
+func InspectCluster() error {
+	if err := verifyPrometheusAPI(); err != nil {
 		return err
 	}
 
-	k8s, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
+	if err := verifyRouteAPI(); err != nil {
 		return err
-	}
-
-	gv := schema.GroupVersion{
-		Group:   routev1.GroupName,
-		Version: routev1.GroupVersion.Version,
-	}
-
-	err = discovery.ServerSupportsVersion(k8s, gv)
-	if err == nil {
-		log.Info("openshift verified")
-		isOpenshiftCluster = true
 	}
 	return nil
 }
@@ -348,12 +348,32 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		log.Info("reconciling openshift resources")
-		if err := r.reconcileOpenShiftResources(cr); err != nil {
+	if IsRouteAPIAvailable() {
+		log.Info("reconciling routes")
+		if err := r.reconcileRoutes(cr); err != nil {
 			return err
 		}
 	}
+
+	if IsPrometheusAPIAvailable() {
+		log.Info("reconciling prometheus")
+		if err := r.reconcilePrometheus(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileMetricsServiceMonitor(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileRepoServerServiceMonitor(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileServerMetricsServiceMonitor(cr); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -407,30 +427,30 @@ func watchResources(c controller.Controller) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		if err := watchOpenShiftResources(c); err != nil {
+	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
+	if err := watchOwnedResource(c, &extv1beta1.Ingress{}); err != nil {
+		return err
+	}
+
+	if IsRouteAPIAvailable() {
+		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
+		if err := watchOwnedResource(c, &routev1.Route{}); err != nil {
 			return err
 		}
 	}
-	return nil
-}
 
-// watchOpenShiftResources will register Watches for each of the OpenShift supported Resources.
-func watchOpenShiftResources(c controller.Controller) error {
-	// Watch OpenShift Route sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &routev1.Route{}); err != nil {
-		return err
+	if IsPrometheusAPIAvailable() {
+		// Watch Prometheus sub-resources owned by ArgoCD instances.
+		if err := watchOwnedResource(c, &monitoringv1.Prometheus{}); err != nil {
+			return err
+		}
+
+		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
+		if err := watchOwnedResource(c, &monitoringv1.ServiceMonitor{}); err != nil {
+			return err
+		}
 	}
 
-	// Watch Prometheus sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &monitoringv1.Prometheus{}); err != nil {
-		return err
-	}
-
-	// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &monitoringv1.ServiceMonitor{}); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -448,4 +468,32 @@ func withClusterLabels(cr *argoproj.ArgoCD, addLabels map[string]string) map[str
 		labels[key] = val
 	}
 	return labels
+}
+
+// verifyAPI will verify that the given group/version is present in the cluster.
+func verifyAPI(group string, version string) (bool, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "unable to get k8s config")
+		return false, err
+	}
+
+	k8s, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "unable to create k8s client")
+		return false, err
+	}
+
+	gv := schema.GroupVersion{
+		Group:   group,
+		Version: version,
+	}
+
+	if err = discovery.ServerSupportsVersion(k8s, gv); err != nil {
+		// error, API not available
+		return false, nil
+	}
+
+	log.Info(fmt.Sprintf("%s/%s API verified", group, version))
+	return true, nil
 }

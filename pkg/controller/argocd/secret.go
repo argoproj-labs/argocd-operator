@@ -225,10 +225,8 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		if err := r.reconcileGrafanaSecret(cr); err != nil {
-			return err
-		}
+	if err := r.reconcileGrafanaSecret(cr); err != nil {
+		return err
 	}
 
 	return nil

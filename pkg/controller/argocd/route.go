@@ -25,6 +25,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+var routeAPIFound = false
+
+// IsRouteAPIAvailable returns true if the Route API is present.
+func IsRouteAPIAvailable() bool {
+	return routeAPIFound
+}
+
+// verifyRouteAPI will verify that the Prometheus API is present.
+func verifyRouteAPI() error {
+	found, err := verifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	routeAPIFound = found
+	return nil
+}
+
 // newRoute returns a new Route instance for the given ArgoCD.
 func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 	return &routev1.Route{

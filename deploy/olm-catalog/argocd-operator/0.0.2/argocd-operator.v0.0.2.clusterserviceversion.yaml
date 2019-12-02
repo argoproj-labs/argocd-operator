@@ -74,6 +74,18 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex' 
         - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Grafana resources should created.
+        displayName: Enabled
+        path: grafana.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Grafana.
+        displayName: Host
+        path: grafana.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image name to use for Grafana.
         displayName: Image
         path: grafana.image
@@ -92,17 +104,23 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
-      - description: The hostname to use for the Ingress resource.
-        displayName: Host
-        path: ingress.host
-        x-descriptors:
-        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
-        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The path to use for the Ingress resource.
         displayName: Path
         path: ingress.path
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Prometheus resources should created.
+        displayName: Enabled
+        path: prometheus.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Prometheus.
+        displayName: Host
+        path: prometheus.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The desired number of Pods for Prometheus.
         displayName: Size
@@ -121,6 +139,18 @@ spec:
         path: redis.version
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server GRPC Ingress resource.
+        displayName: GRPC Host
+        path: server.grpc.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server Ingress resource.
+        displayName: Host
+        path: server.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if the Argo CD server is insecure.
         displayName: Insecure

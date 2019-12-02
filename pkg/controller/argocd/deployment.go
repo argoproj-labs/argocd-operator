@@ -199,11 +199,9 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		err = r.reconcileGrafanaDeployment(cr)
-		if err != nil {
-			return err
-		}
+	err = r.reconcileGrafanaDeployment(cr)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -270,11 +268,14 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
 	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+		if !cr.Spec.Grafana.Enabled {
+			// Deployment exists but enabled flag has been set to false, delete the Deployment
+			return r.client.Delete(context.TODO(), deploy)
+		}
 		return nil // Deployment found, do nothing
 	}
 
-	var replicas int32 = 1
-	deploy.Spec.Replicas = &replicas
+	deploy.Spec.Replicas = getGrafanaReplicas(cr)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getGrafanaContainerImage(cr),

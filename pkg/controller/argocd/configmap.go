@@ -92,15 +92,14 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		if err := r.reconcileGrafanaConfiguration(cr); err != nil {
-			return err
-		}
-
-		if err := r.reconcileGrafanaDashboards(cr); err != nil {
-			return err
-		}
+	if err := r.reconcileGrafanaConfiguration(cr); err != nil {
+		return err
 	}
+
+	if err := r.reconcileGrafanaDashboards(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -184,7 +183,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 		return nil // ConfigMap found, do nothing
 	}
 
-	dashboards, err := filepath.Glob("/var/lib/grafana/dashboards/*.json")
+	pattern := filepath.Join(getGrafanaConfigPath(), "dashboards/*.json")
+	dashboards, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
 	}

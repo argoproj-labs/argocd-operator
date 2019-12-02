@@ -64,8 +64,7 @@ func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) 
 
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
-	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
-	if found {
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
 		return nil
 	}
@@ -96,8 +95,11 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
-	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
-	if found {
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.Grafana.Enabled {
+			// Service exists but enabled flag has been set to false, delete the Service
+			return r.client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -122,8 +124,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 
 func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("metrics", "metrics", cr)
-	found := r.isObjectFound(cr.Namespace, svc.Name, svc)
-	if found {
+	if r.isObjectFound(cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
 		return nil
 	}
@@ -291,12 +292,9 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsOpenShift() {
-		err = r.reconcileGrafanaService(cr)
-		if err != nil {
-			return err
-		}
+	err = r.reconcileGrafanaService(cr)
+	if err != nil {
+		return err
 	}
-
 	return nil
 }

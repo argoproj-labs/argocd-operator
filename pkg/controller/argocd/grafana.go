@@ -18,15 +18,12 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
-)
-
-const (
-	grafanaConfigDir = "/var/lib/grafana"
 )
 
 // GrafanaConfig represents the Grafana configuration options.
@@ -47,6 +44,15 @@ type GrafanaSecurityConfig struct {
 	SecretKey string
 }
 
+// getGrafanaHost will return the hostname value for Grafana.
+func getGrafanaHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("grafana", cr)
+	if len(cr.Spec.Grafana.Host) > 0 {
+		host = cr.Spec.Grafana.Host
+	}
+	return host
+}
+
 // getGrafanaReplicas will return the size value for the Grafana replica count.
 func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultGrafanaReplicas
@@ -56,11 +62,20 @@ func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	return &replicas
 }
 
+// getGrafanaConfigPath will return the path for the Grafana configuration templates
+func getGrafanaConfigPath() string {
+	path := os.Getenv("GRAFANA_CONFIG_PATH")
+	if len(path) > 0 {
+		return path
+	}
+	return ArgoCDDefaultGrafanaConfigPath
+}
+
 // loadGrafanaConfigs will scan the config directory and read any files ending with '.yaml'
 func loadGrafanaConfigs() (map[string]string, error) {
 	data := make(map[string]string)
 
-	pattern := filepath.Join(grafanaConfigDir, "*.yaml")
+	pattern := filepath.Join(getGrafanaConfigPath(), "*.yaml")
 	configs, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, err
@@ -84,7 +99,7 @@ func loadGrafanaConfigs() (map[string]string, error) {
 func loadGrafanaTemplates(c *GrafanaConfig) (map[string]string, error) {
 	data := make(map[string]string)
 
-	templateDir := filepath.Join(grafanaConfigDir, "templates")
+	templateDir := filepath.Join(getGrafanaConfigPath(), "templates")
 	entries, err := ioutil.ReadDir(templateDir)
 	if err != nil {
 		return nil, err
