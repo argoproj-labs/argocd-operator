@@ -142,6 +142,10 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoproj.ArgoCD) error {
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
 	cm := newConfigMapWithSuffix(ArgoCDGrafanaConfigMapSuffix, cr)
 	if r.isObjectFound(cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, do nothing
@@ -178,6 +182,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
 	cm := newConfigMapWithSuffix(ArgoCDGrafanaDashboardConfigMapSuffix, cr)
 	if r.isObjectFound(cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, do nothing
