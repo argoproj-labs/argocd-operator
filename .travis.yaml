@@ -1,0 +1,11 @@
+dist: xenial
+language: go
+go:
+- "1.12.x"
+go_import_path: github.com/jmckind/argocd-operator
+env:
+  - GO111MODULE=on
+cache:
+  directories:
+  - $GOCACHE
+  - $GOPATH/pkg/mod
