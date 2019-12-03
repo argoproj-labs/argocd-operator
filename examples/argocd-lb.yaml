@@ -3,10 +3,8 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    purpose: example
     example: lb
 spec:
   server:
-    insecure: false
     service:
       type: LoadBalancer

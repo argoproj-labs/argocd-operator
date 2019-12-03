@@ -275,6 +275,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 		return nil // Deployment found, do nothing
 	}
 
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
