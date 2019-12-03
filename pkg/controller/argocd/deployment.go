@@ -272,6 +272,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.client.Delete(context.TODO(), deploy)
 		}
+		if hasGrafanaSpecChanged(deploy, cr) {
+			deploy.Spec.Replicas = &cr.Spec.Grafana.Size
+			return r.client.Update(context.TODO(), deploy)
+		}
 		return nil // Deployment found, do nothing
 	}
 

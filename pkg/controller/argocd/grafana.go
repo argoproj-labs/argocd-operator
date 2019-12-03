@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 // GrafanaConfig represents the Grafana configuration options.
@@ -69,6 +70,14 @@ func getGrafanaConfigPath() string {
 		return path
 	}
 	return ArgoCDDefaultGrafanaConfigPath
+}
+
+// hasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
+func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoproj.ArgoCD) bool {
+	if desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != desired.Spec.Grafana.Size {
+		return true
+	}
+	return false
 }
 
 // loadGrafanaConfigs will scan the config directory and read any files ending with '.yaml'
