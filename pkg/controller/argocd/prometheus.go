@@ -49,6 +49,14 @@ func IsPrometheusAPIAvailable() bool {
 	return prometheusAPIFound
 }
 
+// hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
+func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
+	if desired.Spec.Prometheus.Size >= 0 && *actual.Spec.Replicas != desired.Spec.Prometheus.Size {
+		return true
+	}
+	return false
+}
+
 // verifyPrometheusAPI will verify that the Prometheus API is present.
 func verifyPrometheusAPI() error {
 	found, err := verifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
@@ -138,6 +146,10 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Prometheus.Enabled {
 			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
 			return r.client.Delete(context.TODO(), prometheus)
+		}
+		if hasPrometheusSpecChanged(prometheus, cr) {
+			prometheus.Spec.Replicas = &cr.Spec.Prometheus.Size
+			return r.client.Update(context.TODO(), prometheus)
 		}
 		return nil // Prometheus found, do nothing
 	}
