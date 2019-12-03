@@ -81,7 +81,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
 	return cmd
 }
 
-// newDeployment retuns a new Deployment instance for the given ArgoCD.
+// newDeployment returns a new Deployment instance for the given ArgoCD.
 func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -92,7 +92,7 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	}
 }
 
-// newDeploymentWithName retuns a new Deployment instance for the given ArgoCD using the given name.
+// newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
 func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
@@ -120,7 +120,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 	return deploy
 }
 
-// newDeploymentWithSuffix retuns a new Deployment instance for the given ArgoCD using the given suffix.
+// newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
 func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }

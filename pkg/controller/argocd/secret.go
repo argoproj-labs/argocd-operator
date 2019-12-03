@@ -88,7 +88,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	return secret, nil
 }
 
-// newSecret retuns a new Secret instance.
+// newSecret returns a new Secret instance.
 func newSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

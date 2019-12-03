@@ -45,7 +45,7 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return nameWithSuffix(ArgoCDCASuffix, cr)
 }
 
-// newConfigMap retuns a new ConfigMap instance for the given ArgoCD.
+// newConfigMap returns a new ConfigMap instance for the given ArgoCD.
 func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{

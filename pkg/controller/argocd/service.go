@@ -44,7 +44,7 @@ func newService(cr *argoproj.ArgoCD) *corev1.Service {
 	}
 }
 
-// newService retuns a new Service instance.
+// newService returns a new Service instance.
 func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
 	svc := newService(cr)
 	svc.ObjectMeta.Name = name
@@ -57,7 +57,7 @@ func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *cor
 	return svc
 }
 
-// newServiceWithSuffix retuns a new Service instance for the given ArgoCD using the given suffix.
+// newServiceWithSuffix returns a new Service instance for the given ArgoCD using the given suffix.
 func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *corev1.Service {
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }

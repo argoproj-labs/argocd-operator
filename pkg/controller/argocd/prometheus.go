@@ -67,7 +67,7 @@ func verifyPrometheusAPI() error {
 	return nil
 }
 
-// newPrometheus retuns a new Prometheus instance for the given ArgoCD.
+// newPrometheus returns a new Prometheus instance for the given ArgoCD.
 func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
 		ObjectMeta: metav1.ObjectMeta{
@@ -78,7 +78,7 @@ func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 	}
 }
 
-// newServiceMonitor retuns a new ServiceMonitor instance.
+// newServiceMonitor returns a new ServiceMonitor instance.
 func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,7 +89,7 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	}
 }
 
-// newServiceMonitorWithName retuns a new ServiceMonitor instance for the given ArgoCD using the given name.
+// newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
 func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	svcmon := newServiceMonitor(cr)
 	svcmon.ObjectMeta.Name = name
@@ -102,7 +102,7 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 	return svcmon
 }
 
-// newServiceMonitorWithSuffix retuns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
+// newServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
 func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
