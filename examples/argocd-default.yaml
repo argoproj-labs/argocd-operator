@@ -18,6 +18,7 @@ spec:
     enabled: false
     host: example-argocd-grafana
     image: grafana/grafana
+    size: 1
     version: 6.4.2
   ingress:
     annotations: {}
