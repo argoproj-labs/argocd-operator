@@ -1,6 +1,6 @@
 # Argo CD Operator
 [![Build Status](https://travis-ci.org/jmckind/argocd-operator.svg?branch=master)](https://travis-ci.org/jmckind/argocd-operator)
-[![Go Report Card](https://goreportcard.com/badge/jmckind/argocd-operator "Go Report Card")](https://goreportcard.com/report/jmckind/argocd-operator)
+[![Go Report Card](https://goreportcard.com/badge/argoproj-labs/argocd-operator "Go Report Card")](https://goreportcard.com/report/argoproj-labs/argocd-operator)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](code-of-conduct.md) 
 
 A Kubernetes operator for managing Argo CD deployments.
