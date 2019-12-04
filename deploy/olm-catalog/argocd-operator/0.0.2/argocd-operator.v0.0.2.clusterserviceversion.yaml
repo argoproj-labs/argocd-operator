@@ -9,7 +9,7 @@ metadata:
     containerImage: quay.io/jmckind/argocd-operator:v0.0.2
     createdAt: 2019-09-04 06:44:32
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
-    repository: https://github.com/jmckind/argocd-operator
+    repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
   name: argocd-operator.v0.0.2
   namespace: placeholder
@@ -203,7 +203,7 @@ spec:
     name: example-argocd
     ```
 
-    See the documentation and examples at the [official github repository](https://github.com/jmckind/argocd-operator) 
+    See the documentation and examples at the [official github repository](https://github.com/argoproj-labs/argocd-operator) 
     for more informaction.
   displayName: Argo CD
   icon:
@@ -456,7 +456,7 @@ spec:
   - name: Argo CD
     url: https://argoproj.github.io/argo-cd/
   - name: Operator Repo
-    url: https://github.com/jmckind/argocd-operator
+    url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
   - email: john.mckenzie@redhat.com
     name: John McKenzie

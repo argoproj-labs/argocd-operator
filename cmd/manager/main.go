@@ -25,9 +25,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/jmckind/argocd-operator/pkg/apis"
-	"github.com/jmckind/argocd-operator/pkg/controller"
-	"github.com/jmckind/argocd-operator/pkg/controller/argocd"
+	"github.com/argoproj-labs/argocd-operator/pkg/apis"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"

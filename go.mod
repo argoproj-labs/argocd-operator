@@ -1,8 +1,9 @@
-module github.com/jmckind/argocd-operator
+module github.com/argoproj-labs/argocd-operator
 
 require (
 	github.com/coreos/prometheus-operator v0.29.0
 	github.com/go-openapi/spec v0.19.0
+	github.com/jmckind/argocd-operator v0.0.2
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
 	github.com/operator-framework/operator-sdk v0.12.0
 	github.com/spf13/pflag v1.0.3

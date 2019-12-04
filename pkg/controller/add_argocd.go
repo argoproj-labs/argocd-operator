@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/jmckind/argocd-operator/pkg/controller/argocd"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
 )
 
 func init() {

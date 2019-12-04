@@ -23,7 +23,7 @@ import (
 	"strings"
 	"text/template"
 
-	argoproj "github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 )
 

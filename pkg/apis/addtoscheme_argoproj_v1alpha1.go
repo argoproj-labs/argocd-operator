@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/jmckind/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 )
 
 func init() {
