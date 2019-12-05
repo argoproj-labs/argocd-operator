@@ -5,9 +5,12 @@
 
 The requirements for building the operator are fairly minimal.
 
- * Bash or equivalent 
  * Go 1.12+
  * Operator SDK 0.10+
+ * Bash or equivalent 
+ * Podman
+
+By default, the project uses [Podman][podman_link] for building container images, this can be changed to `docker` or `buildah` by setting the `ARGOCD_OPERATOR_IMAGE_BUILDER` enviromnet variable to the tool of choice.
 
 ### Building from Source
 
@@ -45,3 +48,4 @@ Bundle the operator for usage in OLM as a CatalogSource.
 ```bash
 hack/bundle.sh
 ```
+[podman_link]:https://podman.io
