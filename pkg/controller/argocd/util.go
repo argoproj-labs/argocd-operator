@@ -72,11 +72,29 @@ const (
 	// ArgoCDDefaultGrafanaAdminUsername is the Grafana admin username to use when not specified.
 	ArgoCDDefaultGrafanaAdminUsername = "admin"
 
+	// ArgoCDDefaultGrafanaAdminPasswordLength is the length of the generated default Grafana admin password.
+	ArgoCDDefaultGrafanaAdminPasswordLength = 32
+
+	// ArgoCDDefaultGrafanaAdminPasswordNumDigits is the number of digits to use for the generated default Grafana admin password.
+	ArgoCDDefaultGrafanaAdminPasswordNumDigits = 5
+
+	// ArgoCDDefaultGrafanaAdminPasswordNumSymbols is the number of symbols to use for the generated default Grafana admin password.
+	ArgoCDDefaultGrafanaAdminPasswordNumSymbols = 5
+
 	// ArgoCDDefaultGrafanaImage is the Grafana container image to use when not specified.
 	ArgoCDDefaultGrafanaImage = "grafana/grafana"
 
 	// ArgoCDDefaultGrafanaReplicas is the default Grafana replica count.
 	ArgoCDDefaultGrafanaReplicas = int32(1)
+
+	// ArgoCDDefaultGrafanaSecretKeyLength is the length of the generated default Grafana secret key.
+	ArgoCDDefaultGrafanaSecretKeyLength = 20
+
+	// ArgoCDDefaultGrafanaSecretKeyNumDigits is the number of digits to use for the generated default Grafana secret key.
+	ArgoCDDefaultGrafanaSecretKeyNumDigits = 5
+
+	// ArgoCDDefaultGrafanaSecretKeyNumSymbols is the number of symbols to use for the generated default Grafana secret key.
+	ArgoCDDefaultGrafanaSecretKeyNumSymbols = 0
 
 	// ArgoCDDefaultGrafanaConfigPath is the default Grafana configuration directory when not specified.
 	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
@@ -101,6 +119,15 @@ const (
 
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
+
+	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
+	ArgoCDKeyGrafanaAdminUsername = "admin.username"
+
+	// ArgoCDKeyGrafanaAdminPassword is the admin password key for labels.
+	ArgoCDKeyGrafanaAdminPassword = "admin.password"
+
+	// ArgoCDKeyGrafanaSecretKey is the "secret key" key for labels.
+	ArgoCDKeyGrafanaSecretKey = "secret.key"
 
 	// ArgoCDKeyIngressBackendProtocol is the backend-protocol key for labels.
 	ArgoCDKeyIngressBackendProtocol = "nginx.ingress.kubernetes.io/backend-protocol"

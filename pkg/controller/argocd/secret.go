@@ -195,13 +195,29 @@ func (r *ReconcileArgoCD) reconcileCASecret(cr *argoproj.ArgoCD) error {
 
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
 func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
 	secret := newSecretWithSuffix("grafana", cr)
 	if r.isObjectFound(cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
+	adminPassword, err := getGrafanaAdminPassword()
+	if err != nil {
+		return err
+	}
+
+	secretKey, err := getGrafanaSecretKey()
+	if err != nil {
+		return err
+	}
+
 	secret.Data = map[string][]byte{
-		"admin": []byte("secret"),
+		ArgoCDKeyGrafanaAdminUsername: []byte(ArgoCDDefaultGrafanaAdminUsername),
+		ArgoCDKeyGrafanaAdminPassword: adminPassword,
+		ArgoCDKeyGrafanaSecretKey:     secretKey,
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {

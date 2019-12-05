@@ -151,13 +151,19 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 		return nil // ConfigMap found, do nothing
 	}
 
+	secret := newSecretWithSuffix("grafana", cr)
+	secret, err := r.getSecret(secret.Name, cr)
+	if err != nil {
+		return err
+	}
+
 	grafanaConfig := GrafanaConfig{
 		Security: GrafanaSecurityConfig{
-			AdminUser:     ArgoCDDefaultGrafanaAdminUsername,
-			AdminPassword: "secret",
-			SecretKey:     "SW2YcwTIb9zpOOhoPsMm",
+			AdminUser:     string(secret.Data[ArgoCDKeyGrafanaAdminUsername]),
+			AdminPassword: string(secret.Data[ArgoCDKeyGrafanaAdminPassword]),
+			SecretKey:     string(secret.Data[ArgoCDKeyGrafanaSecretKey]),
 		},
-	} // TODO: Pull these values from CR!
+	}
 
 	data, err := loadGrafanaConfigs()
 	if err != nil {
