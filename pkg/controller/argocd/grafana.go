@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -45,6 +46,28 @@ type GrafanaSecurityConfig struct {
 	SecretKey string
 }
 
+// getGrafanaAdminPassword will generate and return the admin password for Grafana.
+func getGrafanaAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		ArgoCDDefaultGrafanaAdminPasswordLength,
+		ArgoCDDefaultGrafanaAdminPasswordNumDigits,
+		ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
+// getGrafanaSecretKey will generate and return the secret key for Grafana.
+func getGrafanaSecretKey() ([]byte, error) {
+	key, err := password.Generate(
+		ArgoCDDefaultGrafanaSecretKeyLength,
+		ArgoCDDefaultGrafanaSecretKeyNumDigits,
+		ArgoCDDefaultGrafanaSecretKeyNumSymbols,
+		false, false)
+
+	return []byte(key), err
+}
+
 // getGrafanaHost will return the hostname value for Grafana.
 func getGrafanaHost(cr *argoproj.ArgoCD) string {
 	host := nameWithSuffix("grafana", cr)
@@ -57,8 +80,8 @@ func getGrafanaHost(cr *argoproj.ArgoCD) string {
 // getGrafanaReplicas will return the size value for the Grafana replica count.
 func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultGrafanaReplicas
-	if cr.Spec.Prometheus.Size > replicas {
-		replicas = cr.Spec.Grafana.Size
+	if cr.Spec.Grafana.Size != nil && *cr.Spec.Grafana.Size != replicas {
+		replicas = *cr.Spec.Grafana.Size
 	}
 	return &replicas
 }
@@ -74,8 +97,15 @@ func getGrafanaConfigPath() string {
 
 // hasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
 func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoproj.ArgoCD) bool {
-	if desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != desired.Spec.Grafana.Size {
-		return true
+	// Replica count
+	if desired.Spec.Grafana.Size != nil { // Replica count specified in desired state
+		if *desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != *desired.Spec.Grafana.Size {
+			return true
+		}
+	} else { // Replica count NOT specified in desired state
+		if *actual.Spec.Replicas != ArgoCDDefaultGrafanaReplicas {
+			return true
+		}
 	}
 	return false
 }

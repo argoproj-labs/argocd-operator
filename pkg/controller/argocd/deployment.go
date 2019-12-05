@@ -273,7 +273,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 			return r.client.Delete(context.TODO(), deploy)
 		}
 		if hasGrafanaSpecChanged(deploy, cr) {
-			deploy.Spec.Replicas = &cr.Spec.Grafana.Size
+			deploy.Spec.Replicas = cr.Spec.Grafana.Size
 			return r.client.Update(context.TODO(), deploy)
 		}
 		return nil // Deployment found, do nothing

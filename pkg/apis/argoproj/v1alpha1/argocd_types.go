@@ -89,7 +89,7 @@ type ArgoCDGrafanaSpec struct {
 	Image string `json:"image,omitempty"`
 
 	// Size is the replica count for the Grafana Deployment.
-	Size int32 `json:"size,omitempty"`
+	Size *int32 `json:"size,omitempty"`
 
 	// Version is the Grafana container image tag.
 	Version string `json:"version,omitempty"`
@@ -125,7 +125,7 @@ type ArgoCDPrometheusSpec struct {
 	Host string `json:"host,omitempty"`
 
 	// Size is the replica count for the Prometheus StatefulSet.
-	Size int32 `json:"size,omitempty"`
+	Size *int32 `json:"size,omitempty"`
 }
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
