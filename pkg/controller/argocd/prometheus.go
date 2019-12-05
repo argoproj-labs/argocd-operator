@@ -38,8 +38,10 @@ func getPrometheusHost(cr *argoproj.ArgoCD) string {
 // getPrometheusSize will return the size value for the Prometheus replica count.
 func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultPrometheusReplicas
-	if *cr.Spec.Prometheus.Size > replicas {
-		replicas = *cr.Spec.Prometheus.Size
+	if cr.Spec.Prometheus.Size != nil {
+		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
+			replicas = *cr.Spec.Prometheus.Size
+		}
 	}
 	return &replicas
 }
@@ -52,12 +54,16 @@ func IsPrometheusAPIAvailable() bool {
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
 func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
 	// Replica count
-	if desired.Spec.Prometheus.Size != nil { // Replica count specified in desired state
-		if *desired.Spec.Prometheus.Size >= 0 && *actual.Spec.Replicas != *desired.Spec.Prometheus.Size {
+	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
+		if actual.Spec.Replicas != nil { // Actual replicas value is set
+			if *actual.Spec.Replicas != *desired.Spec.Prometheus.Size {
+				return true
+			}
+		} else if *desired.Spec.Prometheus.Size != ArgoCDDefaultPrometheusReplicas { // Actual replicas value is NOT set, but desired replicas differs from the default
 			return true
 		}
 	} else { // Replica count NOT specified in desired state
-		if *actual.Spec.Replicas != ArgoCDDefaultPrometheusReplicas {
+		if actual.Spec.Replicas != nil && *actual.Spec.Replicas != ArgoCDDefaultPrometheusReplicas {
 			return true
 		}
 	}
