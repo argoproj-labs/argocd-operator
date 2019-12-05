@@ -80,8 +80,10 @@ func getGrafanaHost(cr *argoproj.ArgoCD) string {
 // getGrafanaReplicas will return the size value for the Grafana replica count.
 func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := ArgoCDDefaultGrafanaReplicas
-	if cr.Spec.Grafana.Size != nil && *cr.Spec.Grafana.Size != replicas {
-		replicas = *cr.Spec.Grafana.Size
+	if cr.Spec.Grafana.Size != nil {
+		if *cr.Spec.Grafana.Size >= 0 && *cr.Spec.Grafana.Size != replicas {
+			replicas = *cr.Spec.Grafana.Size
+		}
 	}
 	return &replicas
 }
