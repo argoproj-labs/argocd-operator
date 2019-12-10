@@ -17,6 +17,7 @@
 # General vars
 export ARGOCD_OPERATOR_NAME=${ARGOCD_OPERATOR_NAME:-"argocd-operator"}
 export ARGOCD_OPERATOR_NAMESPACE=${ARGOCD_OPERATOR_NAMESPACE:-"argocd"}
+export ARGOCD_OPERATOR_VERSION=${ARGOCD_OPERATOR_VERSION:-`awk '$1 == "Version" {gsub(/"/, "", $3); print $3}' version/version.go`}
 
 # Container image vars
 export ARGOCD_OPERATOR_IMAGE_BUILDER=${ARGOCD_OPERATOR_IMAGE_BUILDER:-"podman"}
