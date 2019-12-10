@@ -28,6 +28,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/apis"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+	"github.com/argoproj-labs/argocd-operator/version"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -59,6 +60,7 @@ func printVersion() {
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+	log.Info(fmt.Sprintf("Version of %s-operator: %v", argocd.ArgoCDAppName, version.Version))
 }
 
 func main() {
