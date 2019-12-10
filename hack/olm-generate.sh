@@ -17,7 +17,7 @@
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
-echo "VERSION: ${ARGOCD_OPERATOR_VERSION}"
+echo "Generating CSV for version ${ARGOCD_OPERATOR_VERSION}"
 
 operator-sdk olm-catalog gen-csv \
     --operator-name ${ARGOCD_OPERATOR_NAME} \
