@@ -6,7 +6,7 @@ metadata:
     example: defaults
 spec:
   image: argoproj/argocd
-  version: v1.2.5
+  version: v1.3.5
   controller:
     processors:
       operation: 10
@@ -19,7 +19,7 @@ spec:
     host: example-argocd-grafana
     image: grafana/grafana
     size: 1
-    version: 6.4.2
+    version: 6.5.1
   ingress:
     annotations: {}
     enabled: false

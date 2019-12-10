@@ -61,7 +61,7 @@ const (
 	ArgoCDDefaultArgoServerStatusProcessors = int32(20)
 
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
-	ArgoCDDefaultArgoVersion = "v1.2.5"
+	ArgoCDDefaultArgoVersion = "v1.3.5"
 
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
 	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
@@ -100,7 +100,7 @@ const (
 	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
-	ArgoCDDefaultGrafanaVersion = "6.4.2"
+	ArgoCDDefaultGrafanaVersion = "6.5.1"
 
 	// ArgoCDDefaultIngressPath is the path to use for the Ingress when not specified.
 	ArgoCDDefaultIngressPath = "/"
