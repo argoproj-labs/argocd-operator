@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -26,26 +28,26 @@ import (
 )
 
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
-func getDefaultIngressAnnotations(cr *argoproj.ArgoCD) map[string]string {
+func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	annotations := make(map[string]string)
-	annotations[ArgoCDKeyIngressClass] = "nginx"
+	annotations[argoproj.ArgoCDKeyIngressClass] = "nginx"
 	return annotations
 }
 
 // getIngressAnnotations will retun the Ingress Annotations for the given ArgoCD.
-func getIngressAnnotations(cr *argoproj.ArgoCD) map[string]string {
+func getIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	atns := getDefaultIngressAnnotations(cr)
 
 	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = appendStringMap(atns, cr.Spec.Ingress.Annotations)
+		atns = argoutil.AppendStringMap(atns, cr.Spec.Ingress.Annotations)
 	}
 
 	return atns
 }
 
 // getIngressPath will return the Ingress Path for the given ArgoCD.
-func getIngressPath(cr *argoproj.ArgoCD) string {
-	path := ArgoCDDefaultIngressPath
+func getIngressPath(cr *argoprojv1a1.ArgoCD) string {
+	path := argoproj.ArgoCDDefaultIngressPath
 	if len(cr.Spec.Ingress.Path) > 0 {
 		path = cr.Spec.Ingress.Path
 	}
@@ -53,7 +55,7 @@ func getIngressPath(cr *argoproj.ArgoCD) string {
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.
-func newIngress(cr *argoproj.ArgoCD) *extv1beta1.Ingress {
+func newIngress(cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
 	return &extv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -64,24 +66,24 @@ func newIngress(cr *argoproj.ArgoCD) *extv1beta1.Ingress {
 }
 
 // newIngressWithName returns a new Ingress with the given name and ArgoCD.
-func newIngressWithName(name string, cr *argoproj.ArgoCD) *extv1beta1.Ingress {
+func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
 	ingress := newIngress(cr)
 	ingress.ObjectMeta.Name = name
 
 	lbls := ingress.ObjectMeta.Labels
-	lbls[ArgoCDKeyName] = name
+	lbls[argoproj.ArgoCDKeyName] = name
 	ingress.ObjectMeta.Labels = lbls
 
 	return ingress
 }
 
 // newIngressWithSuffix returns a new Ingress with the given name suffix for the ArgoCD.
-func newIngressWithSuffix(suffix string, cr *argoproj.ArgoCD) *extv1beta1.Ingress {
+func newIngressWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
 	return newIngressWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
 // reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
-func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 	if !cr.Spec.Ingress.Enabled {
 		return nil // Ingress not enabled, do nothing.
 	}
@@ -105,9 +107,9 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
-func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngress(cr)
-	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
@@ -117,8 +119,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -145,7 +147,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: ArgoCDSecretName,
+			SecretName: argoproj.ArgoCDSecretName,
 		},
 	}
 
@@ -156,9 +158,9 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
-	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
@@ -168,7 +170,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[ArgoCDKeyIngressBackendProtocol] = "GRPC"
+	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -195,7 +197,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: ArgoCDSecretName,
+			SecretName: argoproj.ArgoCDSecretName,
 		},
 	}
 
@@ -206,9 +208,9 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 }
 
 // reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
-	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled || !cr.Spec.Grafana.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
@@ -222,8 +224,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -250,7 +252,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: ArgoCDSecretName,
+			SecretName: argoproj.ArgoCDSecretName,
 		},
 	}
 
@@ -261,9 +263,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
-func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
-	if r.isObjectFound(cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Ingress.Enabled || !cr.Spec.Prometheus.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
@@ -277,8 +279,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -305,7 +307,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: ArgoCDSecretName,
+			SecretName: argoproj.ArgoCDSecretName,
 		},
 	}
 

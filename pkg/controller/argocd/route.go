@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -34,7 +36,7 @@ func IsRouteAPIAvailable() bool {
 
 // verifyRouteAPI will verify that the Prometheus API is present.
 func verifyRouteAPI() error {
-	found, err := verifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
+	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
@@ -43,7 +45,7 @@ func verifyRouteAPI() error {
 }
 
 // newRoute returns a new Route instance for the given ArgoCD.
-func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
+func newRoute(cr *argoprojv1a1.ArgoCD) *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -54,24 +56,24 @@ func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 }
 
 // newRouteWithName returns a new Route with the given name and ArgoCD.
-func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
+func newRouteWithName(name string, cr *argoprojv1a1.ArgoCD) *routev1.Route {
 	route := newRoute(cr)
 	route.ObjectMeta.Name = name
 
 	lbls := route.ObjectMeta.Labels
-	lbls[ArgoCDKeyName] = name
+	lbls[argoproj.ArgoCDKeyName] = name
 	route.ObjectMeta.Labels = lbls
 
 	return route
 }
 
 // newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
-func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
+func newRouteWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *routev1.Route {
 	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
 // reconcileRoutes will ensure that all ArgoCD Routes are present.
-func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileGrafanaRoute(cr); err != nil {
 		return err
 	}
@@ -87,9 +89,9 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
-func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
-	if r.isObjectFound(cr.Namespace, route.Name, route) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Grafana.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
@@ -114,9 +116,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
-func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
-	if r.isObjectFound(cr.Namespace, route.Name, route) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Prometheus.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
@@ -141,9 +143,9 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.
-func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("server", cr)
-	if r.isObjectFound(cr.Namespace, route.Name, route) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
 		return nil // Route found, do nothing
 	}
 

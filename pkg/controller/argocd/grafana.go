@@ -23,7 +23,8 @@ import (
 	"strings"
 	"text/template"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -49,9 +50,9 @@ type GrafanaSecurityConfig struct {
 // getGrafanaAdminPassword will generate and return the admin password for Grafana.
 func getGrafanaAdminPassword() ([]byte, error) {
 	pass, err := password.Generate(
-		ArgoCDDefaultGrafanaAdminPasswordLength,
-		ArgoCDDefaultGrafanaAdminPasswordNumDigits,
-		ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
+		argoproj.ArgoCDDefaultGrafanaAdminPasswordLength,
+		argoproj.ArgoCDDefaultGrafanaAdminPasswordNumDigits,
+		argoproj.ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
 		false, false)
 
 	return []byte(pass), err
@@ -60,16 +61,16 @@ func getGrafanaAdminPassword() ([]byte, error) {
 // getGrafanaSecretKey will generate and return the secret key for Grafana.
 func getGrafanaSecretKey() ([]byte, error) {
 	key, err := password.Generate(
-		ArgoCDDefaultGrafanaSecretKeyLength,
-		ArgoCDDefaultGrafanaSecretKeyNumDigits,
-		ArgoCDDefaultGrafanaSecretKeyNumSymbols,
+		argoproj.ArgoCDDefaultGrafanaSecretKeyLength,
+		argoproj.ArgoCDDefaultGrafanaSecretKeyNumDigits,
+		argoproj.ArgoCDDefaultGrafanaSecretKeyNumSymbols,
 		false, false)
 
 	return []byte(key), err
 }
 
 // getGrafanaHost will return the hostname value for Grafana.
-func getGrafanaHost(cr *argoproj.ArgoCD) string {
+func getGrafanaHost(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("grafana", cr)
 	if len(cr.Spec.Grafana.Host) > 0 {
 		host = cr.Spec.Grafana.Host
@@ -78,8 +79,8 @@ func getGrafanaHost(cr *argoproj.ArgoCD) string {
 }
 
 // getGrafanaReplicas will return the size value for the Grafana replica count.
-func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
-	replicas := ArgoCDDefaultGrafanaReplicas
+func getGrafanaReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	replicas := argoproj.ArgoCDDefaultGrafanaReplicas
 	if cr.Spec.Grafana.Size != nil {
 		if *cr.Spec.Grafana.Size >= 0 && *cr.Spec.Grafana.Size != replicas {
 			replicas = *cr.Spec.Grafana.Size
@@ -94,18 +95,18 @@ func getGrafanaConfigPath() string {
 	if len(path) > 0 {
 		return path
 	}
-	return ArgoCDDefaultGrafanaConfigPath
+	return argoproj.ArgoCDDefaultGrafanaConfigPath
 }
 
 // hasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoproj.ArgoCD) bool {
+func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoprojv1a1.ArgoCD) bool {
 	// Replica count
 	if desired.Spec.Grafana.Size != nil { // Replica count specified in desired state
 		if *desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != *desired.Spec.Grafana.Size {
 			return true
 		}
 	} else { // Replica count NOT specified in desired state
-		if *actual.Spec.Replicas != ArgoCDDefaultGrafanaReplicas {
+		if *actual.Spec.Replicas != argoproj.ArgoCDDefaultGrafanaReplicas {
 			return true
 		}
 	}
