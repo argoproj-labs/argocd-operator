@@ -52,9 +52,9 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 // getArgoImportCommand will return the command for the ArgoCD import process.
 func getArgoImportCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-util")
-	cmd = append(cmd, "import")
-	cmd = append(cmd, "/backups/argocd-backup.yaml")
+	cmd = append(cmd, "/bin/bash")
+	cmd = append(cmd, "-c")
+	cmd = append(cmd, "argocd-util import - < /backups/argocd-backup.yaml")
 	return cmd
 }
 
