@@ -5,4 +5,4 @@ metadata:
   labels:
     example: basic
 spec:
-  version: v1.3.4
+  version: v1.4.0

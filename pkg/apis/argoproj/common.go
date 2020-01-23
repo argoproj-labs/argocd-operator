@@ -43,7 +43,7 @@ const (
 	ArgoCDDefaultArgoServerStatusProcessors = int32(20)
 
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
-	ArgoCDDefaultArgoVersion = "v1.3.5"
+	ArgoCDDefaultArgoVersion = "v1.4.1"
 
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
 	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
