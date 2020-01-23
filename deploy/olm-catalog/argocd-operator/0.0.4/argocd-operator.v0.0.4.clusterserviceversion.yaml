@@ -30,6 +30,8 @@ spec:
     - kind: ArgoCDExport
       name: argocdexports.argoproj.io
       version: v1alpha1
+      displayName: ArgoCDExport
+      description: ArgoCDExport describes the desired state for the export of a given Argo CD deployment.
     - kind: ArgoCD
       name: argocds.argoproj.io
       version: v1alpha1
