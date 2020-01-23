@@ -14,6 +14,15 @@ rules:
   - events
   - configmaps
   - secrets
+  - persistentvolumeclaims
+  - volumes
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - cronjob
+  - job
   verbs:
   - '*'
 - apiGroups:
@@ -52,7 +61,8 @@ rules:
 - apiGroups:
   - argoproj.io
   resources:
-  - '*'
+  - argocds
+  - argocdexports
   verbs:
   - '*'
 - apiGroups:
