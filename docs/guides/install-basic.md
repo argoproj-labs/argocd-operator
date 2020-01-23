@@ -48,16 +48,16 @@ kubectl create -f deploy/role_binding.yaml
 
 #### CRDs
 
-Add the ArgoCD CRDs to the cluster.
+Add the upstream Argo CD CRDs to the cluster.
 
 ```bash
 kubectl create -f deploy/argo-cd
 ```
 
-Add the ArgoCD Operator CRD to the cluster
+Add the ArgoCD Operator CRDs to the cluster.
 
 ```bash
-kubectl create -f deploy/crds/argoproj_v1alpha1_argocd_crd.yaml
+kubectl create -f deploy/crds
 ```
 
 There should be three CRDs present for ArgoCD on the cluster.
@@ -70,6 +70,7 @@ kubectl get crd
 NAME                       CREATED AT
 applications.argoproj.io   2019-11-09T02:35:47Z
 appprojects.argoproj.io    2019-11-09T02:35:47Z
+argocdexports.argoproj.io  2019-11-09T02:36:02Z
 argocds.argoproj.io        2019-11-09T02:36:02Z
 ```
 
