@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: example-argocdexport
+spec:
+  argocd: example-argocd
+  schedule: ""
+  storage:
+    local:
+      pvc: {}
+    aws:
+      s3:
+        bucket: example-argocdexport
+        secret: example-argocdexport
+    azure:
+      storage:
+        bucket: example-argocdexport
+        secret: example-argocdexport
+    gcp:
+      storage:
+        bucket: example-argocdexport
+        secret: example-argocdexport

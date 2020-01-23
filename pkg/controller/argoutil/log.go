@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package argoutil
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func init() {
-	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, argocd.Add)
-}
+var log = logf.Log.WithName("argoutil")

@@ -12,21 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package argocdexport
 
 import (
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"context"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 )
 
-// AddToManagerFuncs is a list of functions to add all Controllers to the Manager
-var AddToManagerFuncs []func(manager.Manager) error
-
-// AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager) error {
-	for _, f := range AddToManagerFuncs {
-		if err := f(m); err != nil {
-			return err
+// reconcileStorage will ensure that the storage options for the ArgoCDExport are present.
+func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoprojv1a1.ArgoCDExport) error {
+	if cr.Spec.Storage == nil {
+		cr.Spec.Storage = &argoprojv1a1.ArgoCDExportStorageSpec{
+			Local: &argoprojv1a1.ArgoCDExportLocalStorageSpec{}, // Local is the default
 		}
+		return r.client.Update(context.TODO(), cr)
 	}
+
+	// Local storage
+	if err := r.reconcileLocalStorage(cr); err != nil {
+		return err
+	}
+
 	return nil
 }

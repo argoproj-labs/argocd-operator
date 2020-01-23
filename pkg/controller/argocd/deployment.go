@@ -18,7 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,19 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoproj.ArgoCD) []string {
-	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-repo-server")
-
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
-
-	return cmd
-}
-
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
-func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
+func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-application-controller")
 
@@ -57,8 +49,28 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD) []string {
 	return cmd
 }
 
+// getArgoImportCommand will return the command for the ArgoCD import process.
+func getArgoImportCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "/bin/bash")
+	cmd = append(cmd, "-c")
+	cmd = append(cmd, "argocd-util import - < /backups/argocd-backup.yaml")
+	return cmd
+}
+
+// getArgoRepoCommand will return the command for the ArgoCD Repo component.
+func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-repo-server")
+
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
+
+	return cmd
+}
+
 // getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
+func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -82,7 +94,7 @@ func getArgoServerCommand(cr *argoproj.ArgoCD) []string {
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -93,25 +105,25 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
-func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
 
 	lbls := deploy.ObjectMeta.Labels
-	lbls[ArgoCDKeyName] = name
-	lbls[ArgoCDKeyComponent] = component
+	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[argoproj.ArgoCDKeyComponent] = component
 	deploy.ObjectMeta.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				ArgoCDKeyName: name,
+				argoproj.ArgoCDKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					ArgoCDKeyName: name,
+					argoproj.ArgoCDKeyName: name,
 				},
 			},
 		},
@@ -121,18 +133,19 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 }
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
-func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
-func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
-	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+	podSpec := &deploy.Spec.Template.Spec
+	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
@@ -164,7 +177,30 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 		},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-application-controller"
+	// Handle import/restore from ArgoCDExport
+	if cr.Spec.Import != nil && len(cr.Spec.Import.Name) > 0 {
+		podSpec.InitContainers = []corev1.Container{{
+			Command:         getArgoImportCommand(cr),
+			Image:           getArgoContainerImage(cr),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            "argocd-import",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "backup-storage",
+				MountPath: "/backups",
+			}},
+		}}
+
+		podSpec.Volumes = []corev1.Volume{{
+			Name: "backup-storage",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: fmt.Sprintf("%s-import", cr.Spec.Import.Name),
+				},
+			},
+		}}
+	}
+
+	podSpec.ServiceAccountName = "argocd-application-controller"
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
@@ -173,7 +209,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoproj.
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 	err := r.reconcileApplicationControllerDeployment(cr)
 	if err != nil {
 		return err
@@ -208,9 +244,9 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
-func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -265,9 +301,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
-func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		if !cr.Spec.Grafana.Enabled {
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.client.Delete(context.TODO(), deploy)
@@ -370,9 +406,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 }
 
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
-func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -400,9 +436,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -456,7 +492,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ArgoCDKnownHostsConfigMapName,
+						Name: argoproj.ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -465,7 +501,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ArgoCDTLSCertsConfigMapName,
+						Name: argoproj.ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},
@@ -479,9 +515,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
-func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
-	if r.isObjectFound(cr.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		return nil // Deployment found, do nothing
 	}
 
@@ -536,7 +572,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ArgoCDKnownHostsConfigMapName,
+						Name: argoproj.ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -545,7 +581,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: ArgoCDTLSCertsConfigMapName,
+						Name: argoproj.ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},

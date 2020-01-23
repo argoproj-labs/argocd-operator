@@ -3,6 +3,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: basic
+    example: import
 spec:
-  version: v1.4.0
+  import:
+    name: example-argocdexport

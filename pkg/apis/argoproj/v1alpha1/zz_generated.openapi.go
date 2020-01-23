@@ -11,9 +11,12 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"./pkg/apis/argoproj/v1alpha1.ArgoCD":       schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref),
-		"./pkg/apis/argoproj/v1alpha1.ArgoCDSpec":   schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref),
-		"./pkg/apis/argoproj/v1alpha1.ArgoCDStatus": schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCD":             schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExport":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDExport(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec":   schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus": schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportStatus(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDSpec":         schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDStatus":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref),
 	}
 }
 
@@ -61,6 +64,107 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref common.ReferenceCallback) comm
 	}
 }
 
+func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExport(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ArgoCDExport is the Schema for the argocdexports API",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ArgoCDExportSpec defines the desired state of ArgoCDExport",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"argocd": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ArgoCD is the name of the ArgoCD instance to export.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"schedule": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"storage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Storage defines the storage configuration options.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"),
+						},
+					},
+				},
+				Required: []string{"argocd"},
+			},
+		},
+		Dependencies: []string{
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"},
+	}
+}
+
+func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ArgoCDExportStatus defines the observed state of ArgoCDExport",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is a simple, high-level summary of where the ArgoCDExport is in its lifecycle. There are five possible phase values: Pending: The ArgoCDExport has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the containers for the ArgoCDExport are still running, or in the process of starting or restarting. Succeeded: All containers for the ArgoCDExport have terminated in success, and will not be restarted. Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system. Unknown: For some reason the state of the ArgoCDExport could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"phase"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -91,6 +195,12 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Description: "Image is the ArgoCD container image for all ArgoCD components.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"import": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Import is the import/restore options for ArgoCD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec"),
 						},
 					},
 					"ingress": {
@@ -134,7 +244,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 

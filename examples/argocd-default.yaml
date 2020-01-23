@@ -6,7 +6,7 @@ metadata:
     example: defaults
 spec:
   image: argoproj/argocd
-  version: v1.3.5
+  version: v1.4.1
   controller:
     processors:
       operation: 10
