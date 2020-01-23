@@ -20,6 +20,7 @@ spec:
     image: grafana/grafana
     size: 1
     version: 6.5.1
+  import: {}
   ingress:
     annotations: {}
     enabled: false
