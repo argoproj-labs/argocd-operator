@@ -87,6 +87,15 @@ spec:
             image:
               description: Image is the ArgoCD container image for all ArgoCD components.
               type: string
+            import:
+              description: Import is the import/restore options for ArgoCD.
+              properties:
+                name:
+                  description: Name of an ArgoCDExport from which to import data.
+                  type: string
+              required:
+              - name
+              type: object
             ingress:
               description: Ingress defines the Ingress options for ArgoCD.
               properties:

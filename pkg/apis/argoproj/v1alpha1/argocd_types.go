@@ -95,6 +95,15 @@ type ArgoCDGrafanaSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
+type ArgoCDImportSpec struct {
+	// Name of an ArgoCDExport from which to import data.
+	Name string `json:"name"`
+
+	// Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.
+	Namespace *string `json:"namespace,omitempty"`
+}
+
 // ArgoCDIngressSpec defines the desired state for the Ingress resources.
 type ArgoCDIngressSpec struct {
 	// Annotations is the map of annotations to use for the Ingress resource.
@@ -178,6 +187,9 @@ type ArgoCDSpec struct {
 
 	// Image is the ArgoCD container image for all ArgoCD components.
 	Image string `json:"image,omitempty"`
+
+	// Import is the import/restore options for ArgoCD.
+	Import *ArgoCDImportSpec `json:"import,omitempty"`
 
 	// Ingress defines the Ingress options for ArgoCD.
 	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
