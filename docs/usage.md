@@ -3,6 +3,7 @@
 The Argo CD Operator manages the following resources.
 
 * [ArgoCD](#argocd-resource)
+* [ArgoCDExport](#argocdexport-resource)
 
 ## ArgoCD Resource
 
@@ -85,5 +86,12 @@ Pod (`argocd-minimal-server-7d56c5bf4d-r5brr` in this example).
 #### Ingress
 
 See the [ingress][docs_ingress] documentation for steps to enable and use the Ingress support provided by the operator. 
+
+## ArgoCDExport Resource
+
+The `ArgoCD` resource is a Kubernetes Custom Resource (CRD) that describes the desired state for the export of a given 
+Argo CD deployment and enables disaster recovery for the components that make up Argo CD.
+
+When the Argo CD Operator sees a new ArgoCDExport resource, the operator manages the built-in Argo CD export process.
 
 [docs_ingress]:./ingress.md
