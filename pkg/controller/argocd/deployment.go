@@ -194,7 +194,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 			Name: "backup-storage",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: fmt.Sprintf("%s-import", cr.Spec.Import.Name),
+					ClaimName: cr.Spec.Import.Name,
 				},
 			},
 		}}

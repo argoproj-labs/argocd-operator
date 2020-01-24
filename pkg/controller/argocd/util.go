@@ -204,11 +204,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	log.Info("reconciling import")
-	if err := r.reconcileImportPVC(cr); err != nil {
-		return err
-	}
-
 	log.Info("reconciling deployments")
 	if err := r.reconcileDeployments(cr); err != nil {
 		return err
