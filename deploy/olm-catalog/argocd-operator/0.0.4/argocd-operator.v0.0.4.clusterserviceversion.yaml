@@ -338,7 +338,9 @@ spec:
           - argoproj.io
           resources:
           - argocds
+          - argocds/finalizers
           - argocdexports
+          - argocdexports/finalizers
           verbs:
           - '*'
         - apiGroups:
