@@ -7,28 +7,14 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
-  - services
-  - services/finalizers
+  - configmaps
   - endpoints
   - events
-  - configmaps
-  - secrets
   - persistentvolumeclaims
-  - volumes
-  verbs:
-  - '*'
-- apiGroups:
-  - batch
-  resources:
-  - cronjob
-  - job
-  verbs:
-  - '*'
-- apiGroups:
-  - extensions
-  resources:
-  - ingresses
+  - pods
+  - secrets
+  - services
+  - services/finalizers
   verbs:
   - '*'
 - apiGroups:
@@ -47,28 +33,25 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - get
-- apiGroups:
   - argoproj.io
   resources:
   - argocds
+  - argocds/finalizers
   - argocdexports
+  - argocdexports/finalizers
   verbs:
   - '*'
 - apiGroups:
-  - route.openshift.io
+  - batch
   resources:
-  - routes
+  - cronjobs
+  - jobs
+  verbs:
+  - '*'
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
   verbs:
   - '*'
 - apiGroups:
@@ -76,6 +59,12 @@ rules:
   resources:
   - prometheuses
   - servicemonitors
+  verbs:
+  - '*'
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
   verbs:
   - '*'
 ---

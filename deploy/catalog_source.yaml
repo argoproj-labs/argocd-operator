@@ -6,4 +6,4 @@ spec:
   sourceType: grpc
   image: quay.io/jmckind/argocd-operator-registry:latest
   displayName: Argo CD Operators
-  publisher: Argo CD
+  publisher: Argo CD Community

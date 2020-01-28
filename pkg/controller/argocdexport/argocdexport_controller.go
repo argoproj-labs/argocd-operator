@@ -59,12 +59,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to PersistentVolume resources
-	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolume{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
 	// Watch for changes to secondary resource CronJob and requeue the owner ArgoCDExport
 	err = c.Watch(&source.Kind{Type: &batchv1b1.CronJob{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,

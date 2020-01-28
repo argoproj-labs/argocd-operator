@@ -21,4 +21,5 @@ echo "Generating CSV for version ${ARGOCD_OPERATOR_VERSION}"
 
 operator-sdk olm-catalog gen-csv \
     --operator-name ${ARGOCD_OPERATOR_NAME} \
-    --csv-version ${ARGOCD_OPERATOR_VERSION}
+    --csv-version ${ARGOCD_OPERATOR_VERSION} \
+    --update-crds
