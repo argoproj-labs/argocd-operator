@@ -299,7 +299,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: argocd-operator
-                image: quay.io/jmckind/argocd-operator:latest
+                image: quay.io/jmckind/argocd-operator:v0.0.4
                 imagePullPolicy: Always
                 name: argocd-operator
                 resources: {}
