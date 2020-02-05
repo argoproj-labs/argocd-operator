@@ -93,6 +93,10 @@ spec:
                 name:
                   description: Name of an ArgoCDExport from which to import data.
                   type: string
+                namespace:
+                  description: Namespace for the ArgoCDExport, defaults to the same
+                    namespace as the ArgoCD.
+                  type: string
               required:
               - name
               type: object
@@ -197,6 +201,20 @@ spec:
           type: object
         status:
           description: ArgoCDStatus defines the observed state of ArgoCD
+          properties:
+            phase:
+              description: 'Phase is a simple, high-level summary of where the ArgoCD
+                is in its lifecycle. There are five possible phase values: Pending:
+                The ArgoCD has been accepted by the Kubernetes system, but one or
+                more of the required resources have not been created. Running: All
+                of the containers for the ArgoCD are running, or in the process of
+                starting or restarting. Failed: At least one container has terminated
+                in failure, either exited with non-zero status or was terminated by
+                the system. Unknown: For some reason the state of the ArgoCD could
+                not be obtained.'
+              type: string
+          required:
+          - phase
           type: object
       type: object
   version: v1alpha1
