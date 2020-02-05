@@ -286,7 +286,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		}},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-dex-server"
+	deploy.Spec.Template.Spec.ServiceAccountName = argoproj.ArgoCDDefaultDexServiceAccountName
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
 		Name: "static-files",
 		VolumeSource: corev1.VolumeSource{
