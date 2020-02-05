@@ -13,6 +13,7 @@ rules:
   - persistentvolumeclaims
   - pods
   - secrets
+  - serviceaccounts
   - services
   - services/finalizers
   verbs:

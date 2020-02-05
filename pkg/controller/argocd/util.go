@@ -15,13 +15,18 @@
 package argocd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	"gopkg.in/yaml.v2"
+
 	routev1 "github.com/openshift/api/route/v1"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -30,6 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+// DexConnector represents an authentication connector for Dex.
+type DexConnector struct {
+	Config map[string]interface{} `yaml:"config,omitempty"`
+	ID     string                 `yaml:"id"`
+	Name   string                 `yaml:"name"`
+	Type   string                 `yaml:"type"`
+}
 
 // getArgoContainerImage will return the container image for ArgoCD.
 func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
@@ -43,6 +56,37 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = argoproj.ArgoCDDefaultArgoVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getArgoDexConfiguration will return the configuration for the Dex server.
+// The configuration will be returned as a YAML string
+func (r *ReconcileArgoCD) getArgoDexConfiguration(cr *argoprojv1a1.ArgoCD) (string, error) {
+	clientSecret, err := r.getDexOAuthClientSecret(cr)
+	if err != nil {
+		return "", err
+	}
+
+	connector := DexConnector{
+		Type: "openshift",
+		ID:   "openshift",
+		Name: "OpenShift",
+		Config: map[string]interface{}{
+			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
+			"clientID":     getDexOAuthClientID(cr),
+			"clientSecret": *clientSecret,
+			"redirectURI":  r.getDexOAuthRedirectURI(cr),
+			"insecureCA":   true, // TODO: Configure for openshift CA
+		},
+	}
+
+	connectors := make([]DexConnector, 0)
+	connectors = append(connectors, connector)
+
+	dex := make(map[string]interface{})
+	dex["connectors"] = connectors
+
+	bytes, err := yaml.Marshal(dex)
+	return string(bytes), err
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
@@ -66,6 +110,30 @@ func getArgoServerHost(cr *argoprojv1a1.ArgoCD) string {
 		host = cr.Spec.Server.Host
 	}
 	return host
+}
+
+// getArgoServerURI will return the URI for the ArgoCD server.
+// The hostname for argocd-server is from the route, ingress or service name in that order.
+func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
+	host := nameWithSuffix("server", cr) // Default to service name
+
+	// Use Ingress host if enabled
+	if cr.Spec.Ingress.Enabled {
+		ing := newIngressWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.client, cr.Namespace, ing.Name, ing) {
+			host = ing.Spec.Rules[0].Host
+		}
+	}
+
+	// Use Route host if available, override Ingress if both exist
+	if IsRouteAPIAvailable() {
+		route := newRouteWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
+			host = route.Spec.Host
+		}
+	}
+
+	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
 }
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
@@ -98,6 +166,75 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = argoproj.ArgoCDDefaultDexVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getDexInitContainers will return the init-containers for the Dex server.
+func getDexInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
+	ics := []corev1.Container{{
+		Command: []string{
+			"cp",
+			"/usr/local/bin/argocd-util",
+			"/shared",
+		},
+		Image:           getArgoContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "copyutil",
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "static-files",
+			MountPath: "/shared",
+		}},
+	}}
+
+	// Add Oauth configuration if enabled.
+	if cr.Spec.Dex.OAuth != nil && cr.Spec.Dex.OAuth.Enabled {
+		ic := corev1.Container{
+			Command: []string{
+				"sleep",
+				"3",
+			},
+			Image:           getDexContainerImage(cr),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            "openshift-oauth-config",
+		}
+
+		ics = append(ics, ic)
+	}
+
+	return ics
+}
+
+// getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
+func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, argoproj.ArgoCDDefaultDexServiceAccountName)
+}
+
+// getDexOAuthClientID will return the OAuth client secret for the given ArgoCD.
+func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
+	sa := newServiceAccountWithName(argoproj.ArgoCDDefaultDexServiceAccountName, cr)
+	if err := argoutil.FetchObject(r.client, cr.Namespace, sa.Name, sa); err != nil {
+		return nil, err
+	}
+
+	// Find the token secret
+	var tokenSecret *corev1.ObjectReference
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "token") {
+			tokenSecret = &saSecret
+		}
+	}
+
+	if tokenSecret == nil {
+		return nil, errors.New("unable to locate ServiceAccount token for OAuth client secret")
+	}
+
+	// Fetch the secret to obtain the token
+	secret := newSecretWithName(tokenSecret.Name, cr)
+	if err := argoutil.FetchObject(r.client, cr.Namespace, secret.Name, secret); err != nil {
+		return nil, err
+	}
+
+	token := string(secret.Data["token"])
+	return &token, nil
 }
 
 // getGrafanaContainerImage will return the container image for the Grafana server.
@@ -184,6 +321,11 @@ func (r *ReconcileArgoCD) reconcileOpenShiftResources(cr *argoprojv1a1.ArgoCD) e
 
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+	log.Info("reconciling service accounts")
+	if err := r.reconcileServiceAccounts(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling certificate authority")
 	if err := r.reconcileCertificateAuthority(cr); err != nil {
 		return err

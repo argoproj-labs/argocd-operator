@@ -136,6 +136,20 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoprojv1a1.ArgoCD) error 
 		return nil // ConfigMap found, do nothing
 	}
 
+	if len(cm.Data) <= 0 {
+		cm.Data = make(map[string]string)
+	}
+
+	cm.Data["url"] = r.getArgoServerURI(cr)
+
+	if cr.Spec.Dex.OAuth != nil && cr.Spec.Dex.OAuth.Enabled {
+		cfg, err := r.getArgoDexConfiguration(cr)
+		if err != nil {
+			return err
+		}
+		cm.Data["dex.config"] = cfg
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
 	}

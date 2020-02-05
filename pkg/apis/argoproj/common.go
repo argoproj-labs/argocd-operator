@@ -48,6 +48,12 @@ const (
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
 	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
 
+	// ArgoCDDefaultDexOAuthRedirectPath is the default path to use for the OAuth Redirect URI.
+	ArgoCDDefaultDexOAuthRedirectPath = "/api/dex/callback"
+
+	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
+	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
+
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "v2.14.0"
 
@@ -104,6 +110,9 @@ const (
 
 	// ArgoCDKeyComponent is the resource component key for labels.
 	ArgoCDKeyComponent = "app.kubernetes.io/component"
+
+	// ArgoCDKeyDexOAuthRedirectURI is the key for the OAuth Redirect URI annotation.
+	ArgoCDKeyDexOAuthRedirectURI = "serviceaccounts.openshift.io/oauth-redirecturi.argocd"
 
 	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
 	ArgoCDKeyGrafanaAdminUsername = "admin.username"
