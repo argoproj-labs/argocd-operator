@@ -213,8 +213,13 @@ type ArgoCDSpec struct {
 // ArgoCDStatus defines the observed state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
+	// There are five possible phase values:
+	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the containers for the ArgoCD are running, or in the process of starting or restarting.
+	// Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
+	// Unknown: For some reason the state of the ArgoCD could not be obtained.
+	Phase string `json:"phase"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.

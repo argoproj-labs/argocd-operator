@@ -3,4 +3,5 @@ scorecard:
   plugins:
     - basic:
         cr-manifest:
-          - "deploy/crds/argoproj_v1alpha1_argocd_crd.yaml"
+          - examples/argocd-basic.yaml
+          - examples/argocdexport-basic.yaml

@@ -254,6 +254,16 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 			SchemaProps: spec.SchemaProps{
 				Description: "ArgoCDStatus defines the observed state of ArgoCD",
 				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle. There are five possible phase values: Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the containers for the ArgoCD are running, or in the process of starting or restarting. Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system. Unknown: For some reason the state of the ArgoCD could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"phase"},
 			},
 		},
 	}

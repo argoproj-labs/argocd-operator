@@ -4,5 +4,4 @@ metadata:
   name: example-argocd
   labels:
     example: basic
-spec:
-  version: v1.4.0
+spec: {}
