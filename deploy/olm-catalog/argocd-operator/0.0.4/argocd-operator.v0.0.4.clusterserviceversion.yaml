@@ -32,25 +32,60 @@ spec:
       version: v1alpha1
       displayName: ArgoCDExport
       description: ArgoCDExport describes the desired state for the export of a given Argo CD deployment.
+      resources:
+      - kind: CronJob
+        version: batch/v1beta1
+      - kind: Job
+        version: batch/v1
+      - kind: PersistentVolumeClaim
+        version: v1
+      specDescriptors:
+      - description: The name of the ArgoCD instance to export.
+        displayName: ArgoCD
+        path: argocd
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The schedule for the export in Cron format, see https://en.wikipedia.org/wiki/Cron.
+        displayName: Schedule
+        path: schedule
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The storage configuration options for the export.
+        displayName: Storage
+        path: storage
+      statusDescriptors:
+      - description: Phase is a simple, high-level summary of where the ArgoCDExport is in its lifecycle.
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
     - kind: ArgoCD
       name: argocds.argoproj.io
       version: v1alpha1
       displayName: ArgoCD
       description: ArgoCD is the representation of an Argo CD deployment.
       resources:
-      - kind: Service
+      - kind: ConfigMap
         version: v1
-      - kind: Pod
+      - kind: Deployment
+        version: apps/v1
+      - kind: Ingress
+        version: extensions/v1
+      - kind: PersistentVolumeClaim
+        version: v1
+      - kind: Secret
+        version: v1
+      - kind: Service
         version: v1
       specDescriptors:
       - description: The container image to use for the Argo CD components.
-        displayName: Image
+        displayName: Argo CD Image
         path: image
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Argo CD'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image tag (version) to use for the Argo CD components.
-        displayName: Version
+        displayName: Argo CD Version
         path: version
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Argo CD' 
@@ -68,61 +103,61 @@ spec:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
         - 'urn:alm:descriptor:com.tectonic.ui:number'
       - description: The container image name to use for Dex.
-        displayName: Image
+        displayName: Dex Image
         path: dex.image
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image tag (version) to use for Dex.
-        displayName: Version
+        displayName: Dex Version
         path: dex.version
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex' 
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if Grafana resources should created.
-        displayName: Enabled
+        displayName: Grafana Enabled
         path: grafana.enabled
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The hostname to use for access to Grafana.
-        displayName: Host
+        displayName: Grafana Host
         path: grafana.host
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image name to use for Grafana.
-        displayName: Image
+        displayName: Grafana Image
         path: grafana.image
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image tag (version) to use for Grafana.
-        displayName: Version
+        displayName: Grafana Version
         path: grafana.version
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if Ingress resources should created.
-        displayName: Enabled
+        displayName: Ingress Enabled
         path: ingress.enabled
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The path to use for the Ingress resource.
-        displayName: Path
+        displayName: Ingress Path
         path: ingress.path
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if Prometheus resources should created.
-        displayName: Enabled
+        displayName: Prometheus Enabled
         path: prometheus.enabled
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The hostname to use for access to Prometheus.
-        displayName: Host
+        displayName: Prometheus Host
         path: prometheus.host
         x-descriptors: 
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
@@ -134,13 +169,13 @@ spec:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
         - 'urn:alm:descriptor:com.tectonic.ui:podCount'
       - description: The container image name to use for Redis.
-        displayName: Image
+        displayName: Prometheus Image
         path: redis.image
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The container image tag (version) to use for Redis.
-        displayName: Version
+        displayName: Prometheus Version
         path: redis.version
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
@@ -152,19 +187,19 @@ spec:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: The hostname to use for the Server Ingress resource.
-        displayName: Host
+        displayName: Argo CD Host
         path: server.host
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: Selected if the Argo CD server is insecure.
-        displayName: Insecure
+        displayName: Insecure Server
         path: server.insecure
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
         - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: The type of Service for the Server component.
-        displayName: Service Type
+        displayName: Argo CD Service Type
         path: server.service.type
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
@@ -184,6 +219,12 @@ spec:
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:TLS'
         - 'urn:alm:descriptor:io.kubernetes:Secret'
+      statusDescriptors:
+      - description: Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
   description: | 
     ## Overview
 
