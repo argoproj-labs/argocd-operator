@@ -75,7 +75,7 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "argocd-server")
 
 	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, fmt.Sprintf("http://%s:5556", nameWithSuffix("dex-server", cr)))
+	cmd = append(cmd, getDexServerAddress(cr))
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
@@ -91,6 +91,11 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "/shared/app")
 
 	return cmd
+}
+
+// getDexServerAddress will return the Dex server address.
+func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("http://%s:5556", nameWithSuffix("dex-server", cr))
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
