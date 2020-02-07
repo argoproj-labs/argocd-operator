@@ -1,6 +1,13 @@
 scorecard:
   output: text
+  bundle: deploy/olm-catalog/argocd-operator
   plugins:
     - basic:
         cr-manifest:
-          - "deploy/crds/argoproj_v1alpha1_argocd_crd.yaml"
+          - examples/argocd-basic.yaml
+          - examples/argocdexport-basic.yaml
+    - olm:
+        cr-manifest:
+          - examples/argocd-basic.yaml
+          - examples/argocdexport-basic.yaml
+        csv-path: "deploy/olm-catalog/argocd-operator/0.0.4/argocd-operator.v0.0.4.clusterserviceversion.yaml"

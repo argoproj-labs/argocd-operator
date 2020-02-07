@@ -38,8 +38,10 @@ rules:
   resources:
   - argocds
   - argocds/finalizers
+  - argocds/status
   - argocdexports
   - argocdexports/finalizers
+  - argocdexports/status
   verbs:
   - '*'
 - apiGroups:
