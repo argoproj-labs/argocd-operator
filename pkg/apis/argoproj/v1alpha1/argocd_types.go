@@ -73,8 +73,17 @@ type ArgoCDDexSpec struct {
 	// Image is the Dex container image.
 	Image string `json:"image,omitempty"`
 
+	// Oauth defines the authentication options for the Dex server.
+	OAuth *ArgoCDDexOAuthSpec `json:"oauth,omitempty"`
+
 	// Version is the Dex container image tag.
 	Version string `json:"version,omitempty"`
+}
+
+// ArgoCDDexOAuthSpec defines the desired state for the Dex OAuth configuration.
+type ArgoCDDexOAuthSpec struct {
+	// Enabled will toggle OAuth support for the Dex server.
+	Enabled bool `json:"enabled"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana server component.

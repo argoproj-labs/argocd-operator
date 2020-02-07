@@ -58,6 +58,16 @@ spec:
                 image:
                   description: Image is the Dex container image.
                   type: string
+                oauth:
+                  description: Oauth defines the authentication options for the Dex
+                    server.
+                  properties:
+                    enabled:
+                      description: Enabled will toggle OAuth support for the Dex server.
+                      type: boolean
+                  required:
+                  - enabled
+                  type: object
                 version:
                   description: Version is the Dex container image tag.
                   type: string

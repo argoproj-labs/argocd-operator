@@ -13,7 +13,9 @@ spec:
       status: 20
   dex:
     image: quay.io/dexidp/dex
-    version: v2.14.0
+    version: v2.21.0
+    oauth:
+      enabled: false
   grafana:
     enabled: false
     host: example-argocd-grafana
