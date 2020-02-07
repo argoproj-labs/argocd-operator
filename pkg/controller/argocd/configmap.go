@@ -133,27 +133,51 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(argoproj.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		return nil // ConfigMap found, do nothing
+		uri := r.getArgoServerURI(cr)
+		if cm.Data[argoproj.ArgoCDKeyServerURL] != uri {
+			cm.Data[argoproj.ArgoCDKeyServerURL] = uri
+			return r.client.Update(context.TODO(), cm)
+		}
+
+		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
+			return err
+		}
+		return nil // ConfigMap found and configured, do nothing further...
 	}
 
 	if len(cm.Data) <= 0 {
 		cm.Data = make(map[string]string)
 	}
 
-	cm.Data["url"] = r.getArgoServerURI(cr)
+	cm.Data[argoproj.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 
 	if cr.Spec.Dex.OAuth != nil && cr.Spec.Dex.OAuth.Enabled {
 		cfg, err := r.getArgoDexConfiguration(cr)
 		if err != nil {
 			return err
 		}
-		cm.Data["dex.config"] = cfg
+		cm.Data[argoproj.ArgoCDKeyDexConfig] = cfg
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
 	}
 	return r.client.Create(context.TODO(), cm)
+}
+
+// reconcileDexConfiguration will ensure that Dex is configured properly.
+func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	actual := cm.Data[argoproj.ArgoCDKeyDexConfig]
+	desired, err := r.getArgoDexConfiguration(cr)
+	if err != nil {
+		return err
+	}
+
+	if actual != desired {
+		cm.Data[argoproj.ArgoCDKeyDexConfig] = desired
+		return r.client.Update(context.TODO(), cm)
+	}
+	return nil
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
