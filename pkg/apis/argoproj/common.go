@@ -91,7 +91,7 @@ const (
 	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
-	ArgoCDDefaultGrafanaVersion = "6.5.1"
+	ArgoCDDefaultGrafanaVersion = "6.6.1"
 
 	// ArgoCDDefaultIngressPath is the path to use for the Ingress when not specified.
 	ArgoCDDefaultIngressPath = "/"
