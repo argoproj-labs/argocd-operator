@@ -114,6 +114,9 @@ const (
 	// ArgoCDKeyDexOAuthRedirectURI is the key for the OAuth Redirect URI annotation.
 	ArgoCDKeyDexOAuthRedirectURI = "serviceaccounts.openshift.io/oauth-redirecturi.argocd"
 
+	// ArgoCDKeyDexConfig is the key for dex configuration.
+	ArgoCDKeyDexConfig = "dex.config"
+
 	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
 	ArgoCDKeyGrafanaAdminUsername = "admin.username"
 
@@ -149,6 +152,9 @@ const (
 
 	// ArgoCDKeyRelease is the prometheus release key for labels.
 	ArgoCDKeyRelease = "release"
+
+	// ArgoCDKeyServerURL is the key for server url.
+	ArgoCDKeyServerURL = "url"
 
 	// ArgoCDKeySSHKnownHosts is the resource ssh_known_hosts key for labels.
 	ArgoCDKeySSHKnownHosts = "ssh_known_hosts"
