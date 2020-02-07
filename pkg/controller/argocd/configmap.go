@@ -167,6 +167,10 @@ func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
 func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	if cr.Spec.Dex.OAuth == nil || !cr.Spec.Dex.OAuth.Enabled {
+		return nil // OAuth not enabled, move along...
+	}
+
 	actual := cm.Data[argoproj.ArgoCDKeyDexConfig]
 	desired, err := r.getArgoDexConfiguration(cr)
 	if err != nil {
