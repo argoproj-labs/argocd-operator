@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +61,7 @@ func newRouteWithName(name string, cr *argoprojv1a1.ArgoCD) *routev1.Route {
 	route.ObjectMeta.Name = name
 
 	lbls := route.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	route.ObjectMeta.Labels = lbls
 
 	return route

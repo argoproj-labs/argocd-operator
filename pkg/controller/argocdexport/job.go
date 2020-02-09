@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
@@ -81,7 +81,7 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
 
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
-		Image:           fmt.Sprintf("%s:%s", argoproj.ArgoCDDefaultArgoImage, argoproj.ArgoCDDefaultArgoVersion),
+		Image:           fmt.Sprintf("%s:%s", common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
 		VolumeMounts: []corev1.VolumeMount{
@@ -148,9 +148,9 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) erro
 
 	job := newJob(cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, job.Name, job) {
-		if job.Status.Succeeded > 0 && cr.Status.Phase != argoproj.ArgoCDStatusCompleted {
+		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
-			cr.Status.Phase = argoproj.ArgoCDStatusCompleted
+			cr.Status.Phase = common.ArgoCDStatusCompleted
 			r.client.Status().Update(context.TODO(), cr)
 
 			// Delete PVC for export

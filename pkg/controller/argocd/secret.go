@@ -20,8 +20,8 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 	corev1 "k8s.io/api/core/v1"
@@ -108,7 +108,7 @@ func newSecretWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.Secret {
 	secret.ObjectMeta.Name = name
 
 	lbls := secret.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	secret.ObjectMeta.Labels = lbls
 
 	return secret
@@ -129,7 +129,7 @@ func newTLSSecret(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.Secret {
 
 // reconcileArgoSecret will ensure that the ArgoCD Secret is present.
 func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := newSecretWithName(argoproj.ArgoCDSecretName, cr)
+	secret := newSecretWithName(common.ArgoCDSecretName, cr)
 	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
 	if found {
 		return nil // Secret found, do nothing
@@ -217,9 +217,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	secret.Data = map[string][]byte{
-		argoproj.ArgoCDKeyGrafanaAdminUsername: []byte(argoproj.ArgoCDDefaultGrafanaAdminUsername),
-		argoproj.ArgoCDKeyGrafanaAdminPassword: adminPassword,
-		argoproj.ArgoCDKeyGrafanaSecretKey:     secretKey,
+		common.ArgoCDKeyGrafanaAdminUsername: []byte(common.ArgoCDDefaultGrafanaAdminUsername),
+		common.ArgoCDKeyGrafanaAdminPassword: adminPassword,
+		common.ArgoCDKeyGrafanaSecretKey:     secretKey,
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {

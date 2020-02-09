@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +30,7 @@ import (
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
 func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	annotations := make(map[string]string)
-	annotations[argoproj.ArgoCDKeyIngressClass] = "nginx"
+	annotations[common.ArgoCDKeyIngressClass] = "nginx"
 	return annotations
 }
 
@@ -47,7 +47,7 @@ func getIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 
 // getIngressPath will return the Ingress Path for the given ArgoCD.
 func getIngressPath(cr *argoprojv1a1.ArgoCD) string {
-	path := argoproj.ArgoCDDefaultIngressPath
+	path := common.ArgoCDDefaultIngressPath
 	if len(cr.Spec.Ingress.Path) > 0 {
 		path = cr.Spec.Ingress.Path
 	}
@@ -71,7 +71,7 @@ func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingres
 	ingress.ObjectMeta.Name = name
 
 	lbls := ingress.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	ingress.ObjectMeta.Labels = lbls
 
 	return ingress
@@ -119,8 +119,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -147,7 +147,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: argoproj.ArgoCDSecretName,
+			SecretName: common.ArgoCDSecretName,
 		},
 	}
 
@@ -170,7 +170,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "GRPC"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -197,7 +197,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: argoproj.ArgoCDSecretName,
+			SecretName: common.ArgoCDSecretName,
 		},
 	}
 
@@ -224,8 +224,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -252,7 +252,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: argoproj.ArgoCDSecretName,
+			SecretName: common.ArgoCDSecretName,
 		},
 	}
 
@@ -279,8 +279,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
-	atns[argoproj.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[argoproj.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -307,7 +307,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: argoproj.ArgoCDSecretName,
+			SecretName: common.ArgoCDSecretName,
 		},
 	}
 

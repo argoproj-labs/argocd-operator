@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +28,7 @@ import (
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
 func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoprojv1a1.ArgoCD) string {
 	uri := r.getArgoServerURI(cr)
-	return uri + argoproj.ArgoCDDefaultDexOAuthRedirectPath
+	return uri + common.ArgoCDDefaultDexOAuthRedirectPath
 }
 
 // newServiceAccount returns a new ServiceAccount instance.
@@ -48,7 +48,7 @@ func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.Ser
 	sa.ObjectMeta.Name = name
 
 	lbls := sa.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	sa.ObjectMeta.Labels = lbls
 
 	return sa
@@ -62,14 +62,14 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 	return nil
 }
 
-// reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly.
+// reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
-	if cr.Spec.Dex.OAuth == nil || !cr.Spec.Dex.OAuth.Enabled {
-		return nil // OAuth not enabled, move along...
+	if !cr.Spec.Dex.OpenShiftOAuth {
+		return nil // OpenShift OAuth not enabled, move along...
 	}
 
 	log.Info("oauth enabled, configuring dex service account")
-	sa := newServiceAccountWithName(argoproj.ArgoCDDefaultDexServiceAccountName, cr)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.client, cr.Namespace, sa.Name, sa); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 
 	// Get the current redirect URI
 	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[argoproj.ArgoCDKeyDexOAuthRedirectURI]
+	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
 	if found && currentURI == uri {
 		return nil // Redirect URI annotation found and correct, move along...
 	}
@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 		ann = make(map[string]string)
 	}
 
-	ann[argoproj.ArgoCDKeyDexOAuthRedirectURI] = uri
+	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
 	sa.ObjectMeta.Annotations = ann
 
 	return r.client.Update(context.TODO(), sa)
