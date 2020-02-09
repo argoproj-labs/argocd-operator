@@ -70,11 +70,14 @@ type ArgoCDCertificateSpec struct {
 
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
+	//Config is the dex connector configuration.
+	Config string `json:"config,omitempty"`
+
 	// Image is the Dex container image.
 	Image string `json:"image,omitempty"`
 
-	// Oauth defines the authentication options for the Dex server.
-	OAuth *ArgoCDDexOAuthSpec `json:"oauth,omitempty"`
+	// OpenShiftOAuth enables OpenShift OAuth authentication for the Dex server.
+	OpenShiftOAuth bool `json:"openShiftOAuth,omitempty"`
 
 	// Version is the Dex container image tag.
 	Version string `json:"version,omitempty"`
@@ -146,6 +149,26 @@ type ArgoCDPrometheusSpec struct {
 	Size *int32 `json:"size,omitempty"`
 }
 
+// ArgoCDRBACSpec defines the desired state for the Argo CD RBAC configuration.
+type ArgoCDRBACSpec struct {
+	// Policy is CSV containing user-defined RBAC policies and role definitions.
+	// Policy rules are in the form:
+	//   p, subject, resource, action, object, effect
+	// Role definitions and bindings are in the form:
+	//   g, subject, inherited-subject
+	// See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md for additional information.
+	Policy string `json:"policy,omitempty"`
+
+	// DefaultPolicy is the name of the default role which Argo CD will falls back to, when
+	// authorizing API requests (optional). If omitted or empty, users may be still be able to login,
+	// but will see no apps, projects, etc...
+	DefaultPolicy string `json:"defaultPolicy,omitempty"`
+
+	// Scopes controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+	// If omitted, defaults to: '[groups]'.
+	Scopes string `json:"scopes,omitempty"`
+}
+
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
 	// Image is the Redis container image.
@@ -185,14 +208,32 @@ type ArgoCDServerServiceSpec struct {
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
+	// ApplicationInstanceLabelKey
+	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
+
+	// ConfigManagementPlugins is used to specify additional config management plugins.
+	ConfigManagementPlugins string `json:"configManagementPlugins,omitempty"`
+
 	// Controller defines the Application Controller options for ArgoCD.
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
 
 	// Dex defines the Dex server options for ArgoCD.
 	Dex ArgoCDDexSpec `json:"dex,omitempty"`
 
+	// GATrackingID is the google analytics tracking ID to use.
+	GATrackingID string `json:"gaTrackingID,omitempty"`
+
+	// GAAnonymizeUsers toggles user IDs being hashed before sending to google analytics.
+	GAAnonymizeUsers bool `json:"gaAnonymizeUsers,omitempty"`
+
 	// Grafana defines the Grafana server options for ArgoCD.
 	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
+
+	// HelpChatURL is the URL for getting chat help, this will typically be your Slack channel for support.
+	HelpChatURL string `json:"helpChatURL,omitempty"`
+
+	// HelpChatText is the text for getting chat help, defaults to "Chat now!"
+	HelpChatText string `json:"helpChatText,omitempty"`
 
 	// Image is the ArgoCD container image for all ArgoCD components.
 	Image string `json:"image,omitempty"`
@@ -203,17 +244,45 @@ type ArgoCDSpec struct {
 	// Ingress defines the Ingress options for ArgoCD.
 	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
+	// KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.
+	KustomizeBuildOptions string `json:"kustomizeBuildOptions,omitempty"`
+
+	// OIDCConfig is the configuration as an alternative to dex.
+	OIDCConfig string `json:"oidcConfig,omitempty"`
+
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
+
+	// RBAC defines the RBAC configuration for Argo CD.
+	RBAC ArgoCDRBACSpec `json:"rbac,omitempty"`
 
 	// Redis defines the Redis server options for ArgoCD.
 	Redis ArgoCDRedisSpec `json:"redis,omitempty"`
 
+	// Repositories to configure Argo CD with.
+	Repositories string `json:"repositories,omitempty"`
+
+	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind.
+	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`
+
+	// ResourceExclusions is used to completely ignore entire classes of resource group/kinds.
+	ResourceExclusions string `json:"resourceExclusions,omitempty"`
+
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
+	// SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.
+	SSHKnownHosts string `json:"sshKnownHosts,omitempty"`
+
+	// StatusBadgeEnabled toggles application status badge feature.
+	StatusBadgeEnabled bool `json:"statusBadgeEnabled,omitempty"`
+
 	// TLS defines the TLS options for ArgoCD.
 	TLS ArgoCDTLSSpec `json:"tls,omitempty"`
+
+	// UsersAnonymousEnabled toggles anonymous user access.
+	// The anonymous users get default role permissions specified argocd-rbac-cm.
+	UsersAnonymousEnabled bool `json:"usersAnonymousEnabled,omitempty"`
 
 	// Version is the tag to use with the ArgoCD container image for all ArgoCD components.
 	Version string `json:"version,omitempty"`
@@ -234,5 +303,8 @@ type ArgoCDStatus struct {
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
 type ArgoCDTLSSpec struct {
 	// CA defines the CA options.
-	CA ArgoCDCASpec `json:"ca"`
+	CA ArgoCDCASpec `json:"ca,omitempty"`
+
+	// Certs defines custom TLS certificates for connecting Git repositories via HTTPS.
+	Certs map[string]string `json:"certs,omitempty"`
 }

@@ -15,13 +15,13 @@
 package argocd
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
@@ -49,45 +49,14 @@ type DexConnector struct {
 func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Image
 	if len(img) <= 0 {
-		img = argoproj.ArgoCDDefaultArgoImage
+		img = common.ArgoCDDefaultArgoImage
 	}
 
 	tag := cr.Spec.Version
 	if len(tag) <= 0 {
-		tag = argoproj.ArgoCDDefaultArgoVersion
+		tag = common.ArgoCDDefaultArgoVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
-}
-
-// getArgoDexConfiguration will return the configuration for the Dex server.
-// The configuration will be returned as a YAML string
-func (r *ReconcileArgoCD) getArgoDexConfiguration(cr *argoprojv1a1.ArgoCD) (string, error) {
-	clientSecret, err := r.getDexOAuthClientSecret(cr)
-	if err != nil {
-		return "", err
-	}
-
-	connector := DexConnector{
-		Type: "openshift",
-		ID:   "openshift",
-		Name: "OpenShift",
-		Config: map[string]interface{}{
-			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
-			"clientID":     getDexOAuthClientID(cr),
-			"clientSecret": *clientSecret,
-			"redirectURI":  r.getDexOAuthRedirectURI(cr),
-			"insecureCA":   true, // TODO: Configure for openshift CA
-		},
-	}
-
-	connectors := make([]DexConnector, 0)
-	connectors = append(connectors, connector)
-
-	dex := make(map[string]interface{})
-	dex["connectors"] = connectors
-
-	bytes, err := yaml.Marshal(dex)
-	return string(bytes), err
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
@@ -139,7 +108,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
 func getArgoServerOperationProcessors(cr *argoprojv1a1.ArgoCD) int32 {
-	op := argoproj.ArgoCDDefaultArgoServerOperationProcessors
+	op := common.ArgoCDDefaultArgoServerOperationProcessors
 	if cr.Spec.Controller.Processors.Operation > op {
 		op = cr.Spec.Controller.Processors.Operation
 	}
@@ -148,7 +117,7 @@ func getArgoServerOperationProcessors(cr *argoprojv1a1.ArgoCD) int32 {
 
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
 func getArgoServerStatusProcessors(cr *argoprojv1a1.ArgoCD) int32 {
-	sp := argoproj.ArgoCDDefaultArgoServerStatusProcessors
+	sp := common.ArgoCDDefaultArgoServerStatusProcessors
 	if cr.Spec.Controller.Processors.Status > sp {
 		sp = cr.Spec.Controller.Processors.Status
 	}
@@ -159,19 +128,19 @@ func getArgoServerStatusProcessors(cr *argoprojv1a1.ArgoCD) int32 {
 func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Dex.Image
 	if len(img) <= 0 {
-		img = argoproj.ArgoCDDefaultDexImage
+		img = common.ArgoCDDefaultDexImage
 	}
 
 	tag := cr.Spec.Dex.Version
 	if len(tag) <= 0 {
-		tag = argoproj.ArgoCDDefaultDexVersion
+		tag = common.ArgoCDDefaultDexVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
 }
 
 // getDexInitContainers will return the init-containers for the Dex server.
 func getDexInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
-	ics := []corev1.Container{{
+	return []corev1.Container{{
 		Command: []string{
 			"cp",
 			"/usr/local/bin/argocd-util",
@@ -185,33 +154,16 @@ func getDexInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
 			MountPath: "/shared",
 		}},
 	}}
-
-	// Add Oauth configuration if enabled.
-	if cr.Spec.Dex.OAuth != nil && cr.Spec.Dex.OAuth.Enabled {
-		ic := corev1.Container{
-			Command: []string{
-				"sleep",
-				"3",
-			},
-			Image:           getDexContainerImage(cr),
-			ImagePullPolicy: corev1.PullAlways,
-			Name:            "openshift-oauth-config",
-		}
-
-		ics = append(ics, ic)
-	}
-
-	return ics
 }
 
 // getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
 func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, argoproj.ArgoCDDefaultDexServiceAccountName)
+	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, common.ArgoCDDefaultDexServiceAccountName)
 }
 
 // getDexOAuthClientID will return the OAuth client secret for the given ArgoCD.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
-	sa := newServiceAccountWithName(argoproj.ArgoCDDefaultDexServiceAccountName, cr)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	log.Info(fmt.Sprintf("Fetching Service Account: %s", sa.Name))
 	if err := argoutil.FetchObject(r.client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
@@ -249,26 +201,56 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Grafana.Image
 	if len(img) <= 0 {
-		img = argoproj.ArgoCDDefaultGrafanaImage
+		img = common.ArgoCDDefaultGrafanaImage
 	}
 
 	tag := cr.Spec.Grafana.Version
 	if len(tag) <= 0 {
-		tag = argoproj.ArgoCDDefaultGrafanaVersion
+		tag = common.ArgoCDDefaultGrafanaVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
+func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
+	clientSecret, err := r.getDexOAuthClientSecret(cr)
+	if err != nil {
+		return "", err
+	}
+
+	connector := DexConnector{
+		Type: "openshift",
+		ID:   "openshift",
+		Name: "OpenShift",
+		Config: map[string]interface{}{
+			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
+			"clientID":     getDexOAuthClientID(cr),
+			"clientSecret": *clientSecret,
+			"redirectURI":  r.getDexOAuthRedirectURI(cr),
+			"insecureCA":   true, // TODO: Configure for openshift CA
+		},
+	}
+
+	connectors := make([]DexConnector, 0)
+	connectors = append(connectors, connector)
+
+	dex := make(map[string]interface{})
+	dex["connectors"] = connectors
+
+	bytes, err := yaml.Marshal(dex)
+	return string(bytes), err
 }
 
 // getRedisContainerImage will return the container image for the Redis server.
 func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Redis.Image
 	if len(img) <= 0 {
-		img = argoproj.ArgoCDDefaultRedisImage
+		img = common.ArgoCDDefaultRedisImage
 	}
 
 	tag := cr.Spec.Redis.Version
 	if len(tag) <= 0 {
-		tag = argoproj.ArgoCDDefaultRedisVersion
+		tag = common.ArgoCDDefaultRedisVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
 }
@@ -332,9 +314,9 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	if len(cr.Status.Phase) <= 0 {
 		cr.Status.Phase = "Pending"
 		return r.client.Status().Update(context.TODO(), cr)
-  }
-  
-  log.Info("reconciling service accounts")
+	}
+
+	log.Info("reconciling service accounts")
 	if err := r.reconcileServiceAccounts(cr); err != nil {
 		return err
 	}
