@@ -17,19 +17,14 @@ package argocdexport
 import (
 	"context"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	batchv1 "k8s.io/api/batch/v1"
-	batchv1b1 "k8s.io/api/batch/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var log = logf.Log.WithName("controller_argocdexport")
@@ -53,36 +48,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource ArgoCDExport
-	err = c.Watch(&source.Kind{Type: &argoprojv1alpha1.ArgoCDExport{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource CronJob and requeue the owner ArgoCDExport
-	err = c.Watch(&source.Kind{Type: &batchv1b1.CronJob{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoprojv1alpha1.ArgoCDExport{},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource Jobs and requeue the owner ArgoCDExport
-	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoprojv1alpha1.ArgoCDExport{},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource PersistentVolumeClaims and requeue the owner ArgoCDExport
-	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoprojv1alpha1.ArgoCDExport{},
-	})
-	if err != nil {
+	// Register watches for all controller resources
+	if err := watchArgoCDExportResources(c); err != nil {
 		return err
 	}
 
@@ -110,7 +77,7 @@ func (r *ReconcileArgoCDExport) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger.Info("Reconciling ArgoCDExport")
 
 	// Fetch the ArgoCDExport instance
-	export := &argoprojv1alpha1.ArgoCDExport{}
+	export := &argoproj.ArgoCDExport{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, export)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -123,15 +90,8 @@ func (r *ReconcileArgoCDExport) Reconcile(request reconcile.Request) (reconcile.
 		return reconcile.Result{}, err
 	}
 
-	if err := r.validateExport(export); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err := r.reconcileStorage(export); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err := r.reconcileExport(export); err != nil {
+	if err := r.reconcileArgoCDExportResources(export); err != nil {
+		// Error reconciling ArgoCDExport sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
 
