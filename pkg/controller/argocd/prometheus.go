@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ func getPrometheusHost(cr *argoprojv1a1.ArgoCD) string {
 
 // getPrometheusSize will return the size value for the Prometheus replica count.
 func getPrometheusReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
-	replicas := argoproj.ArgoCDDefaultPrometheusReplicas
+	replicas := common.ArgoCDDefaultPrometheusReplicas
 	if cr.Spec.Prometheus.Size != nil {
 		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
 			replicas = *cr.Spec.Prometheus.Size
@@ -61,11 +61,11 @@ func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj
 			if *actual.Spec.Replicas != *desired.Spec.Prometheus.Size {
 				return true
 			}
-		} else if *desired.Spec.Prometheus.Size != argoproj.ArgoCDDefaultPrometheusReplicas { // Actual replicas value is NOT set, but desired replicas differs from the default
+		} else if *desired.Spec.Prometheus.Size != common.ArgoCDDefaultPrometheusReplicas { // Actual replicas value is NOT set, but desired replicas differs from the default
 			return true
 		}
 	} else { // Replica count NOT specified in desired state
-		if actual.Spec.Replicas != nil && *actual.Spec.Replicas != argoproj.ArgoCDDefaultPrometheusReplicas {
+		if actual.Spec.Replicas != nil && *actual.Spec.Replicas != common.ArgoCDDefaultPrometheusReplicas {
 			return true
 		}
 	}
@@ -110,8 +110,8 @@ func newServiceMonitorWithName(name string, cr *argoprojv1a1.ArgoCD) *monitoring
 	svcmon.ObjectMeta.Name = name
 
 	lbls := svcmon.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
-	lbls[argoproj.ArgoCDKeyRelease] = "prometheus-operator"
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
 	svcmon.ObjectMeta.Labels = lbls
 
 	return svcmon
@@ -124,7 +124,7 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *monito
 
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
-	sm := newServiceMonitorWithSuffix(argoproj.ArgoCDKeyMetrics, cr)
+	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
@@ -139,12 +139,12 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			argoproj.ArgoCDKeyName: nameWithSuffix(argoproj.ArgoCDKeyMetrics, cr),
+			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: argoproj.ArgoCDKeyMetrics,
+			Port: common.ArgoCDKeyMetrics,
 		},
 	}
 
@@ -200,12 +200,12 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.Arg
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			argoproj.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
+			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: argoproj.ArgoCDKeyMetrics,
+			Port: common.ArgoCDKeyMetrics,
 		},
 	}
 
@@ -232,12 +232,12 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1.
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			argoproj.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
+			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: argoproj.ArgoCDKeyMetrics,
+			Port: common.ArgoCDKeyMetrics,
 		},
 	}
 

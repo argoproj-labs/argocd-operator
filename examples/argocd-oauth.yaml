@@ -8,5 +8,4 @@ spec:
   dex:
     image: quay.io/ablock/dex
     version: openshift-connector
-    oauth:
-      enabled: true
+    openShiftOAuth: true

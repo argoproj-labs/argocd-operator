@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,8 +52,8 @@ func newServiceWithName(name string, component string, cr *argoprojv1a1.ArgoCD) 
 	svc.ObjectMeta.Name = name
 
 	lbls := svc.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
-	lbls[argoproj.ArgoCDKeyComponent] = component
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
 	svc.ObjectMeta.Labels = lbls
 
 	return svc
@@ -72,7 +72,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
+		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -110,7 +110,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("grafana", cr),
+		common.ArgoCDKeyName: nameWithSuffix("grafana", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -136,7 +136,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
+		common.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -161,7 +161,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("redis", cr),
+		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -185,7 +185,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
+		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -215,7 +215,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD)
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("server", cr),
+		common.ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -255,7 +255,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	svc.Spec.Selector = map[string]string{
-		argoproj.ArgoCDKeyName: nameWithSuffix("server", cr),
+		common.ArgoCDKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Type = getArgoServerServiceType(cr)

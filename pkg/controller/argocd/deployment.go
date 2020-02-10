@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -115,20 +115,20 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 	deploy.ObjectMeta.Name = name
 
 	lbls := deploy.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
-	lbls[argoproj.ArgoCDKeyComponent] = component
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
 	deploy.ObjectMeta.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				argoproj.ArgoCDKeyName: name,
+				common.ArgoCDKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					argoproj.ArgoCDKeyName: name,
+					common.ArgoCDKeyName: name,
 				},
 			},
 		},
@@ -291,7 +291,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		}},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = argoproj.ArgoCDDefaultDexServiceAccountName
+	deploy.Spec.Template.Spec.ServiceAccountName = common.ArgoCDDefaultDexServiceAccountName
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
 		Name: "static-files",
 		VolumeSource: corev1.VolumeSource{
@@ -497,7 +497,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoproj.ArgoCDKnownHostsConfigMapName,
+						Name: common.ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -506,7 +506,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoproj.ArgoCDTLSCertsConfigMapName,
+						Name: common.ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},
@@ -577,7 +577,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoproj.ArgoCDKnownHostsConfigMapName,
+						Name: common.ArgoCDKnownHostsConfigMapName,
 					},
 				},
 			},
@@ -586,7 +586,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoproj.ArgoCDTLSCertsConfigMapName,
+						Name: common.ArgoCDTLSCertsConfigMapName,
 					},
 				},
 			},

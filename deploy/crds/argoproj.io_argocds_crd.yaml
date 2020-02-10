@@ -31,6 +31,13 @@ spec:
         spec:
           description: ArgoCDSpec defines the desired state of ArgoCD
           properties:
+            applicationInstanceLabelKey:
+              description: ApplicationInstanceLabelKey
+              type: string
+            configManagementPlugins:
+              description: ConfigManagementPlugins is used to specify additional config
+                management plugins.
+              type: string
             controller:
               description: Controller defines the Application Controller options for
                 ArgoCD.
@@ -55,23 +62,27 @@ spec:
             dex:
               description: Dex defines the Dex server options for ArgoCD.
               properties:
+                config:
+                  description: Config is the dex connector configuration.
+                  type: string
                 image:
                   description: Image is the Dex container image.
                   type: string
-                oauth:
-                  description: Oauth defines the authentication options for the Dex
-                    server.
-                  properties:
-                    enabled:
-                      description: Enabled will toggle OAuth support for the Dex server.
-                      type: boolean
-                  required:
-                  - enabled
-                  type: object
+                openShiftOAuth:
+                  description: OpenShiftOAuth enables OpenShift OAuth authentication
+                    for the Dex server.
+                  type: boolean
                 version:
                   description: Version is the Dex container image tag.
                   type: string
               type: object
+            gaAnonymizeUsers:
+              description: GAAnonymizeUsers toggles user IDs being hashed before sending
+                to google analytics.
+              type: boolean
+            gaTrackingID:
+              description: GATrackingID is the google analytics tracking ID to use.
+              type: string
             grafana:
               description: Grafana defines the Grafana server options for ArgoCD.
               properties:
@@ -94,6 +105,14 @@ spec:
               required:
               - enabled
               type: object
+            helpChatText:
+              description: HelpChatText is the text for getting chat help, defaults
+                to "Chat now!"
+              type: string
+            helpChatURL:
+              description: HelpChatURL is the URL for getting chat help, this will
+                typically be your Slack channel for support.
+              type: string
             image:
               description: Image is the ArgoCD container image for all ArgoCD components.
               type: string
@@ -128,6 +147,13 @@ spec:
               required:
               - enabled
               type: object
+            kustomizeBuildOptions:
+              description: KustomizeBuildOptions is used to specify build options/parameters
+                to use with `kustomize build`.
+              type: string
+            oidcConfig:
+              description: OIDCConfig is the configuration as an alternative to dex.
+              type: string
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
               properties:
@@ -145,6 +171,28 @@ spec:
               required:
               - enabled
               type: object
+            rbac:
+              description: RBAC defines the RBAC configuration for Argo CD.
+              properties:
+                defaultPolicy:
+                  description: DefaultPolicy is the name of the default role which
+                    Argo CD will falls back to, when authorizing API requests (optional).
+                    If omitted or empty, users may be still be able to login, but
+                    will see no apps, projects, etc...
+                  type: string
+                policy:
+                  description: 'Policy is CSV containing user-defined RBAC policies
+                    and role definitions. Policy rules are in the form:   p, subject,
+                    resource, action, object, effect Role definitions and bindings
+                    are in the form:   g, subject, inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
+                    for additional information.'
+                  type: string
+                scopes:
+                  description: 'Scopes controls which OIDC scopes to examine during
+                    rbac enforcement (in addition to `sub` scope). If omitted, defaults
+                    to: ''[groups]''.'
+                  type: string
+              type: object
             redis:
               description: Redis defines the Redis server options for ArgoCD.
               properties:
@@ -155,6 +203,17 @@ spec:
                   description: Version is the Redis container image tag.
                   type: string
               type: object
+            repositories:
+              description: Repositories to configure Argo CD with.
+              type: string
+            resourceCustomizations:
+              description: 'ResourceCustomizations customizes resource behavior. Keys
+                are in the form: group/Kind.'
+              type: string
+            resourceExclusions:
+              description: ResourceExclusions is used to completely ignore entire
+                classes of resource group/kinds.
+              type: string
             server:
               description: Server defines the options for the ArgoCD Server component.
               properties:
@@ -186,6 +245,13 @@ spec:
                   - type
                   type: object
               type: object
+            sshKnownHosts:
+              description: SSHKnownHosts defines the SSH known hosts data for connecting
+                Git repositories via SSH.
+              type: string
+            statusBadgeEnabled:
+              description: StatusBadgeEnabled toggles application status badge feature.
+              type: boolean
             tls:
               description: TLS defines the TLS options for ArgoCD.
               properties:
@@ -201,9 +267,17 @@ spec:
                         the CA Certificate and Key.
                       type: string
                   type: object
-              required:
-              - ca
+                certs:
+                  additionalProperties:
+                    type: string
+                  description: Certs defines custom TLS certificates for connecting
+                    Git repositories via HTTPS.
+                  type: object
               type: object
+            usersAnonymousEnabled:
+              description: UsersAnonymousEnabled toggles anonymous user access. The
+                anonymous users get default role permissions specified argocd-rbac-cm.
+              type: boolean
             version:
               description: Version is the tag to use with the ArgoCD container image
                 for all ArgoCD components.

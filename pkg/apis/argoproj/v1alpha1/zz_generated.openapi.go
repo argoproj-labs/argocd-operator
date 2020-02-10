@@ -172,6 +172,20 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 				Description: "ArgoCDSpec defines the desired state of ArgoCD",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"applicationInstanceLabelKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ApplicationInstanceLabelKey",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"configManagementPlugins": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigManagementPlugins is used to specify additional config management plugins.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"controller": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Controller defines the Application Controller options for ArgoCD.",
@@ -184,10 +198,38 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec"),
 						},
 					},
+					"gaTrackingID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GATrackingID is the google analytics tracking ID to use.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"gaAnonymizeUsers": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GAAnonymizeUsers toggles user IDs being hashed before sending to google analytics.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"grafana": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Grafana defines the Grafana server options for ArgoCD.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
+						},
+					},
+					"helpChatURL": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HelpChatURL is the URL for getting chat help, this will typically be your Slack channel for support.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"helpChatText": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HelpChatText is the text for getting chat help, defaults to \"Chat now!\"",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"image": {
@@ -209,10 +251,30 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec"),
 						},
 					},
+					"kustomizeBuildOptions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"oidcConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OIDCConfig is the configuration as an alternative to dex.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"prometheus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prometheus defines the Prometheus server options for ArgoCD.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec"),
+						},
+					},
+					"rbac": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RBAC defines the RBAC configuration for Argo CD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec"),
 						},
 					},
 					"redis": {
@@ -221,16 +283,58 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
 						},
 					},
+					"repositories": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Repositories to configure Argo CD with.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceCustomizations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceExclusions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceExclusions is used to completely ignore entire classes of resource group/kinds.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"server": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Server defines the options for the ArgoCD Server component.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec"),
 						},
 					},
+					"sshKnownHosts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"statusBadgeEnabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StatusBadgeEnabled toggles application status badge feature.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS defines the TLS options for ArgoCD.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
+						},
+					},
+					"usersAnonymousEnabled": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UsersAnonymousEnabled toggles anonymous user access. The anonymous users get default role permissions specified argocd-rbac-cm.",
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 					"version": {
@@ -244,7 +348,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 

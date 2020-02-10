@@ -23,8 +23,8 @@ import (
 	"strings"
 	"text/template"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -50,9 +50,9 @@ type GrafanaSecurityConfig struct {
 // getGrafanaAdminPassword will generate and return the admin password for Grafana.
 func getGrafanaAdminPassword() ([]byte, error) {
 	pass, err := password.Generate(
-		argoproj.ArgoCDDefaultGrafanaAdminPasswordLength,
-		argoproj.ArgoCDDefaultGrafanaAdminPasswordNumDigits,
-		argoproj.ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
+		common.ArgoCDDefaultGrafanaAdminPasswordLength,
+		common.ArgoCDDefaultGrafanaAdminPasswordNumDigits,
+		common.ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
 		false, false)
 
 	return []byte(pass), err
@@ -61,9 +61,9 @@ func getGrafanaAdminPassword() ([]byte, error) {
 // getGrafanaSecretKey will generate and return the secret key for Grafana.
 func getGrafanaSecretKey() ([]byte, error) {
 	key, err := password.Generate(
-		argoproj.ArgoCDDefaultGrafanaSecretKeyLength,
-		argoproj.ArgoCDDefaultGrafanaSecretKeyNumDigits,
-		argoproj.ArgoCDDefaultGrafanaSecretKeyNumSymbols,
+		common.ArgoCDDefaultGrafanaSecretKeyLength,
+		common.ArgoCDDefaultGrafanaSecretKeyNumDigits,
+		common.ArgoCDDefaultGrafanaSecretKeyNumSymbols,
 		false, false)
 
 	return []byte(key), err
@@ -80,7 +80,7 @@ func getGrafanaHost(cr *argoprojv1a1.ArgoCD) string {
 
 // getGrafanaReplicas will return the size value for the Grafana replica count.
 func getGrafanaReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
-	replicas := argoproj.ArgoCDDefaultGrafanaReplicas
+	replicas := common.ArgoCDDefaultGrafanaReplicas
 	if cr.Spec.Grafana.Size != nil {
 		if *cr.Spec.Grafana.Size >= 0 && *cr.Spec.Grafana.Size != replicas {
 			replicas = *cr.Spec.Grafana.Size
@@ -95,7 +95,7 @@ func getGrafanaConfigPath() string {
 	if len(path) > 0 {
 		return path
 	}
-	return argoproj.ArgoCDDefaultGrafanaConfigPath
+	return common.ArgoCDDefaultGrafanaConfigPath
 }
 
 // hasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
@@ -106,7 +106,7 @@ func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoprojv1a1.Argo
 			return true
 		}
 	} else { // Replica count NOT specified in desired state
-		if *actual.Spec.Replicas != argoproj.ArgoCDDefaultGrafanaReplicas {
+		if *actual.Spec.Replicas != common.ArgoCDDefaultGrafanaReplicas {
 			return true
 		}
 	}

@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -40,7 +40,7 @@ func (r *ReconcileArgoCDExport) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDExp
 
 // reconcilePVC will ensure that the PVC for the ArgoCDExport is present.
 func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) error {
-	if cr.Status.Phase == argoproj.ArgoCDStatusCompleted {
+	if cr.Status.Phase == common.ArgoCDStatusCompleted {
 		return nil // Nothing to see here, move along...
 	}
 

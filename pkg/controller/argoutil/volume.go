@@ -17,7 +17,7 @@ package argoutil
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ import (
 
 // DefaultPVCResources will return the default PVC resources.
 func DefaultPVCResources() corev1.ResourceRequirements {
-	capacity, err := resource.ParseQuantity(argoproj.ArgoCDDefaultExportLocalCapicity)
+	capacity, err := resource.ParseQuantity(common.ArgoCDDefaultExportLocalCapicity)
 	if err != nil {
 		log.Error(err, "unable to parse quantity")
 	}
@@ -67,6 +67,6 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 func NewPersistentVolumeClaimWithName(name string, meta metav1.ObjectMeta) *corev1.PersistentVolumeClaim {
 	pvc := NewPersistentVolumeClaim(meta)
 	pvc.ObjectMeta.Name = name
-	pvc.ObjectMeta.Labels[argoproj.ArgoCDKeyName] = name
+	pvc.ObjectMeta.Labels[common.ArgoCDKeyName] = name
 	return pvc
 }
