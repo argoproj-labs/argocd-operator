@@ -164,18 +164,14 @@ func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
 // getDexOAuthClientID will return the OAuth client secret for the given ArgoCD.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	log.Info(fmt.Sprintf("Fetching Service Account: %s", sa.Name))
 	if err := argoutil.FetchObject(r.client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
 
 	// Find the token secret
-	log.Info("Locating Service Account Token Secret")
 	var tokenSecret *corev1.ObjectReference
 	for _, saSecret := range sa.Secrets {
-		log.Info(fmt.Sprintf("Found Secret: %s", saSecret.Name))
 		if strings.Contains(saSecret.Name, "token") {
-			log.Info(fmt.Sprintf("Using Secret: %s", saSecret.Name))
 			tokenSecret = &saSecret
 			break
 		}
@@ -187,13 +183,11 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 
 	// Fetch the secret to obtain the token
 	secret := newSecretWithName(tokenSecret.Name, cr)
-	log.Info(fmt.Sprintf("Fetching Service Account Token Secret: %s", secret.Name))
 	if err := argoutil.FetchObject(r.client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}
 
 	token := string(secret.Data["token"])
-	log.Info(fmt.Sprintf("Service Account Token: %s", token))
 	return &token, nil
 }
 
