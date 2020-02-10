@@ -45,6 +45,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - autoscaling
+  resources:
+    - horizontalpodautoscalers
+  verbs:
+    - '*'
+- apiGroups:
   - batch
   resources:
   - cronjobs

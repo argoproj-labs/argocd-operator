@@ -15,8 +15,8 @@
 package argocd
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -332,9 +332,9 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	if len(cr.Status.Phase) <= 0 {
 		cr.Status.Phase = "Pending"
 		return r.client.Status().Update(context.TODO(), cr)
-  }
-  
-  log.Info("reconciling service accounts")
+	}
+
+	log.Info("reconciling service accounts")
 	if err := r.reconcileServiceAccounts(cr); err != nil {
 		return err
 	}
@@ -361,6 +361,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	log.Info("reconciling deployments")
 	if err := r.reconcileDeployments(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling autoscalers")
+	if err := r.reconcileAutoscalers(cr); err != nil {
 		return err
 	}
 

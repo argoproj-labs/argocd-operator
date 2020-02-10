@@ -35,6 +35,16 @@ spec:
     image: redis
     version: 5.0.3
   server:
+    autoscale:
+      enabled: false
+      hpa:
+        maxReplicas: 3
+        minReplicas: 1
+        scaleTargetRef:
+          apiVersion: extensions/v1beta1
+          kind: Deployment
+          name: example-argocd-server
+        targetCPUUtilizationPercentage: 50
     grpc:
       host: example-argocd-grpc
     host: example-argocd
