@@ -142,7 +142,7 @@ spec:
                   description: Enabled will toggle Ingress support globally for ArgoCD.
                   type: boolean
                 path:
-                  description: Path is the path to use for the Ingress resource.
+                  description: Path used for the Ingress resource.
                   type: string
               required:
               - enabled
@@ -217,6 +217,60 @@ spec:
             server:
               description: Server defines the options for the ArgoCD Server component.
               properties:
+                autoscale:
+                  description: Autoscale defines the autoscale options for the Argo
+                    CD Server conponent.
+                  properties:
+                    enabled:
+                      description: Enabled will toggle autoscaling support for the
+                        Argo CD Server component.
+                      type: boolean
+                    hpa:
+                      description: HPA defines the HorizontalPodAutoscaler options
+                        for the Argo CD Server component.
+                      properties:
+                        maxReplicas:
+                          description: upper limit for the number of pods that can
+                            be set by the autoscaler; cannot be smaller than MinReplicas.
+                          format: int32
+                          type: integer
+                        minReplicas:
+                          description: lower limit for the number of pods that can
+                            be set by the autoscaler, default 1.
+                          format: int32
+                          type: integer
+                        scaleTargetRef:
+                          description: reference to scaled resource; horizontal pod
+                            autoscaler will learn the current resource consumption
+                            and will set the desired number of pods by using its Scale
+                            subresource.
+                          properties:
+                            apiVersion:
+                              description: API version of the referent
+                              type: string
+                            kind:
+                              description: 'Kind of the referent; More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds"'
+                              type: string
+                            name:
+                              description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        targetCPUUtilizationPercentage:
+                          description: target average CPU utilization (represented
+                            as a percentage of requested CPU) over all the pods; if
+                            not specified the default autoscaling policy will be used.
+                          format: int32
+                          type: integer
+                      required:
+                      - maxReplicas
+                      - scaleTargetRef
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 grpc:
                   description: GRPC defines the state for the Argo CD Server GRPC
                     options.
