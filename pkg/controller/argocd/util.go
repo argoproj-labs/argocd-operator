@@ -340,6 +340,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconciling autoscalers")
+	if err := r.reconcileAutoscalers(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling ingresses")
 	if err := r.reconcileIngresses(cr); err != nil {
 		return err

@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -178,6 +179,15 @@ type ArgoCDRedisSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ArgoCDServerAutoscaleSpec defines the desired state for autoscaling the Argo CD Server component.
+type ArgoCDServerAutoscaleSpec struct {
+	// Enabled will toggle autoscaling support for the Argo CD Server component.
+	Enabled bool `json:"enabled"`
+
+	// HPA defines the HorizontalPodAutoscaler options for the Argo CD Server component.
+	HPA *autoscaling.HorizontalPodAutoscalerSpec `json:"hpa,omitempty"`
+}
+
 // ArgoCDServerGRPCSpec defines the desired state for the Argo CD Server GRPC options.
 type ArgoCDServerGRPCSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
@@ -186,6 +196,9 @@ type ArgoCDServerGRPCSpec struct {
 
 // ArgoCDServerSpec defines the options for the ArgoCD Server component.
 type ArgoCDServerSpec struct {
+	// Autoscale defines the autoscale options for the Argo CD Server conponent.
+	Autoscale ArgoCDServerAutoscaleSpec `json:"autoscale,omitempty"`
+
 	// GRPC defines the state for the Argo CD Server GRPC options.
 	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
 
