@@ -1,4 +1,4 @@
-site_name: Argo CD Operator -  Kubernetes operator for managing Argo CD deployments.
+site_name: Argo CD Operator
 repo_url: https://github.com/argoproj-labs/argocd-operator
 strict: true
 theme:
@@ -7,7 +7,7 @@ theme:
     primary: teal
   font:
     text: 'Work Sans'
-  logo: 'assets/logo.png'
+  logo: 'assets/logo.svg'
 google_analytics:
 - ''
 - 'auto'
