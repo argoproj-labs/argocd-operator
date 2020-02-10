@@ -1,4 +1,8 @@
-# Overview
+# Argo CD Operator
+
+A Kubernetes operator for managing Argo CD deployments.
+
+## Overview
 
 The Argo CD Operator is intended to manage the full lifecycle for [Argo CD][argocd_home] and it's components. The 
 operator's goal is to automate the tasks required when operating Argo CD. Beyond installation, the operator attempts to  
@@ -14,3 +18,5 @@ The operator aims to provide the following and is a work in progress.
 * Ablity to back up and restore an Argo CD deployment from a point in time.
 * Expose and aggregate the metrics for Argo CD and the operator itself using Prometheus and Grafana.
 * Autoscale the Argo CD components as necessary to handle increased load.
+
+[argocd_home]:https://argoproj.github.io/projects/argo-cd
