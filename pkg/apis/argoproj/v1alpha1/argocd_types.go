@@ -157,16 +157,16 @@ type ArgoCDRBACSpec struct {
 	// Role definitions and bindings are in the form:
 	//   g, subject, inherited-subject
 	// See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md for additional information.
-	Policy string `json:"policy,omitempty"`
+	Policy *string `json:"policy,omitempty"`
 
 	// DefaultPolicy is the name of the default role which Argo CD will falls back to, when
 	// authorizing API requests (optional). If omitted or empty, users may be still be able to login,
 	// but will see no apps, projects, etc...
-	DefaultPolicy string `json:"defaultPolicy,omitempty"`
+	DefaultPolicy *string `json:"defaultPolicy,omitempty"`
 
 	// Scopes controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
 	// If omitted, defaults to: '[groups]'.
-	Scopes string `json:"scopes,omitempty"`
+	Scopes *string `json:"scopes,omitempty"`
 }
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.

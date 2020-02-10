@@ -137,8 +137,8 @@ func getOIDCConfig(cr *argoprojv1a1.ArgoCD) string {
 // getRBACPolicy will return the RBAC policy for the given ArgoCD.
 func getRBACPolicy(cr *argoprojv1a1.ArgoCD) string {
 	policy := common.ArgoCDDefaultRBACPolicy
-	if len(cr.Spec.RBAC.Policy) > 0 {
-		policy = cr.Spec.RBAC.Policy
+	if cr.Spec.RBAC.Policy != nil {
+		policy = *cr.Spec.RBAC.Policy
 	}
 	return policy
 }
@@ -146,8 +146,8 @@ func getRBACPolicy(cr *argoprojv1a1.ArgoCD) string {
 // getRBACDefaultPolicy will retun the RBAC default policy for the given ArgoCD.
 func getRBACDefaultPolicy(cr *argoprojv1a1.ArgoCD) string {
 	dp := common.ArgoCDDefaultRBACDefaultPolicy
-	if len(cr.Spec.RBAC.DefaultPolicy) > 0 {
-		dp = cr.Spec.RBAC.DefaultPolicy
+	if cr.Spec.RBAC.DefaultPolicy != nil {
+		dp = *cr.Spec.RBAC.DefaultPolicy
 	}
 	return dp
 }
@@ -155,8 +155,8 @@ func getRBACDefaultPolicy(cr *argoprojv1a1.ArgoCD) string {
 // getRBACScopes will return the RBAC scopes for the given ArgoCD.
 func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	scopes := common.ArgoCDDefaultRBACScopes
-	if len(cr.Spec.RBAC.Scopes) > 0 {
-		scopes = cr.Spec.RBAC.Scopes
+	if cr.Spec.RBAC.Scopes != nil {
+		scopes = *cr.Spec.RBAC.Scopes
 	}
 	return scopes
 }
@@ -454,20 +454,20 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
 	changed := false
 	// Policy CSV
-	if cm.Data[common.ArgoCDKeyRBACPolicyCSV] != cr.Spec.RBAC.Policy {
-		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = cr.Spec.RBAC.Policy
+	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
+		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
 		changed = true
 	}
 
 	// Default Policy
-	if cm.Data[common.ArgoCDKeyRBACPolicyDefault] != cr.Spec.RBAC.DefaultPolicy {
-		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = cr.Spec.RBAC.DefaultPolicy
+	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
+		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
 		changed = true
 	}
 
 	// Scopes
-	if cm.Data[common.ArgoCDKeyRBACScopes] != cr.Spec.RBAC.Scopes {
-		cm.Data[common.ArgoCDKeyRBACScopes] = cr.Spec.RBAC.Scopes
+	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
+		cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
 		changed = true
 	}
 
