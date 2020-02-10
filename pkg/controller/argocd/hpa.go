@@ -17,8 +17,8 @@ package argocd
 import (
 	"context"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoprojv1a1.ArgoCD) *a
 	hpa.ObjectMeta.Name = name
 
 	lbls := hpa.ObjectMeta.Labels
-	lbls[argoproj.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	hpa.ObjectMeta.Labels = lbls
 
 	return hpa
