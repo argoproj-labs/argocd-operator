@@ -239,4 +239,4 @@ When the Argo CD Operator sees a new ArgoCDExport resource, the operator manages
 
 [docs_ingress]:./ingress.md
 [docs_openshift]:./guides/install-openshift.md
-[example_argocd_defaults]:../examples/argocd-default.yaml
+[example_argocd_defaults]:https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-default.yaml
