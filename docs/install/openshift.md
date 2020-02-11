@@ -52,10 +52,10 @@ oc create -f deploy/argo-cd
 Add the Argo CD Operator CRD to the cluster
 
 ```bash
-oc create -f deploy/crds/argoproj_v1alpha1_argocd_crd.yaml
+oc create -f deploy/crds
 ```
 
-There should be three CRDs present for Argo CD on the cluster.
+There should be four CRDs present for Argo CD on the cluster.
 
 ```bash
 oc get crd | grep argo
@@ -65,6 +65,7 @@ oc get crd | grep argo
 NAME                       CREATED AT
 applications.argoproj.io   2019-11-09T06:36:59Z
 appprojects.argoproj.io    2019-11-09T06:36:59Z
+argocdexports.argoproj.io  2019-11-09T06:37:06Z
 argocds.argoproj.io        2019-11-09T06:37:06Z
 ```
 
@@ -104,11 +105,11 @@ oc get pods
 ```
 ```bash
 NAME                                                     READY   STATUS    RESTARTS   AGE
-argocd-minimal-application-controller-7c74b5855b-brn7s   1/1     Running   0          29s
-argocd-minimal-dex-server-859bd5458c-78c8k               1/1     Running   0          29s
-argocd-minimal-redis-6986d5fdbd-vzzjp                    1/1     Running   0          29s
-argocd-minimal-repo-server-7bfc477c58-q7d8g              1/1     Running   0          29s
-argocd-minimal-server-7d56c5bf4d-9wxz6                   1/1     Running   0          29s
+example-argocd-application-controller-7c74b5855b-brn7s   1/1     Running   0          29s
+example-argocd-dex-server-859bd5458c-78c8k               1/1     Running   0          29s
+example-argocd-redis-6986d5fdbd-vzzjp                    1/1     Running   0          29s
+example-argocd-repo-server-7bfc477c58-q7d8g              1/1     Running   0          29s
+example-argocd-server-7d56c5bf4d-9wxz6                   1/1     Running   0          29s
 argocd-operator-758dd86fb-qshll                          1/1     Running   0          51s
 ```
 
@@ -120,14 +121,11 @@ oc get routes
 
 ```bash
 NAME                        HOST/PORT                                               PATH   SERVICES                 PORT   TERMINATION     WILDCARD
-argocd-minimal-grafana      argocd-minimal-grafana-argocd.apps.test.runk8s.com             argocd-minimal-grafana   http                   None
-argocd-minimal-prometheus   argocd-minimal-prometheus-argocd.apps.test.runk8s.com          prometheus-operated      web                    None
-argocd-minimal-server       argocd-minimal-server-argocd.apps.test.runk8s.com              argocd-minimal-server    http   edge/Redirect   None
+example-argocd-server       example-argocd-server-argocd.apps.test.runk8s.com              example-argocd-server    http   edge/Redirect   None
 ```
 
-The Route is `argocd-minimal-server` in this example and should be available at
-the HOST/PORT value listed. The admin password is the name for the server Pod
-from above (`argocd-minimal-server-7d56c5bf4d-9wxz6` in this example).
+The Route is `example-argocd-server` in this example and should be available at the HOST/PORT value listed. The admin 
+password is the name for the server Pod from above (`example-argocd-server-7d56c5bf4d-9wxz6` in this example).
 
-Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) 
-to create a new application from the UI.
+Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) to 
+create a new application from the UI.
