@@ -20,5 +20,5 @@ source ${HACK_DIR}/env.sh
 refdocs \
     -api-dir "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1" \
     -config "${ARGOCD_OPERATOR_DOCS_DIR}/apidocs-config.json" \
-    -out-file "${ARGOCD_OPERATOR_DOCS_DIR}/api.html" \
+    -out-file "${ARGOCD_OPERATOR_DOCS_DIR}/reference/api.html" \
     -template-dir "docs/template"

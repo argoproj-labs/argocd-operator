@@ -19,17 +19,17 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Install:
-    - Getting Started: start.md
+    - Getting Started: install/start.md
     - OpenShift: install/openshift.md
     - Operator Lifecycle Manager: install/olm.md
-    - Manual Installation: install/manual-install.md
+    - Manual Installation: install/manual.md
   - Usage: 
     - Basics: usage/basics.md
     - Ingress: usage/ingress.md
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
-    - API Docs: api.html.md
+    - API Docs: reference/api.html.md
   - Contributing: development.md
   - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
   - Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones
