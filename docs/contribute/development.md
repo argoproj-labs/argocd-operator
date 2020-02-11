@@ -29,7 +29,7 @@ Have a look at the scripts in the `hack` directory for all of the environment va
 
 Run the provided shell script to build the operator. A container image wil be created locally.
 
-```bash
+``` bash
 hack/build.sh
 ```
 
@@ -37,7 +37,7 @@ hack/build.sh
 
 Push a locally created container image to a container registry for deployment.
 
-```bash
+``` bash
 hack/push.sh
 ```
 
@@ -45,7 +45,7 @@ hack/push.sh
 
 Bundle the operator for usage in OLM as a CatalogSource.
 
-```bash
+``` bash
 hack/bundle.sh
 ```
 [podman_link]:https://podman.io
