@@ -24,6 +24,8 @@ spec:
     image: grafana/grafana
     size: 1
     version: 6.5.1
+  ha:
+    enabled: true
   helpChatURL: "https://mycorp.slack.com/argo-cd"
   helpChatText: "Chat now!"
   image: argoproj/argocd
@@ -43,8 +45,6 @@ spec:
     defaultPolicy: "role:readonly"
     scopes: "[groups]"
   redis:
-    ha:
-      enabled: false
     image: redis
     version: 5.0.3
   repositories: ""

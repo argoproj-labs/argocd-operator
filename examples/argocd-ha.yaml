@@ -5,6 +5,5 @@ metadata:
   labels:
     example: ha
 spec:
-  redis:
-    ha:
-      enabled: true
+  ha:
+    enabled: true

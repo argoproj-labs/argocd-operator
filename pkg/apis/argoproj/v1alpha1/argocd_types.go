@@ -108,6 +108,12 @@ type ArgoCDGrafanaSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ArgoCDHASpec defines the desired state for High Availability support for Argo CD.
+type ArgoCDHASpec struct {
+	// Enabled will toggle HA support globally for Argo CD.
+	Enabled bool `json:"enabled"`
+}
+
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
 type ArgoCDImportSpec struct {
 	// Name of an ArgoCDExport from which to import data.
@@ -170,17 +176,8 @@ type ArgoCDRBACSpec struct {
 	Scopes *string `json:"scopes,omitempty"`
 }
 
-// ArgoCDRedisHASpec defines the desired state for High Availability support for the Redis component.
-type ArgoCDRedisHASpec struct {
-	// Enabled will toggle HA support for the Redis component.
-	Enabled bool `json:"enabled"`
-}
-
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
-	// HA options for High Availability support for the Redis component.
-	HA ArgoCDRedisHASpec `json:"ha,omitempty"`
-
 	// Image is the Redis container image.
 	Image string `json:"image,omitempty"`
 
@@ -250,6 +247,9 @@ type ArgoCDSpec struct {
 
 	// Grafana defines the Grafana server options for ArgoCD.
 	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
+
+	// HA options for High Availability support for the Redis component.
+	HA ArgoCDHASpec `json:"ha,omitempty"`
 
 	// HelpChatURL is the URL for getting chat help, this will typically be your Slack channel for support.
 	HelpChatURL string `json:"helpChatURL,omitempty"`
