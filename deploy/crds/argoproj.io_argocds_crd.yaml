@@ -196,6 +196,16 @@ spec:
             redis:
               description: Redis defines the Redis server options for ArgoCD.
               properties:
+                ha:
+                  description: HA options for High Availability support for the Redis
+                    component.
+                  properties:
+                    enabled:
+                      description: Enabled will toggle HA support for the Redis component.
+                      type: boolean
+                  required:
+                  - enabled
+                  type: object
                 image:
                   description: Image is the Redis container image.
                   type: string

@@ -170,8 +170,17 @@ type ArgoCDRBACSpec struct {
 	Scopes *string `json:"scopes,omitempty"`
 }
 
+// ArgoCDRedisHASpec defines the desired state for High Availability support for the Redis component.
+type ArgoCDRedisHASpec struct {
+	// Enabled will toggle HA support for the Redis component.
+	Enabled bool `json:"enabled"`
+}
+
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
 type ArgoCDRedisSpec struct {
+	// HA options for High Availability support for the Redis component.
+	HA ArgoCDRedisHASpec `json:"ha,omitempty"`
+
 	// Image is the Redis container image.
 	Image string `json:"image,omitempty"`
 
