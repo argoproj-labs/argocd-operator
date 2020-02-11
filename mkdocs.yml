@@ -20,6 +20,7 @@ nav:
   - Overview: index.md
   - Install: install.md
   - Usage: usage.md
+  - Reference: api.html
   - Contributing: development.md
   - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
   - Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones
