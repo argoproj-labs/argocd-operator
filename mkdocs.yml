@@ -7,7 +7,7 @@ theme:
     primary: teal
   font:
     text: 'Work Sans'
-  logo: 'assets/logo.svg'
+  logo: 'assets/logo.png'
 google_analytics:
 - ''
 - 'auto'
