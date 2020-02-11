@@ -32,7 +32,7 @@ spec:
           description: ArgoCDExportSpec defines the desired state of ArgoCDExport
           properties:
             argocd:
-              description: ArgoCD is the name of the ArgoCD instance to export.
+              description: Argocd is the name of the ArgoCD instance to export.
               type: string
             schedule:
               description: Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
