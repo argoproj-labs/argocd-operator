@@ -3,7 +3,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: defaults
+    example: default
 spec:
   applicationInstanceLabelKey: "mycompany.com/appname"
   configManagementPlugins: ""
@@ -70,5 +70,6 @@ spec:
     ca:
       configMapName: example-argocd-ca
       secretName: example-argocd-ca
+    certs: []
   usersAnonymousEnabled: true
   version: v1.4.1
