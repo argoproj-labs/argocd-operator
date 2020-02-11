@@ -1,10 +1,11 @@
-## Basic Install
+# Manual Installation
 
 The following steps can be used to manually install the operator on any Kubernetes environment with minimal overhead.
 
-Several of the steps in this process require the `cluster-admin` ClusterRole or equivalent.
+!!! info
+    Several of the steps in this process require the `cluster-admin` ClusterRole or equivalent.
 
-### Cluster
+## Cluster
 
 This guide uses [minikube](https://minikube.sigs.k8s.io/) to deploy a Kubernetes cluster locally, follow the 
 instructions for your platform to install. 
@@ -15,11 +16,11 @@ Run minikube with a dedicated profile. Adjust the system resources as needed for
 minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 ```
 
-### Manual Install
+## Manual Install
 
 The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes manifests.
 
-#### Namespace
+### Namespace
 
 It is a good idea to create a new namespace for the operator.
 
@@ -36,7 +37,7 @@ kubectl config use-context argocd/minikube
 
 The remaining resources will now be created in the new namespace.
 
-#### RBAC
+### RBAC
 
 Set up RBAC for the ArgoCD operator and components.
 
@@ -46,7 +47,7 @@ kubectl create -f deploy/role.yaml
 kubectl create -f deploy/role_binding.yaml
 ```
 
-#### CRDs
+### CRDs
 
 Add the upstream Argo CD CRDs to the cluster.
 
@@ -74,7 +75,7 @@ argocdexports.argoproj.io  2019-11-09T02:36:02Z
 argocds.argoproj.io        2019-11-09T02:36:02Z
 ```
 
-#### Deploy Operator
+### Deploy Operator
 
 Deploy the operator
 
@@ -93,7 +94,7 @@ NAME                              READY   STATUS    RESTARTS   AGE
 argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
 ```
 
-#### ArgoCD Instance
+### ArgoCD Instance
 
 Once the operator is deployed and running, create a new ArgoCD custom resource.
 The following example shows the minimal required to create a new ArgoCD

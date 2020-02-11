@@ -1,10 +1,10 @@
-## OpenShift Install
+# OpenShift Install
 
 The following steps can be used to manually install the operator in an OpenShift 4.x environment with minimal overhead.
 
 Several of the steps in this process require the `cluster-admin` ClusterRole or equivalent.
 
-### Cluster
+## Cluster
 
 This guide uses [OpenShift 4](https://try.openshift.com/), follow the 
 guide for your platform to install. 
@@ -15,11 +15,11 @@ Once the cluster is up and running, log in as the `cluster-admin` user.
 oc login -u kubeadmin
 ```
 
-### Manual Install
+## Manual Install
 
 The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes manifests.
 
-#### Namespace
+### Namespace
 
 It is a good idea to create a new namespace for the operator.
 
@@ -29,7 +29,7 @@ oc new-project argocd
 
 The remaining resources will now be created in the new namespace.
 
-#### RBAC
+### RBAC
 
 Provision the ServiceAccounts, Roles and RoleBindings to set up RBAC for the operator.
 
@@ -41,7 +41,7 @@ oc create -f deploy/role_binding.yaml
 
 Argo CD needs several ClusterRole resources to function, however the ClusterRoles have been refined to read-only for the cluster resources.
 
-#### CRDs
+### CRDs
 
 Add the Argo CD CRDs to the cluster.
 
@@ -68,7 +68,7 @@ appprojects.argoproj.io    2019-11-09T06:36:59Z
 argocds.argoproj.io        2019-11-09T06:37:06Z
 ```
 
-#### Deploy Operator
+### Deploy Operator
 
 Provision the operator using a Deployment manifest.
 
@@ -87,7 +87,7 @@ NAME                              READY   STATUS    RESTARTS   AGE
 argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
 ```
 
-#### ArgoCD Instance
+### ArgoCD Instance
 
 Once the operator is deployed and running, create a new ArgoCD custom resource.
 The following example shows the minimal required to create a new ArgoCD
