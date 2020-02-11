@@ -1,0 +1,4 @@
+.codehilite {
+    overflow: scroll;
+    -webkit-overflow-scrolling: touch;
+}
