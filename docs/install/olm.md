@@ -20,8 +20,8 @@ minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 Install the OLM components manually. If you already have OLM installed, skip to the [Operator](#operator-install) section.
 
 ```bash
-kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.12.0/crds.yaml
-kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.12.0/olm.yaml
+kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.14.1/crds.yaml
+kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.14.1/olm.yaml
 ```
 
 Verify that OLM is installed. There should be two new namespaces, `olm` and `operators` created as a result.
@@ -40,7 +40,7 @@ olm               Active   24s
 operators         Active   24s
 ```
 
-Verfiy that the OLM Pods are running in the `olm` namespace.
+Verify that the OLM Pods are running in the `olm` namespace.
 
 ```bash
 kubectl get pods -n olm
@@ -163,14 +163,19 @@ argocd-operator-746b886cd5-cd7m7   1/1     Running   0          4m27s
 
 ## Usage 
 
-Once the operator is installed and running, see the [usage][docs_usage] documentation on how to create new `ArgoCD` resources.
+Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage] 
+documentation to learn how to create new `ArgoCD` resources.
 
 ## Cleanup 
 
+You can clean up the operator resources by running the following commands.
+
+```
 kubectl delete -n argocd -f deploy/subscription.yaml
 kubectl delete -n argocd -f deploy/operator_group.yaml
 kubectl delete -n olm -f deploy/catalog_source.yaml
 kubectl delete namespace argocd
+```
 
 [docs_dev]:../development.md
 [docs_usage]:../usage/basics.md

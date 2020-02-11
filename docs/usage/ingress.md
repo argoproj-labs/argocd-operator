@@ -89,8 +89,7 @@ spec:
   ingress:
     enabled: true
   server:
-    insecure:
-      true
+    insecure: true
 ```
 
 Create the ArgoCD with Ingress support.
