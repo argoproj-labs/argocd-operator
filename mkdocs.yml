@@ -8,9 +8,6 @@ theme:
   font:
     text: 'Work Sans'
   logo: 'assets/logo.png'
-google_analytics:
-- ''
-- 'auto'
 markdown_extensions:
 - codehilite
 - admonition
