@@ -177,6 +177,6 @@ kubectl delete -n olm -f deploy/catalog_source.yaml
 kubectl delete namespace argocd
 ```
 
-[docs_dev]:../development.md
+[docs_dev]:../contribute/development.md
 [docs_usage]:../usage/basics.md
 [olm_home]:https://github.com/operator-framework/operator-lifecycle-manager
