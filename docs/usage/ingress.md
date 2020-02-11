@@ -178,12 +178,11 @@ argocd app delete guestbook --insecure
 The server UI should be available at https://example-argocd/ and the admin password is the name for the server 
 Pod (`example-argocd-server-d468768b-l5wnf` in this example).
 
-[install_olm]:./guides/install-olm.md
-[docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli
-
-
 ## Cleanup
 
 ```bash
 kubectl delete -n argocd -f examples/argocd-ingress.yaml
 ```
+
+[install_olm]:../install/olm.md
+[docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli

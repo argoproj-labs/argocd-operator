@@ -81,5 +81,5 @@ See the [ingress][docs_ingress] documentation for steps to enable and use the In
 See the [OpenShift][docs_openshift] documentation for steps to configure the Route support provided by the operator.
 
 [docs_ingress]:./ingress.md
-[docs_openshift]:./guides/install-openshift.md
+[docs_openshift]:../install/openshift.md
 [example_argocd_defaults]:https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-default.yaml

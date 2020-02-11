@@ -29,8 +29,8 @@ The operator can be installed manually if desired.
 The [Manual Installation Guide][install_manual] provides the steps needed to manually install the operator on any 
 Kubernetes cluster.
 
-[install_manual]:./install/manual.md
-[install_olm]:./install/olm.md
-[install_openshift]:./install/openshift.md
+[install_manual]:./manual.md
+[install_olm]:./olm.md
+[install_openshift]:./openshift.md
 [olm_home]:https://github.com/operator-framework/operator-lifecycle-manager
 [openshift_home]:https://try.openshift.com
