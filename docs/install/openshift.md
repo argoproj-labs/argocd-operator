@@ -49,7 +49,7 @@ Add the Argo CD CRDs to the cluster.
 oc create -f deploy/argo-cd
 ```
 
-Add the Argo CD Operator CRD to the cluster
+Add the Argo CD Operator CRDs to the cluster
 
 ```bash
 oc create -f deploy/crds
