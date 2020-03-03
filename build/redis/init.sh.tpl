@@ -7,7 +7,7 @@ REDIS_CONF=/data/conf/redis.conf
 REDIS_PORT=6379
 SENTINEL_CONF=/data/conf/sentinel.conf
 SENTINEL_PORT=26379
-SERVICE=argocd-redis-ha
+SERVICE={{.ServiceName}}
 set -eu
 
 sentinel_update() {
