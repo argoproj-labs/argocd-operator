@@ -15,10 +15,13 @@
 package argocd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"text/template"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -31,6 +34,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -45,6 +49,29 @@ type DexConnector struct {
 	Type   string                 `yaml:"type"`
 }
 
+// getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
+func getArgoApplicationControllerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	// resources := corev1.ResourceRequirements{
+	// 	Limits: corev1.ResourceList{
+	// 		corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultControllerResourceLimitCPU),
+	// 		corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultControllerResourceLimitMemory),
+	// 	},
+	// 	Requests: corev1.ResourceList{
+	// 		corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultControllerResourceRequestCPU),
+	// 		corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultControllerResourceRequestMemory),
+	// 	},
+	// }
+
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Controller.Resources != nil {
+		resources = *cr.Spec.Controller.Resources
+	}
+
+	return resources
+}
+
 // getArgoContainerImage will return the container image for ArgoCD.
 func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Image
@@ -57,6 +84,18 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultArgoVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
+func getArgoRepoResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Repo.Resources != nil {
+		resources = *cr.Spec.Repo.Resources
+	}
+
+	return resources
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
@@ -80,6 +119,31 @@ func getArgoServerHost(cr *argoprojv1a1.ArgoCD) string {
 		host = cr.Spec.Server.Host
 	}
 	return host
+}
+
+// getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
+func getArgoServerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	if cr.Spec.Server.Autoscale.Enabled {
+		resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceLimitCPU),
+				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceLimitMemory),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceRequestCPU),
+				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceRequestMemory),
+			},
+		}
+	}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Server.Resources != nil {
+		resources = *cr.Spec.Server.Resources
+	}
+
+	return resources
 }
 
 // getArgoServerURI will return the URI for the ArgoCD server.
@@ -108,7 +172,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
 func getArgoServerOperationProcessors(cr *argoprojv1a1.ArgoCD) int32 {
-	op := common.ArgoCDDefaultArgoServerOperationProcessors
+	op := common.ArgoCDDefaultServerOperationProcessors
 	if cr.Spec.Controller.Processors.Operation > op {
 		op = cr.Spec.Controller.Processors.Operation
 	}
@@ -117,7 +181,7 @@ func getArgoServerOperationProcessors(cr *argoprojv1a1.ArgoCD) int32 {
 
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
 func getArgoServerStatusProcessors(cr *argoprojv1a1.ArgoCD) int32 {
-	sp := common.ArgoCDDefaultArgoServerStatusProcessors
+	sp := common.ArgoCDDefaultServerStatusProcessors
 	if cr.Spec.Controller.Processors.Status > sp {
 		sp = cr.Spec.Controller.Processors.Status
 	}
@@ -191,6 +255,18 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	return &token, nil
 }
 
+// getDexResources will return the ResourceRequirements for the Dex container.
+func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Dex.Resources != nil {
+		resources = *cr.Spec.Dex.Resources
+	}
+
+	return resources
+}
+
 // getGrafanaContainerImage will return the container image for the Grafana server.
 func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Grafana.Image
@@ -203,6 +279,18 @@ func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultGrafanaVersion
 	}
 	return fmt.Sprintf("%s:%s", img, tag)
+}
+
+// getGrafanaResources will return the ResourceRequirements for the Grafana container.
+func getGrafanaResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Grafana.Resources != nil {
+		resources = *cr.Spec.Grafana.Resources
+	}
+
+	return resources
 }
 
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
@@ -235,6 +323,27 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 	return string(bytes), err
 }
 
+// getRedisConfigPath will return the path for the Redis configuration templates.
+func getRedisConfigPath() string {
+	path := os.Getenv("REDIS_CONFIG_PATH")
+	if len(path) > 0 {
+		return path
+	}
+	return common.ArgoCDDefaultRedisConfigPath
+}
+
+// getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisConf(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis configuration")
+		return ""
+	}
+	return conf
+}
+
 // getRedisContainerImage will return the container image for the Redis server.
 func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := cr.Spec.Redis.Image
@@ -249,11 +358,98 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s:%s", img, tag)
 }
 
+// getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
+	script, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis init-script")
+		return ""
+	}
+	return script
+}
+
+// getRedisQuorumScript will load the redis quorum script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisQuorumScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/check-quorum.sh.tpl", getRedisConfigPath())
+	script, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis quorum script")
+		return ""
+	}
+	return script
+}
+
+// getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisReadinessScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/readiness.sh.tpl", getRedisConfigPath())
+	script, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis readiness script")
+		return ""
+	}
+	return script
+}
+
+// getRedisResources will return the ResourceRequirements for the Redis container.
+func getRedisResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Redis.Resources != nil {
+		resources = *cr.Spec.Redis.Resources
+	}
+
+	return resources
+}
+
+// getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis sentinel configuration")
+		return ""
+	}
+	return conf
+}
+
+// getRedisServerAddress will return the Redis service address for the given ArgoCD.
+func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	suffix := fmt.Sprintf("%s:%v", common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort)
+	return nameWithSuffix(suffix, cr)
+}
+
+// loadTemplateFile will parse a template with the given path and execute it with the given params.
+func loadTemplateFile(path string, params map[string]string) (string, error) {
+	tmpl, err := template.ParseFiles(path)
+	if err != nil {
+		log.Error(err, "unable to parse template")
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	err = tmpl.Execute(buf, params)
+	if err != nil {
+		log.Error(err, "unable to execute template")
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// nameWithSuffix will return a name based on the given ArgoCD. The given suffix is appended to the generated name.
+// Example: Given an ArgoCD with the name "example-argocd", providing the suffix "foo" would result in the value of
+// "example-argocd-foo" being returned.
 func nameWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", cr.Name, suffix)
 }
 
-// InspectCluster will verify the availability of extra features.
+// InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
+// OpenShift Routes.
 func InspectCluster() error {
 	if err := verifyPrometheusAPI(); err != nil {
 		return err
@@ -337,6 +533,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	log.Info("reconciling deployments")
 	if err := r.reconcileDeployments(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling statefulsets")
+	if err := r.reconcileStatefulSets(cr); err != nil {
 		return err
 	}
 

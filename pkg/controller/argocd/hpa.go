@@ -60,7 +60,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if !cr.Spec.Server.Autoscale.Enabled {
-		return nil // AutoScale not emabled, move along...
+		return nil // AutoScale not enabled, move along...
 	}
 
 	if cr.Spec.Server.Autoscale.HPA != nil {
