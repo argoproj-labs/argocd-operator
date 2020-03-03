@@ -1,0 +1,9 @@
+dir "/data"
+maxmemory 0
+maxmemory-policy volatile-lru
+min-slaves-max-lag 5
+min-slaves-to-write 1
+rdbchecksum yes
+rdbcompression yes
+repl-diskless-sync yes
+save ""

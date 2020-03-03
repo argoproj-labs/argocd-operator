@@ -13,6 +13,9 @@ RUN  /usr/local/bin/user_setup
 # install grafana artifacts
 COPY grafana /var/lib/grafana
 
+# install redis artifacts
+COPY build/redis /var/lib/redis
+
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}
