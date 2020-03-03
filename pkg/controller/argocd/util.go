@@ -627,6 +627,11 @@ func watchResources(c controller.Controller) error {
 		return err
 	}
 
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	if err := watchOwnedResource(c, &appsv1.StatefulSet{}); err != nil {
+		return err
+	}
+
 	if IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		if err := watchOwnedResource(c, &routev1.Route{}); err != nil {
