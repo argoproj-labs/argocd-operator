@@ -32,7 +32,8 @@ spec:
           description: ArgoCDSpec defines the desired state of ArgoCD
           properties:
             applicationInstanceLabelKey:
-              description: ApplicationInstanceLabelKey
+              description: ApplicationInstanceLabelKey is the key name where Argo
+                CD injects the app name as a tracking label.
               type: string
             configManagementPlugins:
               description: ConfigManagementPlugins is used to specify additional config
@@ -43,8 +44,8 @@ spec:
                 ArgoCD.
               properties:
                 processors:
-                  description: ArgoCDApplicationControllerProcessorsSpec defines the
-                    options for the ArgoCD Application Controller processors.
+                  description: Processors contains the options for the Application
+                    Controller processors.
                   properties:
                     operation:
                       description: Operation is the number of application operation
@@ -56,8 +57,25 @@ spec:
                       format: int32
                       type: integer
                   type: object
-              required:
-              - processors
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for the Application Controller.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
               type: object
             dex:
               description: Dex defines the Dex server options for ArgoCD.
@@ -72,6 +90,25 @@ spec:
                   description: OpenShiftOAuth enables OpenShift OAuth authentication
                     for the Dex server.
                   type: boolean
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Dex.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
                 version:
                   description: Version is the Dex container image tag.
                   type: string
@@ -95,6 +132,25 @@ spec:
                 image:
                   description: Image is the Grafana container image.
                   type: string
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Grafana.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
                 size:
                   description: Size is the replica count for the Grafana Deployment.
                   format: int32
@@ -102,6 +158,16 @@ spec:
                 version:
                   description: Version is the Grafana container image tag.
                   type: string
+              required:
+              - enabled
+              type: object
+            ha:
+              description: HA options for High Availability support for the Redis
+                component.
+              properties:
+                enabled:
+                  description: Enabled will toggle HA support globally for Argo CD.
+                  type: boolean
               required:
               - enabled
               type: object
@@ -152,7 +218,8 @@ spec:
                 to use with `kustomize build`.
               type: string
             oidcConfig:
-              description: OIDCConfig is the configuration as an alternative to dex.
+              description: OIDCConfig is the OIDC configuration as an alternative
+                to dex.
               type: string
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.
@@ -196,22 +263,54 @@ spec:
             redis:
               description: Redis defines the Redis server options for ArgoCD.
               properties:
-                ha:
-                  description: HA options for High Availability support for the Redis
-                    component.
-                  properties:
-                    enabled:
-                      description: Enabled will toggle HA support for the Redis component.
-                      type: boolean
-                  required:
-                  - enabled
-                  type: object
                 image:
                   description: Image is the Redis container image.
                   type: string
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Redis.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
                 version:
                   description: Version is the Redis container image tag.
                   type: string
+              type: object
+            repo:
+              description: Repo defines the repo server options for Argo CD.
+              properties:
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Redis.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
               type: object
             repositories:
               description: Repositories to configure Argo CD with.
@@ -297,6 +396,25 @@ spec:
                 insecure:
                   description: Insecure toggles the insecure flag.
                   type: boolean
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for the Argo CD server component.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
                 service:
                   description: Service defines the options for the Service backing
                     the ArgoCD Server component.

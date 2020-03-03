@@ -51,7 +51,11 @@ type ArgoCDApplicationControllerProcessorsSpec struct {
 
 // ArgoCDApplicationControllerSpec defines the options for the ArgoCD Application Controller component.
 type ArgoCDApplicationControllerSpec struct {
-	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors"`
+	// Processors contains the options for the Application Controller processors.
+	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for the Application Controller.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -80,6 +84,9 @@ type ArgoCDDexSpec struct {
 	// OpenShiftOAuth enables OpenShift OAuth authentication for the Dex server.
 	OpenShiftOAuth bool `json:"openShiftOAuth,omitempty"`
 
+	// Resources defines the Compute Resources required by the container for Dex.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
 	// Version is the Dex container image tag.
 	Version string `json:"version,omitempty"`
 }
@@ -100,6 +107,9 @@ type ArgoCDGrafanaSpec struct {
 
 	// Image is the Grafana container image.
 	Image string `json:"image,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Grafana.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// Size is the replica count for the Grafana Deployment.
 	Size *int32 `json:"size,omitempty"`
@@ -181,8 +191,17 @@ type ArgoCDRedisSpec struct {
 	// Image is the Redis container image.
 	Image string `json:"image,omitempty"`
 
+	// Resources defines the Compute Resources required by the container for Redis.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
 	// Version is the Redis container image tag.
 	Version string `json:"version,omitempty"`
+}
+
+// ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
+type ArgoCDRepoSpec struct {
+	// Resources defines the Compute Resources required by the container for Redis.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ArgoCDServerAutoscaleSpec defines the desired state for autoscaling the Argo CD Server component.
@@ -214,6 +233,9 @@ type ArgoCDServerSpec struct {
 	// Insecure toggles the insecure flag.
 	Insecure bool `json:"insecure,omitempty"`
 
+	// Resources defines the Compute Resources required by the container for the Argo CD server component.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
 	// Service defines the options for the Service backing the ArgoCD Server component.
 	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
 }
@@ -227,7 +249,7 @@ type ArgoCDServerServiceSpec struct {
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
-	// ApplicationInstanceLabelKey
+	// ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
 
 	// ConfigManagementPlugins is used to specify additional config management plugins.
@@ -269,7 +291,7 @@ type ArgoCDSpec struct {
 	// KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.
 	KustomizeBuildOptions string `json:"kustomizeBuildOptions,omitempty"`
 
-	// OIDCConfig is the configuration as an alternative to dex.
+	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	OIDCConfig string `json:"oidcConfig,omitempty"`
 
 	// Prometheus defines the Prometheus server options for ArgoCD.
@@ -283,6 +305,9 @@ type ArgoCDSpec struct {
 
 	// Repositories to configure Argo CD with.
 	Repositories string `json:"repositories,omitempty"`
+
+	// Repo defines the repo server options for Argo CD.
+	Repo ArgoCDRepoSpec `json:"repo,omitempty"`
 
 	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind.
 	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`

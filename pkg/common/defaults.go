@@ -21,17 +21,27 @@ const (
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
-	// ArgoCDDefaultArgoServerOperationProcessors is the number of ArgoCD Server Operation Processors to use when not specified.
-	ArgoCDDefaultArgoServerOperationProcessors = int32(10)
-
-	// ArgoCDDefaultArgoServerStatusProcessors is the number of ArgoCD Server Status Processors to use when not specified.
-	ArgoCDDefaultArgoServerStatusProcessors = int32(20)
-
 	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
 	ArgoCDDefaultArgoVersion = "v1.4.1"
 
 	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
 	ArgoCDDefaultConfigManagementPlugins = ""
+
+	// ArgoCDDefaultControllerResourceLimitCPU is the default CPU limit when not specified for the Argo CD application
+	// controller contianer.
+	ArgoCDDefaultControllerResourceLimitCPU = "1000m"
+
+	// ArgoCDDefaultControllerResourceLimitMemory is the default memory limit when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceLimitMemory = "64Mi"
+
+	// ArgoCDDefaultControllerResourceRequestCPU is the default CPU requested when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceRequestCPU = "250m"
+
+	// ArgoCDDefaultControllerResourceRequestMemory is the default memory requested when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceRequestMemory = "32Mi"
 
 	// ArgoCDDefaultDexConfig is the default dex configuration.
 	ArgoCDDefaultDexConfig = ""
@@ -41,6 +51,12 @@ const (
 
 	// ArgoCDDefaultDexOAuthRedirectPath is the default path to use for the OAuth Redirect URI.
 	ArgoCDDefaultDexOAuthRedirectPath = "/api/dex/callback"
+
+	// ArgoCDDefaultDexGRPCPort is the default GRPC listen port for Dex.
+	ArgoCDDefaultDexGRPCPort = 5557
+
+	// ArgoCDDefaultDexHTTPPort is the default HTTP listen port for Dex.
+	ArgoCDDefaultDexHTTPPort = 5556
 
 	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
@@ -117,11 +133,35 @@ const (
 	// ArgoCDDefaultRBACScopes is the default Argo CD RBAC scopes.
 	ArgoCDDefaultRBACScopes = "[groups]"
 
+	// ArgoCDDefaultRedisConfigPath is the default Redis configuration directory when not specified.
+	ArgoCDDefaultRedisConfigPath = "/var/lib/redis"
+
+	// ArgoCDDefaultRedisHAReplicas is the defaul number of replicas for Redis when rinning in HA mode.
+	ArgoCDDefaultRedisHAReplicas = int32(3)
+
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
 	ArgoCDDefaultRedisImage = "redis"
 
+	// ArgoCDDefaultRedisPort is the default listen port for Redis.
+	ArgoCDDefaultRedisPort = 6379
+
+	// ArgoCDDefaultRedisSentinelPort is the default listen port for Redis sentinel.
+	ArgoCDDefaultRedisSentinelPort = 26379
+
+	//ArgoCDDefaultRedisSuffix is the default suffix to use for Redis resources.
+	ArgoCDDefaultRedisSuffix = "redis"
+
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
 	ArgoCDDefaultRedisVersion = "5.0.3"
+
+	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
+	ArgoCDDefaultRepoMetricsPort = 8084
+
+	// ArgoCDDefaultRepoServerPort is the default listen port for the Argo CD repo server.
+	ArgoCDDefaultRepoServerPort = 8081
+
+	// ArgoCDDefaultRepositories is the default repositories.
+	ArgoCDDefaultRepositories = ""
 
 	// ArgoCDDefaultResourceCustomizations is the default resource customizations.
 	ArgoCDDefaultResourceCustomizations = ""
@@ -129,8 +169,23 @@ const (
 	// ArgoCDDefaultResourceExclusions is the default resource exlcusions.
 	ArgoCDDefaultResourceExclusions = ""
 
-	// ArgoCDDefaultRepositories is the default repositories.
-	ArgoCDDefaultRepositories = ""
+	// ArgoCDDefaultServerOperationProcessors is the number of ArgoCD Server Operation Processors to use when not specified.
+	ArgoCDDefaultServerOperationProcessors = int32(10)
+
+	// ArgoCDDefaultServerStatusProcessors is the number of ArgoCD Server Status Processors to use when not specified.
+	ArgoCDDefaultServerStatusProcessors = int32(20)
+
+	// ArgoCDDefaultServerResourceLimitCPU is the default CPU limit when not specified for the Argo CD server contianer.
+	ArgoCDDefaultServerResourceLimitCPU = "1000m"
+
+	// ArgoCDDefaultServerResourceLimitMemory is the default memory limit when not specified for the Argo CD server contianer.
+	ArgoCDDefaultServerResourceLimitMemory = "128Mi"
+
+	// ArgoCDDefaultServerResourceRequestCPU is the default CPU requested when not specified for the Argo CD server contianer.
+	ArgoCDDefaultServerResourceRequestCPU = "250m"
+
+	// ArgoCDDefaultServerResourceRequestMemory is the default memory requested when not specified for the Argo CD server contianer.
+	ArgoCDDefaultServerResourceRequestMemory = "64Mi"
 
 	// ArgoCDDefaultSSHKnownHosts is the default SSH Known hosts data.
 	ArgoCDDefaultSSHKnownHosts = `bitbucket.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TNm6rYI74nMzgz3B9IikW4WVK+dc8KZJZWYjAuORU3jc1c/NPskD2ASinf8v3xnfXeukU0sJ5N6m5E8VLjObPEO+mN2t/FZTMZLiFqPWc/ALSqnMnnhwrNi2rbfg/rd/IpL8Le3pSBne8+seeFVBoGqzHM9yXw==

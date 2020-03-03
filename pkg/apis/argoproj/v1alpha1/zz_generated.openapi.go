@@ -190,7 +190,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 				Properties: map[string]spec.Schema{
 					"applicationInstanceLabelKey": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ApplicationInstanceLabelKey",
+							Description: "ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -232,6 +232,12 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Grafana defines the Grafana server options for ArgoCD.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
+						},
+					},
+					"ha": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HA options for High Availability support for the Redis component.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec"),
 						},
 					},
 					"helpChatURL": {
@@ -276,7 +282,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					},
 					"oidcConfig": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OIDCConfig is the configuration as an alternative to dex.",
+							Description: "OIDCConfig is the OIDC configuration as an alternative to dex.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -304,6 +310,12 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Description: "Repositories to configure Argo CD with.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"repo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Repo defines the repo server options for Argo CD.",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec"),
 						},
 					},
 					"resourceCustomizations": {
@@ -364,7 +376,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDIngressSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
 	}
 }
 
