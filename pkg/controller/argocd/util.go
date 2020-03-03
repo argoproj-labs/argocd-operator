@@ -362,7 +362,11 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 // If an error occurs, an empty string value will be returned.
 func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
 	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
-	script, err := loadTemplateFile(path, map[string]string{})
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
 	if err != nil {
 		log.Error(err, "unable to load redis init-script")
 		return ""
