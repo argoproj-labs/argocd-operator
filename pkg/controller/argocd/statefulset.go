@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -136,7 +137,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 						Command: []string{
 							"sh",
 							"/probes/readiness.sh",
-							string(common.ArgoCDDefaultRedisPort),
+							strconv.Itoa(common.ArgoCDDefaultRedisPort),
 						},
 					},
 				},
@@ -154,7 +155,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 						Command: []string{
 							"sh",
 							"/probes/readiness.sh",
-							string(common.ArgoCDDefaultRedisPort),
+							strconv.Itoa(common.ArgoCDDefaultRedisPort),
 						},
 					},
 				},
@@ -188,7 +189,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 						Command: []string{
 							"sh",
 							"/probes/readiness.sh",
-							string(common.ArgoCDDefaultRedisSentinelPort),
+							strconv.Itoa(common.ArgoCDDefaultRedisSentinelPort),
 						},
 					},
 				},
@@ -206,7 +207,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 						Command: []string{
 							"sh",
 							"/probes/readiness.sh",
-							string(common.ArgoCDDefaultRedisSentinelPort),
+							strconv.Itoa(common.ArgoCDDefaultRedisSentinelPort),
 						},
 					},
 				},
