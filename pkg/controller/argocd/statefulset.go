@@ -105,6 +105,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 							common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 						},
 					},
+					TopologyKey: common.ArgoCDKeyFailureDomainZone,
 				},
 				Weight: int32(100),
 			}},

@@ -30,6 +30,9 @@ const (
 	// ArgoCDKeyDexConfig is the key for dex configuration.
 	ArgoCDKeyDexConfig = "dex.config"
 
+	// ArgoCDKeyFailureDomainZone is the failure-domain zone key for labels.
+	ArgoCDKeyFailureDomainZone = "failure-domain.beta.kubernetes.io/zone"
+
 	// ArgoCDKeyGATrackingID is the configuration key for the Google  Analytics Tracking ID.
 	ArgoCDKeyGATrackingID = "ga.trackingid"
 
