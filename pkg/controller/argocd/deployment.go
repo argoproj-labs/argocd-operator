@@ -453,7 +453,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			return r.client.Delete(context.TODO(), deploy)
+		}
 		return nil // Deployment found, do nothing
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil // HA enabled, do nothing.
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -468,7 +476,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: 6379,
+				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
 		Resources: getRedisResources(cr),
