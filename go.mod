@@ -4,11 +4,9 @@ go 1.13
 
 require (
 	github.com/coreos/prometheus-operator v0.34.0
-	github.com/ghodss/yaml v1.0.1-0.20180820084758-c7ce16629ff4
 	github.com/go-openapi/spec v0.19.2
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
 	github.com/operator-framework/operator-sdk v0.12.0
-	github.com/prometheus/common v0.6.0
 	github.com/sethvargo/go-password v0.1.3
 	github.com/spf13/pflag v1.0.3
 	gopkg.in/yaml.v2 v2.2.2
