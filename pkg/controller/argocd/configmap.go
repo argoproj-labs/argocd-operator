@@ -237,7 +237,11 @@ func newConfigMapWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.Conf
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
 func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileConfiguration(cr); err != nil {
+	if err := r.reconcileArgoConfigMap(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisConfiguration(cr); err != nil {
 		return err
 	}
 
@@ -289,7 +293,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
-func (r *ReconcileArgoCD) reconcileConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
 		uri := r.getArgoServerURI(cr)
@@ -476,6 +480,54 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 		return r.client.Update(context.TODO(), cm)
 	}
 	return nil // ConfigMap exists and nothing to do, move along...
+}
+
+// reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
+		return err
+	}
+	if err := r.reconcileRedisProbesConfigMap(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	cm.Data = map[string]string{
+		"init.sh":       getRedisInitScript(cr),
+		"redis.conf":    getRedisConf(cr),
+		"sentinel.conf": getRedisSentinelConf(cr),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), cm)
+}
+
+// reconcileRedisProbesConfigMap will ensure that the Redis Probes ConfigMap is present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileRedisProbesConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisProbesConfigMapName, cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	cm.Data = map[string]string{
+		"check-quorum.sh": getRedisQuorumScript(cr),
+		"readiness.sh":    getRedisReadinessScript(cr),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), cm)
 }
 
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.

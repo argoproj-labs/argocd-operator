@@ -30,6 +30,9 @@ const (
 	// ArgoCDKeyDexConfig is the key for dex configuration.
 	ArgoCDKeyDexConfig = "dex.config"
 
+	// ArgoCDKeyFailureDomainZone is the failure-domain zone key for labels.
+	ArgoCDKeyFailureDomainZone = "failure-domain.beta.kubernetes.io/zone"
+
 	// ArgoCDKeyGATrackingID is the configuration key for the Google  Analytics Tracking ID.
 	ArgoCDKeyGATrackingID = "ga.trackingid"
 
@@ -50,6 +53,9 @@ const (
 
 	// ArgoCDKeyHelpChatText is the congifuration key for the help chat text.
 	ArgoCDKeyHelpChatText = "help.chatText"
+
+	// ArgoCDKeyHostname is the resource hostname key for labels.
+	ArgoCDKeyHostname = "kubernetes.io/hostname"
 
 	// ArgoCDKeyIngressBackendProtocol is the backend-protocol key for labels.
 	ArgoCDKeyIngressBackendProtocol = "nginx.ingress.kubernetes.io/backend-protocol"
@@ -77,6 +83,9 @@ const (
 
 	// ArgoCDKeyPartOf is the resource part-of key for labels.
 	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
+
+	// ArgoCDKeyStatefulSetPodName is the resource StatefulSet Pod Name key for labels.
+	ArgoCDKeyStatefulSetPodName = "statefulset.kubernetes.io/pod-name"
 
 	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
 	ArgoCDKeyPrometheus = "prometheus"
@@ -110,6 +119,9 @@ const (
 
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
+
+	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
+	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
 
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"

@@ -46,7 +46,7 @@ func newService(cr *argoprojv1a1.ArgoCD) *corev1.Service {
 	}
 }
 
-// newService returns a new Service instance.
+// newServiceWithName returns a new Service instance for the given ArgoCD using the given name.
 func newServiceWithName(name string, component string, cr *argoprojv1a1.ArgoCD) *corev1.Service {
 	svc := newService(cr)
 	svc.ObjectMeta.Name = name
@@ -64,6 +64,7 @@ func newServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.Argo
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
+// reconcileDexService will ensure that the Service for Dex is present.
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -78,14 +79,14 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "http",
-			Port:       5556,
+			Port:       common.ArgoCDDefaultDexHTTPPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(5556),
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexHTTPPort),
 		}, {
 			Name:       "grpc",
-			Port:       5557,
+			Port:       common.ArgoCDDefaultDexGRPCPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(5557),
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexGRPCPort),
 		},
 	}
 
@@ -95,6 +96,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileGrafanaService will ensure that the Service for Grafana is present.
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -128,6 +130,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.
 func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("metrics", "metrics", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -154,6 +157,94 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileRedisAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
+	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
+		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
+		if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
+			return nil // Service found, do nothing
+		}
+
+		svc.ObjectMeta.Annotations = map[string]string{
+			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
+		}
+
+		svc.Spec.PublishNotReadyAddresses = true
+
+		svc.Spec.Selector = map[string]string{
+			common.ArgoCDKeyName:               nameWithSuffix("redis-ha", cr),
+			common.ArgoCDKeyStatefulSetPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+		}
+
+		svc.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:       "server",
+				Port:       common.ArgoCDDefaultRedisPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("redis"),
+			}, {
+				Name:       "sentinel",
+				Port:       common.ArgoCDDefaultRedisSentinelPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("sentinel"),
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+			return err
+		}
+
+		if err := r.client.Create(context.TODO(), svc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reconcileRedisHAMasterService will ensure that the "master" Service is present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
+	svc := newServiceWithSuffix("redis-ha", "redis", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "server",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		}, {
+			Name:       "sentinel",
+			Port:       common.ArgoCDDefaultRedisSentinelPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("sentinel"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileRedisAnnounceServices(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAMasterService(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileRedisService will ensure that the Service for Redis is present.
 func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -167,8 +258,9 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "tcp-redis",
-			Port:       6379,
-			TargetPort: intstr.FromInt(6379),
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRedisPort),
 		},
 	}
 
@@ -178,6 +270,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
 func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -191,14 +284,14 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "server",
-			Port:       8081,
+			Port:       common.ArgoCDDefaultRepoServerPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8081),
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 		}, {
 			Name:       "metrics",
-			Port:       8084,
+			Port:       common.ArgoCDDefaultRepoMetricsPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8084),
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
 		},
 	}
 
@@ -208,6 +301,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
 func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server-metrics", "server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -283,9 +377,16 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	err = r.reconcileRedisService(cr)
-	if err != nil {
-		return err
+	if cr.Spec.HA.Enabled {
+		err = r.reconcileRedisHAServices(cr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = r.reconcileRedisService(cr)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = r.reconcileRepoService(cr)

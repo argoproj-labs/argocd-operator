@@ -17,5 +17,18 @@
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
+# Generate CRDs for API's
+operator-sdk generate crds
+
+# Generate Kubernetes code for custom resource
 operator-sdk generate k8s
-operator-sdk generate openapi
+
+# Run openapi-gen for each of the API group/version packages
+openapi-gen \
+    --go-header-file ./hack/boilerplate.go.txt \
+    --input-dirs ./pkg/apis/argoproj/v1alpha1 \
+    --logtostderr=true \
+    --output-base "" \
+    --output-file-base zz_generated.openapi \
+    --output-package ./pkg/apis/argoproj/v1alpha1 \
+    --report-filename -

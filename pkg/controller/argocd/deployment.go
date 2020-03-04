@@ -37,8 +37,12 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--operation-processors")
 	cmd = append(cmd, fmt.Sprint(getArgoServerOperationProcessors(cr)))
 
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
+	if cr.Spec.HA.Enabled {
+		cmd = append(cmd, getRedisSentinelArgs(cr)...)
+	} else {
+		cmd = append(cmd, "--redis")
+		cmd = append(cmd, getRedisServerAddress(cr))
+	}
 
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
@@ -58,13 +62,34 @@ func getArgoImportCommand(cr *argoprojv1a1.ArgoCD) []string {
 	return cmd
 }
 
+// getRedisSentinelArgs will return the command args for the Redis sentinels used in HA mode.
+func getRedisSentinelArgs(cr *argoprojv1a1.ArgoCD) []string {
+	args := make([]string, 0)
+
+	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
+		args = append(args, "--sentinel")
+		args = append(args, nameWithSuffix(fmt.Sprintf("redis-ha-announce-%d:%d", i, common.ArgoCDDefaultRedisSentinelPort), cr))
+	}
+
+	args = append(args, "--sentinelmaster")
+	args = append(args, "argocd") // TODO: Should this be cr.Name?
+
+	return args
+}
+
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
 func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
+
+	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-repo-server")
 
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
+	if cr.Spec.HA.Enabled {
+		cmd = append(cmd, getRedisSentinelArgs(cr)...)
+	} else {
+		cmd = append(cmd, "--redis")
+		cmd = append(cmd, getRedisServerAddress(cr))
+	}
 
 	return cmd
 }
@@ -74,28 +99,37 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
+	cmd = append(cmd, "--staticassets")
+	cmd = append(cmd, "/shared/app")
+
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, getDexServerAddress(cr))
 
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, nameWithSuffix("redis:6379", cr))
-
 	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
+	cmd = append(cmd, geRepoServerAddress(cr))
 
 	if getArgoServerInsecure(cr) {
 		cmd = append(cmd, "--insecure")
 	}
 
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
+	if cr.Spec.HA.Enabled {
+		cmd = append(cmd, getRedisSentinelArgs(cr)...)
+	} else {
+		cmd = append(cmd, "--redis")
+		cmd = append(cmd, getRedisServerAddress(cr))
+	}
 
 	return cmd
 }
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("http://%s:5556", nameWithSuffix("dex-server", cr))
+	return fmt.Sprintf("http://%s:%d", nameWithSuffix("dex-server", cr), common.ArgoCDDefaultDexHTTPPort)
+}
+
+// geRepoServerAddress will return the Argo CD repo server address.
+func geRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("%s:%d", nameWithSuffix("repo-server", cr), common.ArgoCDDefaultRepoServerPort)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -180,6 +214,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
+		Resources: getArgoApplicationControllerResources(cr),
 	}}
 
 	// Handle import/restore from ArgoCDExport
@@ -265,11 +300,14 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		Name:            "dex",
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: 5556,
+				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
+				Name:          "http",
 			}, {
-				ContainerPort: 5557,
+				ContainerPort: common.ArgoCDDefaultDexGRPCPort,
+				Name:          "grpc",
 			},
 		},
+		Resources: getDexResources(cr),
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -335,6 +373,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 				ContainerPort: 3000,
 			},
 		},
+		Resources: getGrafanaResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "grafana-config",
@@ -414,7 +453,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			return r.client.Delete(context.TODO(), deploy)
+		}
 		return nil // Deployment found, do nothing
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil // HA enabled, do nothing.
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -429,9 +476,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		Name:            "redis",
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: 6379,
+				ContainerPort: common.ArgoCDDefaultRedisPort,
 			},
 		},
+		Resources: getRedisResources(cr),
 	}}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
@@ -457,7 +505,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(8081),
+					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 				},
 			},
 			InitialDelaySeconds: 5,
@@ -466,20 +514,23 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		Name: "argocd-repo-server",
 		Ports: []corev1.ContainerPort{
 			{
-				ContainerPort: 8081,
+				ContainerPort: common.ArgoCDDefaultRepoServerPort,
+				Name:          "server",
 			}, {
-				ContainerPort: 8084,
+				ContainerPort: common.ArgoCDDefaultRepoMetricsPort,
+				Name:          "metrics",
 			},
 		},
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(8081),
+					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
 				},
 			},
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
+		Resources: getArgoRepoResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "ssh-known-hosts",
@@ -558,6 +609,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			InitialDelaySeconds: 3,
 			PeriodSeconds:       30,
 		},
+		Resources: getArgoServerResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "ssh-known-hosts",

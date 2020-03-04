@@ -36,6 +36,12 @@ const (
 	// ArgoCDKnownHostsConfigMapName is the upstream hard-coded SSH known hosts data ConfigMap name.
 	ArgoCDKnownHostsConfigMapName = "argocd-ssh-known-hosts-cm"
 
+	// ArgoCDRedisHAConfigMapName is the upstream ArgoCD Redis HA ConfigMap name.
+	ArgoCDRedisHAConfigMapName = "argocd-redis-ha-configmap"
+
+	// ArgoCDRedisProbesConfigMapName is the upstream ArgoCD Redis Probes ConfigMap name.
+	ArgoCDRedisProbesConfigMapName = "argocd-redis-ha-probes"
+
 	// ArgoCDRBACConfigMapName is the upstream hard-coded RBAC ConfigMap name.
 	ArgoCDRBACConfigMapName = "argocd-rbac-cm"
 

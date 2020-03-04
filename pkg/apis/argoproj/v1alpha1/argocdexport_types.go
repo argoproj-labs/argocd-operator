@@ -54,8 +54,8 @@ type ArgoCDExportLocalStorageSpec struct {
 // ArgoCDExportSpec defines the desired state of ArgoCDExport
 // +k8s:openapi-gen=true
 type ArgoCDExportSpec struct {
-	// ArgoCD is the name of the ArgoCD instance to export.
-	ArgoCD string `json:"argocd"`
+	// Argocd is the name of the ArgoCD instance to export.
+	Argocd string `json:"argocd"`
 
 	// Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule *string `json:"schedule,omitempty"`

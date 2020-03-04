@@ -32,8 +32,7 @@ spec:
           description: ArgoCDSpec defines the desired state of ArgoCD
           properties:
             applicationInstanceLabelKey:
-              description: ApplicationInstanceLabelKey is the key name where Argo
-                CD injects the app name as a tracking label.
+              description: ApplicationInstanceLabelKey
               type: string
             configManagementPlugins:
               description: ConfigManagementPlugins is used to specify additional config
@@ -218,8 +217,7 @@ spec:
                 to use with `kustomize build`.
               type: string
             oidcConfig:
-              description: OIDCConfig is the OIDC configuration as an alternative
-                to dex.
+              description: OIDCConfig is the configuration as an alternative to dex.
               type: string
             prometheus:
               description: Prometheus defines the Prometheus server options for ArgoCD.

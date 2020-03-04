@@ -18,6 +18,7 @@ Dex | [Object] | Dex options. See [below](#dex-options) for more detail.
 GATrackingID | [Empty] | The `ga.trackingid` property in the `argocd-cm` ConfigMap. The google analytics tracking ID to use.
 GAAnonymizeUsers | false | The `ga.anonymizeusers` property in the `argocd-cm` ConfigMap. Enable hashed usernames sent to google analytics.
 Grafana | [Object] | Grafana options. See [below](#grafana-options) for more detail.
+HA | [Object] | High Availability options. See [below](#ha-options) for more detail.
 HelpChatURL | https://mycorp.slack.com/argo-cd | The `help.chatUrl` property in the `argocd-cm` ConfigMap. URL for getting chat help, this will typically be your Slack channel for support.
 HelpChatText | Chat now! | The `help.chatText` property in the `argocd-cm` ConfigMap. The text for getting chat help.
 Image | argoproj/argocd | The container image for all Argo CD components.
@@ -69,6 +70,14 @@ Host | example-argocd-grafana | The hostname to use for Ingress/Route resources.
 Image | grafana/grafana | The container image for Grafana.
 Size | 1 | The replica count for the Grafana Deployment.
 Version | 6.6.1 | The tag to use with the Grafana container image.
+
+### HA Options
+
+The following properties are available for configuring High Availability for the Argo CD cluster.
+
+Name | Default | Description
+--- | --- | ---
+Enabled | false | Toggle High Availability support globally for Argo CD.
 
 ### Import Options
 
