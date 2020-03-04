@@ -612,8 +612,8 @@ spec:
         - apiGroups:
           - batch
           resources:
-          - CronJob
-          - Job
+          - cronjobs
+          - jobs
           verbs:
           - '*'
         - apiGroups:
