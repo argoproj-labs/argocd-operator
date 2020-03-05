@@ -497,7 +497,15 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) e
 func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.client.Delete(context.TODO(), cm)
+		}
 		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
 	}
 
 	cm.Data = map[string]string{
@@ -516,7 +524,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 func (r *ReconcileArgoCD) reconcileRedisProbesConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisProbesConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.client.Delete(context.TODO(), cm)
+		}
 		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
 	}
 
 	cm.Data = map[string]string{
