@@ -453,7 +453,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		if !cr.Spec.HA.Enabled {
+		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			return r.client.Delete(context.TODO(), deploy)
 		}
