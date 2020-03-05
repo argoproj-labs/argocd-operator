@@ -41,7 +41,7 @@ oc create -f deploy/role_binding.yaml
 
 Argo CD needs several ClusterRole resources to function, however the ClusterRoles have been refined to read-only for the cluster resources.
 
-To enable full cluster admin acces on OpenShift, run the following command.
+To enable full cluster admin access on OpenShift, run the following command.
 
 ``` bash
 oc adm policy add-cluster-role-to-user cluster-admin -z argocd-application-controller -n argocd
