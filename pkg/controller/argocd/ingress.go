@@ -34,17 +34,6 @@ func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return annotations
 }
 
-// getIngressAnnotations will retun the Ingress Annotations for the given ArgoCD.
-func getIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
-	atns := getDefaultIngressAnnotations(cr)
-
-	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = argoutil.AppendStringMap(atns, cr.Spec.Ingress.Annotations)
-	}
-
-	return atns
-}
-
 // getIngressPath will return the Ingress Path for the given ArgoCD.
 func getIngressPath(cr *argoprojv1a1.ArgoCD) string {
 	path := common.ArgoCDDefaultIngressPath
@@ -121,6 +110,12 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	atns := getDefaultIngressAnnotations(cr)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Ingress.Annotations
+	}
+
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -171,6 +166,12 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	// Add annotations
 	atns := getDefaultIngressAnnotations(cr)
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Ingress.Annotations
+	}
+
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -226,6 +227,12 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	atns := getDefaultIngressAnnotations(cr)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Ingress.Annotations
+	}
+
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
@@ -281,6 +288,12 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	atns := getDefaultIngressAnnotations(cr)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Ingress.Annotations
+	}
+
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
