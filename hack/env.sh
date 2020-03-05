@@ -19,6 +19,7 @@ export ARGOCD_OPERATOR_NAME=${ARGOCD_OPERATOR_NAME:-"argocd-operator"}
 export ARGOCD_OPERATOR_NAMESPACE=${ARGOCD_OPERATOR_NAMESPACE:-"argocd"}
 export ARGOCD_OPERATOR_VERSION=${ARGOCD_OPERATOR_VERSION:-`awk '$1 == "Version" {gsub(/"/, "", $3); print $3}' version/version.go`}
 export ARGOCD_OPERATOR_BUILD_DIR=${ARGOCD_OPERATOR_BUILD_DIR:-"build"}
+export ARGOCD_OPERATOR_DEPLOY_DIR=${ARGOCD_OPERATOR_DEPLOY_DIR:-"deploy"}
 export ARGOCD_OPERATOR_DOCS_DIR=${ARGOCD_OPERATOR_DOCS_DIR:-"docs"}
 
 # Container image vars
