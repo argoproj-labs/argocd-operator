@@ -100,6 +100,27 @@ Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | false | Toggle Ingress support globally for ArgoCD.
 Path | / | Path to use for the Ingress resource.
 
+#### Ingress Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: ingress
+spec:
+  ingress:
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/rewrite-target: /static/$2
+      cert-manager.io/cluster-issuer: letsencrypt
+    enabled: true
+    path: /testpath
+  server:
+    insecure: true
+```
+
 ### Prometheus Options
 
 The following properties are available for configuring the Prometheus component.
