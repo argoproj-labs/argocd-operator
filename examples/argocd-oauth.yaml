@@ -6,6 +6,6 @@ metadata:
     example: defaults
 spec:
   dex:
-    image: quay.io/ablock/dex
-    version: openshift-connector
+    image: quay.io/dexidp/dex 
+    version: v2.22.0
     openShiftOAuth: true
