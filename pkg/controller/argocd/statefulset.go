@@ -129,7 +129,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			Command: []string{
 				"redis-server",
 			},
-			Image:           "redis:5.0.3-alpine",
+			Image:           getRedisHAContainerImage(cr),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
@@ -181,7 +181,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			Command: []string{
 				"redis-sentinel",
 			},
-			Image:           "redis:5.0.3-alpine",
+			Image:           getRedisHAContainerImage(cr),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
@@ -249,7 +249,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				Value: "d9deb539c0402841c2492e9959c8086602fa4284", // TODO: Should this be hard-coded?
 			},
 		},
-		Image:           "redis:5.0.3-alpine",
+		Image:           getRedisHAContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Resources:       getRedisResources(cr),

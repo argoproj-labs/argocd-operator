@@ -358,6 +358,20 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s:%s", img, tag)
 }
 
+// getRedisHAContainerImage will return the container image for the Redis server in HA mode.
+func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	img := cr.Spec.Redis.Image
+	if len(img) <= 0 {
+		img = common.ArgoCDDefaultRedisImage
+	}
+
+	tag := cr.Spec.Redis.Version
+	if len(tag) <= 0 {
+		tag = common.ArgoCDDefaultRedisVersionHA
+	}
+	return fmt.Sprintf("%s:%s", img, tag)
+}
+
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
 func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
