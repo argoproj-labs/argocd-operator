@@ -63,6 +63,9 @@ argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/
 The Argo CD server component exposes the API and UI. The operator creates a Service to expose this component and 
 can be accessed through the various methods available in Kubernetes.
 
+Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) to 
+create a new application from the UI.
+
 ### Local Machine
 
 In the most simple case, the Service port can be forwarded to the local machine.
@@ -80,8 +83,8 @@ See the [ingress][docs_ingress] documentation for steps to enable and use the In
 
 ### OpenShift Route
 
-See the [OpenShift][docs_openshift] documentation for steps to configure the Route support provided by the operator.
+See the [routes][docs_routes] documentation for steps to configure the Route support provided by the operator.
 
 [docs_ingress]:./ingress.md
-[docs_openshift]:../install/openshift.md
+[docs_routes]:./routes.md
 [argocd_reference]:../reference/argocd.md
