@@ -10,15 +10,16 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: minimal
+    example: basic
+spec: {}
 ```
 
 ## Create
 
-Create a new Argo CD cluster using the provided minimal example in the `argocd` namespace.
+Create a new Argo CD cluster using the provided basic example in the `argocd` namespace.
 
 ```bash
-kubectl create -n argocd -f examples/argocd-minimal.yaml
+kubectl create -n argocd -f examples/argocd-basic.yaml
 ```
 
 There will be several Argo CD resources created that should be familiar to anyone who has deployed Argo CD.

@@ -101,7 +101,7 @@ The following example shows the minimal required to create a new ArgoCD
 environment with the default configuration.
 
 ```bash
-oc create -f examples/argocd-minimal.yaml
+oc create -f examples/argocd-basic.yaml
 ```
 
 There will be several resources created.
