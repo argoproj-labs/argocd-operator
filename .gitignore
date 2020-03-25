@@ -1,3 +1,6 @@
+# KUDO test artifacts
+tests/**/.kube
+kubeconfig
 # Temporary Build Files
 build/_output
 build/_test
