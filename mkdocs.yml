@@ -26,6 +26,8 @@ nav:
     - Basics: usage/basics.md
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
+    - Insights: usage/insights.md
+    - Routes: usage/routes.md
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
