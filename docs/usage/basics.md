@@ -1,6 +1,6 @@
 # Usage Basics
 
-See the [full example][example_argocd_defaults] with all defaults listed to see how the Argo CD cluster can be configured.
+See the [ArgoCD Reference][argocd_reference] for the full list of properties and defaults to configure the Argo CD cluster.
 
 The following example shows the most minimal valid manifest to create a new Argo CD cluster with the default configuration.
 
@@ -56,7 +56,6 @@ example-argocd-repo-server      ClusterIP   10.103.229.32    <none>        8081/
 example-argocd-server           ClusterIP   10.100.186.222   <none>        80/TCP,443/TCP      2m28s
 example-argocd-server-metrics   ClusterIP   10.100.185.144   <none>        8083/TCP            2m28s
 argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/TCP,8686/TCP   23m
-kubernetes                      ClusterIP   10.96.0.1        <none>        443/TCP             44m
 ```
 
 ## Server API & UI
@@ -85,4 +84,4 @@ See the [OpenShift][docs_openshift] documentation for steps to configure the Rou
 
 [docs_ingress]:./ingress.md
 [docs_openshift]:../install/openshift.md
-[example_argocd_defaults]:https://github.com/argoproj-labs/argocd-operator/blob/master/examples/argocd-default.yaml
+[argocd_reference]:../reference/argocd.md
