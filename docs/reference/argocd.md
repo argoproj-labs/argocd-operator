@@ -51,6 +51,8 @@ Resources | [Empty] | The container compute resources.
 
 ### Controller Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -61,15 +63,9 @@ metadata:
 spec:
   controller:
     processors:
-      operation: 15
-      status: 25
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "500m"
-      limits:
-        memory: "128Mi"
-        cpu: "2000m"
+      operation: 10
+      status: 20
+    resources: {}
 ```
 
 ## Dex Options
@@ -86,6 +82,8 @@ Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 
 ### Dex Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -95,16 +93,11 @@ metadata:
     example: dex
 spec:
   dex:
-    image: quay.io/ablock/dex
-    openShiftOAuth: true
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "250m"
-      limits:
-        memory: "64Mi"
-        cpu: "1000m"
-    version: openshift-connector
+    config: ""
+    image: quay.io/dexidp/dex
+    openShiftOAuth: false
+    resources: {}
+    version: v2.21.0
 ```
 
 ## Grafana Options
@@ -122,6 +115,8 @@ Version | 6.7.1 (SHA) | The tag to use with the Grafana container image.
 
 ### Grafana Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -131,16 +126,12 @@ metadata:
     example: insights
 spec:
   grafana:
-    enabled: true
-    host: grafana.example.com
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "250m"
-      limits:
-        memory: "64Mi"
-        cpu: "1000m"
-    size: 3
+    enabled: false
+    host: example-argocd-grafana
+    image: grafana/grafana
+    resources: {}
+    size: 1
+    version: 6.7.1
 ```
 
 ## HA Options
@@ -152,6 +143,8 @@ Name | Default | Description
 Enabled | false | Toggle High Availability support globally for Argo CD.
 
 ### HA Example
+
+The following example shows how to enable HA mode globally.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -188,6 +181,8 @@ Path | / | Path to use for the Ingress resource.
 
 ### Ingress Example
 
+The following example shows how to override the various Ingress defaults.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -219,6 +214,8 @@ Size | 1 | The replica count for the Prometheus StatefulSet.
 
 ### Prometheus Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -228,9 +225,9 @@ metadata:
     example: insights
 spec:
   prometheus:
-    enabled: true
-    host: prometheus.example.com
-    size: 2
+    enabled: false
+    host: example-argocd-prometheus
+    size: 1
 ```
 
 ## RBAC Options
@@ -242,6 +239,24 @@ Name | Default | Description
 DefaultPolicy | `role:readonly` | The `policy.default` property in the `argocd-rbac-cm` ConfigMap. The name of the default role which Argo CD will falls back to, when authorizing API requests.
 Policy | [Empty] | The `policy.csv` property in the `argocd-rbac-cm` ConfigMap. CSV data containing user-defined RBAC policies and role definitions.
 Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  Controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+
+### RBAC Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: rbac
+spec:
+  rbac:
+    defaultPolicy: role:readonly
+    policy: ""
+    scopes: '[groups]'
+```
 
 ## Redis Options
 
@@ -255,6 +270,8 @@ Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
 
 ### Redis Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -264,13 +281,9 @@ metadata:
     example: redis
 spec:
   redis:
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "250m"
-      limits:
-        memory: "64Mi"
-        cpu: "1000m"
+    image: redis
+    resources: {}
+    version: "5.0.3"
 ```
 
 ## Repo Options
@@ -283,6 +296,8 @@ Resources | [Empty] | The container compute resources.
 
 ### Repo Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -292,13 +307,7 @@ metadata:
     example: repo
 spec:
   repo:
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "250m"
-      limits:
-        memory: "64Mi"
-        cpu: "1000m"
+    resources: {}
 ```
 
 ## Server Options
@@ -325,6 +334,8 @@ HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server componen
 
 ### Server Example
 
+The following example shows all properties set to the default values.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -348,13 +359,7 @@ spec:
       host: example-argocd-grpc
     host: example-argocd
     insecure: false
-    resources:
-      requests:
-        memory: "32Mi"
-        cpu: "250m"
-      limits:
-        memory: "64Mi"
-        cpu: "1000m"
+    resources: {}
     service:
       type: ClusterIP
 ```
@@ -365,6 +370,25 @@ The following properties are available for configuring the Grafana component.
 
 Name | Default | Description
 --- | --- | ---
-CA.ConfigMapName | example-argocd-ca | The name of the ConfigMap containing the CA Certificate.
-CA.SecretName | example-argocd-ca | The name of the Secret containing the CA Certificate and Key.
+CA.ConfigMapName | `example-argocd-ca` | The name of the ConfigMap containing the CA Certificate.
+CA.SecretName | `example-argocd-ca` | The name of the Secret containing the CA Certificate and Key.
 Certs | [Empty] | Properties in the `argocd-tls-certs-cm` ConfigMap. Define custom TLS certificates for connecting Git repositories via HTTPS.
+
+### TLS Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: server
+spec:
+  tls:
+    ca:
+      configMapName: example-argocd-ca
+      secretName: example-argocd-ca
+    certs: []
+```
