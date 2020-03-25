@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Pending
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-argocd
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-argocd-grpc
