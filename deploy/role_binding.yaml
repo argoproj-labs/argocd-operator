@@ -56,7 +56,7 @@ roleRef:
   name: argocd-redis-ha
 subjects:
 - kind: ServiceAccount
-  name: argocd-redis
+  name: argocd-redis-ha
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
