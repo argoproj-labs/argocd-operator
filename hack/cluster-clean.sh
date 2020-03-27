@@ -22,30 +22,26 @@ source ${HACK_DIR}/env.sh
 # ClusterRoles/Bindings
 kubectl delete clusterrolebinding \
     argocd-application-controller \
-    argocd-dex-server \
-    argocd-redis-server \
-    argocd-repo-server \
     argocd-server
 
 kubectl delete clusterrole \
     argocd-application-controller \
-    argocd-dex-server \
-    argocd-redis-server \
-    argocd-repo-server \
     argocd-server
 
 # Roles/Bindings
 kubectl delete rolebinding -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-application-controller \
     argocd-dex-server \
-    argocd-redis-server \
+    argocd-operator \
+    argocd-redis-ha \
     argocd-repo-server \
     argocd-server
 
 kubectl delete role -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-application-controller \
     argocd-dex-server \
-    argocd-redis-server \
+    argocd-operator \
+    argocd-redis-ha \
     argocd-repo-server \
     argocd-server
 
@@ -53,7 +49,8 @@ kubectl delete role -n ${ARGOCD_OPERATOR_NAMESPACE} \
 kubectl delete sa -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-application-controller \
     argocd-dex-server \
-    argocd-redis-server \
+    argocd-operator \
+    argocd-redis-ha \
     argocd-repo-server \
     argocd-server
 
