@@ -64,3 +64,6 @@ kubectl delete crd \
 # Deployments
 kubectl delete deployment -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-operator
+
+kubectl delete secret -n ${ARGOCD_OPERATOR_NAMESPACE} \
+    scorecard-kubeconfig
