@@ -152,10 +152,10 @@ const (
 	ArgoCDDefaultRedisSuffix = "redis"
 
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
-	ArgoCDDefaultRedisVersion = "sha256:30cc1e946115faa07fa034d19006077ffd0661ff425851f11467aa91b1d28bd3" // 5.0.3
+	ArgoCDDefaultRedisVersion = "sha256:0350157d1402439d0c3de8930b5e38283ebff55b3c6ef3fb3ca98ea986c81563" // 5.0.8
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "sha256:280e5f9e610458b58e75a4ef40023d0d3aabe0d2aa5c58651a37aa466f50e761" // 5.0.3-alpine
+	ArgoCDDefaultRedisVersionHA = "sha256:70504a34796078fcc619cd6f216e8cbc84cf918c7500a432fffbb6a815f7e848" // 5.0.8-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
