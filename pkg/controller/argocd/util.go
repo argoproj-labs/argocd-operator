@@ -49,6 +49,16 @@ type DexConnector struct {
 	Type   string                 `yaml:"type"`
 }
 
+// combineImageTag will return the combined image and tag in the proper format for tags and digests.
+func combineImageTag(img string, tag string) string {
+	if strings.Contains(tag, ":") {
+		return fmt.Sprintf("%s@%s", img, tag) // Digest
+	} else if len(tag) > 0 {
+		return fmt.Sprintf("%s:%s", img, tag) // Tag
+	}
+	return img // No tag, use default
+}
+
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
 func getArgoApplicationControllerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	// resources := corev1.ResourceRequirements{
@@ -83,7 +93,8 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultArgoVersion
 	}
-	return fmt.Sprintf("%s:%s", img, tag)
+
+	return combineImageTag(img, tag)
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
@@ -199,7 +210,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultDexVersion
 	}
-	return fmt.Sprintf("%s:%s", img, tag)
+	return combineImageTag(img, tag)
 }
 
 // getDexInitContainers will return the init-containers for the Dex server.
@@ -278,7 +289,7 @@ func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultGrafanaVersion
 	}
-	return fmt.Sprintf("%s:%s", img, tag)
+	return combineImageTag(img, tag)
 }
 
 // getGrafanaResources will return the ResourceRequirements for the Grafana container.
@@ -355,7 +366,7 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultRedisVersion
 	}
-	return fmt.Sprintf("%s:%s", img, tag)
+	return combineImageTag(img, tag)
 }
 
 // getRedisHAContainerImage will return the container image for the Redis server in HA mode.
@@ -369,7 +380,7 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultRedisVersionHA
 	}
-	return fmt.Sprintf("%s:%s", img, tag)
+	return combineImageTag(img, tag)
 }
 
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
