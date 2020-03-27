@@ -3,7 +3,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 status:
-  phase: Pending
+  phase: Available
 ---
 apiVersion: apps/v1
 kind: Deployment

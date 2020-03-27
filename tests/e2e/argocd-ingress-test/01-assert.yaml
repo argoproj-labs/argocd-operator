@@ -3,7 +3,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 status:
-  phase: Pending
+  phase: Available
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress

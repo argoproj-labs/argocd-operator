@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -530,9 +529,9 @@ func (r *ReconcileArgoCD) reconcileOpenShiftResources(cr *argoprojv1a1.ArgoCD) e
 
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
-	if len(cr.Status.Phase) <= 0 {
-		cr.Status.Phase = "Pending"
-		return r.client.Status().Update(context.TODO(), cr)
+	log.Info("reconciling status")
+	if err := r.reconcileStatus(cr); err != nil {
+		return err
 	}
 
 	log.Info("reconciling service accounts")

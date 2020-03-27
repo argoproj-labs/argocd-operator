@@ -341,10 +341,18 @@ type ArgoCDStatus struct {
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 	// There are five possible phase values:
 	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
-	// Running: All of the containers for the ArgoCD are running, or in the process of starting or restarting.
-	// Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
-	// Unknown: For some reason the state of the ArgoCD could not be obtained.
+	// Available: All of the resources for the ArgoCD are ready.
+	// Failed: At least one resource has experienced a failure.
+	// Unknown: For some reason the state of the ArgoCD phase could not be obtained.
 	Phase string `json:"phase"`
+
+	// Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
+	// There are five possible server values:
+	// Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD server component are in a Ready state.
+	// Failed: At least one of the  Argo CD server component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD server component could not be obtained.
+	Server string `json:"server"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
