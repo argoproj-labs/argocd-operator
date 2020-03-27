@@ -60,3 +60,7 @@ kubectl delete crd \
     appprojects.argoproj.io \
     argocdexports.argoproj.io \
     argocds.argoproj.io
+
+# Deployments
+kubectl delete deployment -n ${ARGOCD_OPERATOR_NAMESPACE} \
+    argocd-operator
