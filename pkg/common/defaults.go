@@ -21,8 +21,8 @@ const (
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
-	// ArgoCDDefaultArgoVersion is the ArgoCD container image tag to use when not specified.
-	ArgoCDDefaultArgoVersion = "v1.4.2" // TODO: sha256:f7a4a8e4542ef9d2e0cb6d3fe5814e87b79b8064089c0bc29ae7cefae8e93b66
+	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
+	ArgoCDDefaultArgoVersion = "sha256:f7a4a8e4542ef9d2e0cb6d3fe5814e87b79b8064089c0bc29ae7cefae8e93b66" // v1.4.2
 
 	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
 	ArgoCDDefaultConfigManagementPlugins = ""
@@ -62,7 +62,7 @@ const (
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "v2.21.0" // TODO: sha256:c14ea9dbf341de51c8c0858a65bfe905a0a2cc154311c959a0bfe609bfe177b5
+	ArgoCDDefaultDexVersion = "sha256:c14ea9dbf341de51c8c0858a65bfe905a0a2cc154311c959a0bfe609bfe177b5" // v2.21.0
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -104,7 +104,7 @@ const (
 	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
-	ArgoCDDefaultGrafanaVersion = "6.7.1" // TODO: sha256:9d43bebe9f3a5d27647231e1fa760644fafcc09a1ad85eeae1df40c491841bd9
+	ArgoCDDefaultGrafanaVersion = "sha256:9d43bebe9f3a5d27647231e1fa760644fafcc09a1ad85eeae1df40c491841bd9" // 6.7.1
 
 	// ArgoCDDefaultHelpChatURL is the default help chat URL.
 	ArgoCDDefaultHelpChatURL = "https://mycorp.slack.com/argo-cd"
@@ -152,10 +152,10 @@ const (
 	ArgoCDDefaultRedisSuffix = "redis"
 
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
-	ArgoCDDefaultRedisVersion = "5.0.3" // TODO: sha256:30cc1e946115faa07fa034d19006077ffd0661ff425851f11467aa91b1d28bd3
+	ArgoCDDefaultRedisVersion = "sha256:30cc1e946115faa07fa034d19006077ffd0661ff425851f11467aa91b1d28bd3" // 5.0.3
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "5.0.3-alpine" // TODO: sha256:280e5f9e610458b58e75a4ef40023d0d3aabe0d2aa5c58651a37aa466f50e761
+	ArgoCDDefaultRedisVersionHA = "sha256:280e5f9e610458b58e75a4ef40023d0d3aabe0d2aa5c58651a37aa466f50e761" // 5.0.3-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
