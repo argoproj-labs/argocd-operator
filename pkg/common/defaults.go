@@ -104,7 +104,7 @@ const (
 	ArgoCDDefaultGrafanaConfigPath = "/var/lib/grafana"
 
 	// ArgoCDDefaultGrafanaVersion is the Grafana container image tag to use when not specified.
-	ArgoCDDefaultGrafanaVersion = "sha256:9d43bebe9f3a5d27647231e1fa760644fafcc09a1ad85eeae1df40c491841bd9" // 6.7.1
+	ArgoCDDefaultGrafanaVersion = "sha256:1ff3999e0fc08a3909e9a3ecdf6e74b4789db9b67c8297c44fdee1e167b9375f" // 6.7.1
 
 	// ArgoCDDefaultHelpChatURL is the default help chat URL.
 	ArgoCDDefaultHelpChatURL = "https://mycorp.slack.com/argo-cd"
@@ -152,10 +152,10 @@ const (
 	ArgoCDDefaultRedisSuffix = "redis"
 
 	// ArgoCDDefaultRedisVersion is the Redis container image tag to use when not specified.
-	ArgoCDDefaultRedisVersion = "sha256:0350157d1402439d0c3de8930b5e38283ebff55b3c6ef3fb3ca98ea986c81563" // 5.0.8
+	ArgoCDDefaultRedisVersion = "sha256:4be7fdb131e76a6c6231e820c60b8b12938cf1ff3d437da4871b9b2440f4e385" // 5.0.3
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "sha256:70504a34796078fcc619cd6f216e8cbc84cf918c7500a432fffbb6a815f7e848" // 5.0.8-alpine
+	ArgoCDDefaultRedisVersionHA = "sha256:f8c22abc77f3f9cc1c2516062e4a2a71375859d7922da3faf9e4160e6ba4c3c2" // 5.0.3-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
@@ -197,6 +197,6 @@ gitlab.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAA
 gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf
 gitlab.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsj2bNKTBSpIYDEGk9KxsGh3mySTRgMtXL583qmBpzeQ+jqCMRgBqB98u3z++J1sKlXHWfM9dyhSevkMwSbhoR8XIq/U0tCNyokEi/ueaBMCvbcTHhO7FcwzY92WK4Yt0aGROY5qX2UKSeOvuP4D6TPqKF1onrSzH9bx9XUf2lEdWT/ia1NEKjunUqu1xOB/StKDHMoX4/OKyIzuS0q/T1zOATthvasJFoPrAjkohTyaDUz2LN5JoH839hViyEG82yB+MjcFV5MU3N1l1QL3cVUCh93xSaua1N85qivl+siMkPGbO5xR/En4iEY6K2XPASUEMaieWVNTRCtJ4S8H+9
 ssh.dev.azure.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOfGJ4NakVyIzf1rXYd4d7wo6jBlkLvCA4odBlL0mDUyZ0/QUfTTqeu+tm22gOsv+VrVTMk6vwRU75gY/y9ut5Mb3bR5BV58dKXyq9A9UeB5Cakehn5Zgm6x1mKoVyf+FFn26iYqXJRgzIZZcZ5V6hrE0Qg39kZm4az48o0AUbf6Sp4SLdvnuMa2sVNwHBboS7EJkm57XQPVU3/QpyNLHbWDdzwtrlS+ez30S3AdYhLKEOxAG8weOnyrtLJAUen9mTkol8oII1edf7mWWbWVf0nBmly21+nZcmCTISQBtdcyPaEno7fFQMDD26/s0lfKob4Kw8H
-vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOfGJ4NakVyIzf1rXYd4d7wo6jBlkLvCA4odBlL0mDUyZ0/QUfTTqeu+tm22gOsv+VrVTMk6vwRU75gY/y9ut5Mb3bR5BV58dKXyq9A9UeB5Cakehn5Zgm6x1mKoVyf+FFn26iYqXJRgzIZZcZ5V6hrE0Qg39kZm4az48o0AUbf6Sp4SLdvnuMa2sVNwHBboS7EJkm57XQPVU3/QpyNLHbWDdzwtrlS+ez30S3AdYhLKEOxAG8weOnyrtLJAUen9mTkol8oII1edf7mWWbWVf0nBmly21+nZcmCTISQBtdcyPaEno7fFQMDD26/s0lfKob4Kw8H	
+vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOfGJ4NakVyIzf1rXYd4d7wo6jBlkLvCA4odBlL0mDUyZ0/QUfTTqeu+tm22gOsv+VrVTMk6vwRU75gY/y9ut5Mb3bR5BV58dKXyq9A9UeB5Cakehn5Zgm6x1mKoVyf+FFn26iYqXJRgzIZZcZ5V6hrE0Qg39kZm4az48o0AUbf6Sp4SLdvnuMa2sVNwHBboS7EJkm57XQPVU3/QpyNLHbWDdzwtrlS+ez30S3AdYhLKEOxAG8weOnyrtLJAUen9mTkol8oII1edf7mWWbWVf0nBmly21+nZcmCTISQBtdcyPaEno7fFQMDD26/s0lfKob4Kw8H
 `
 )
