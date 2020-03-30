@@ -276,7 +276,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 		return nil // ConfigMap found, do nothing
 	}
 
-	caSecret := newSecretWithSuffix(common.ArgoCDCASuffix, cr)
+	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, common.ArgoCDCASuffix)
 	caSecret, err := r.getSecret(caSecret.Name, cr)
 	if err != nil {
 		return err
@@ -374,7 +374,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD)
 		return nil // ConfigMap found, do nothing
 	}
 
-	secret := newSecretWithSuffix("grafana", cr)
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
 	secret, err := r.getSecret(secret.Name, cr)
 	if err != nil {
 		return err
