@@ -15,7 +15,7 @@ spec:
       serviceAccountName: argocd-operator
       containers:
         - name: argocd-operator
-          image: quay.io/jmckind/argocd-operator:latest
+          image: quay.io/jmckind/argocd-operator@sha256:5d7c4b0e8e0fea068e49a9718a35ae068fc267e607f7393374db39916d7186f4
           command:
           - argocd-operator
           imagePullPolicy: Always
