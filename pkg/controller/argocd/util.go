@@ -26,6 +26,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/sethvargo/go-password/password"
 	"gopkg.in/yaml.v2"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -56,6 +57,17 @@ func combineImageTag(img string, tag string) string {
 		return fmt.Sprintf("%s:%s", img, tag) // Tag
 	}
 	return img // No tag, use default
+}
+
+// getGrafanaAdminPassword will generate and return the admin password for Grafana.
+func generateArgoAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		common.ArgoCDDefaultAdminPasswordLength,
+		common.ArgoCDDefaultAdminPasswordNumDigits,
+		common.ArgoCDDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
 }
 
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.

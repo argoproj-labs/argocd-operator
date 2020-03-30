@@ -22,6 +22,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
+func NewTLSSecret(meta metav1.ObjectMeta, suffix string) *corev1.Secret {
+	secret := NewSecretWithSuffix(meta, suffix)
+	secret.Type = corev1.SecretTypeTLS
+	return secret
+}
+
 // NewSecret returns a new Secret based on the given metadata.
 func NewSecret(meta metav1.ObjectMeta) *corev1.Secret {
 	return &corev1.Secret{

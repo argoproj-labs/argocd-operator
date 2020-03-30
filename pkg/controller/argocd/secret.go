@@ -35,7 +35,7 @@ func (r *ReconcileArgoCD) getSecret(name string, cr *argoprojv1a1.ArgoCD) (*core
 
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := newTLSSecret("ca", cr)
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca")
 
 	key, err := newPrivateKey()
 	if err != nil {
@@ -57,7 +57,7 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 
 // newCertificateSecret creates a new secret using the given name suffix for the given TLS certificate.
 func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := newTLSSecret(suffix, cr)
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, suffix)
 
 	key, err := newPrivateKey()
 	if err != nil {
@@ -89,19 +89,23 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	return secret, nil
 }
 
-// newTLSSecret creates a new TLS secret with the given suffix for the given ArgoCD.
-func newTLSSecret(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.Secret {
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, suffix)
-	secret.Type = corev1.SecretTypeTLS
-	return secret
-}
-
 // reconcileArgoSecret will ensure that the ArgoCD Secret is present.
 func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName)
 	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
 	if found {
+		// TODO: If admin secret changed, update configs and reload cluster...
 		return nil // Secret found, do nothing
+	}
+
+	adminPassword, err := generateArgoAdminPassword()
+	if err != nil {
+		return err
+	}
+
+	secret.Data = map[string][]byte{
+		common.ArgoCDKeyAdminUsername: []byte(common.ArgoCDDefaultAdminUsername),
+		common.ArgoCDKeyAdminPassword: adminPassword,
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
@@ -112,7 +116,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileArgoTLSSecret ensures the TLS Secret is created for the ArgoCD Service.
 func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := newTLSSecret("tls", cr)
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "tls")
 	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
 	if found {
 		return nil // Secret found, do nothing

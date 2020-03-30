@@ -15,6 +15,18 @@
 package common
 
 const (
+	// ArgoCDDefaultAdminUsername is the default username to use for logging into Argo CD.
+	ArgoCDDefaultAdminUsername = "admin"
+
+	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
+	ArgoCDDefaultAdminPasswordLength = 32
+
+	// ArgoCDDefaultAdminPasswordNumDigits is the number of digits to use for the generated default admin password.
+	ArgoCDDefaultAdminPasswordNumDigits = 5
+
+	// ArgoCDDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default admin password.
+	ArgoCDDefaultAdminPasswordNumSymbols = 5
+
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "mycompany.com/appname"
 
