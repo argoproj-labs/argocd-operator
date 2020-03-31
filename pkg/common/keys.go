@@ -23,11 +23,11 @@ const (
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.
 	ArgoCDKeyApplicationInstanceLabelKey = "application.instanceLabelKey"
 
-	// ArgoCDKeyAdminUsername is the admin username key for labels.
-	ArgoCDKeyAdminUsername = "admin.username"
-
 	// ArgoCDKeyAdminPassword is the admin password key for labels.
 	ArgoCDKeyAdminPassword = "admin.password"
+
+	// ArgoCDKeyAdminPassword is the admin password last modified key for labels.
+	ArgoCDKeyAdminPasswordMTime = "admin.passwordMtime"
 
 	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
 	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
@@ -121,6 +121,9 @@ const (
 
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
+
+	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
+	ArgoCDKeyServerSecretKey = "server.secretkey"
 
 	// ArgoCDKeyServerURL is the key for server url.
 	ArgoCDKeyServerURL = "url"

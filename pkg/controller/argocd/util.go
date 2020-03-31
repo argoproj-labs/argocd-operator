@@ -59,12 +59,23 @@ func combineImageTag(img string, tag string) string {
 	return img // No tag, use default
 }
 
-// getGrafanaAdminPassword will generate and return the admin password for Grafana.
+// getGrafanaAdminPassword will generate and return the admin password for Argo CD.
 func generateArgoAdminPassword() ([]byte, error) {
 	pass, err := password.Generate(
 		common.ArgoCDDefaultAdminPasswordLength,
 		common.ArgoCDDefaultAdminPasswordNumDigits,
 		common.ArgoCDDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
+// generateArgoServerKey will generate and return the server signature key for session validation.
+func generateArgoServerSessionKey() ([]byte, error) {
+	pass, err := password.Generate(
+		common.ArgoCDDefaultServerSessionKeyLength,
+		common.ArgoCDDefaultServerSessionKeyNumDigits,
+		common.ArgoCDDefaultServerSessionKeyNumSymbols,
 		false, false)
 
 	return []byte(pass), err

@@ -19,6 +19,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -97,11 +98,20 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	if err != nil {
 		return err
 	}
+	adminPasswordModified := time.Now().UTC().Format(time.RFC3339)
+
+	sessionKey, err := generateArgoServerSessionKey()
+	if err != nil {
+		return err
+	}
 
 	secret.Data = map[string][]byte{
-		common.ArgoCDKeyAdminUsername: []byte(common.ArgoCDDefaultAdminUsername),
-		common.ArgoCDKeyAdminPassword: adminPassword,
+		common.ArgoCDKeyAdminPassword:      adminPassword,
+		common.ArgoCDKeyAdminPasswordMTime: []byte(adminPasswordModified),
+		common.ArgoCDKeyServerSecretKey:    sessionKey,
 	}
+
+	// TODO: handle TLS cert/key, webhook secrets and additional users
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
 		return err

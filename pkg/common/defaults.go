@@ -15,9 +15,6 @@
 package common
 
 const (
-	// ArgoCDDefaultAdminUsername is the default username to use for logging into Argo CD.
-	ArgoCDDefaultAdminUsername = "admin"
-
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
 
@@ -204,6 +201,15 @@ const (
 
 	// ArgoCDDefaultServerResourceRequestMemory is the default memory requested when not specified for the Argo CD server contianer.
 	ArgoCDDefaultServerResourceRequestMemory = "64Mi"
+
+	// ArgoCDDefaultServerSessionKeyLength is the length of the generated default server signature key.
+	ArgoCDDefaultServerSessionKeyLength = 20
+
+	// ArgoCDDefaultServerSessionKeyNumDigits is the number of digits to use for the generated default server signature key.
+	ArgoCDDefaultServerSessionKeyNumDigits = 5
+
+	// ArgoCDDefaultServerSessionKeyNumSymbols is the number of symbols to use for the generated default server signature key.
+	ArgoCDDefaultServerSessionKeyNumSymbols = 0
 
 	// ArgoCDDefaultSSHKnownHosts is the default SSH Known hosts data.
 	ArgoCDDefaultSSHKnownHosts = `bitbucket.org ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAubiN81eDcafrgMeLzaFPsw2kNvEcqTKl/VqLat/MaB33pZy0y3rJZtnqwR2qOOvbwKZYKiEO1O6VqNEBxKvJJelCq0dTXWT5pbO2gDXC6h6QDXCaHo6pOHGPUy+YBaGQRGuSusMEASYiWunYN0vCAI8QaXnWMXNMdFP3jHAJH0eDsoiGnLPBlBp4TNm6rYI74nMzgz3B9IikW4WVK+dc8KZJZWYjAuORU3jc1c/NPskD2ASinf8v3xnfXeukU0sJ5N6m5E8VLjObPEO+mN2t/FZTMZLiFqPWc/ALSqnMnnhwrNi2rbfg/rd/IpL8Le3pSBne8+seeFVBoGqzHM9yXw==
