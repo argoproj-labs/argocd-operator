@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName)
 	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
 	if found {
-		// TODO: If admin secret changed, update configs and reload cluster...
+		// TODO: If secret changed, update configs and reload cluster as needed.
 		return nil // Secret found, do nothing
 	}
 
