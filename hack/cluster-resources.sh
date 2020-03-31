@@ -21,9 +21,9 @@ source ${HACK_DIR}/env.sh
 # NOTE: This script does NOT install the operator itself, use cluster-install.sh for that, which calls this script.
 
 # Set up RBAC for the ArgoCD operator and components.
-kubectl create -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/service_account.yaml
-kubectl create -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/role.yaml
-kubectl create -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/role_binding.yaml
+kubectl create -n ${ARGOCD_OPERATOR_NAMESPACE} -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/service_account.yaml
+kubectl create -n ${ARGOCD_OPERATOR_NAMESPACE} -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/role.yaml
+kubectl create -n ${ARGOCD_OPERATOR_NAMESPACE} -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/role_binding.yaml
 
 # Add the upstream Argo CD CRDs to the cluster.
 kubectl create -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/argo-cd

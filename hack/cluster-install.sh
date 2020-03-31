@@ -23,4 +23,4 @@ source ${HACK_DIR}/env.sh
 ${HACK_DIR}/cluster-resources.sh
 
 # Add the Argo CD Operator to the cluster.
-kubectl create -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/operator.yaml
+kubectl create -n ${ARGOCD_OPERATOR_NAMESPACE} -f ${ARGOCD_OPERATOR_DEPLOY_DIR}/operator.yaml
