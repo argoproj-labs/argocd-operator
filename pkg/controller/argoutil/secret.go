@@ -20,7 +20,15 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// FetchSecret will retrieve the object with the given Name using the provided client.
+// The result will be returned.
+func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*corev1.Secret, error) {
+	secret := NewSecretWithName(meta, name)
+	return secret, FetchObject(client, meta.Namespace, name, secret)
+}
 
 // NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
 func NewTLSSecret(meta metav1.ObjectMeta, suffix string) *corev1.Secret {

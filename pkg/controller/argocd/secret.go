@@ -28,11 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *ReconcileArgoCD) getSecret(name string, cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewSecretWithName(cr.ObjectMeta, name)
-	return secret, argoutil.FetchObject(r.client, cr.Namespace, name, secret)
-}
-
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca")
@@ -123,7 +118,7 @@ func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "ca")
-	caSecret, err := r.getSecret(caSecret.Name, cr)
+	caSecret, err := argoutil.FetchSecret(r.client, cr.ObjectMeta, caSecret.Name)
 	if err != nil {
 		return err
 	}
