@@ -515,7 +515,7 @@ func InspectCluster() error {
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
 func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling CA secret")
-	if err := r.reconcileCASecret(cr); err != nil {
+	if err := r.reconcileClusterCASecret(cr); err != nil {
 		return err
 	}
 
