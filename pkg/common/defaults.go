@@ -184,6 +184,9 @@ const (
 	// ArgoCDDefaultResourceExclusions is the default resource exlcusions.
 	ArgoCDDefaultResourceExclusions = ""
 
+	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
+	ArgoCDDefaultRSAKeySize = 2048
+
 	// ArgoCDDefaultServerOperationProcessors is the number of ArgoCD Server Operation Processors to use when not specified.
 	ArgoCDDefaultServerOperationProcessors = int32(10)
 

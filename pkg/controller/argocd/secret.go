@@ -37,19 +37,19 @@ func (r *ReconcileArgoCD) getSecret(name string, cr *argoprojv1a1.ArgoCD) (*core
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca")
 
-	key, err := newPrivateKey()
+	key, err := argoutil.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
 
-	cert, err := newSelfSignedCACertificate(key)
+	cert, err := argoutil.NewSelfSignedCACertificate(key)
 	if err != nil {
 		return nil, err
 	}
 
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:       encodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey: encodePrivateKeyPEM(key),
+		corev1.TLSCertKey:       argoutil.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey: argoutil.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -59,7 +59,7 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr.ObjectMeta, suffix)
 
-	key, err := newPrivateKey()
+	key, err := argoutil.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -76,14 +76,14 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
 	}
 
-	cert, err := newSignedCertificate(cfg, dnsNames, key, caCert, caKey)
+	cert, err := argoutil.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
 	if err != nil {
 		return nil, err
 	}
 
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:       encodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey: encodePrivateKeyPEM(key),
+		corev1.TLSCertKey:       argoutil.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey: argoutil.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -128,12 +128,12 @@ func (r *ReconcileArgoCD) reconcileArgoTLSSecret(cr *argoprojv1a1.ArgoCD) error 
 		return err
 	}
 
-	caCert, err := parsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
+	caCert, err := argoutil.ParsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return err
 	}
 
-	caKey, err := parsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
+	caKey, err := argoutil.ParsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
 	if err != nil {
 		return err
 	}

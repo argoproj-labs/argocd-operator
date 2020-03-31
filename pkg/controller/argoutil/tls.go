@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argocd
+package argoutil
 
 import (
 	"crypto/rand"
@@ -25,44 +25,33 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
-	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	rsaKeySize   = 2048
-	duration365d = time.Hour * 24 * 365
-
-	// TLSCACertKey is the key for tls CA certificates.
-	TLSCACertKey = tlsutil.TLSCACertKey
-
-	// TLSCertKey is the key for tls certificates.
-	TLSCertKey = corev1.TLSCertKey
-)
-
-// newPrivateKey returns randomly generated RSA private key.
-func newPrivateKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, rsaKeySize)
+// NewPrivateKey returns randomly generated RSA private key.
+func NewPrivateKey() (*rsa.PrivateKey, error) {
+	return rsa.GenerateKey(rand.Reader, common.ArgoCDDefaultRSAKeySize)
 }
 
-// encodePrivateKeyPEM encodes the given private key pem and returns bytes (base64).
-func encodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
+// EncodePrivateKeyPEM encodes the given private key pem and returns bytes (base64).
+func EncodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
 }
 
-// encodeCertificatePEM encodes the given certificate pem and returns bytes (base64).
-func encodeCertificatePEM(cert *x509.Certificate) []byte {
+// EncodeCertificatePEM encodes the given certificate pem and returns bytes (base64).
+func EncodeCertificatePEM(cert *x509.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: cert.Raw,
 	})
 }
 
-// parsePEMEncodedCert parses a certificate from the given pemdata
-func parsePEMEncodedCert(pemdata []byte) (*x509.Certificate, error) {
+// ParsePEMEncodedCert parses a certificate from the given pemdata
+func ParsePEMEncodedCert(pemdata []byte) (*x509.Certificate, error) {
 	decoded, _ := pem.Decode(pemdata)
 	if decoded == nil {
 		return nil, errors.New("no PEM data found")
@@ -70,8 +59,8 @@ func parsePEMEncodedCert(pemdata []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(decoded.Bytes)
 }
 
-// parsePEMEncodedPrivateKey parses a private key from given pemdata
-func parsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
+// ParsePEMEncodedPrivateKey parses a private key from given pemdata
+func ParsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
 	decoded, _ := pem.Decode(pemdata)
 	if decoded == nil {
 		return nil, errors.New("no PEM data found")
@@ -79,9 +68,9 @@ func parsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
 	return x509.ParsePKCS1PrivateKey(decoded.Bytes)
 }
 
-// newSelfSignedCACertificate returns a self-signed CA certificate based on given configuration and private key.
+// NewSelfSignedCACertificate returns a self-signed CA certificate based on given configuration and private key.
 // The certificate has one-year lease.
-func newSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) {
+func NewSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
 	if err != nil {
 		return nil, err
@@ -90,7 +79,7 @@ func newSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) 
 	tmpl := x509.Certificate{
 		SerialNumber:          serial,
 		NotBefore:             now.UTC(),
-		NotAfter:              now.Add(duration365d).UTC(),
+		NotAfter:              now.Add(common.ArgoCDDuration365Days).UTC(),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
@@ -102,10 +91,10 @@ func newSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) 
 	return x509.ParseCertificate(certDERBytes)
 }
 
-// newSignedCertificate signs a certificate using the given private key, CA and returns a signed certificate.
+// NewSignedCertificate signs a certificate using the given private key, CA and returns a signed certificate.
 // The certificate could be used for both client and server auth.
 // The certificate has one-year lease.
-func newSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.PrivateKey, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
+func NewSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.PrivateKey, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
 	if err != nil {
 		return nil, err
@@ -127,7 +116,7 @@ func newSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.P
 		DNSNames:     dnsNames,
 		SerialNumber: serial,
 		NotBefore:    caCert.NotBefore,
-		NotAfter:     time.Now().Add(duration365d).UTC(),
+		NotAfter:     time.Now().Add(common.ArgoCDDuration365Days).UTC(),
 		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  eku,
 	}

@@ -14,6 +14,11 @@
 
 package common
 
+import (
+	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+	corev1 "k8s.io/api/core/v1"
+)
+
 const (
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.
 	ArgoCDKeyApplicationInstanceLabelKey = "application.instanceLabelKey"
@@ -125,6 +130,12 @@ const (
 
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
+
+	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
+	ArgoCDKeyTLSCACert = tlsutil.TLSCACertKey
+
+	// ArgoCDKeyTLSCert is the key for TLS certificates.
+	ArgoCDKeyTLSCert = corev1.TLSCertKey
 
 	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
 	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"

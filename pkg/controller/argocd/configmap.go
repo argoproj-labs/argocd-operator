@@ -283,7 +283,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	cm.Data = map[string]string{
-		TLSCACertKey: string(caSecret.Data[TLSCertKey]),
+		common.ArgoCDKeyTLSCert: string(caSecret.Data[common.ArgoCDKeyTLSCert]),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
