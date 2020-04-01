@@ -22,7 +22,7 @@ const (
 	ArgoCDDefaultAdminPasswordNumDigits = 5
 
 	// ArgoCDDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default admin password.
-	ArgoCDDefaultAdminPasswordNumSymbols = 5
+	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "mycompany.com/appname"
