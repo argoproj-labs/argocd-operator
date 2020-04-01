@@ -92,15 +92,15 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Grafana.Enabled {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Grafana.Enabled {
-		return nil // Grafana not enabled, do nothing.
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
+		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
 	route.Spec.To.Kind = "Service"
@@ -119,15 +119,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Prometheus.Enabled {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
+		return nil // Prometheus itself or Route not enabled, do nothing.
 	}
 
 	route.Spec.To.Kind = "Service"
@@ -146,7 +146,15 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
+		if !cr.Spec.Server.Route {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.client.Delete(context.TODO(), route)
+		}
 		return nil // Route found, do nothing
+	}
+
+	if !cr.Spec.Server.Route {
+		return nil // Route not enabled, move along...
 	}
 
 	route.Spec.To.Kind = "Service"

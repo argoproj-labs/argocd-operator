@@ -5,7 +5,12 @@ metadata:
   labels:
     example: ingress
 spec:
-  ingress:
-    enabled: true
+  grafana:
+    ingress: true
+  prometheus:
+    ingress: true
   server:
+    grpc:
+      ingress: true
+    ingress: true
     insecure: true

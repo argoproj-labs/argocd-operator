@@ -162,7 +162,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("server", cr) // Default to service name
 
 	// Use Ingress host if enabled
-	if cr.Spec.Ingress.Enabled {
+	if cr.Spec.Server.Ingress {
 		ing := newIngressWithSuffix("server", cr)
 		if argoutil.IsObjectFound(r.client, cr.Namespace, ing.Name, ing) {
 			host = ing.Spec.Rules[0].Host
