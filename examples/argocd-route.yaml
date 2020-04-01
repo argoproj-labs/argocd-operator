@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: route
+spec:
+  grafana:
+    route: true
+  prometheus:
+    route: true
+  server:
+    route: true
