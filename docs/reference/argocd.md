@@ -109,7 +109,9 @@ Name | Default | Description
 Enabled | false | Toggle Grafana support globally for ArgoCD.
 Host | `example-argocd-grafana` | The hostname to use for Ingress/Route resources.
 Image | `grafana/grafana` | The container image for Grafana.
+Ingress | `false` | Toggles Ingress for Grafana.
 Resources | [Empty] | The container compute resources.
+Route | `false` | Toggles a Route for Grafana.
 Size | 1 | The replica count for the Grafana Deployment.
 Version | 6.7.1 (SHA) | The tag to use with the Grafana container image.
 
@@ -178,8 +180,7 @@ The following properties are available for configuring the Ingress for the clust
 Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Enabled | false | Toggle Ingress support globally for ArgoCD.
-Path | / | Path to use for the Ingress resource.
+Path | / | Path to use for Ingress resources.
 
 ### Ingress Example
 
@@ -212,6 +213,8 @@ Name | Default | Description
 --- | --- | ---
 Enabled | false | Toggle Prometheus support globally for ArgoCD.
 Host | `example-argocd-prometheus` | The hostname to use for Ingress/Route resources.
+Ingress | `false` | Toggles Ingress for Prometheus.
+Route | `false` | Toggles a Route for Prometheus.
 Size | 1 | The replica count for the Prometheus StatefulSet.
 
 ### Prometheus Example
@@ -320,11 +323,13 @@ The following properties are available for configuring the Argo CD Server compon
 
 Name | Default | Description
 --- | --- | ---
-Autoscale | [Object](#server-autoscale-options) | Autoscale options. See [below](#server-autoscale-options) for more detail.
-GRPC.Host | example-argocd-grpc | The hostname to use for Ingress/Route GRPC resources.
+[Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+[GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
+Ingress | `false` | Toggles Ingress for the Argo CD Server component.
 Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
+Route | `true` | Toggles a Route for the Argo CD Server component if supported.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 
 ### Server Autoscale Options
@@ -335,6 +340,15 @@ Name | Default | Description
 --- | --- | ---
 Enabled | false | Toggle Autoscaling support globally for the Argo CD server component.
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
+
+### Server GRPC Options
+
+The following properties are available to configure GRPC for the Argo CD Server component.
+
+Name | Default | Description
+--- | --- | ---
+Host | `example-argocd-grpc` | The hostname to use for Ingress GRPC resources.
+Ingress | `false` | Toggles Ingress for the Argo CD Server GRPC component.
 
 ### Server Example
 
@@ -361,11 +375,12 @@ spec:
         targetCPUUtilizationPercentage: 50
     grpc:
       host: example-argocd-grpc
+      ingress: false
     host: example-argocd
     ingress: false
     insecure: false
     resources: {}
-    route: false
+    route: true
     service:
       type: ClusterIP
 ```
