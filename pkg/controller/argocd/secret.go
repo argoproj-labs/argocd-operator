@@ -121,12 +121,25 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		valid, _ := argopass.VerifyPassword(expected, actual)
 		if !valid {
 			log.Info("cluster secret changed, updating argo secret")
-			secret.Data[common.ArgoCDKeyAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
+			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-			return r.client.Update(context.TODO(), secret) // TODO: need to reload Argo server manually when password changes?
+
+			if err := r.client.Update(context.TODO(), secret); err != nil {
+				return err
+			}
+
+			// Trigger rollout of Grafana Deployment
+			deploy := newDeploymentWithSuffix("server", "server", cr)
+			if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
+				log.Info("unable to locate argo server deployment")
+				return nil
+			}
+
+			deploy.Spec.Template.ObjectMeta.Labels["admin.password.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
 		}
 
-		return nil
+		return nil // Nothing changed, move along...
 	}
 
 	// Secret not found, create it...
@@ -274,7 +287,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
 
 		if actual != expected {
-			log.Info("cluster secret changed, updating grafana secret")
+			log.Info("cluster secret changed, updating and reloading grafana")
 			secret.Data[common.ArgoCDKeyGrafanaAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
 			if err := r.client.Update(context.TODO(), secret); err != nil {
 				return err
@@ -286,7 +299,20 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 				log.Info("unable to locate grafana-config")
 				return nil
 			}
-			return r.client.Delete(context.TODO(), cm)
+
+			if err := r.client.Delete(context.TODO(), cm); err != nil {
+				return err
+			}
+
+			// Trigger rollout of Grafana Deployment
+			deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
+			if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
+				log.Info("unable to locate grafana deployment")
+				return nil
+			}
+
+			deploy.Spec.Template.ObjectMeta.Labels["admin.password.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
 		}
 		return nil // Nothing has changed, move along...
 	}
