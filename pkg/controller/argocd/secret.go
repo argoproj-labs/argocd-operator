@@ -75,7 +75,15 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 	dnsNames := []string{
 		cr.ObjectMeta.Name,
+		nameWithSuffix("grpc", cr),
 		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
+	}
+
+	if cr.Spec.Grafana.Enabled {
+		dnsNames = append(dnsNames, getGrafanaHost(cr))
+	}
+	if cr.Spec.Prometheus.Enabled {
+		dnsNames = append(dnsNames, getPrometheusHost(cr))
 	}
 
 	cert, err := argoutil.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
@@ -108,13 +116,16 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
 		actual := string(secret.Data[common.ArgoCDKeyAdminPassword])
-		expected := hashedPassword
-		if actual != expected {
+		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
+
+		valid, _ := argopass.VerifyPassword(expected, actual)
+		if !valid {
 			log.Info("cluster secret changed, updating argo secret")
-			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
+			secret.Data[common.ArgoCDKeyAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
 			return r.client.Update(context.TODO(), secret) // TODO: need to reload Argo server manually when password changes?
 		}
+
 		return nil
 	}
 
@@ -244,24 +255,36 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 		return nil // Grafana not enabled, do nothing.
 	}
 
+	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "secret")
 	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
+
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, clusterSecret.Name, clusterSecret) {
+		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to create grafana secret [%s]", clusterSecret.Name, secret.Name))
+		return nil
+	}
+
 	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
-		return nil // Secret found, do nothing
+		actual := string(secret.Data[common.ArgoCDKeyAdminPassword])
+		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
+		if actual != expected {
+			log.Info("cluster secret changed, updating grafana secret")
+			secret.Data[common.ArgoCDKeyAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
+			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
+			return r.client.Update(context.TODO(), secret) // TODO: need to reload grafana manually when password changes?
+		}
+		return nil
 	}
 
-	adminPassword, err := getGrafanaAdminPassword()
-	if err != nil {
-		return err
-	}
+	// Secret not found, create it...
 
-	secretKey, err := getGrafanaSecretKey()
+	secretKey, err := generateGrafanaSecretKey()
 	if err != nil {
 		return err
 	}
 
 	secret.Data = map[string][]byte{
 		common.ArgoCDKeyGrafanaAdminUsername: []byte(common.ArgoCDDefaultGrafanaAdminUsername),
-		common.ArgoCDKeyGrafanaAdminPassword: adminPassword,
+		common.ArgoCDKeyGrafanaAdminPassword: clusterSecret.Data[common.ArgoCDKeyAdminPassword],
 		common.ArgoCDKeyGrafanaSecretKey:     secretKey,
 	}
 
