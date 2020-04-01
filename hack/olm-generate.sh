@@ -22,4 +22,5 @@ echo "Generating CSV for version ${ARGOCD_OPERATOR_VERSION}"
 operator-sdk generate csv \
     --operator-name ${ARGOCD_OPERATOR_NAME} \
     --csv-version ${ARGOCD_OPERATOR_VERSION} \
+    --from-version ${ARGOCD_OPERATOR_PREVIOUS_VERSION} \
     --update-crds
