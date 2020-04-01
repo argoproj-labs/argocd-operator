@@ -47,19 +47,8 @@ type GrafanaSecurityConfig struct {
 	SecretKey string
 }
 
-// getGrafanaAdminPassword will generate and return the admin password for Grafana.
-func getGrafanaAdminPassword() ([]byte, error) {
-	pass, err := password.Generate(
-		common.ArgoCDDefaultGrafanaAdminPasswordLength,
-		common.ArgoCDDefaultGrafanaAdminPasswordNumDigits,
-		common.ArgoCDDefaultGrafanaAdminPasswordNumSymbols,
-		false, false)
-
-	return []byte(pass), err
-}
-
-// getGrafanaSecretKey will generate and return the secret key for Grafana.
-func getGrafanaSecretKey() ([]byte, error) {
+// generateGrafanaSecretKey will generate and return the secret key for Grafana.
+func generateGrafanaSecretKey() ([]byte, error) {
 	key, err := password.Generate(
 		common.ArgoCDDefaultGrafanaSecretKeyLength,
 		common.ArgoCDDefaultGrafanaSecretKeyNumDigits,
