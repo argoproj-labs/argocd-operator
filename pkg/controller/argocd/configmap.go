@@ -277,9 +277,9 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, common.ArgoCDCASuffix)
-	caSecret, err := argoutil.FetchSecret(r.client, cr.ObjectMeta, caSecret.Name)
-	if err != nil {
-		return err
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, caSecret.Name, caSecret) {
+		log.Info(fmt.Sprintf("ca secret [%s] not found, waiting to reconcile ca configmap [%s]", caSecret.Name, cm.Name))
+		return nil
 	}
 
 	cm.Data = map[string]string{
