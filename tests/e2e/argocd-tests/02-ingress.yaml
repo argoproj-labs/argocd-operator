@@ -1,3 +1,11 @@
+# Delete previous cluster
+apiVersion: kudo.dev/v1alpha1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1alpha1
+  kind: ArgoCD
+  name: example-argocd
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
