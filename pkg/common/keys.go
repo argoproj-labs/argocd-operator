@@ -140,6 +140,9 @@ const (
 	// ArgoCDKeyTLSCert is the key for TLS certificates.
 	ArgoCDKeyTLSCert = corev1.TLSCertKey
 
+	// ArgoCDKeyTLSPrivateKey is the key for TLS private keys.
+	ArgoCDKeyTLSPrivateKey = corev1.TLSPrivateKeyKey
+
 	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
 	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
 

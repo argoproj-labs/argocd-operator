@@ -105,7 +105,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName)
 
 	if !argoutil.IsObjectFound(r.client, cr.Namespace, clusterSecret.Name, clusterSecret) {
-		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to create argo secret [%s]", clusterSecret.Name, secret.Name))
+		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile argo secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
@@ -131,6 +131,12 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 	// Secret not found, create it...
 
+	tlsSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "tls")
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, tlsSecret.Name, tlsSecret) {
+		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to create argo secret [%s]", tlsSecret.Name, secret.Name))
+		return nil
+	}
+
 	sessionKey, err := generateArgoServerSessionKey()
 	if err != nil {
 		return err
@@ -140,9 +146,9 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		common.ArgoCDKeyAdminPassword:      []byte(hashedPassword),
 		common.ArgoCDKeyAdminPasswordMTime: nowBytes(),
 		common.ArgoCDKeyServerSecretKey:    sessionKey,
+		common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
+		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 	}
-
-	// TODO: handle TLS cert/key
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
 		return err
@@ -259,17 +265,17 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
 
 	if !argoutil.IsObjectFound(r.client, cr.Namespace, clusterSecret.Name, clusterSecret) {
-		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to create grafana secret [%s]", clusterSecret.Name, secret.Name))
+		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile grafana secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
 	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
-		actual := string(secret.Data[common.ArgoCDKeyAdminPassword])
+		actual := string(secret.Data[common.ArgoCDKeyGrafanaAdminPassword])
 		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
+
 		if actual != expected {
 			log.Info("cluster secret changed, updating grafana secret")
-			secret.Data[common.ArgoCDKeyAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
-			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
+			secret.Data[common.ArgoCDKeyGrafanaAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
 			return r.client.Update(context.TODO(), secret) // TODO: need to reload grafana manually when password changes?
 		}
 		return nil
