@@ -276,9 +276,19 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 		if actual != expected {
 			log.Info("cluster secret changed, updating grafana secret")
 			secret.Data[common.ArgoCDKeyGrafanaAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
-			return r.client.Update(context.TODO(), secret) // TODO: need to reload grafana manually when password changes?
+			if err := r.client.Update(context.TODO(), secret); err != nil {
+				return err
+			}
+
+			// Regenerate the Grafana configuration
+			cm := newConfigMapWithSuffix("grafana-config", cr)
+			if !argoutil.IsObjectFound(r.client, cm.Namespace, cm.Name, cm) {
+				log.Info("unable to locate grafana-config")
+				return nil
+			}
+			return r.client.Delete(context.TODO(), cm)
 		}
-		return nil
+		return nil // Nothing has changed, move along...
 	}
 
 	// Secret not found, create it...
