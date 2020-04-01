@@ -7,5 +7,6 @@ metadata:
 spec:
   grafana:
     enabled: true
+    ingress: true
   prometheus:
     enabled: true

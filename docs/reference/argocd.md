@@ -129,7 +129,9 @@ spec:
     enabled: false
     host: example-argocd-grafana
     image: grafana/grafana
+    ingress: false
     resources: {}
+    route: false
     size: 1
     version: 6.7.1
 ```
@@ -196,9 +198,9 @@ spec:
       kubernetes.io/ingress.class: nginx
       nginx.ingress.kubernetes.io/rewrite-target: /static/$2
       cert-manager.io/cluster-issuer: letsencrypt
-    enabled: true
     path: /testpath
   server:
+    ingress: true
     insecure: true
 ```
 
@@ -227,6 +229,8 @@ spec:
   prometheus:
     enabled: false
     host: example-argocd-prometheus
+    ingress: false
+    route: false
     size: 1
 ```
 
@@ -358,8 +362,10 @@ spec:
     grpc:
       host: example-argocd-grpc
     host: example-argocd
+    ingress: false
     insecure: false
     resources: {}
+    route: false
     service:
       type: ClusterIP
 ```
