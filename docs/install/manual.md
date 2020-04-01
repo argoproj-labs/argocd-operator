@@ -42,6 +42,9 @@ The remaining resources will now be created in the new namespace.
 
 Set up RBAC for the ArgoCD operator and components.
 
+NOTE: The ClusterRoleBindings defined in `deploy/role_binding.yaml` use the `argocd` namespace. You will need to update these if using a different namespace.
+ 
+
 ```bash
 kubectl create -f deploy/service_account.yaml
 kubectl create -f deploy/role.yaml

@@ -44,6 +44,8 @@ The remaining resources will now be created in the new namespace.
 
 Provision the ServiceAccounts, Roles and RoleBindings to set up RBAC for the operator.
 
+NOTE: The ClusterRoleBindings defined in `deploy/role_binding.yaml` use the `argocd` namespace. You will need to update these if using a different namespace.
+
 ```bash
 oc create -f deploy/service_account.yaml
 oc create -f deploy/role.yaml
