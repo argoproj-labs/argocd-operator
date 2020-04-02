@@ -225,7 +225,7 @@ type ArgoCDServerAutoscaleSpec struct {
 // ArgoCDServerGRPCSpec defines the desired state for the Argo CD Server GRPC options.
 type ArgoCDServerGRPCSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
-	Host string `json:"host"`
+	Host string `json:"host,omitempty"`
 
 	// Ingress toggles GRPC Ingress resource(s) for the Argo CD Server conponent.
 	Ingress bool `json:"ingress,omitempty"`
