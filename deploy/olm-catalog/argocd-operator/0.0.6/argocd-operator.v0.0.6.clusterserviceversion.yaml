@@ -33,12 +33,15 @@ spec:
       displayName: ArgoCDExport
       description: ArgoCDExport describes the desired state for the export of a given Argo CD deployment.
       resources:
-      - kind: CronJob
-        version: batch/v1beta1
-      - kind: Job
-        version: batch/v1
-      - kind: PersistentVolumeClaim
-        version: v1
+        - kind: CronJob
+          name: ''
+          version: batch/v1beta1
+        - kind: Job
+          name: ''
+          version: batch/v1
+        - kind: PersistentVolumeClaim
+          name: ''
+          version: v1
       specDescriptors:
       - description: The name of the ArgoCD instance to export.
         displayName: ArgoCD
@@ -65,20 +68,27 @@ spec:
       displayName: ArgoCD
       description: ArgoCD is the representation of an Argo CD deployment.
       resources:
-      - kind: ConfigMap
-        version: v1
-      - kind: Deployment
-        version: apps/v1
-      - kind: Ingress
-        version: extensions/v1
-      - kind: PersistentVolumeClaim
-        version: v1
-      - kind: Secret
-        version: v1
-      - kind: Service
-        version: v1
-      - kind: StatefulSet
-        version: apps/v1
+        - kind: ConfigMap
+          name: ''
+          version: v1
+        - kind: Deployment
+          name: ''
+          version: apps/v1
+        - kind: Ingress
+          name: ''
+          version: extensions/v1
+        - kind: PersistentVolumeClaim
+          name: ''
+          version: v1
+        - kind: Secret
+          name: ''
+          version: v1
+        - kind: Service
+          name: ''
+          version: v1
+        - kind: StatefulSet
+          name: ''
+          version: apps/v1
       specDescriptors:
       - description: 'The container image to use for the Argo CD components.'
         displayName: Image
