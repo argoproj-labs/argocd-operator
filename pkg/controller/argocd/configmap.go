@@ -276,14 +276,14 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 		return nil // ConfigMap found, do nothing
 	}
 
-	caSecret := newSecretWithSuffix(common.ArgoCDCASuffix, cr)
-	caSecret, err := r.getSecret(caSecret.Name, cr)
-	if err != nil {
-		return err
+	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, common.ArgoCDCASuffix)
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, caSecret.Name, caSecret) {
+		log.Info(fmt.Sprintf("ca secret [%s] not found, waiting to reconcile ca configmap [%s]", caSecret.Name, cm.Name))
+		return nil
 	}
 
 	cm.Data = map[string]string{
-		TLSCACertKey: string(caSecret.Data[TLSCertKey]),
+		common.ArgoCDKeyTLSCert: string(caSecret.Data[common.ArgoCDKeyTLSCert]),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
@@ -374,8 +374,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD)
 		return nil // ConfigMap found, do nothing
 	}
 
-	secret := newSecretWithSuffix("grafana", cr)
-	secret, err := r.getSecret(secret.Name, cr)
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
+	secret, err := argoutil.FetchSecret(r.client, cr.ObjectMeta, secret.Name)
 	if err != nil {
 		return err
 	}

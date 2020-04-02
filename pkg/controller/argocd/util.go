@@ -26,6 +26,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/sethvargo/go-password/password"
 	"gopkg.in/yaml.v2"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -56,6 +57,28 @@ func combineImageTag(img string, tag string) string {
 		return fmt.Sprintf("%s:%s", img, tag) // Tag
 	}
 	return img // No tag, use default
+}
+
+// getGrafanaAdminPassword will generate and return the admin password for Argo CD.
+func generateArgoAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		common.ArgoCDDefaultAdminPasswordLength,
+		common.ArgoCDDefaultAdminPasswordNumDigits,
+		common.ArgoCDDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
+// generateArgoServerKey will generate and return the server signature key for session validation.
+func generateArgoServerSessionKey() ([]byte, error) {
+	pass, err := password.Generate(
+		common.ArgoCDDefaultServerSessionKeyLength,
+		common.ArgoCDDefaultServerSessionKeyNumDigits,
+		common.ArgoCDDefaultServerSessionKeyNumSymbols,
+		false, false)
+
+	return []byte(pass), err
 }
 
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
@@ -256,7 +279,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	// Fetch the secret to obtain the token
-	secret := newSecretWithName(tokenSecret.Name, cr)
+	secret := argoutil.NewSecretWithName(cr.ObjectMeta, tokenSecret.Name)
 	if err := argoutil.FetchObject(r.client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}
@@ -492,7 +515,7 @@ func InspectCluster() error {
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
 func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling CA secret")
-	if err := r.reconcileCASecret(cr); err != nil {
+	if err := r.reconcileClusterCASecret(cr); err != nil {
 		return err
 	}
 

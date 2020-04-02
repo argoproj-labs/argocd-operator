@@ -14,9 +14,20 @@
 
 package common
 
+import (
+	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+	corev1 "k8s.io/api/core/v1"
+)
+
 const (
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.
 	ArgoCDKeyApplicationInstanceLabelKey = "application.instanceLabelKey"
+
+	// ArgoCDKeyAdminPassword is the admin password key for labels.
+	ArgoCDKeyAdminPassword = "admin.password"
+
+	// ArgoCDKeyAdminPassword is the admin password last modified key for labels.
+	ArgoCDKeyAdminPasswordMTime = "admin.passwordMtime"
 
 	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
 	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
@@ -111,6 +122,9 @@ const (
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
 
+	// ArgoCDKeyServerSecretKey is the server secret key property name for the Argo secret.
+	ArgoCDKeyServerSecretKey = "server.secretkey"
+
 	// ArgoCDKeyServerURL is the key for server url.
 	ArgoCDKeyServerURL = "url"
 
@@ -119,6 +133,15 @@ const (
 
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
+
+	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
+	ArgoCDKeyTLSCACert = tlsutil.TLSCACertKey
+
+	// ArgoCDKeyTLSCert is the key for TLS certificates.
+	ArgoCDKeyTLSCert = corev1.TLSCertKey
+
+	// ArgoCDKeyTLSPrivateKey is the key for TLS private keys.
+	ArgoCDKeyTLSPrivateKey = corev1.TLSPrivateKeyKey
 
 	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
 	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"

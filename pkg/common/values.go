@@ -14,6 +14,8 @@
 
 package common
 
+import "time"
+
 const (
 	// ArgoCDAppName is the application name for labels.
 	ArgoCDAppName = "argocd"
@@ -23,6 +25,9 @@ const (
 
 	// ArgoCDConfigMapName is the upstream hard-coded ArgoCD ConfigMap name.
 	ArgoCDConfigMapName = "argocd-cm"
+
+	// ArgoCDDuration365Days is a duration representing 365 days.
+	ArgoCDDuration365Days = time.Hour * 24 * 365
 
 	// ArgoCDExportName is the export name for labels.
 	ArgoCDExportName = "argocd.export"

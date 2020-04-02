@@ -258,7 +258,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	// Add TLS options
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
-			Hosts:      []string{cr.Name},
+			Hosts: []string{
+				cr.Name,
+				getGrafanaHost(cr),
+			},
 			SecretName: common.ArgoCDSecretName,
 		},
 	}
