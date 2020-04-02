@@ -16,7 +16,6 @@ package argocdexport
 
 import (
 	"context"
-	"fmt"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -81,7 +80,7 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
 
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
-		Image:           fmt.Sprintf("%s:%s", common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion), // TODO: Allow override of image tag?
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
 		VolumeMounts: []corev1.VolumeMount{
@@ -151,11 +150,9 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) erro
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted
-			r.client.Status().Update(context.TODO(), cr)
-
-			// Delete PVC for export
+			return r.client.Status().Update(context.TODO(), cr)
 		}
-		return nil
+		return nil // Job not complete, move along...
 	}
 
 	job.Spec.Template = newPodTemplateSpec(cr)
