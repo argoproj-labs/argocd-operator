@@ -97,7 +97,7 @@ type ArgoCDDexOAuthSpec struct {
 	Enabled bool `json:"enabled"`
 }
 
-// ArgoCDGrafanaSpec defines the desired state for the Grafana server component.
+// ArgoCDGrafanaSpec defines the desired state for the Grafana component.
 type ArgoCDGrafanaSpec struct {
 	// Enabled will toggle Grafana support globally for ArgoCD.
 	Enabled bool `json:"enabled"`
@@ -108,8 +108,14 @@ type ArgoCDGrafanaSpec struct {
 	// Image is the Grafana container image.
 	Image string `json:"image,omitempty"`
 
+	// Ingress toggles an Ingress resource for the Grafana conponent.
+	Ingress bool `json:"ingress,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for Grafana.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Route toggles an OpenShift Route resource for the Grafana conponent if supported.
+	Route bool `json:"route,omitempty"`
 
 	// Size is the replica count for the Grafana Deployment.
 	Size *int32 `json:"size,omitempty"`
@@ -138,9 +144,6 @@ type ArgoCDIngressSpec struct {
 	// Annotations is the map of annotations to use for the Ingress resource.
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-	// Enabled will toggle Ingress support globally for ArgoCD.
-	Enabled bool `json:"enabled"`
-
 	// Path used for the Ingress resource.
 	Path string `json:"path,omitempty"`
 }
@@ -161,6 +164,12 @@ type ArgoCDPrometheusSpec struct {
 
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host,omitempty"`
+
+	// Ingress toggles an Ingress resource for the Prometheus conponent.
+	Ingress bool `json:"ingress,omitempty"`
+
+	// Route toggles an OpenShift Route resource for the Prometheus conponent if supported.
+	Route bool `json:"route,omitempty"`
 
 	// Size is the replica count for the Prometheus StatefulSet.
 	Size *int32 `json:"size,omitempty"`
@@ -217,6 +226,9 @@ type ArgoCDServerAutoscaleSpec struct {
 type ArgoCDServerGRPCSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host"`
+
+	// Ingress toggles GRPC Ingress resource(s) for the Argo CD Server conponent.
+	Ingress bool `json:"ingress,omitempty"`
 }
 
 // ArgoCDServerSpec defines the options for the ArgoCD Server component.
@@ -230,11 +242,17 @@ type ArgoCDServerSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host,omitempty"`
 
+	// Ingress toggles Ingress resource(s) for the Argo CD Server conponent.
+	Ingress bool `json:"ingress,omitempty"`
+
 	// Insecure toggles the insecure flag.
 	Insecure bool `json:"insecure,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the Argo CD server component.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Ingress toggles OpenShift Route resource(s) for the Argo CD Server conponent.
+	Route bool `json:"route,omitempty"`
 
 	// Service defines the options for the Service backing the ArgoCD Server component.
 	Service ArgoCDServerServiceSpec `json:"service,omitempty"`

@@ -3,7 +3,11 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: insecure
+    example: route
 spec:
+  grafana:
+    route: true
+  prometheus:
+    route: true
   server:
-    insecure: true
+    route: true
