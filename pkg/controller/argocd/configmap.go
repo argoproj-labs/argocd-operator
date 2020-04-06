@@ -296,6 +296,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+
 		uri := r.getArgoServerURI(cr)
 		if cm.Data[common.ArgoCDKeyServerURL] != uri {
 			cm.Data[common.ArgoCDKeyServerURL] = uri
@@ -305,6 +306,66 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 			return err
 		}
+
+		changed := false
+
+		if cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] != cr.Spec.ApplicationInstanceLabelKey {
+			cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = cr.Spec.ApplicationInstanceLabelKey
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyConfigManagementPlugins] != cr.Spec.ConfigManagementPlugins {
+			cm.Data[common.ArgoCDKeyConfigManagementPlugins] = cr.Spec.ConfigManagementPlugins
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyGATrackingID] != cr.Spec.GATrackingID {
+			cm.Data[common.ArgoCDKeyGATrackingID] = cr.Spec.GATrackingID
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyGAAnonymizeUsers] != fmt.Sprint(cr.Spec.GAAnonymizeUsers) {
+			cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyHelpChatURL] != cr.Spec.HelpChatURL {
+			cm.Data[common.ArgoCDKeyHelpChatURL] = cr.Spec.HelpChatURL
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyHelpChatText] != cr.Spec.HelpChatText {
+			cm.Data[common.ArgoCDKeyHelpChatText] = cr.Spec.HelpChatText
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyKustomizeBuildOptions] != cr.Spec.KustomizeBuildOptions {
+			cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = cr.Spec.KustomizeBuildOptions
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
+			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyResourceCustomizations] != cr.Spec.ResourceCustomizations {
+			cm.Data[common.ArgoCDKeyResourceCustomizations] = cr.Spec.ResourceCustomizations
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyResourceExclusions] != cr.Spec.ResourceExclusions {
+			cm.Data[common.ArgoCDKeyResourceExclusions] = cr.Spec.ResourceExclusions
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyRepositories] != cr.Spec.Repositories {
+			cm.Data[common.ArgoCDKeyRepositories] = cr.Spec.Repositories
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyStatusBadgeEnabled] != fmt.Sprint(cr.Spec.StatusBadgeEnabled) {
+			cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] != fmt.Sprint(cr.Spec.UsersAnonymousEnabled) {
+			cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
+			changed = true
+		}
+
+		if changed {
+			return r.client.Update(context.TODO(), cm) // TODO: Reload Argo CD server after ConfigMap change (which properties)?
+		}
+
 		return nil // ConfigMap found and configured, do nothing further...
 	}
 
