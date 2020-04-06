@@ -35,6 +35,18 @@ spec:
         operation:
           description: Operation contains requested operation parameters.
           properties:
+            initiatedBy:
+              description: OperationInitiator holds information about the operation
+                initiator
+              properties:
+                automated:
+                  description: Automated is set to true if operation was initiated
+                    automatically by the application controller.
+                  type: boolean
+                username:
+                  description: Name of a user who started operation.
+                  type: string
+              type: object
             sync:
               description: SyncOperation contains sync operation details.
               properties:
@@ -126,6 +138,21 @@ spec:
                     helm:
                       description: Helm holds helm specific options
                       properties:
+                        fileParameters:
+                          description: FileParameters are file parameters to the helm
+                            template
+                          items:
+                            description: HelmFileParameter is a file parameter to
+                              a helm template
+                            properties:
+                              name:
+                                description: Name is the name of the helm parameter
+                                type: string
+                              path:
+                                description: Path is the path value for the helm parameter
+                                type: string
+                            type: object
+                          type: array
                         parameters:
                           description: Parameters are parameters to the helm template
                           items:
@@ -241,6 +268,11 @@ spec:
                   required:
                   - repoURL
                   type: object
+                syncOptions:
+                  description: SyncOptions provide per-sync sync-options, e.g. Validate=false
+                  items:
+                    type: string
+                  type: array
                 syncStrategy:
                   description: SyncStrategy describes how to perform the sync
                   properties:
@@ -391,6 +423,21 @@ spec:
                 helm:
                   description: Helm holds helm specific options
                   properties:
+                    fileParameters:
+                      description: FileParameters are file parameters to the helm
+                        template
+                      items:
+                        description: HelmFileParameter is a file parameter to a helm
+                          template
+                        properties:
+                          name:
+                            description: Name is the name of the helm parameter
+                            type: string
+                          path:
+                            description: Path is the path value for the helm parameter
+                            type: string
+                        type: object
+                      type: array
                     parameters:
                       description: Parameters are parameters to the helm template
                       items:
@@ -518,6 +565,11 @@ spec:
                       description: 'SelfHeal enables auto-syncing if  (default: false)'
                       type: boolean
                   type: object
+                syncOptions:
+                  description: Options allow youe to specify whole app sync-options
+                  items:
+                    type: string
+                  type: array
               type: object
           required:
           - destination
@@ -626,6 +678,22 @@ spec:
                       helm:
                         description: Helm holds helm specific options
                         properties:
+                          fileParameters:
+                            description: FileParameters are file parameters to the
+                              helm template
+                            items:
+                              description: HelmFileParameter is a file parameter to
+                                a helm template
+                              properties:
+                                name:
+                                  description: Name is the name of the helm parameter
+                                  type: string
+                                path:
+                                  description: Path is the path value for the helm
+                                    parameter
+                                  type: string
+                              type: object
+                            type: array
                           parameters:
                             description: Parameters are parameters to the helm template
                             items:
@@ -769,6 +837,18 @@ spec:
                 operation:
                   description: Operation is the original requested operation
                   properties:
+                    initiatedBy:
+                      description: OperationInitiator holds information about the
+                        operation initiator
+                      properties:
+                        automated:
+                          description: Automated is set to true if operation was initiated
+                            automatically by the application controller.
+                          type: boolean
+                        username:
+                          description: Name of a user who started operation.
+                          type: string
+                      type: object
                     sync:
                       description: SyncOperation contains sync operation details.
                       properties:
@@ -865,6 +945,23 @@ spec:
                             helm:
                               description: Helm holds helm specific options
                               properties:
+                                fileParameters:
+                                  description: FileParameters are file parameters
+                                    to the helm template
+                                  items:
+                                    description: HelmFileParameter is a file parameter
+                                      to a helm template
+                                    properties:
+                                      name:
+                                        description: Name is the name of the helm
+                                          parameter
+                                        type: string
+                                      path:
+                                        description: Path is the path value for the
+                                          helm parameter
+                                        type: string
+                                    type: object
+                                  type: array
                                 parameters:
                                   description: Parameters are parameters to the helm
                                     template
@@ -988,6 +1085,12 @@ spec:
                           required:
                           - repoURL
                           type: object
+                        syncOptions:
+                          description: SyncOptions provide per-sync sync-options,
+                            e.g. Validate=false
+                          items:
+                            type: string
+                          type: array
                         syncStrategy:
                           description: SyncStrategy describes how to perform the sync
                           properties:
@@ -1132,6 +1235,22 @@ spec:
                         helm:
                           description: Helm holds helm specific options
                           properties:
+                            fileParameters:
+                              description: FileParameters are file parameters to the
+                                helm template
+                              items:
+                                description: HelmFileParameter is a file parameter
+                                  to a helm template
+                                properties:
+                                  name:
+                                    description: Name is the name of the helm parameter
+                                    type: string
+                                  path:
+                                    description: Path is the path value for the helm
+                                      parameter
+                                    type: string
+                                type: object
+                              type: array
                             parameters:
                               description: Parameters are parameters to the helm template
                               items:
@@ -1389,6 +1508,22 @@ spec:
                         helm:
                           description: Helm holds helm specific options
                           properties:
+                            fileParameters:
+                              description: FileParameters are file parameters to the
+                                helm template
+                              items:
+                                description: HelmFileParameter is a file parameter
+                                  to a helm template
+                                properties:
+                                  name:
+                                    description: Name is the name of the helm parameter
+                                    type: string
+                                  path:
+                                    description: Path is the path value for the helm
+                                      parameter
+                                    type: string
+                                type: object
+                              type: array
                             parameters:
                               description: Parameters are parameters to the helm template
                               items:
