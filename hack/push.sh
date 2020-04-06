@@ -17,4 +17,5 @@
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
+echo "Pushing image ${ARGOCD_OPERATOR_IMAGE}"
 ${ARGOCD_OPERATOR_IMAGE_BUILDER} push ${ARGOCD_OPERATOR_IMAGE}

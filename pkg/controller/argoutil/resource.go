@@ -17,6 +17,7 @@ package argoutil
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,16 @@ func AppendStringMap(src map[string]string, add map[string]string) map[string]st
 		res[key] = val
 	}
 	return res
+}
+
+// CombineImageTag will return the combined image and tag in the proper format for tags and digests.
+func CombineImageTag(img string, tag string) string {
+	if strings.Contains(tag, ":") {
+		return fmt.Sprintf("%s@%s", img, tag) // Digest
+	} else if len(tag) > 0 {
+		return fmt.Sprintf("%s:%s", img, tag) // Tag
+	}
+	return img // No tag, use default
 }
 
 // CreateEvent will create a new Kubernetes Event with the given action, message, reason and involved uid.

@@ -402,8 +402,6 @@ spec:
                       description: Ingress toggles GRPC Ingress resource(s) for the
                         Argo CD Server conponent.
                       type: boolean
-                  required:
-                  - host
                   type: object
                 host:
                   description: Host is the hostname to use for Ingress/Route resources.
