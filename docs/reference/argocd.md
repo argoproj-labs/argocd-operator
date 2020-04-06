@@ -145,6 +145,31 @@ spec:
     version: v2.21.0
 ```
 
+### Dex OpenShift OAuth Example
+
+The following example configures Dex to use the OAuth server built into OpenShift. 
+
+The `OpenShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group. 
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: openshift-oauth
+spec:
+  dex:
+    image: quay.io/ablock/dex
+    openShiftOAuth: true
+    version: openshift-connector
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policy: |
+      g, system:cluster-admins, role:admin
+    scopes: '[groups]'
+```
+
 ## GA Tracking ID
 
 The google analytics tracking ID to use. This property maps directly to the `ga.trackingid` field in the `argocd-cm` ConfigMap.
@@ -287,7 +312,7 @@ spec:
 
 The container image for all Argo CD components.
 
-## Image Example
+### Image Example
 
 The following example sets the default value using the `Image` property on the `ArgoCD` resource.
 
@@ -446,8 +471,9 @@ metadata:
     example: rbac
 spec:
   rbac:
-    defaultPolicy: role:readonly
-    policy: ""
+    defaultPolicy: 'role:readonly'
+    policy: |
+      g, system:cluster-admins, role:admin
     scopes: '[groups]'
 ```
 
@@ -689,7 +715,7 @@ spec:
 
 Define the SSH Known Hosts for Argo CD. This property maps directly to the `ssh_known_hosts` field in the `argocd-ssh-known-hosts-cm` ConfigMap.
 
-### SSH Known Hosts
+### SSH Known Hosts Example
 
 The following example sets a value in the `argocd-ssh-known-hosts-cm` ConfigMap using the `SSHKnownHosts` property on the `ArgoCD` resource. The example values have been truncated for clarity.
 
@@ -779,7 +805,7 @@ spec:
 
 The tag to use with the container image for all Argo CD components.
 
-## Version Example
+### Version Example
 
 The following example sets the default value using the `Version` property on the `ArgoCD` resource.
 
