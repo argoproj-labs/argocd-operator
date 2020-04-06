@@ -31,7 +31,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:f7a4a8e4542ef9d2e0cb6d3fe5814e87b79b8064089c0bc29ae7cefae8e93b66" // v1.4.2
+	ArgoCDDefaultArgoVersion = "sha256:515d6cecf70169491efba5b9802b1ddb21a30e7ec59e87ab1f29196d6945afd5" // v1.5.1
 
 	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
 	ArgoCDDefaultConfigManagementPlugins = ""
@@ -164,7 +164,7 @@ const (
 	ArgoCDDefaultRedisVersion = "sha256:4be7fdb131e76a6c6231e820c60b8b12938cf1ff3d437da4871b9b2440f4e385" // 5.0.3
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
-	ArgoCDDefaultRedisVersionHA = "sha256:f8c22abc77f3f9cc1c2516062e4a2a71375859d7922da3faf9e4160e6ba4c3c2" // 5.0.3-alpine
+	ArgoCDDefaultRedisVersionHA = "sha256:27e139dd0476133961d36e5abdbbb9edf9f596f80cc2f9c2e8f37b20b91d610d" // 5.0.6-alpine
 
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
