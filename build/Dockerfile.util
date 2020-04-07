@@ -1,0 +1,10 @@
+FROM argoproj/argocd:v1.5.1
+
+ENV USER_UID=1001 \
+    USER_NAME=argocd-util
+
+COPY util /usr/local/bin
+
+ENTRYPOINT ["/usr/local/bin/wrap.sh"]
+
+USER ${USER_UID}
