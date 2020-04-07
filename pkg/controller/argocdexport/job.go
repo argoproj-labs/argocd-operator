@@ -27,6 +27,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// getArgoExportArgs will return the CLI arguments for the ArgoCD export process.
+func getArgoExportArgs() []string {
+	args := make([]string, 0)
+	args = append(args, "export")
+	return args
+}
+
 // getArgoExportCommand will return the command for the ArgoCD export process.
 func getArgoExportCommand(cr *argoprojv1a1.ArgoCDExport) []string {
 	cmd := make([]string, 0)
@@ -34,6 +41,33 @@ func getArgoExportCommand(cr *argoprojv1a1.ArgoCDExport) []string {
 	cmd = append(cmd, "-c")
 	cmd = append(cmd, "argocd-util export > /backups/argocd-backup.yaml")
 	return cmd
+}
+
+// getArgoExportContainerImage will return the container image for ArgoCD.
+func getArgoExportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
+	img := cr.Spec.Image
+	if len(img) <= 0 {
+		img = common.ArgoCDDefaultExportJobImage
+	}
+
+	tag := cr.Spec.Version
+	if len(tag) <= 0 {
+		tag = common.ArgoCDDefaultExportJobVersion
+	}
+
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// getArgoExportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
+func getArgoExportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+	mounts := make([]corev1.VolumeMount, 0)
+
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "backup-storage",
+		MountPath: "/backups",
+	})
+
+	return mounts
 }
 
 func getArgoStorageVolume(name string, cr *argoprojv1a1.ArgoCDExport) corev1.Volume {
@@ -79,8 +113,8 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
 	pod.Containers = []corev1.Container{{
-		Command:         getArgoExportCommand(cr),
-		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion), // TODO: Allow override of image tag?
+		Args:            getArgoExportArgs(),
+		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
 		VolumeMounts: []corev1.VolumeMount{

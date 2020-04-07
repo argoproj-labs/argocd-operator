@@ -73,6 +73,12 @@ const (
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "sha256:c14ea9dbf341de51c8c0858a65bfe905a0a2cc154311c959a0bfe609bfe177b5" // v2.21.0
 
+	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
+	ArgoCDDefaultExportJobImage = "quay.io/jmckind/argocd-operator-util"
+
+	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
+	ArgoCDDefaultExportJobVersion = "export_aws"
+
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
 

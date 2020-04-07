@@ -34,12 +34,28 @@ spec:
             argocd:
               description: Argocd is the name of the ArgoCD instance to export.
               type: string
+            image:
+              description: Image is the container image to use for the export Job.
+              type: string
             schedule:
               description: Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
               type: string
             storage:
               description: Storage defines the storage configuration options.
               properties:
+                aws:
+                  description: AWS defines options for storage using an S3 bucket.
+                  properties:
+                    s3:
+                      description: ArgoCDExportAWSS3Spec defines the options for AWS
+                        S3 storage.
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                  required:
+                  - s3
+                  type: object
                 local:
                   description: Local defines options for storage local to the cluster.
                   properties:
@@ -162,6 +178,10 @@ spec:
                       type: object
                   type: object
               type: object
+            version:
+              description: Version is the tag/digest to use for the export Job container
+                image.
+              type: string
           required:
           - argocd
           type: object

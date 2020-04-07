@@ -138,6 +138,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image is the container image to use for the export Job.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"schedule": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.",
@@ -149,6 +156,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref common.ReferenceCall
 						SchemaProps: spec.SchemaProps{
 							Description: "Storage defines the storage configuration options.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"),
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the tag/digest to use for the export Job container image.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},

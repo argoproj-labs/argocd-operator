@@ -45,6 +45,16 @@ type ArgoCDExportList struct {
 	Items           []ArgoCDExport `json:"items"`
 }
 
+// ArgoCDExportAWSStorageSpec defines the desired state for AWS storage.
+type ArgoCDExportAWSStorageSpec struct {
+	S3 ArgoCDExportAWSS3Spec `json:"s3"`
+}
+
+// ArgoCDExportAWSS3Spec defines the options for AWS S3 storage.
+type ArgoCDExportAWSS3Spec struct {
+	SecretName string `json:"secretName,omitempty"`
+}
+
 // ArgoCDExportLocalStorageSpec defines the desired state for local storage.
 type ArgoCDExportLocalStorageSpec struct {
 	// PVC is the desired characteristics for a PersistentVolumeClaim.
@@ -57,11 +67,17 @@ type ArgoCDExportSpec struct {
 	// Argocd is the name of the ArgoCD instance to export.
 	Argocd string `json:"argocd"`
 
+	// Image is the container image to use for the export Job.
+	Image string `json:"image,omitempty"`
+
 	// Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule *string `json:"schedule,omitempty"`
 
 	// Storage defines the storage configuration options.
 	Storage *ArgoCDExportStorageSpec `json:"storage,omitempty"`
+
+	// Version is the tag/digest to use for the export Job container image.
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDExportStatus defines the observed state of ArgoCDExport
@@ -82,7 +98,9 @@ type ArgoCDExportStorageSpec struct {
 	// Local defines options for storage local to the cluster.
 	Local *ArgoCDExportLocalStorageSpec `json:"local,omitempty"`
 
-	// AWS
+	// AWS defines options for storage using an S3 bucket.
+	AWS *ArgoCDExportAWSStorageSpec `json:"aws,omitempty"`
+
 	// Azure
 	// GCP
 }
