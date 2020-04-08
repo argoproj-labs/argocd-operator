@@ -18,13 +18,14 @@ import (
 	"context"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 )
 
 // reconcileStorage will ensure that the storage options for the ArgoCDExport are present.
 func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil {
 		cr.Spec.Storage = &argoprojv1a1.ArgoCDExportStorageSpec{
-			Local: &argoprojv1a1.ArgoCDExportLocalStorageSpec{}, // Local is the default
+			Backend: common.ArgoCDExportStorageBackendLocal,
 		}
 		return r.client.Update(context.TODO(), cr)
 	}

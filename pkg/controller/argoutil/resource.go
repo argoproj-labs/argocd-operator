@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,6 +78,15 @@ func FetchObject(client client.Client, namespace string, name string, obj runtim
 	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
 }
 
+// FetchStorageSecretName will return the name of the Secret to use for the export process.
+func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
+	name := NameWithSuffix(export.ObjectMeta, "secret")
+	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
+		name = export.Spec.Storage.SecretName
+	}
+	return name
+}
+
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
 func IsObjectFound(client client.Client, namespace string, name string, obj runtime.Object) bool {
@@ -84,6 +94,12 @@ func IsObjectFound(client client.Client, namespace string, name string, obj runt
 		return false
 	}
 	return true
+}
+
+// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
+// Example: If ObjectMeta.Name is "test" and suffix is "object", the value of "test-object" will be returned.
+func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
+	return fmt.Sprintf("%s-%s", meta.Name, suffix)
 }
 
 func newEvent(meta metav1.ObjectMeta) *corev1.Event {

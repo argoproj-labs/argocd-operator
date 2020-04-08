@@ -26,8 +26,14 @@ const (
 	// ArgoCDKeyAdminPassword is the admin password key for labels.
 	ArgoCDKeyAdminPassword = "admin.password"
 
-	// ArgoCDKeyAdminPassword is the admin password last modified key for labels.
+	// ArgoCDKeyAdminPasswordMTime is the admin password last modified key for labels.
 	ArgoCDKeyAdminPasswordMTime = "admin.passwordMtime"
+
+	// ArgoCDKeyAWSBucketName is the AWS bucket name key for ConfigMaps.
+	ArgoCDKeyAWSBucketName = "aws.bucket.name"
+
+	// ArgoCDKeyBackupKey is the "backup key" key for ConfigMaps.
+	ArgoCDKeyBackupKey = "backup.key"
 
 	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
 	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
