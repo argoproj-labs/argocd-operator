@@ -45,22 +45,6 @@ type ArgoCDExportList struct {
 	Items           []ArgoCDExport `json:"items"`
 }
 
-// ArgoCDExportAWSStorageSpec defines the desired state for AWS storage.
-type ArgoCDExportAWSStorageSpec struct {
-	S3 ArgoCDExportAWSS3Spec `json:"s3"`
-}
-
-// ArgoCDExportAWSS3Spec defines the options for AWS S3 storage.
-type ArgoCDExportAWSS3Spec struct {
-	SecretName string `json:"secretName,omitempty"`
-}
-
-// ArgoCDExportLocalStorageSpec defines the desired state for local storage.
-type ArgoCDExportLocalStorageSpec struct {
-	// PVC is the desired characteristics for a PersistentVolumeClaim.
-	PVC *corev1.PersistentVolumeClaimSpec `json:"pvc,omitempty"`
-}
-
 // ArgoCDExportSpec defines the desired state of ArgoCDExport
 // +k8s:openapi-gen=true
 type ArgoCDExportSpec struct {
@@ -95,14 +79,14 @@ type ArgoCDExportStatus struct {
 
 // ArgoCDExportStorageSpec defines the desired state for ArgoCDExport storage options.
 type ArgoCDExportStorageSpec struct {
-	// Local defines options for storage local to the cluster.
-	Local *ArgoCDExportLocalStorageSpec `json:"local,omitempty"`
+	// Backend defines the storage backend to use, must be one of "local" (the default) or "aws".
+	Backend string `json:"backend,omitempty"`
 
-	// AWS defines options for storage using an S3 bucket.
-	AWS *ArgoCDExportAWSStorageSpec `json:"aws,omitempty"`
+	// PVC is the desired characteristics for a PersistentVolumeClaim.
+	PVC *corev1.PersistentVolumeClaimSpec `json:"pvc,omitempty"`
 
-	// Azure
-	// GCP
+	// SecretName is the name of a Secret with encryption key, credentials, etc.
+	SecretName string `json:"secretName,omitempty"`
 }
 
 func init() {
