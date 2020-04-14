@@ -17,6 +17,7 @@ package argocdexport
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -27,7 +28,7 @@ import (
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
 func (r *ReconcileArgoCDExport) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDExport) error {
-	if cr.Spec.Storage == nil || cr.Spec.Storage.Local == nil {
+	if cr.Spec.Storage == nil || strings.ToLower(cr.Spec.Storage.Backend) != common.ArgoCDExportStorageBackendLocal {
 		return nil // Do nothing if storage or local options not set
 	}
 
@@ -50,8 +51,8 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) erro
 	}
 
 	// Allow override of PVC spec
-	if cr.Spec.Storage.Local.PVC != nil {
-		pvc.Spec = *cr.Spec.Storage.Local.PVC
+	if cr.Spec.Storage.PVC != nil {
+		pvc.Spec = *cr.Spec.Storage.PVC
 	} else {
 		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
 		pvc.Spec.Resources = argoutil.DefaultPVCResources()

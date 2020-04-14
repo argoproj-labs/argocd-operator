@@ -32,6 +32,12 @@ const (
 	// ArgoCDExportName is the export name for labels.
 	ArgoCDExportName = "argocd.export"
 
+	// ArgoCDExportStorageBackendAWS is the value for the AWS storage backend.
+	ArgoCDExportStorageBackendAWS = "aws"
+
+	// ArgoCDExportStorageBackendLocal is the value for the local storage backend.
+	ArgoCDExportStorageBackendLocal = "local"
+
 	// ArgoCDGrafanaConfigMapSuffix is the default suffix for the Grafana configuration ConfigMap.
 	ArgoCDGrafanaConfigMapSuffix = "grafana-config"
 

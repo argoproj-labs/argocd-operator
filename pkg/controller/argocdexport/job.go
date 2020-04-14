@@ -16,6 +16,7 @@ package argocdexport
 
 import (
 	"context"
+	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -30,23 +31,108 @@ import (
 // getArgoExportCommand will return the command for the ArgoCD export process.
 func getArgoExportCommand(cr *argoprojv1a1.ArgoCDExport) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "/bin/bash")
-	cmd = append(cmd, "-c")
-	cmd = append(cmd, "argocd-util export > /backups/argocd-backup.yaml")
+	cmd = append(cmd, "uid_entrypoint.sh")
+	cmd = append(cmd, "argocd-operator-util")
+	cmd = append(cmd, "export")
+	cmd = append(cmd, cr.Spec.Storage.Backend)
 	return cmd
 }
 
+func getArgoExportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
+	env := make([]corev1.EnvVar, 0)
+
+	switch cr.Spec.Storage.Backend {
+	case common.ArgoCDExportStorageBackendAWS:
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_ACCESS_KEY_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argoutil.FetchStorageSecretName(cr),
+					},
+					Key: "aws.access.key.id",
+				},
+			},
+		})
+
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_SECRET_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argoutil.FetchStorageSecretName(cr),
+					},
+					Key: "aws.secret.access.key",
+				},
+			},
+		})
+	}
+
+	return env
+}
+
+// getArgoExportContainerImage will return the container image for ArgoCD.
+func getArgoExportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
+	img := cr.Spec.Image
+	if len(img) <= 0 {
+		img = common.ArgoCDDefaultExportJobImage
+	}
+
+	tag := cr.Spec.Version
+	if len(tag) <= 0 {
+		tag = common.ArgoCDDefaultExportJobVersion
+	}
+
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// getArgoExportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
+func getArgoExportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+	mounts := make([]corev1.VolumeMount, 0)
+
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "backup-storage",
+		MountPath: "/backups",
+	})
+
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "secret-storage",
+		MountPath: "/secrets",
+	})
+
+	return mounts
+}
+
+// getArgoSecretVolume will return the Secret Volume for the export process.
+func getArgoSecretVolume(name string, cr *argoprojv1a1.ArgoCDExport) corev1.Volume {
+	volume := corev1.Volume{
+		Name: name,
+	}
+
+	volume.VolumeSource = corev1.VolumeSource{
+		Secret: &corev1.SecretVolumeSource{
+			SecretName: argoutil.FetchStorageSecretName(cr),
+		},
+	}
+
+	return volume
+}
+
+// getArgoStorageVolume will return the storage Volume for the export process.
 func getArgoStorageVolume(name string, cr *argoprojv1a1.ArgoCDExport) corev1.Volume {
 	volume := corev1.Volume{
 		Name: name,
 	}
 
-	// Handle Local storage volume
-	if cr.Spec.Storage != nil && cr.Spec.Storage.Local != nil {
+	if cr.Spec.Storage == nil || strings.ToLower(cr.Spec.Storage.Backend) == common.ArgoCDExportStorageBackendLocal {
 		volume.VolumeSource = corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: cr.Name,
 			},
+		}
+	} else {
+		volume.VolumeSource = corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		}
 	}
 
@@ -80,21 +166,18 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
 
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
-		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion), // TODO: Allow override of image tag?
+		Env:             getArgoExportContainerEnv(cr),
+		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "backup-storage",
-				MountPath: "/backups",
-			},
-		},
+		VolumeMounts:    getArgoExportVolumeMounts(cr),
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
 	pod.ServiceAccountName = "argocd-application-controller"
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
+		getArgoSecretVolume("secret-storage", cr),
 	}
 
 	return pod
@@ -113,8 +196,8 @@ func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodTemplateSpec {
 
 // reconcileCronJob will ensure that the CronJob for the ArgoCDExport is present.
 func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) error {
-	if cr.Spec.Storage == nil || cr.Spec.Storage.Local == nil {
-		return nil // Do nothing if storage or local options not set
+	if cr.Spec.Storage == nil {
+		return nil // Do nothing if storage options not set
 	}
 
 	cj := newCronJob(cr)
@@ -141,8 +224,8 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) 
 
 // reconcileJob will ensure that the Job for the ArgoCDExport is present.
 func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) error {
-	if cr.Spec.Storage == nil || cr.Spec.Storage.Local == nil {
-		return nil // Do nothing if storage or local options not set
+	if cr.Spec.Storage == nil {
+		return nil // Do nothing if storage options not set
 	}
 
 	job := newJob(cr)

@@ -62,13 +62,18 @@ func watchArgoCDExportResources(c controller.Controller) error {
 		return err
 	}
 
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	// Watch for changes to Job sub-resources owned by ArgoCD instances.
 	if err := watchArgoCDExportOwnedResource(c, &batchv1.Job{}); err != nil {
 		return err
 	}
 
-	// Watch for changes to Service sub-resources owned by ArgoCD instances.
+	// Watch for changes to PersistentVolumeClaim sub-resources owned by ArgoCD instances.
 	if err := watchArgoCDExportOwnedResource(c, &corev1.PersistentVolumeClaim{}); err != nil {
+		return err
+	}
+
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	if err := watchArgoCDExportOwnedResource(c, &corev1.Secret{}); err != nil {
 		return err
 	}
 

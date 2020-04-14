@@ -172,9 +172,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
 func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "secret")
-	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
-	if found {
-		// TODO: If main secret has changed, update downstream secrets and reload cluster components as needed?
+	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
@@ -196,8 +194,7 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) er
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "tls")
-	found := argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret)
-	if found {
+	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 

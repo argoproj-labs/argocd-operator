@@ -26,8 +26,26 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
+	if cr.Spec.Import == nil {
+		return nil
+	}
+
+	namespace := cr.ObjectMeta.Namespace
+	if cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
+		namespace = *cr.Spec.Import.Namespace
+	}
+
+	export := &argoprojv1a1.ArgoCDExport{}
+	if argoutil.IsObjectFound(r.client, namespace, cr.Spec.Import.Name, export) {
+		return export
+	}
+	return nil
+}
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
@@ -53,13 +71,129 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	return cmd
 }
 
+func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
+	name := argoutil.NameWithSuffix(export.ObjectMeta, "secret")
+	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
+		name = export.Spec.Storage.SecretName
+	}
+	return name
+}
+
+func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string {
+	backend := common.ArgoCDExportStorageBackendLocal
+	namespace := cr.ObjectMeta.Namespace
+	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
+		namespace = *cr.Spec.Import.Namespace
+	}
+
+	export := &argoprojv1a1.ArgoCDExport{}
+	if argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
+		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
+			backend = export.Spec.Storage.Backend
+		}
+	}
+	return backend
+}
+
 // getArgoImportCommand will return the command for the ArgoCD import process.
-func getArgoImportCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "/bin/bash")
-	cmd = append(cmd, "-c")
-	cmd = append(cmd, "argocd-util import - < /backups/argocd-backup.yaml")
+	cmd = append(cmd, "uid_entrypoint.sh")
+	cmd = append(cmd, "argocd-operator-util")
+	cmd = append(cmd, "import")
+	cmd = append(cmd, getArgoImportBackend(client, cr))
 	return cmd
+}
+
+func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
+	env := make([]corev1.EnvVar, 0)
+
+	switch cr.Spec.Storage.Backend {
+	case common.ArgoCDExportStorageBackendAWS:
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_ACCESS_KEY_ID",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argoutil.FetchStorageSecretName(cr),
+					},
+					Key: "aws.access.key.id",
+				},
+			},
+		})
+
+		env = append(env, corev1.EnvVar{
+			Name: "AWS_SECRET_ACCESS_KEY",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argoutil.FetchStorageSecretName(cr),
+					},
+					Key: "aws.secret.access.key",
+				},
+			},
+		})
+	}
+
+	return env
+}
+
+// getArgoImportContainerImage will return the container image for the Argo CD import process.
+func getArgoImportContainerImage() string {
+	img := common.ArgoCDDefaultExportJobImage
+	tag := common.ArgoCDDefaultExportJobVersion
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// getArgoImportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
+func getArgoImportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+	mounts := make([]corev1.VolumeMount, 0)
+
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "backup-storage",
+		MountPath: "/backups",
+	})
+
+	mounts = append(mounts, corev1.VolumeMount{
+		Name:      "secret-storage",
+		MountPath: "/secrets",
+	})
+
+	return mounts
+}
+
+// getArgoImportVolumes will return the Volumes for the given ArgoCDExport.
+func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
+	volumes := make([]corev1.Volume, 0)
+
+	if cr.Spec.Storage != nil && cr.Spec.Storage.Backend == common.ArgoCDExportStorageBackendLocal {
+		volumes = append(volumes, corev1.Volume{
+			Name: "backup-storage",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: cr.Name,
+				},
+			},
+		})
+	} else {
+		volumes = append(volumes, corev1.Volume{
+			Name: "backup-storage",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
+	volumes = append(volumes, corev1.Volume{
+		Name: "secret-storage",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: getArgoExportSecretName(cr),
+			},
+		},
+	})
+
+	return volumes
 }
 
 // getRedisSentinelArgs will return the command args for the Redis sentinels used in HA mode.
@@ -218,26 +352,20 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 	}}
 
 	// Handle import/restore from ArgoCDExport
-	if cr.Spec.Import != nil && len(cr.Spec.Import.Name) > 0 {
+	export := r.getArgoCDExport(cr)
+	if export == nil {
+		log.Info("existing argocd export not found, skipping import")
+	} else {
 		podSpec.InitContainers = []corev1.Container{{
-			Command:         getArgoImportCommand(cr),
-			Image:           getArgoContainerImage(cr),
+			Command:         getArgoImportCommand(r.client, cr),
+			Env:             getArgoImportContainerEnv(export),
+			Image:           getArgoImportContainerImage(),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "backup-storage",
-				MountPath: "/backups",
-			}},
+			VolumeMounts:    getArgoImportVolumeMounts(export),
 		}}
 
-		podSpec.Volumes = []corev1.Volume{{
-			Name: "backup-storage",
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: cr.Spec.Import.Name,
-				},
-			},
-		}}
+		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
 	podSpec.ServiceAccountName = "argocd-application-controller"

@@ -33,6 +33,15 @@ const (
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
 	ArgoCDDefaultArgoVersion = "sha256:515d6cecf70169491efba5b9802b1ddb21a30e7ec59e87ab1f29196d6945afd5" // v1.5.1
 
+	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
+	ArgoCDDefaultBackupKeyLength = 32
+
+	// ArgoCDDefaultBackupKeyNumDigits is the number of digits to use for the generated default backup key.
+	ArgoCDDefaultBackupKeyNumDigits = 5
+
+	// ArgoCDDefaultBackupKeyNumSymbols is the number of symbols to use for the generated default backup key.
+	ArgoCDDefaultBackupKeyNumSymbols = 5
+
 	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
 	ArgoCDDefaultConfigManagementPlugins = ""
 
@@ -72,6 +81,12 @@ const (
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "sha256:c14ea9dbf341de51c8c0858a65bfe905a0a2cc154311c959a0bfe609bfe177b5" // v2.21.0
+
+	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
+	ArgoCDDefaultExportJobImage = "quay.io/jmckind/argocd-operator-util"
+
+	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
+	ArgoCDDefaultExportJobVersion = "export_aws"
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"

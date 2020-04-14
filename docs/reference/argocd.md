@@ -322,7 +322,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: help-chat-text
+    example: image
 spec:
   image: argoproj/argocd
 ```

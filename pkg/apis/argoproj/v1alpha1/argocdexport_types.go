@@ -45,23 +45,23 @@ type ArgoCDExportList struct {
 	Items           []ArgoCDExport `json:"items"`
 }
 
-// ArgoCDExportLocalStorageSpec defines the desired state for local storage.
-type ArgoCDExportLocalStorageSpec struct {
-	// PVC is the desired characteristics for a PersistentVolumeClaim.
-	PVC *corev1.PersistentVolumeClaimSpec `json:"pvc,omitempty"`
-}
-
 // ArgoCDExportSpec defines the desired state of ArgoCDExport
 // +k8s:openapi-gen=true
 type ArgoCDExportSpec struct {
 	// Argocd is the name of the ArgoCD instance to export.
 	Argocd string `json:"argocd"`
 
+	// Image is the container image to use for the export Job.
+	Image string `json:"image,omitempty"`
+
 	// Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 	Schedule *string `json:"schedule,omitempty"`
 
 	// Storage defines the storage configuration options.
 	Storage *ArgoCDExportStorageSpec `json:"storage,omitempty"`
+
+	// Version is the tag/digest to use for the export Job container image.
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDExportStatus defines the observed state of ArgoCDExport
@@ -79,12 +79,14 @@ type ArgoCDExportStatus struct {
 
 // ArgoCDExportStorageSpec defines the desired state for ArgoCDExport storage options.
 type ArgoCDExportStorageSpec struct {
-	// Local defines options for storage local to the cluster.
-	Local *ArgoCDExportLocalStorageSpec `json:"local,omitempty"`
+	// Backend defines the storage backend to use, must be one of "local" (the default) or "aws".
+	Backend string `json:"backend,omitempty"`
 
-	// AWS
-	// Azure
-	// GCP
+	// PVC is the desired characteristics for a PersistentVolumeClaim.
+	PVC *corev1.PersistentVolumeClaimSpec `json:"pvc,omitempty"`
+
+	// SecretName is the name of a Secret with encryption key, credentials, etc.
+	SecretName string `json:"secretName,omitempty"`
 }
 
 func init() {
