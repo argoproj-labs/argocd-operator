@@ -8,7 +8,7 @@ type: Opaque
 data:
   aws.access.key.id: YWNjZXNzX2tleV9pZA==
   aws.secret.access.key: c2VjcmV0X2FjY2Vzc19rZXk=
-  aws.bucket.name: czM6Ly90ZXN0
+  aws.bucket.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCDExport
