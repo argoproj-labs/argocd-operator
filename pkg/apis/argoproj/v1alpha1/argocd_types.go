@@ -303,6 +303,12 @@ type ArgoCDSpec struct {
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`
 
+	// InitialRepositories to configure Argo CD with upon creation of the cluster.
+	InitialRepositories string `json:"initialRepositories,omitempty"`
+
+	// InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.
+	InitialSSHKnownHosts string `json:"initialSSHKnownHosts,omitempty"`
+
 	// Ingress defines the Ingress options for ArgoCD.
 	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
@@ -321,9 +327,6 @@ type ArgoCDSpec struct {
 	// Redis defines the Redis server options for ArgoCD.
 	Redis ArgoCDRedisSpec `json:"redis,omitempty"`
 
-	// Repositories to configure Argo CD with.
-	Repositories string `json:"repositories,omitempty"`
-
 	// Repo defines the repo server options for Argo CD.
 	Repo ArgoCDRepoSpec `json:"repo,omitempty"`
 
@@ -335,9 +338,6 @@ type ArgoCDSpec struct {
 
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
-
-	// SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.
-	SSHKnownHosts string `json:"sshKnownHosts,omitempty"`
 
 	// StatusBadgeEnabled toggles application status badge feature.
 	StatusBadgeEnabled bool `json:"statusBadgeEnabled,omitempty"`
@@ -378,6 +378,6 @@ type ArgoCDTLSSpec struct {
 	// CA defines the CA options.
 	CA ArgoCDCASpec `json:"ca,omitempty"`
 
-	// Certs defines custom TLS certificates for connecting Git repositories via HTTPS.
-	Certs map[string]string `json:"certs,omitempty"`
+	// InitialCerts defines custom TLS certificates upon creation of the cluster for connecting Git repositories via HTTPS.
+	InitialCerts map[string]string `json:"initialCerts,omitempty"`
 }

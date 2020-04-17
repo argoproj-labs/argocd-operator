@@ -216,6 +216,14 @@ spec:
                   description: Path used for the Ingress resource.
                   type: string
               type: object
+            initialRepositories:
+              description: InitialRepositories to configure Argo CD with upon creation
+                of the cluster.
+              type: string
+            initialSSHKnownHosts:
+              description: InitialSSHKnownHosts defines the SSH known hosts data upon
+                creation of the cluster for connecting Git repositories via SSH.
+              type: string
             kustomizeBuildOptions:
               description: KustomizeBuildOptions is used to specify build options/parameters
                 to use with `kustomize build`.
@@ -323,9 +331,6 @@ spec:
                       type: object
                   type: object
               type: object
-            repositories:
-              description: Repositories to configure Argo CD with.
-              type: string
             resourceCustomizations:
               description: 'ResourceCustomizations customizes resource behavior. Keys
                 are in the form: group/Kind.'
@@ -448,10 +453,6 @@ spec:
                   - type
                   type: object
               type: object
-            sshKnownHosts:
-              description: SSHKnownHosts defines the SSH known hosts data for connecting
-                Git repositories via SSH.
-              type: string
             statusBadgeEnabled:
               description: StatusBadgeEnabled toggles application status badge feature.
               type: boolean
@@ -470,11 +471,11 @@ spec:
                         the CA Certificate and Key.
                       type: string
                   type: object
-                certs:
+                initialCerts:
                   additionalProperties:
                     type: string
-                  description: Certs defines custom TLS certificates for connecting
-                    Git repositories via HTTPS.
+                  description: InitialCerts defines custom TLS certificates upon creation
+                    of the cluster for connecting Git repositories via HTTPS.
                   type: object
               type: object
             usersAnonymousEnabled:

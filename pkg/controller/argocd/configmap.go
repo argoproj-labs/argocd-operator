@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -179,29 +178,29 @@ func getResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
 	return re
 }
 
-// getRepositories will return the repositories for the given ArgoCD.
-func getRepositories(cr *argoprojv1a1.ArgoCD) string {
+// getInitialRepositories will return the initial repositories for the given ArgoCD.
+func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
 	repos := common.ArgoCDDefaultRepositories
-	if len(cr.Spec.Repositories) > 0 {
-		repos = cr.Spec.Repositories
+	if len(cr.Spec.InitialRepositories) > 0 {
+		repos = cr.Spec.InitialRepositories
 	}
 	return repos
 }
 
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
-func getSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
+func getInitialSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
-	if len(cr.Spec.SSHKnownHosts) > 0 {
-		skh = cr.Spec.SSHKnownHosts
+	if len(cr.Spec.InitialSSHKnownHosts) > 0 {
+		skh = cr.Spec.InitialSSHKnownHosts
 	}
 	return skh
 }
 
 // getTLSCerts will return the TLS certs for the given ArgoCD.
-func getTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
+func getInitialTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
 	certs := make(map[string]string)
-	if len(cr.Spec.TLS.Certs) > 0 {
-		certs = cr.Spec.TLS.Certs
+	if len(cr.Spec.TLS.InitialCerts) > 0 {
+		certs = cr.Spec.TLS.InitialCerts
 	}
 	return certs
 }
@@ -317,7 +316,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
 	cm.Data[common.ArgoCDKeyResourceCustomizations] = getResourceCustomizations(cr)
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
-	cm.Data[common.ArgoCDKeyRepositories] = getRepositories(cr)
+	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
@@ -407,11 +406,6 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 
 	if cm.Data[common.ArgoCDKeyResourceExclusions] != cr.Spec.ResourceExclusions {
 		cm.Data[common.ArgoCDKeyResourceExclusions] = cr.Spec.ResourceExclusions
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyRepositories] != cr.Spec.Repositories {
-		cm.Data[common.ArgoCDKeyRepositories] = cr.Spec.Repositories
 		changed = true
 	}
 
@@ -625,16 +619,11 @@ func (r *ReconcileArgoCD) reconcileRedisProbesConfigMap(cr *argoprojv1a1.ArgoCD)
 func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDKnownHostsConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		skh := getSSHKnownHosts(cr)
-		if cm.Data[common.ArgoCDKeySSHKnownHosts] != skh {
-			cm.Data[common.ArgoCDKeySSHKnownHosts] = skh
-			return r.client.Update(context.TODO(), cm)
-		}
-		return nil // ConfigMap found with nothing changed, move along...
+		return nil // ConfigMap found, move along...
 	}
 
 	cm.Data = map[string]string{
-		common.ArgoCDKeySSHKnownHosts: getSSHKnownHosts(cr),
+		common.ArgoCDKeySSHKnownHosts: getInitialSSHKnownHosts(cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
@@ -647,14 +636,10 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		if !reflect.DeepEqual(cm.Data, cr.Spec.TLS.Certs) {
-			cm.Data = cr.Spec.TLS.Certs
-			return r.client.Update(context.TODO(), cm)
-		}
-		return nil // ConfigMap found with nothing changed, move along...
+		return nil // ConfigMap found, move along...
 	}
 
-	cm.Data = getTLSCerts(cr)
+	cm.Data = getInitialTLSCerts(cr)
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err

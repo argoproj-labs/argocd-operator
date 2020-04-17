@@ -281,6 +281,20 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec"),
 						},
 					},
+					"initialRepositories": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitialRepositories to configure Argo CD with upon creation of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"initialSSHKnownHosts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"ingress": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Ingress defines the Ingress options for ArgoCD.",
@@ -319,13 +333,6 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
 						},
 					},
-					"repositories": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Repositories to configure Argo CD with.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"repo": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Repo defines the repo server options for Argo CD.",
@@ -350,13 +357,6 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 						SchemaProps: spec.SchemaProps{
 							Description: "Server defines the options for the ArgoCD Server component.",
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec"),
-						},
-					},
-					"sshKnownHosts": {
-						SchemaProps: spec.SchemaProps{
-							Description: "SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.",
-							Type:        []string{"string"},
-							Format:      "",
 						},
 					},
 					"statusBadgeEnabled": {
