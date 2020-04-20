@@ -271,7 +271,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "secret")
+	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
 	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
 
 	if !argoutil.IsObjectFound(r.client, cr.Namespace, clusterSecret.Name, clusterSecret) {
