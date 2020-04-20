@@ -6,7 +6,7 @@ metadata:
     capabilities: Auto Pilot
     categories: Integration & Delivery
     certified: "false"
-    containerImage: quay.io/jmckind/argocd-operator:v0.0.8-rc1
+    containerImage: quay.io/jmckind/argocd-operator@sha256:d1385d23a60205636bc3789b0127d6159d33d7a7521dd07d6b679b7f734ee4b3
     createdAt: "2020-04-20 21:45:47"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     repository: https://github.com/argoproj-labs/argocd-operator
@@ -168,12 +168,24 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if a Grafana Ingress resource should be created.'
+        displayName: 'Ingress Enabled'
+        path: grafana.ingress
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The limits and requests requirements for the Grafana container.'
         displayName: 'Resource Requirements'
         path: grafana.resources
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'Selected if a Grafana Route resource should be created.'
+        displayName: 'Route Enabled'
+        path: grafana.route
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The replica count for the Grafana Deployment.'
         displayName: Size
         path: grafana.size
@@ -204,12 +216,6 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
-      - description: 'Selected if Ingress resources should be created.'
-        displayName: Enabled
-        path: ingress.enabled
-        x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
-          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The path used for the Ingress resource.'
         displayName: Path
         path: ingress.path
@@ -228,6 +234,18 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if a Prometheus Ingress resource should be created.'
+        displayName: 'Ingress Enabled'
+        path: prometheus.ingress
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'Selected if a Prometheus Route resource should be created.'
+        displayName: 'Route Enabled'
+        path: prometheus.route
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The replica count for the Prometheus Deployment.'
         displayName: Size
         path: prometheus.size
@@ -277,7 +295,7 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
       - description: 'Selected if autoscaling should be enabled for the Argo CD server.'
-        displayName: Enabled
+        displayName: 'Autoscale Enabled'
         path: server.autoscale.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
@@ -288,12 +306,24 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if a GRPC Ingress resource should be created.'
+        displayName: 'GRPC Ingress Enabled'
+        path: server.grpc.ingress
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The hostname to use for Ingress/Route resources.'
         displayName: Host
         path: server.host
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if an Ingress resource should be created.'
+        displayName: 'Ingress Enabled'
+        path: server.ingress
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'Selected if the Argo CD server should be run without TLS.'
         displayName: Insecure
         path: server.insecure
@@ -306,6 +336,12 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'Selected if a Route resource should be created.'
+        displayName: 'Route Enabled'
+        path: server.route
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'The ServiceType to use for the Argo CD server Service resource.'
         displayName: 'Service Type'
         path: server.service.type
@@ -348,6 +384,18 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The initial repositories to configure Argo CD to use for projects.'
+        displayName: 'Initial Repositories'
+        path: initialRepositories
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The initial SSH known hosts data for connecting Git repositories via SSH.'
+        displayName: 'Initial SSH Known Hosts'
+        path: initialSSHKnownHosts
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - description: 'The build options/parameters to use with `kustomize build`.'
         displayName: 'Kustomize Build Options'
         path: kustomizeBuildOptions
@@ -360,12 +408,6 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
-      - description: 'The repositories to configure Argo CD to use for projects.'
-        displayName: Repositories
-        path: repositories
-        x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:text'
-          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - description: 'Customizes resource behavior. Keys are in the form of group/Kind.'
         displayName: 'Resource Customizations'
         path: resourceCustomizations
@@ -375,12 +417,6 @@ spec:
       - description: 'Completely ignore entire classes of resource group/kinds.'
         displayName: 'Resource Exclusions'
         path: resourceExclusions
-        x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:text'
-          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
-      - description: 'The SSH known hosts data for connecting Git repositories via SSH.'
-        displayName: 'SSH Known Hosts'
-        path: sshKnownHosts
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
@@ -523,7 +559,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: argocd-operator
-                image: quay.io/jmckind/argocd-operator:v0.0.8-rc1
+                image: quay.io/jmckind/argocd-operator@sha256:d1385d23a60205636bc3789b0127d6159d33d7a7521dd07d6b679b7f734ee4b3
                 imagePullPolicy: Always
                 name: argocd-operator
                 resources: {}
