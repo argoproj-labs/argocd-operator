@@ -625,8 +625,8 @@ func (in *ArgoCDStatus) DeepCopy() *ArgoCDStatus {
 func (in *ArgoCDTLSSpec) DeepCopyInto(out *ArgoCDTLSSpec) {
 	*out = *in
 	out.CA = in.CA
-	if in.Certs != nil {
-		in, out := &in.Certs, &out.Certs
+	if in.InitialCerts != nil {
+		in, out := &in.InitialCerts, &out.InitialCerts
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
