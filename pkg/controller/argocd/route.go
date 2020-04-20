@@ -103,11 +103,16 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("grafana", cr)
+	if len(cr.Spec.Grafana.Host) > 0 {
+		route.Spec.Host = cr.Spec.Grafana.Host
+	}
+
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("http"),
 	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = nameWithSuffix("grafana", cr)
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
@@ -130,11 +135,16 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 		return nil // Prometheus itself or Route not enabled, do nothing.
 	}
 
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = "prometheus-operated"
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		route.Spec.Host = cr.Spec.Prometheus.Host
+	}
+
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("web"),
 	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "prometheus-operated"
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
@@ -155,6 +165,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 
 	if !cr.Spec.Server.Route {
 		return nil // Route not enabled, move along...
+	}
+
+	if len(cr.Spec.Server.Host) > 0 {
+		route.Spec.Host = cr.Spec.Server.Host
 	}
 
 	route.Spec.To.Kind = "Service"
