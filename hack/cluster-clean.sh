@@ -34,7 +34,6 @@ kubectl delete rolebinding -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-dex-server \
     argocd-operator \
     argocd-redis-ha \
-    argocd-repo-server \
     argocd-server
 
 kubectl delete role -n ${ARGOCD_OPERATOR_NAMESPACE} \
@@ -42,7 +41,6 @@ kubectl delete role -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-dex-server \
     argocd-operator \
     argocd-redis-ha \
-    argocd-repo-server \
     argocd-server
 
 # ServiceAccounts
@@ -51,7 +49,6 @@ kubectl delete sa -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-dex-server \
     argocd-operator \
     argocd-redis-ha \
-    argocd-repo-server \
     argocd-server
 
 # CustomResourceDefinitions
