@@ -351,7 +351,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	}
 
 	if actual != desired {
-		// Update ConfigMap with desirec configuration.
+		// Update ConfigMap with desired configuration.
 		cm.Data[common.ArgoCDKeyDexConfig] = desired
 		if err := r.client.Update(context.TODO(), cm); err != nil {
 			return err
