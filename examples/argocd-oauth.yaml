@@ -3,9 +3,11 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: defaults
+    example: oauth
 spec:
   dex:
     image: quay.io/ablock/dex
     version: openshift-connector
     openShiftOAuth: true
+  server:
+    route: true
