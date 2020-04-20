@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -350,8 +351,21 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	}
 
 	if actual != desired {
+		// Update ConfigMap with desirec configuration.
 		cm.Data[common.ArgoCDKeyDexConfig] = desired
-		return r.client.Update(context.TODO(), cm)
+		if err := r.client.Update(context.TODO(), cm); err != nil {
+			return err
+		}
+
+		// Trigger rollout of Dex Deployment to pick up changes.
+		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+		if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
+			log.Info("unable to locate dex deployment")
+			return nil
+		}
+
+		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		return r.client.Update(context.TODO(), deploy)
 	}
 	return nil
 }
