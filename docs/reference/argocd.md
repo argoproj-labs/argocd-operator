@@ -24,16 +24,16 @@ Name | Default | Description
 [**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components.
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
+[**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
+[**InitialSSHKnownHosts**](#initial-ssh-known-hosts) | [Default Argo CD Known Hosts] | Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
 [**KustomizeBuildOptions**](#kustomize-build-options) | [Empty] | The build options/parameters to use with `kustomize build`.
 [**OIDCConfig**](#oidc-config) | [Empty] | The OIDC configuration as an alternative to Dex.
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
-[**Repositories**](#repositories) | [Empty] | Git repositories to configure Argo CD with initially.
 [**ResourceCustomizations**](#resource-customizations) | [Empty] | Customize resource behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
-[**SSHKnownHosts**](#ssh-known-hosts) | [Default Argo CD Known Hosts] | Define the SSH Known Hosts for Argo CD.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
@@ -370,6 +370,72 @@ spec:
     insecure: true
 ```
 
+## Initial Repositories
+
+Initial git repositories to configure Argo CD to use upon creation of the cluster.
+
+This property maps directly to the `repositories` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repositories` field should then be made through the Argo CD web UI or CLI.
+
+### Initial Repositories Example
+
+The following example sets a value in the `argocd-cm` ConfigMap using the `InitialRepositories` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: initial-repositories
+spec:
+  initialRepositories: |
+    - url: https://github.com/argoproj/my-private-repository
+      passwordSecret:
+        name: my-secret
+        key: password
+      usernameSecret:
+        name: my-secret
+        key: username
+      sshPrivateKeySecret:
+        name: my-secret
+        key: sshPrivateKey
+    - type: helm
+      url: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
+      name: istio.io
+    - type: helm
+      url: https://my-private-chart-repo.internal
+      name: private-repo
+      usernameSecret:
+        name: my-secret
+        key: username
+      passwordSecret:
+        name: my-secret
+        key: password
+```
+
+## Initial SSH Known Hosts
+
+Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
+
+This property maps directly to the `ssh_known_hosts` field in the `argocd-ssh-known-hosts-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `ssh_known_hosts` field should then be made through the Argo CD web UI or CLI.
+
+### Initial SSH Known Hosts Example
+
+The following example sets a value in the `argocd-ssh-known-hosts-cm` ConfigMap using the `InitialSSHKnownHosts` property on the `ArgoCD` resource. The example values have been truncated for clarity.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: initial-ssh-known-hosts
+spec:
+  initialSSHKnownHosts: |
+    bitbucket.org ssh-rsa AAAAB3NzaC...
+    github.com ssh-rsa AAAAB3NzaC...
+```
+
 ## Kustomize Build Options
 
 Build options/parameters to use with `kustomize build` (optional). This property maps directly to the `kustomize.buildOptions` field in the `argocd-cm` ConfigMap.
@@ -529,49 +595,6 @@ spec:
     resources: {}
 ```
 
-## Repositories
-
-Git repositories to configure Argo CD with (optional). This list is updated when configuring/removing repos from the UI/CLI
-
-This property maps directly to the `repositories` field in the `argocd-cm` ConfigMap.
-
-### Repositories Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `Repositories` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: repositories
-spec:
-  repositories: |
-    - url: https://github.com/argoproj/my-private-repository
-      passwordSecret:
-        name: my-secret
-        key: password
-      usernameSecret:
-        name: my-secret
-        key: username
-      sshPrivateKeySecret:
-        name: my-secret
-        key: sshPrivateKey
-    - type: helm
-      url: https://storage.googleapis.com/istio-prerelease/daily-build/master-latest-daily/charts
-      name: istio.io
-    - type: helm
-      url: https://my-private-chart-repo.internal
-      name: private-repo
-      usernameSecret:
-        name: my-secret
-        key: username
-      passwordSecret:
-        name: my-secret
-        key: password
-```
-
 ## Resource Customizations
 
 The configuration to customize resource behavior. This property maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap.
@@ -711,27 +734,6 @@ spec:
       type: ClusterIP
 ```
 
-## SSH Known Hosts
-
-Define the SSH Known Hosts for Argo CD. This property maps directly to the `ssh_known_hosts` field in the `argocd-ssh-known-hosts-cm` ConfigMap.
-
-### SSH Known Hosts Example
-
-The following example sets a value in the `argocd-ssh-known-hosts-cm` ConfigMap using the `SSHKnownHosts` property on the `ArgoCD` resource. The example values have been truncated for clarity.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: ssh-known-hosts
-spec:
-  sshKnownHosts: |
-    bitbucket.org ssh-rsa AAAAB3NzaC...
-    github.com ssh-rsa AAAAB3NzaC...
-```
-
 ## Status Badge Enabled
 
 Enable application status badge feature. This property maps directly to the `statusbadge.enabled` field in the `argocd-cm` ConfigMap.
@@ -759,7 +761,7 @@ Name | Default | Description
 --- | --- | ---
 CA.ConfigMapName | `example-argocd-ca` | The name of the ConfigMap containing the CA Certificate.
 CA.SecretName | `example-argocd-ca` | The name of the Secret containing the CA Certificate and Key.
-Certs | [Empty] | Properties in the `argocd-tls-certs-cm` ConfigMap. Define custom TLS certificates for connecting Git repositories via HTTPS.
+InitialCerts | [Empty] | Initial set of certificates in the `argocd-tls-certs-cm` ConfigMap for connecting Git repositories via HTTPS.
 
 ### TLS Example
 
@@ -771,13 +773,13 @@ kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: server
+    example: tls
 spec:
   tls:
     ca:
       configMapName: example-argocd-ca
       secretName: example-argocd-ca
-    certs: []
+    initialCerts: []
 ```
 
 ## Users Anonymous Enabled
