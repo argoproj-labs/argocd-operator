@@ -101,7 +101,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 // reconcileArgoSecret will ensure that the Argo CD Secret is present.
 func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
-	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "secret")
+	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName)
 
 	if !argoutil.IsObjectFound(r.client, cr.Namespace, clusterSecret.Name, clusterSecret) {
@@ -171,7 +171,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
 func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "secret")
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
 	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}

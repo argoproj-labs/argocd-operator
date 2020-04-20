@@ -72,7 +72,7 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 }
 
 func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
-	name := argoutil.NameWithSuffix(export.ObjectMeta, "secret")
+	name := argoutil.NameWithSuffix(export.ObjectMeta, "cluster")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}
