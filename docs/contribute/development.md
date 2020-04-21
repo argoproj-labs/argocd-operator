@@ -5,8 +5,8 @@
 
 The requirements for building the operator are fairly minimal.
 
- * Go 1.12+
- * Operator SDK 0.12+
+ * Go 1.13+
+ * Operator SDK 0.17+
  * Bash or equivalent 
  * Podman
 
