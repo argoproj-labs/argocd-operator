@@ -9,5 +9,10 @@ spec:
     image: quay.io/ablock/dex
     version: openshift-connector
     openShiftOAuth: true
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policy: |
+      g, system:cluster-admins, role:admin
+    scopes: '[groups]'
   server:
     route: true
