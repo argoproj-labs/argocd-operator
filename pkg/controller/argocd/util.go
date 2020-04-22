@@ -516,30 +516,6 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD)
 	return nil
 }
 
-// reconcileOpenShiftResources will reconcile OpenShift specific ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileOpenShiftResources(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRoutes(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcilePrometheus(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileMetricsServiceMonitor(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileRepoServerServiceMonitor(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileServerMetricsServiceMonitor(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling status")
