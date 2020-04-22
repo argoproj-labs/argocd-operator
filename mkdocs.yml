@@ -24,6 +24,7 @@ nav:
     - Manual Installation: install/manual.md
   - Usage: 
     - Basics: usage/basics.md
+    - Export: usage/export.md
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
