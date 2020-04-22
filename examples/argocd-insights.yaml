@@ -10,3 +10,7 @@ spec:
     ingress: true
   prometheus:
     enabled: true
+    ingress: true
+  server:
+    ingress: true
+    insecure: true
