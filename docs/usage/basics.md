@@ -16,7 +16,7 @@ spec: {}
 
 ## Create
 
-Create a new Argo CD cluster using the provided basic example in the `argocd` namespace.
+Create a new Argo CD cluster in the `argocd` namespace using the provided basic example.
 
 ```bash
 kubectl create -n argocd -f examples/argocd-basic.yaml
@@ -25,22 +25,112 @@ kubectl create -n argocd -f examples/argocd-basic.yaml
 There will be several Argo CD resources created that should be familiar to anyone who has deployed Argo CD.
 
 ```bash
-kubectl get cm,pod -n argocd
+kubectl get cm,secret,deploy -n argocd
 ```
+
+Some unrelated items have been removed for clarity.
+
 ```bash
 NAME                                  DATA   AGE
-configmap/argocd-cm                   0      55m
-configmap/argocd-rbac-cm              0      55m
-configmap/argocd-ssh-known-hosts-cm   1      55m
-configmap/argocd-tls-certs-cm         0      55m
+configmap/argocd-cm                   14     2m9s
+configmap/argocd-rbac-cm              3      2m9s
+configmap/argocd-ssh-known-hosts-cm   1      2m9s
+configmap/argocd-tls-certs-cm         0      2m9s
 
-NAME                                                         READY   STATUS    RESTARTS   AGE
-pod/example-argocd-application-controller-7c74b5855b-ssz6h   1/1     Running   0          55m
-pod/example-argocd-dex-server-859bd5458c-zpgtg               1/1     Running   0          55m
-pod/example-argocd-redis-6986d5fdbd-76gjf                    1/1     Running   0          55m
-pod/example-argocd-repo-server-7bfc477c58-hv9gp              1/1     Running   0          55m
-pod/example-argocd-server-7d56c5bf4d-r5brr                   1/1     Running   0          55m
+NAME                                                   TYPE                                  DATA   AGE
+secret/argocd-secret                                   Opaque                                5      2m9s
+secret/example-argocd-ca                               kubernetes.io/tls                     2      2m9s
+secret/example-argocd-cluster                          Opaque                                1      2m9s
+secret/example-argocd-tls                              kubernetes.io/tls                     2      2m9s
+
+NAME                                                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/example-argocd-application-controller   1/1     1            1           2m8s
+deployment.apps/example-argocd-dex-server               1/1     1            1           2m8s
+deployment.apps/example-argocd-redis                    1/1     1            1           2m8s
+deployment.apps/example-argocd-repo-server              1/1     1            1           2m8s
+deployment.apps/example-argocd-server                   1/1     1            1           2m8s
 ```
+
+### ConfigMaps
+
+There are several ConfigMaps that are used by Argo CD. The `argocd-server` component reads and writes to these 
+ConfigMaps based on user interaction with the web UI or via the `argocd` CLI. It is worth noting that the name 
+`argocd-cm` is hard-coded, thus limiting us to one Argo CD cluster per namespace to avoid conflicts.
+
+```bash
+NAME                                  DATA   AGE
+configmap/argocd-cm                   14     33s
+configmap/argocd-rbac-cm              3      33s
+configmap/argocd-ssh-known-hosts-cm   1      33s
+configmap/argocd-tls-certs-cm         0      33s
+```
+
+The operator will create these ConfigMaps for the cluster and set the initial values based on properties on the 
+`ArgoCD` custom resource.
+
+### Secrets
+
+There is a Secret that is used by Argo CD named `argocd-secret`. The `argocd-server` component reads this secret to 
+obtain the admin password for authentication.
+
+This Secret is managed by the operator and should not be changed directly.
+
+``` bash
+NAME                                               TYPE                                  DATA   AGE
+secret/argocd-secret                               Opaque                                5      33s
+```
+
+Several other Secrets are also managed by the operator.
+
+``` bash
+NAME                                               TYPE                                  DATA   AGE
+secret/example-argocd-ca                           kubernetes.io/tls                     2      33s
+secret/example-argocd-cluster                      Opaque                                1      33s
+secret/example-argocd-tls                          kubernetes.io/tls                     2      33s
+```
+
+The cluster Secret contains the admin password for authenticating with Argo CD, as well as the Grafana dashboard, if enabled.
+
+```bash
+apiVersion: v1
+data:
+  admin.password: ...
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: example-argocd-cluster
+    app.kubernetes.io/part-of: argocd
+    example: basic
+  name: example-argocd-cluster
+  namespace: argocd
+type: Opaque
+```
+
+The operator will watch for changes to the `admin.password` value. When a change is made the password is synchronized to 
+Argo CD and Grafana automatically.
+
+Fetch the admin password from the cluster Secret.
+
+``` bash
+kubectl get secret example-argocd-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
+```
+
+### Deployments
+
+There are several Deployments that are managed by the operator for the different components that make up an Argo CD cluster.
+
+``` bash
+NAME                                                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/example-argocd-application-controller   1/1     1            1           2m8s
+deployment.apps/example-argocd-dex-server               1/1     1            1           2m8s
+deployment.apps/example-argocd-redis                    1/1     1            1           2m8s
+deployment.apps/example-argocd-repo-server              1/1     1            1           2m8s
+deployment.apps/example-argocd-server                   1/1     1            1           2m8s
+```
+
+The deployments are exposed via Services that can be used to access the Argo CD cluster.
+
+### Services
 
 The ArgoCD Server component should be available via a Service.
 
@@ -74,8 +164,7 @@ In the most simple case, the Service port can be forwarded to the local machine.
 kubectl port-forward service/example-argocd-server 8443:443
 ```
 
-The server UI should be available at https://localhost:8443/ and the admin password is the name for the Argo CD server 
-Pod (`example-argocd-server-7d56c5bf4d-r5brr` in this example).
+The server UI should be available at [https://localhost:8443/](https://localhost:8443/).
 
 ### Ingress
 
