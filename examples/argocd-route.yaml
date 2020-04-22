@@ -6,8 +6,10 @@ metadata:
     example: route
 spec:
   grafana:
+    enabled: true
     route: true
   prometheus:
+    enabled: true
     route: true
   server:
     route: true
