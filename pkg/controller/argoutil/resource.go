@@ -80,7 +80,7 @@ func FetchObject(client client.Client, namespace string, name string, obj runtim
 
 // FetchStorageSecretName will return the name of the Secret to use for the export process.
 func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
-	name := NameWithSuffix(export.ObjectMeta, "cluster")
+	name := NameWithSuffix(export.ObjectMeta, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}
