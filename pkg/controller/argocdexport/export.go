@@ -25,8 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// generateAWSBucketName will return the AWS bucket name for the the given ArgoCDExport.
-func generateAWSBucketName(cr *argoprojv1a1.ArgoCDExport) []byte {
+// generateBucketName will return the bucket name for the the given ArgoCDExport.
+func generateBucketName(cr *argoprojv1a1.ArgoCDExport) []byte {
 	return []byte(cr.Name)
 }
 
@@ -79,11 +79,13 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 			changed = true
 		}
 
-		if cr.Spec.Storage != nil && cr.Spec.Storage.Backend == common.ArgoCDExportStorageBackendAWS {
-			bucketName := secret.Data[common.ArgoCDKeyAWSBucketName]
-			if len(bucketName) <= 0 {
-				bucketName = generateAWSBucketName(cr)
-				secret.Data[common.ArgoCDKeyAWSBucketName] = bucketName
+		if cr.Spec.Storage != nil {
+			switch cr.Spec.Storage.Backend {
+			case common.ArgoCDExportStorageBackendAWS:
+				secret.Data[common.ArgoCDKeyAWSBucketName] = generateBucketName(cr)
+				changed = true
+			case common.ArgoCDExportStorageBackendGCP:
+				secret.Data[common.ArgoCDKeyGCPBucketName] = generateBucketName(cr)
 				changed = true
 			}
 		}
@@ -100,8 +102,16 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 	}
 
 	secret.Data = map[string][]byte{
-		common.ArgoCDKeyBackupKey:     backupKey,
-		common.ArgoCDKeyAWSBucketName: generateAWSBucketName(cr),
+		common.ArgoCDKeyBackupKey: backupKey,
+	}
+
+	if cr.Spec.Storage != nil {
+		switch cr.Spec.Storage.Backend {
+		case common.ArgoCDExportStorageBackendAWS:
+			secret.Data[common.ArgoCDKeyAWSBucketName] = generateBucketName(cr)
+		case common.ArgoCDExportStorageBackendGCP:
+			secret.Data[common.ArgoCDKeyGCPBucketName] = generateBucketName(cr)
+		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {

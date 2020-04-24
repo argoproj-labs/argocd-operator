@@ -32,6 +32,9 @@ const (
 	// ArgoCDKeyAWSBucketName is the AWS bucket name key for ConfigMaps.
 	ArgoCDKeyAWSBucketName = "aws.bucket.name"
 
+	// ArgoCDKeyGCPBucketName is the GCP bucket name key for ConfigMaps.
+	ArgoCDKeyGCPBucketName = "gcp.bucket.name"
+
 	// ArgoCDKeyBackupKey is the "backup key" key for ConfigMaps.
 	ArgoCDKeyBackupKey = "backup.key"
 

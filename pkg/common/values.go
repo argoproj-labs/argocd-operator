@@ -35,6 +35,9 @@ const (
 	// ArgoCDExportStorageBackendAWS is the value for the AWS storage backend.
 	ArgoCDExportStorageBackendAWS = "aws"
 
+	// ArgoCDExportStorageBackendGCP is the value for the GCP storage backend.
+	ArgoCDExportStorageBackendGCP = "gcp"
+
 	// ArgoCDExportStorageBackendLocal is the value for the local storage backend.
 	ArgoCDExportStorageBackendLocal = "local"
 
