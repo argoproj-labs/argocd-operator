@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 # Copyright 2020 ArgoCD Operator Developers
 #
@@ -54,10 +54,11 @@ push_backup () {
         "gcp")
             echo "pushing argo-cd backup to gcp"
             BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
             BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
             BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
             gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
-            gsutil mb -b on ${BACKUP_BUCKET_URI}
+            gsutil mb -b on -p ${BACKUP_PROJECT_ID} ${BACKUP_BUCKET_URI} || true
             gsutil cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
             ;;
         *)
@@ -84,6 +85,7 @@ pull_backup () {
         "gcp")
             echo "pulling argo-cd backup from gcp"
             BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
             BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
             BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
             gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}

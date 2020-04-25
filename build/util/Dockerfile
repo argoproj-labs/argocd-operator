@@ -15,7 +15,7 @@ RUN apt-get update && \
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 
 # Add the Cloud SDK distribution URI as a package source
-COPY util/google-cloud-sdk.list /etc/apt/sources.list.d/google-cloud-sdk.list
+COPY google-cloud-sdk.list /etc/apt/sources.list.d/google-cloud-sdk.list
 
 # Update and install the Google Cloud SDK
 RUN apt-get update && \
@@ -23,6 +23,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy util wrapper script
-COPY util/util.sh /usr/local/bin/argocd-operator-util
+COPY util.sh /usr/local/bin/argocd-operator-util
+
+ENV USER_NAME=argocd
+ENV HOME=/home/argocd
 
 USER argocd
+WORKDIR /home/argocd
