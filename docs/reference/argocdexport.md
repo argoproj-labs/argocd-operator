@@ -78,7 +78,7 @@ The following properties are available for configuring the storage for the expor
 
 Name | Default | Description
 --- | --- | ---
-Backend | `local` | The storage backend to use, must be one of "local" or "aws".
+Backend | `local` | The storage backend to use, must be "local", "aws" or "gcp".
 PVC | [Object] | The [PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaimspec-v1-core) specifying the desired characteristics for a PersistentVolumeClaim.
 SecretName | [Export Name] | The name of a Secret with encryption key, credentials, etc.
 
