@@ -1,4 +1,3 @@
-
 FROM argoproj/argocd:v1.5.2
 
 USER root
