@@ -7,11 +7,11 @@ metadata:
 spec:
   argocd: example-argocd
   storage:
-    local:
-      pvc:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 2Gi
-        storageClassName: standard
+    backend: local
+    pvc:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: standard
