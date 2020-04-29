@@ -44,26 +44,49 @@ encrypt_backup () {
 push_backup () {
     case  ${BACKUP_LOCATION} in
         "aws")
-            echo "pushing argo-cd backup to aws"
-            BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
-            BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
-            aws s3 mb ${BACKUP_BUCKET_URI}
-            aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-            aws s3 cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
+            push_aws
+            ;;
+        "azure")
+            push_azure
             ;;
         "gcp")
-            echo "pushing argo-cd backup to gcp"
-            BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
-            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
-            BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
-            BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
-            gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
-            gsutil mb -b on -p ${BACKUP_PROJECT_ID} ${BACKUP_BUCKET_URI} || true
-            gsutil cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
+            push_gcp
             ;;
         *)
         # local and unsupported backends
     esac
+}
+
+push_aws () {
+    echo "pushing argo-cd backup to aws"
+    BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
+    BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
+    aws s3 mb ${BACKUP_BUCKET_URI}
+    aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    aws s3 cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
+}
+
+push_azure () {
+    echo "pushing argo-cd backup to azure"
+    BACKUP_ACCOUNT_NAME=`cat /secrets/azure.account.name`
+    BACKUP_SERVICE_ID=`cat /secrets/azure.service.id`
+    BACKUP_CERT_PATH="/secrets/azure.service.cert"
+    BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
+    BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
+    az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
+    az storage container create --account-name ${BACKUP_ACCOUNT_NAME} --name ${BACKUP_CONTAINER_NAME}
+    az storage blob upload --account-name ${BACKUP_ACCOUNT_NAME} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+}
+
+push_gcp () {
+    echo "pushing argo-cd backup to gcp"
+    BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+    BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
+    BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
+    BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
+    gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
+    gsutil mb -b on -p ${BACKUP_PROJECT_ID} ${BACKUP_BUCKET_URI} || true
+    gsutil cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
 }
 
 import_argocd () {
@@ -77,23 +100,45 @@ import_argocd () {
 pull_backup () {
     case  ${BACKUP_LOCATION} in
         "aws")
-            echo "pulling argo-cd backup from aws"
-            BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
-            BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
-            aws s3 cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
+            pull_aws
+            ;;
+        "azure")
+            pull_azure
             ;;
         "gcp")
-            echo "pulling argo-cd backup from gcp"
-            BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
-            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
-            BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
-            BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
-            gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
-            gsutil cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
+            pull_gcp
             ;;
         *)
         # local and unsupported backends
     esac
+}
+
+pull_aws () {
+    echo "pulling argo-cd backup from aws"
+    BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
+    BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
+    aws s3 cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
+}
+
+pull_azure () {
+    echo "pulling argo-cd backup from azure"
+    BACKUP_ACCOUNT_NAME=`cat /secrets/azure.account.name`
+    BACKUP_SERVICE_ID=`cat /secrets/azure.service.id`
+    BACKUP_CERT_PATH="/secrets/azure.service.cert"
+    BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
+    BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
+    az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
+    az storage blob download --account-name ${BACKUP_ACCOUNT_NAME} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+}
+
+pull_gcp () {
+    echo "pulling argo-cd backup from gcp"
+    BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+    BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
+    BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
+    BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
+    gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
+    gsutil cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
 }
 
 decrypt_backup () {
