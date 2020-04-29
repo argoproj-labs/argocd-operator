@@ -45,7 +45,7 @@ spec:
               properties:
                 backend:
                   description: Backend defines the storage backend to use, must be
-                    one of "local" (the default) or "aws".
+                    "local" (the default), "aws", "azure" or "gcp".
                   type: string
                 pvc:
                   description: PVC is the desired characteristics for a PersistentVolumeClaim.

@@ -79,7 +79,7 @@ type ArgoCDExportStatus struct {
 
 // ArgoCDExportStorageSpec defines the desired state for ArgoCDExport storage options.
 type ArgoCDExportStorageSpec struct {
-	// Backend defines the storage backend to use, must be one of "local" (the default) or "aws".
+	// Backend defines the storage backend to use, must be "local" (the default), "aws", "azure" or "gcp".
 	Backend string `json:"backend,omitempty"`
 
 	// PVC is the desired characteristics for a PersistentVolumeClaim.
