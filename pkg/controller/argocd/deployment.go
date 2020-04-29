@@ -139,9 +139,17 @@ func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 }
 
 // getArgoImportContainerImage will return the container image for the Argo CD import process.
-func getArgoImportContainerImage() string {
+func getArgoImportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 	img := common.ArgoCDDefaultExportJobImage
+	if len(cr.Spec.Image) > 0 {
+		img = cr.Spec.Image
+	}
+
 	tag := common.ArgoCDDefaultExportJobVersion
+	if len(cr.Spec.Version) > 0 {
+		tag = cr.Spec.Version
+	}
+
 	return argoutil.CombineImageTag(img, tag)
 }
 
@@ -359,7 +367,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.client, cr),
 			Env:             getArgoImportContainerEnv(export),
-			Image:           getArgoImportContainerImage(),
+			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
 			VolumeMounts:    getArgoImportVolumeMounts(export),
