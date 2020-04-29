@@ -12,6 +12,9 @@ cache:
   - $GOCACHE
   - $GOPATH/pkg/mod
 before_install:
-  - sudo apt-get -y install bash
-  - go get github.com/operator-framework/operator-sdk
-script: bash hack/build.sh
+  - git clone https://github.com/operator-framework/operator-sdk
+  - cd operator-sdk
+  - git checkout v0.17.0
+  - make tidy
+  - make install
+script: hack/build.sh
