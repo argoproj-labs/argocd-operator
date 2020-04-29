@@ -4,7 +4,6 @@ dist: bionic
 language: go
 go:
 - "1.13.x"
-go_import_path: github.com/argoproj-labs/argocd-operator
 env:
   - GO111MODULE=on
 cache:
@@ -12,11 +11,10 @@ cache:
   - $GOCACHE
   - $GOPATH/pkg/mod
 before_install:
-  - cd $HOME
-  - git clone https://github.com/operator-framework/operator-sdk operator-framework/operator-sdk
-  - cd operator-framework/operator-sdk
+  - git clone https://github.com/operator-framework/operator-sdk $GOPATH/src/github.com/operator-framework/operator-sdk
+  - cd $GOPATH/src/github.com/operator-framework/operator-sdk
   - git checkout v0.17.0
   - make tidy
   - make install
-  - cd $HOME/argoproj-labs/argocd-operator
+  - cd $GOPATH/src/github.com/argoproj-labs/argocd-operator
 script: hack/build.sh
