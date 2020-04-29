@@ -114,25 +114,65 @@ spec:
 Create an `ArgoCDExport` resource in the `argocd` namespace using the basic example.
 
 ``` bash
-kubectl apply -f examples/argocdexport-basic.yaml
+kubectl apply -n argocd -f examples/argocdexport-basic.yaml
 ```
 
-This will result in the operator creating a Job to perform the export process. 
+You can view the list of `ArgoCDExport` resources.
 
 ``` bash
-kubectl get pods
+kubectl get argocdexports
+```
+```
+NAME                   AGE
+example-argocdexport   15m
+```
+
+Creating the resource will result in the operator provisioning a Kubernetes Job to perform the export process. 
+
+``` bash
+kubectl get pods -l job-name=example-argocdexport
+```
+
+The Job should not take long to complete.
+
+``` bash
+NAME                         READY   STATUS      RESTARTS   AGE
+example-argocdexport-q92qm   0/1     Completed   0          1m
 ```
 
 if the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
 
 ``` bash
-kubectl logs example-argocdexport-abcxyz
+kubectl logs example-argocdexport-q92qm
 ```
 
 Output similar to what is show below indicates a successful export.
 
 ``` bash
+exporting argo-cd
+creating argo-cd backup
+encrypting argo-cd backup
+argo-cd export complete
+```
 
+View the PersistentVolumeClaim created by the operator for the export data.
+
+``` bash
+kubectl get pvc -n argocd
+```
+``` bash
+NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+example-argocdexport   Bound    pvc-6d15143d-184a-4e5a-a185-6b86924af8bd   2Gi        RWO            gp2            39s
+```
+
+There should also be a corresponding PersistentVolume if dynamic volume support is enabled on the Kubernetes cluster.
+
+``` bash
+kubectl get pv -n argocd
+```
+``` bash
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE
+pvc-6d15143d-184a-4e5a-a185-6b86924af8bd   2Gi        RWO            Delete           Bound    argocd/example-argocdexport   gp2                     34s
 ```
 
 ### AWS
@@ -187,29 +227,47 @@ The AWS IAM Secret Access Key.
 
 #### AWS Example
 
-Once the required AWS credentials are set on the export Secret, create the export resource using the included AWS example.
+Once the required AWS credentials are set on the export Secret, create the `ArgoCDExport` resource in the `argocd` 
+namespace using the included AWS example.
 
 ``` bash
-kubectl apply -f examples/argocdexport-aws.yaml
+kubectl apply -n argocd -f examples/argocdexport-aws.yaml
 ```
 
-This will result in the operator creating a Job to perform the export process. 
+Creating the resource will result in the operator provisioning a Kubernetes Job to perform the export process. 
 
 ``` bash
-kubectl get pods
+kubectl get pods -l job-name=example-argocdexport
 ```
 
-if the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
+The Job should not take long to complete.
 
 ``` bash
-kubectl logs example-argocdexport-abcxyz
+NAME                         READY   STATUS      RESTARTS   AGE
+example-argocdexport-q92qm   0/1     Completed   0          1m
+```
+
+If the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
+
+``` bash
+kubectl logs example-argocdexport-q92qm
 ```
 
 Output similar to what is show below indicates a successful export.
 
 ``` bash
-
+exporting argo-cd
+creating argo-cd backup
+encrypting argo-cd backup
+pushing argo-cd backup to aws
+make_bucket: example-argocdexport
+upload: ../../backups/argocd-backup.yaml to s3://example-argocdexport/argocd-backup.yaml
+argo-cd export complete
 ```
+
+#### AWS IAM Configuration
+
+TODO: Add the required Role and Service Account configuration needed through AWS.
 
 ### GCP
 
@@ -264,7 +322,8 @@ The GCP key file that contains the service account authentication credentials. T
 
 #### GCP Example
 
-Once the required GCP credentials are set on the export Secret, create the export resource using the included GCP example.
+Once the required GCP credentials are set on the export Secret, create the `ArgoCDExport` resource in the `argocd` 
+namespace using the included GCP example.
 
 ``` bash
 kubectl apply -f examples/argocdexport-gcp.yaml
@@ -273,20 +332,45 @@ kubectl apply -f examples/argocdexport-gcp.yaml
 This will result in the operator creating a Job to perform the export process. 
 
 ``` bash
-kubectl get pods
+kubectl get pods -l job-name=example-argocdexport
 ```
 
-if the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
+The Job should not take long to complete.
 
 ``` bash
-kubectl logs example-argocdexport-abcxyz
+NAME                         READY   STATUS      RESTARTS   AGE
+example-argocdexport-q92qm   0/1     Completed   0          1m
+```
+
+If the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
+
+``` bash
+kubectl logs example-argocdexport-q92qm
 ```
 
 Output similar to what is show below indicates a successful export.
 
 ``` bash
-
+exporting argo-cd
+creating argo-cd backup
+encrypting argo-cd backup
+pushing argo-cd backup to gcp
+Activated service account credentials for: [argocd-export@example-project.iam.gserviceaccount.com]
+Creating gs://example-argocdexport/...
+Copying file:///backups/argocd-backup.yaml [Content-Type=application/octet-stream]...
+/ [1 files][  7.8 KiB/  7.8 KiB]
+Operation completed over 1 objects/7.8 KiB.
+argo-cd export complete
 ```
+
+#### GCP IAM Configuration
+
+TODO: Add the required Role and Service Account configuration needed through GCP.
+
+## Import
+
+See the `ArgoCD` [Import Reference][argocd_import] documentation for more information on importing the backup data when starting a new 
+Argo CD cluster.
 
 [argocdexport_reference]:../reference/argocdexport.md
 [storage_reference]:../reference/argocdexport.md#storage-options
