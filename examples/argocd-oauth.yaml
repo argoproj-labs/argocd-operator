@@ -6,6 +6,6 @@ metadata:
     example: defaults
 spec:
   dex:
-    image: quay.io/dexidp/dex 
-    version: v2.22.0
+    image: quay.io/redhat-cop/dex 
+    version: v2.22.0-openshift
     openShiftOAuth: true
