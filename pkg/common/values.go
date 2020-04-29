@@ -35,6 +35,9 @@ const (
 	// ArgoCDExportStorageBackendAWS is the value for the AWS storage backend.
 	ArgoCDExportStorageBackendAWS = "aws"
 
+	// ArgoCDExportStorageBackendAzure is the value for the Azure storage backend.
+	ArgoCDExportStorageBackendAzure = "azure"
+
 	// ArgoCDExportStorageBackendGCP is the value for the GCP storage backend.
 	ArgoCDExportStorageBackendGCP = "gcp"
 
