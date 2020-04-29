@@ -14,4 +14,4 @@ cache:
 before_install:
   - sudo apt-get -y install bash
   - go get github.com/operator-framework/operator-sdk
-script: hack/build.sh
+script: bash hack/build.sh
