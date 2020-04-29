@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 # Copyright 2020 ArgoCD Operator Developers
 #
@@ -37,13 +37,8 @@ create_backup () {
 
 encrypt_backup () {
     echo "encrypting argo-cd backup"
-    echo "backup hash: `md5sum ${BACKUP_KEY_LOCATION}`"
-    echo "export hash: `md5sum ${BACKUP_EXPORT_LOCATION}`"
-    
     openssl enc -aes-256-cbc -pbkdf2 -pass file:${BACKUP_KEY_LOCATION} -in ${BACKUP_EXPORT_LOCATION} -out ${BACKUP_ENCRYPT_LOCATION}
     rm ${BACKUP_EXPORT_LOCATION}
-
-    echo "encrypt hash: `md5sum ${BACKUP_ENCRYPT_LOCATION}`"
 }
 
 push_backup () {
@@ -55,6 +50,16 @@ push_backup () {
             aws s3 mb ${BACKUP_BUCKET_URI}
             aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
             aws s3 cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
+            ;;
+        "gcp")
+            echo "pushing argo-cd backup to gcp"
+            BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
+            BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
+            BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
+            gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
+            gsutil mb -b on -p ${BACKUP_PROJECT_ID} ${BACKUP_BUCKET_URI} || true
+            gsutil cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
             ;;
         *)
         # local and unsupported backends
@@ -77,6 +82,15 @@ pull_backup () {
             BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
             aws s3 cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
             ;;
+        "gcp")
+            echo "pulling argo-cd backup from gcp"
+            BACKUP_BUCKET_KEY="/secrets/gcp.key.file"
+            BACKUP_PROJECT_ID=`cat /secrets/gcp.project.id`
+            BACKUP_BUCKET_NAME=`cat /secrets/gcp.bucket.name`
+            BACKUP_BUCKET_URI="gs://${BACKUP_BUCKET_NAME}"
+            gcloud auth activate-service-account --key-file=${BACKUP_BUCKET_KEY}
+            gsutil cp ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME} ${BACKUP_ENCRYPT_LOCATION}
+            ;;
         *)
         # local and unsupported backends
     esac
@@ -84,12 +98,7 @@ pull_backup () {
 
 decrypt_backup () {
     echo "decrypting argo-cd backup"
-    echo "backup hash: `md5sum ${BACKUP_KEY_LOCATION}`"
-    echo "encrypt hash: `md5sum ${BACKUP_ENCRYPT_LOCATION}`"
-
     openssl enc -aes-256-cbc -d -pbkdf2 -pass file:${BACKUP_KEY_LOCATION} -in ${BACKUP_ENCRYPT_LOCATION} -out ${BACKUP_EXPORT_LOCATION}
-
-    echo "export hash: `md5sum ${BACKUP_EXPORT_LOCATION}`"
 }
 
 load_backup () {
