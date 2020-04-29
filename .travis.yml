@@ -17,4 +17,4 @@ before_install:
   - make tidy
   - make install
   - cd $GOPATH/src/github.com/argoproj-labs/argocd-operator
-script: hack/build.sh
+script: bash hack/build.sh
