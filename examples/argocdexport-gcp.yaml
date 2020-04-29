@@ -6,8 +6,9 @@ metadata:
     example: gcp
 type: Opaque
 data:
-  gcp.key.file: a2V5X2ZpbGU=
   gcp.bucket.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
+  gcp.project.id: cHJvamVjdF9pZA==
+  gcp.key.file: a2V5X2ZpbGU=
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCDExport
