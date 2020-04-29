@@ -25,11 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// generateBucketName will return the bucket name for the the given ArgoCDExport.
-func generateBucketName(cr *argoprojv1a1.ArgoCDExport) []byte {
-	return []byte(cr.Name)
-}
-
 // generateBackupKey will generate and return the backup key for the export process.
 func generateBackupKey() ([]byte, error) {
 	pass, err := password.Generate(
@@ -68,7 +63,6 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 	name := argoutil.FetchStorageSecretName(cr)
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, name)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, name, secret) {
-		changed := false
 		backupKey := secret.Data[common.ArgoCDKeyBackupKey]
 		if len(backupKey) <= 0 {
 			backupKey, err := generateBackupKey()
@@ -76,23 +70,9 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 				return err
 			}
 			secret.Data[common.ArgoCDKeyBackupKey] = backupKey
-			changed = true
-		}
-
-		if cr.Spec.Storage != nil {
-			switch cr.Spec.Storage.Backend {
-			case common.ArgoCDExportStorageBackendAWS:
-				secret.Data[common.ArgoCDKeyAWSBucketName] = generateBucketName(cr)
-				changed = true
-			case common.ArgoCDExportStorageBackendGCP:
-				secret.Data[common.ArgoCDKeyGCPBucketName] = generateBucketName(cr)
-				changed = true
-			}
-		}
-
-		if changed {
 			return r.client.Update(context.TODO(), secret)
 		}
+
 		return nil // TODO: Handle case where backup key changes, should trigger a new export?
 	}
 
@@ -103,15 +83,6 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 
 	secret.Data = map[string][]byte{
 		common.ArgoCDKeyBackupKey: backupKey,
-	}
-
-	if cr.Spec.Storage != nil {
-		switch cr.Spec.Storage.Backend {
-		case common.ArgoCDExportStorageBackendAWS:
-			secret.Data[common.ArgoCDKeyAWSBucketName] = generateBucketName(cr)
-		case common.ArgoCDExportStorageBackendGCP:
-			secret.Data[common.ArgoCDKeyGCPBucketName] = generateBucketName(cr)
-		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
