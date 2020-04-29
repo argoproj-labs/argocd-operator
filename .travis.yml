@@ -12,9 +12,11 @@ cache:
   - $GOCACHE
   - $GOPATH/pkg/mod
 before_install:
-  - git clone https://github.com/operator-framework/operator-sdk
-  - cd operator-sdk
+  - cd $HOME
+  - git clone https://github.com/operator-framework/operator-sdk operator-framework/operator-sdk
+  - cd operator-framework/operator-sdk
   - git checkout v0.17.0
   - make tidy
   - make install
+  - cd $HOME/argoproj-labs/argocd-operator
 script: hack/build.sh
