@@ -269,6 +269,105 @@ argo-cd export complete
 
 TODO: Add the required Role and Service Account configuration needed through AWS.
 
+### Azure
+
+The operator can use a Micosoft Azure Storage Container to store the export data as Blob.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: example-argocdexport
+  labels:
+    example: azure
+spec:
+  argocd: example-argocd
+  storage:
+    backend: azure
+    secretName: azure-backup-secret
+```
+
+#### Azure Secrets
+
+The storage `SecretName` property should reference an existing secret that contains the Azure credentials and bucket information.
+
+``` yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-backup-secret
+  labels:
+    example: azure
+type: Opaque
+data:
+  azure.container.name: ...
+  azure.service.id: ...
+  azure.service.cert: ...
+  azure.storage.account: ...
+  azure.tenant.id: ...
+```
+
+The following properties must exist on the Secret referenced in the `ArgoCDExport` resource when using `azure` as the storage backend.
+
+**azure.container.name**
+
+The name of the Azure Storage Container. This should be the name of the container only. If the container does not 
+already exist, the operator will attempt to create it.
+
+**azure.service.id**
+
+The ID for the Service Principal that will be used to access Azure Storage.
+
+**azure.service.cert**
+
+The certificate for authenticating the Service Principal that will be used to access Azure Storage.
+
+**azure.storage.account**
+
+The name of the Azure Storage Account that owns the Container.
+
+**azure.tenant.id**
+
+The ID for the Azure Tenant that owns the Service Principal.
+
+#### Azure Example
+
+Once the required Azure credentials are set on the export Secret, create the `ArgoCDExport` resource in the `argocd` 
+namespace using the included AWS example.
+
+``` bash
+kubectl apply -n argocd -f examples/argocdexport-azure.yaml
+```
+
+Creating the resource will result in the operator provisioning a Kubernetes Job to perform the export process. 
+
+``` bash
+kubectl get pods -l job-name=example-argocdexport
+```
+
+The Job should not take long to complete.
+
+``` bash
+NAME                         READY   STATUS      RESTARTS   AGE
+example-argocdexport-q92qm   0/1     Completed   0          1m
+```
+
+If the Job fails for some reason, view the logs of the Pod to help in troubleshooting.
+
+``` bash
+kubectl logs example-argocdexport-q92qm
+```
+
+Output similar to what is show below indicates a successful export.
+
+``` bash
+
+```
+
+#### Azure AD Configuration
+
+TODO: Add the required Role and Service Account configuration needed through Azure Active Directory.
+
 ### GCP
 
 The operator can use a Google Cloud Storage bucket to store the export data.
