@@ -1,0 +1,9 @@
+resources:
+- operator.yaml
+- role_binding.yaml
+- role.yaml
+- service_account.yaml
+- argo-cd/argoproj.io_applications_crd.yaml
+- argo-cd/argoproj.io_appprojects_crd.yaml
+- crds/argoproj.io_argocdexports_crd.yaml
+- crds/argoproj.io_argocds_crd.yaml
