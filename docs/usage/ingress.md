@@ -113,7 +113,7 @@ By default, the Host for each Ingress is based on the name of the ArgoCD resourc
 
 ## Access
 
-In this example there are two hostnames that we will use to access the Argo CD deployment.
+In this example there are two hostnames that we will use to access the Argo CD cluster.
 
 Add entries to the `/etc/hosts` file on the local machine, which is needed to access the services running locally on 
 minikube.

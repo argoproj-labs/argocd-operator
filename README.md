@@ -4,11 +4,11 @@
 [![Documentation Status](https://readthedocs.org/projects/argocd-operator/badge/?version=latest)](https://argocd-operator.readthedocs.io/en/latest/?badge=latest)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](code-of-conduct.md) 
 
-A Kubernetes operator for managing Argo CD deployments.
+A Kubernetes operator for managing Argo CD clusters.
 
 ## Documentation
 
-See the [official documentation][docs] for installation and usage of the operator.
+See the [documentation][docs] for installation and usage of the operator.
 
 ## License
 
