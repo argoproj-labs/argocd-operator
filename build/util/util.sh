@@ -74,8 +74,8 @@ push_azure () {
     BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
     BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
     az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
-    az storage container create --account-name ${BACKUP_STORAGE_ACCOUNT} --name ${BACKUP_CONTAINER_NAME}
-    az storage blob upload --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+    az storage container create --auth-mode login --account-name ${BACKUP_STORAGE_ACCOUNT} --name ${BACKUP_CONTAINER_NAME}
+    az storage blob upload --auth-mode login --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
 }
 
 push_gcp () {
@@ -128,7 +128,7 @@ pull_azure () {
     BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
     BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
     az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
-    az storage blob download --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+    az storage blob download --auth-mode login --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
 }
 
 pull_gcp () {
