@@ -127,15 +127,13 @@ NAME                   AGE
 example-argocdexport   15m
 ```
 
-Creating the resource will result in the operator provisioning a Kubernetes Job to perform the export process. 
+Creating the resource will result in the operator provisioning a Kubernetes Job to perform the export process. The Job 
+should not take long to complete.
 
 ``` bash
 kubectl get pods -l job-name=example-argocdexport
 ```
-
-The Job should not take long to complete.
-
-``` bash
+```
 NAME                         READY   STATUS      RESTARTS   AGE
 example-argocdexport-q92qm   0/1     Completed   0          1m
 ```
@@ -146,9 +144,9 @@ if the Job fails for some reason, view the logs of the Pod to help in troublesho
 kubectl logs example-argocdexport-q92qm
 ```
 
-Output similar to what is show below indicates a successful export.
+Output similar to what is shown below indicates a successful export.
 
-``` bash
+```
 exporting argo-cd
 creating argo-cd backup
 encrypting argo-cd backup
@@ -160,7 +158,7 @@ View the PersistentVolumeClaim created by the operator for the export data.
 ``` bash
 kubectl get pvc -n argocd
 ```
-``` bash
+```
 NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 example-argocdexport   Bound    pvc-6d15143d-184a-4e5a-a185-6b86924af8bd   2Gi        RWO            gp2            39s
 ```
@@ -170,7 +168,7 @@ There should also be a corresponding PersistentVolume if dynamic volume support 
 ``` bash
 kubectl get pv -n argocd
 ```
-``` bash
+```
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                         STORAGECLASS   REASON   AGE
 pvc-6d15143d-184a-4e5a-a185-6b86924af8bd   2Gi        RWO            Delete           Bound    argocd/example-argocdexport   gp2                     34s
 ```
@@ -242,7 +240,7 @@ kubectl get pods -l job-name=example-argocdexport
 
 The Job should not take long to complete.
 
-``` bash
+```
 NAME                         READY   STATUS      RESTARTS   AGE
 example-argocdexport-q92qm   0/1     Completed   0          1m
 ```
@@ -253,9 +251,9 @@ If the Job fails for some reason, view the logs of the Pod to help in troublesho
 kubectl logs example-argocdexport-q92qm
 ```
 
-Output similar to what is show below indicates a successful export.
+Output similar to what is shown below indicates a successful export.
 
-``` bash
+```
 exporting argo-cd
 creating argo-cd backup
 encrypting argo-cd backup
@@ -302,7 +300,8 @@ type: Opaque
 data:
   azure.container.name: ...
   azure.service.id: ...
-  azure.service.cert: ...
+  azure.service.cert: |
+    ...
   azure.storage.account: ...
   azure.tenant.id: ...
 ```
@@ -347,7 +346,7 @@ kubectl get pods -l job-name=example-argocdexport
 
 The Job should not take long to complete.
 
-``` bash
+```
 NAME                         READY   STATUS      RESTARTS   AGE
 example-argocdexport-q92qm   0/1     Completed   0          1m
 ```
@@ -358,9 +357,9 @@ If the Job fails for some reason, view the logs of the Pod to help in troublesho
 kubectl logs example-argocdexport-q92qm
 ```
 
-Output similar to what is show below indicates a successful export.
+Output similar to what is shown below indicates a successful export.
 
-``` bash
+```
 exporting argo-cd
 creating argo-cd backup
 encrypting argo-cd backup
@@ -464,7 +463,7 @@ kubectl get pods -l job-name=example-argocdexport
 
 The Job should not take long to complete.
 
-``` bash
+```
 NAME                         READY   STATUS      RESTARTS   AGE
 example-argocdexport-q92qm   0/1     Completed   0          1m
 ```
@@ -475,9 +474,9 @@ If the Job fails for some reason, view the logs of the Pod to help in troublesho
 kubectl logs example-argocdexport-q92qm
 ```
 
-Output similar to what is show below indicates a successful export.
+Output similar to what is shown below indicates a successful export.
 
-``` bash
+```
 exporting argo-cd
 creating argo-cd backup
 encrypting argo-cd backup
