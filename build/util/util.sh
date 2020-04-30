@@ -68,14 +68,14 @@ push_aws () {
 
 push_azure () {
     echo "pushing argo-cd backup to azure"
-    BACKUP_ACCOUNT_NAME=`cat /secrets/azure.account.name`
+    BACKUP_STORAGE_ACCOUNT=`cat /secrets/azure.storage.account`
     BACKUP_SERVICE_ID=`cat /secrets/azure.service.id`
     BACKUP_CERT_PATH="/secrets/azure.service.cert"
     BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
     BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
     az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
-    az storage container create --account-name ${BACKUP_ACCOUNT_NAME} --name ${BACKUP_CONTAINER_NAME}
-    az storage blob upload --account-name ${BACKUP_ACCOUNT_NAME} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+    az storage container create --account-name ${BACKUP_STORAGE_ACCOUNT} --name ${BACKUP_CONTAINER_NAME}
+    az storage blob upload --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
 }
 
 push_gcp () {
@@ -122,13 +122,13 @@ pull_aws () {
 
 pull_azure () {
     echo "pulling argo-cd backup from azure"
-    BACKUP_ACCOUNT_NAME=`cat /secrets/azure.account.name`
+    BACKUP_STORAGE_ACCOUNT=`cat /secrets/azure.storage.account`
     BACKUP_SERVICE_ID=`cat /secrets/azure.service.id`
     BACKUP_CERT_PATH="/secrets/azure.service.cert"
     BACKUP_TENANT_ID=`cat /secrets/azure.tenant.id`
     BACKUP_CONTAINER_NAME=`cat /secrets/azure.container.name`
     az login --service-principal -u ${BACKUP_SERVICE_ID} -p ${BACKUP_CERT_PATH} --tenant ${BACKUP_TENANT_ID}
-    az storage blob download --account-name ${BACKUP_ACCOUNT_NAME} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
+    az storage blob download --account-name ${BACKUP_STORAGE_ACCOUNT} --container-name ${BACKUP_CONTAINER_NAME} --file ${BACKUP_ENCRYPT_LOCATION} --name ${BACKUP_FILENAME}
 }
 
 pull_gcp () {
