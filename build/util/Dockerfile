@@ -2,23 +2,18 @@ FROM argoproj/argocd:v1.5.2
 
 USER root
 
-# Ensure apt-transport-https is installed
+# Ensure system dependencies are installed
 RUN apt-get update && \
-    apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Import the Google Cloud public key
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+# Install the Google Cloud SDK (CLI)
+RUN curl -sL https://sdk.cloud.google.com > /tmp/install.sh && \
+    bash /tmp/install.sh --disable-prompts --install-dir=/home/argocd && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Add the Cloud SDK distribution URI as a package source
-COPY google-cloud-sdk.list /etc/apt/sources.list.d/google-cloud-sdk.list
-
-# Update and install the Google Cloud SDK
-RUN apt-get update && \
-    apt-get install -y google-cloud-sdk && \
+# Install the Microsoft Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy util wrapper script
