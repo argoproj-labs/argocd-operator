@@ -361,7 +361,35 @@ kubectl logs example-argocdexport-q92qm
 Output similar to what is show below indicates a successful export.
 
 ``` bash
-
+exporting argo-cd
+creating argo-cd backup
+encrypting argo-cd backup
+pushing argo-cd backup to azure
+[
+  {
+    "cloudName": "...",
+    "homeTenantId": "...",
+    "id": "...",
+    "isDefault": true,
+    "managedByTenants": [],
+    "name": "...",
+    "state": "Enabled",
+    "tenantId": "...",
+    "user": {
+      "name": "...",
+      "type": "servicePrincipal"
+    }
+  }
+]
+{
+  "created": false
+}
+Finished[#############################################################]  100.0000%
+{
+  "etag": "\"0x000000000000000\"",
+  "lastModified": "2020-04-20T16:20:00+00:00"
+}
+argo-cd export complete
 ```
 
 #### Azure AD Configuration
