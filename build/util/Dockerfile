@@ -1,4 +1,5 @@
-FROM argoproj/argocd:v1.5.2
+# Argo CD v1.5.4
+FROM argoproj/argocd@sha256:9b55703f06eff3b30320109f372fc15092fb07b9e0c1e2ee5c71fd7ff7a14b66
 
 USER root
 
