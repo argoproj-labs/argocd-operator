@@ -157,8 +157,8 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error
 	return r.client.Create(context.TODO(), svc)
 }
 
-// reconcileRedisAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
-func (r *ReconcileArgoCD) reconcileRedisAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
+// reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
 	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
 		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
 		if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
@@ -232,13 +232,43 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 	return r.client.Create(context.TODO(), svc)
 }
 
+// reconcileRedisHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
+	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "haproxy",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), svc)
+}
+
 // reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
 func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRedisAnnounceServices(cr); err != nil {
+	if err := r.reconcileRedisHAAnnounceServices(cr); err != nil {
 		return err
 	}
 
 	if err := r.reconcileRedisHAMasterService(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAProxyService(cr); err != nil {
 		return err
 	}
 	return nil

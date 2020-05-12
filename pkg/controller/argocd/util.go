@@ -395,6 +395,20 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	return argoutil.CombineImageTag(img, tag)
 }
 
+// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
+func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
+	suffix := fmt.Sprintf("redis-ha-haproxy:%v", common.ArgoCDDefaultRedisPort)
+	return nameWithSuffix(suffix, cr)
+}
+
+// getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
+func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	return argoutil.CombineImageTag(
+		common.ArgoCDDefaultRedisHAProxyImage,
+		common.ArgoCDDefaultRedisHAProxyVersion,
+	)
+}
+
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
 func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
@@ -411,25 +425,33 @@ func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
 	return script
 }
 
-// getRedisQuorumScript will load the redis quorum script from a template on disk for the given ArgoCD.
+// getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisQuorumScript(cr *argoprojv1a1.ArgoCD) string {
-	path := fmt.Sprintf("%s/check-quorum.sh.tpl", getRedisConfigPath())
-	script, err := loadTemplateFile(path, map[string]string{})
+func getRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
 	if err != nil {
-		log.Error(err, "unable to load redis quorum script")
+		log.Error(err, "unable to load redis haproxy configuration")
 		return ""
 	}
 	return script
 }
 
-// getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
+// getRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisReadinessScript(cr *argoprojv1a1.ArgoCD) string {
-	path := fmt.Sprintf("%s/readiness.sh.tpl", getRedisConfigPath())
-	script, err := loadTemplateFile(path, map[string]string{})
+func getRedisHAProxyScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
 	if err != nil {
-		log.Error(err, "unable to load redis readiness script")
+		log.Error(err, "unable to load redis haproxy init script")
 		return ""
 	}
 	return script
