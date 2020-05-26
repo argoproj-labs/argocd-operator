@@ -37,7 +37,7 @@ Name | Default | Description
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
-[**Version**](#version) | v1.5.2 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Version**](#version) | v1.5.4 (SHA) | The tag to use with the container image for all Argo CD components.
 
 ## Application Instance Label Key
 
@@ -448,6 +448,8 @@ spec:
       passwordSecret:
         name: my-secret
         key: password
+    - type: git
+      url: https://github.com/argoproj/argocd-example-apps.git
 ```
 
 ## Initial SSH Known Hosts
@@ -856,5 +858,5 @@ metadata:
   labels:
     example: version
 spec:
-  version: v1.5.2
+  version: v1.5.4
 ```

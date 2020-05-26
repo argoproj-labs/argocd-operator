@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.13
 
 require (
-	github.com/argoproj/argo-cd v1.5.2
+	github.com/argoproj/argo-cd v1.5.4
 	github.com/coreos/prometheus-operator v0.38.1
 	github.com/go-openapi/spec v0.19.4
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible

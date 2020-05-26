@@ -31,7 +31,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:ebaa82eb629d8fcc4a23659d1f6602ab64db4f5e13b9146f4742247593af9697" // v1.5.2
+	ArgoCDDefaultArgoVersion = "sha256:b83f7dafd3d7c21bbaea15d5ce13e699433d7736f5d441e752033663d4fa6e6c" // v1.5.5
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -80,7 +80,7 @@ const (
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "sha256:c14ea9dbf341de51c8c0858a65bfe905a0a2cc154311c959a0bfe609bfe177b5" // v2.21.0
+	ArgoCDDefaultDexVersion = "sha256:01e996b4b60edcc5cc042227c6965dd63ba68764c25d86b481b0d65f6e4da308" // v2.22.0
 
 	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
 	ArgoCDDefaultExportJobImage = "quay.io/jmckind/argocd-operator-util"
@@ -162,6 +162,12 @@ const (
 
 	// ArgoCDDefaultRedisHAReplicas is the defaul number of replicas for Redis when rinning in HA mode.
 	ArgoCDDefaultRedisHAReplicas = int32(3)
+
+	// ArgoCDDefaultRedisHAProxyImage is the default Redis HAProxy image to use when not specified.
+	ArgoCDDefaultRedisHAProxyImage = "haproxy"
+
+	// ArgoCDDefaultRedisHAProxyVersion is the default Redis HAProxy image tag to use when not specified.
+	ArgoCDDefaultRedisHAProxyVersion = "sha256:cd4b3d4d27ae5931dc96b9632188590b7a6880469bcf07f478a3280dd0955336" // 2.0.4
 
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
 	ArgoCDDefaultRedisImage = "redis"

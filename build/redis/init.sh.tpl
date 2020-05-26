@@ -1,6 +1,6 @@
 HOSTNAME="$(hostname)"
 INDEX="${HOSTNAME##*-}"
-MASTER="$(redis-cli -h argocd-redis-ha -p 26379 sentinel get-master-addr-by-name argocd | grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')"
+MASTER="$(redis-cli -h {{.ServiceName}} -p 26379 sentinel get-master-addr-by-name argocd | grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')"
 MASTER_GROUP="argocd"
 QUORUM="2"
 REDIS_CONF=/data/conf/redis.conf
@@ -11,7 +11,7 @@ SERVICE={{.ServiceName}}
 set -eu
 
 sentinel_update() {
-    echo "Updating sentinel config"
+    echo "Updating sentinel config with master $MASTER"
     eval MY_SENTINEL_ID="\${SENTINEL_ID_$INDEX}"
     sed -i "1s/^/sentinel myid $MY_SENTINEL_ID\\n/" "$SENTINEL_CONF"
     sed -i "2s/^/sentinel monitor $MASTER_GROUP $1 $REDIS_PORT $QUORUM \\n/" "$SENTINEL_CONF"
@@ -54,7 +54,7 @@ find_master() {
     echo "Attempting to find master"
     if [ "$(redis-cli -h "$MASTER" ping)" != "PONG" ]; then
         echo "Can't ping master, attempting to force failover"
-        if redis-cli -h "$SERVICE" -p "$SENTINEL_PORT" sentinel failover "$MASTER_GROUP" | grep -q 'NOGOODSLAVE' ; then 
+        if redis-cli -h "$SERVICE" -p "$SENTINEL_PORT" sentinel failover "$MASTER_GROUP" | grep -q 'NOGOODSLAVE' ; then
             setup_defaults
             return 0
         fi
@@ -91,7 +91,8 @@ fi
 
 if [ "${AUTH:-}" ]; then
     echo "Setting auth values"
-    sed -i "s/replace-default-auth/$AUTH/" "$REDIS_CONF" "$SENTINEL_CONF"
+    ESCAPED_AUTH=$(echo "$AUTH" | sed -e 's/[\/&]/\\&/g');
+    sed -i "s/replace-default-auth/${ESCAPED_AUTH}/" "$REDIS_CONF" "$SENTINEL_CONF"
 fi
 
 echo "Ready..."

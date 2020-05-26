@@ -55,12 +55,8 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--operation-processors")
 	cmd = append(cmd, fmt.Sprint(getArgoServerOperationProcessors(cr)))
 
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisSentinelArgs(cr)...)
-	} else {
-		cmd = append(cmd, "--redis")
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
@@ -204,21 +200,6 @@ func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-// getRedisSentinelArgs will return the command args for the Redis sentinels used in HA mode.
-func getRedisSentinelArgs(cr *argoprojv1a1.ArgoCD) []string {
-	args := make([]string, 0)
-
-	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
-		args = append(args, "--sentinel")
-		args = append(args, nameWithSuffix(fmt.Sprintf("redis-ha-announce-%d:%d", i, common.ArgoCDDefaultRedisSentinelPort), cr))
-	}
-
-	args = append(args, "--sentinelmaster")
-	args = append(args, "argocd") // TODO: Should this be cr.Name?
-
-	return args
-}
-
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
 func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
@@ -226,12 +207,8 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-repo-server")
 
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisSentinelArgs(cr)...)
-	} else {
-		cmd = append(cmd, "--redis")
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	return cmd
 }
@@ -240,6 +217,10 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
+
+	if getArgoServerInsecure(cr) {
+		cmd = append(cmd, "--insecure")
+	}
 
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
@@ -250,16 +231,8 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, geRepoServerAddress(cr))
 
-	if getArgoServerInsecure(cr) {
-		cmd = append(cmd, "--insecure")
-	}
-
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisSentinelArgs(cr)...)
-	} else {
-		cmd = append(cmd, "--redis")
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	return cmd
 }
@@ -397,6 +370,11 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	err = r.reconcileRedisDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisHAProxyDeployment(cr)
 	if err != nil {
 		return err
 	}
@@ -617,6 +595,137 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		},
 		Resources: getRedisResources(cr),
 	}}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), deploy)
+}
+
+// reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
+func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
+			return r.client.Delete(context.TODO(), deploy)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+							},
+						},
+						TopologyKey: common.ArgoCDKeyFailureDomainZone,
+					},
+					Weight: int32(100),
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+						},
+					},
+					TopologyKey: common.ArgoCDKeyHostname,
+				},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Image:           getRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "haproxy",
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8888),
+				},
+			},
+			InitialDelaySeconds: int32(5),
+			PeriodSeconds:       int32(3),
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+				Name:          "redis",
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "data",
+				MountPath: "/usr/local/etc/haproxy",
+			},
+			{
+				Name:      "shared-socket",
+				MountPath: "/run/haproxy",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Args: []string{
+			"/readonly/haproxy_init.sh",
+		},
+		Command: []string{
+			"sh",
+		},
+		Image:           getRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "config-init",
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config-volume",
+				MountPath: "/readonly",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "data",
+				MountPath: "/data",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDRedisHAConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "shared-socket",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-redis-ha-haproxy"
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err

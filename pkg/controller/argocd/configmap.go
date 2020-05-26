@@ -570,9 +570,6 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) e
 	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
 		return err
 	}
-	if err := r.reconcileRedisProbesConfigMap(cr); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -592,35 +589,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 	}
 
 	cm.Data = map[string]string{
-		"init.sh":       getRedisInitScript(cr),
-		"redis.conf":    getRedisConf(cr),
-		"sentinel.conf": getRedisSentinelConf(cr),
-	}
-
-	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
-		return err
-	}
-	return r.client.Create(context.TODO(), cm)
-}
-
-// reconcileRedisProbesConfigMap will ensure that the Redis Probes ConfigMap is present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisProbesConfigMap(cr *argoprojv1a1.ArgoCD) error {
-	cm := newConfigMapWithName(common.ArgoCDRedisProbesConfigMapName, cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		if !cr.Spec.HA.Enabled {
-			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
-			return r.client.Delete(context.TODO(), cm)
-		}
-		return nil // ConfigMap found with nothing changed, move along...
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil // HA not enabled, do nothing.
-	}
-
-	cm.Data = map[string]string{
-		"check-quorum.sh": getRedisQuorumScript(cr),
-		"readiness.sh":    getRedisReadinessScript(cr),
+		"haproxy.cfg":     getRedisHAProxyConfig(cr),
+		"haproxy_init.sh": getRedisHAProxyScript(cr),
+		"init.sh":         getRedisInitScript(cr),
+		"redis.conf":      getRedisConf(cr),
+		"sentinel.conf":   getRedisSentinelConf(cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {

@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -25,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -89,8 +89,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
-			"checksum/init-config":  "06440ee4a409be2aa01dfa08c14dd964fe3bad2ada57da1a538ad5cd771a045f", // TODO: Should this be hard-coded?
-			"checksum/probe-config": "4b9888f173366e436f167856ee3469e8c1fd5221e29caa2129373db23578ec10", // TODO: Should this be hard-coded?
+			"checksum/init-config": "552ee3bec8fe5d9d865e371f7b615c6d472253649eb65d53ed4ae874f782647c", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
 			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
@@ -133,44 +132,22 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"/probes/readiness.sh",
-							strconv.Itoa(common.ArgoCDDefaultRedisPort),
-						},
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisPort),
 					},
 				},
 				InitialDelaySeconds: int32(15),
-				PeriodSeconds:       int32(5),
 			},
 			Name: "redis",
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 				Name:          "redis",
 			}},
-			ReadinessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"/probes/readiness.sh",
-							strconv.Itoa(common.ArgoCDDefaultRedisPort),
-						},
-					},
-				},
-				InitialDelaySeconds: int32(15),
-				PeriodSeconds:       int32(5),
-			},
 			Resources: getRedisResources(cr),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
 					Name:      "data",
-				},
-				{
-					MountPath: "/probes",
-					Name:      "probes",
 				},
 			},
 		},
@@ -185,44 +162,22 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"/probes/readiness.sh",
-							strconv.Itoa(common.ArgoCDDefaultRedisSentinelPort),
-						},
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisSentinelPort),
 					},
 				},
 				InitialDelaySeconds: int32(15),
-				PeriodSeconds:       int32(5),
 			},
 			Name: "sentinel",
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: common.ArgoCDDefaultRedisSentinelPort,
 				Name:          "sentinel",
 			}},
-			ReadinessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"/probes/readiness.sh",
-							strconv.Itoa(common.ArgoCDDefaultRedisSentinelPort),
-						},
-					},
-				},
-				InitialDelaySeconds: int32(15),
-				PeriodSeconds:       int32(5),
-			},
 			Resources: getRedisResources(cr),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
 					Name:      "data",
-				},
-				{
-					MountPath: "/probes",
-					Name:      "probes",
 				},
 			},
 		},
@@ -238,15 +193,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		Env: []corev1.EnvVar{
 			{
 				Name:  "SENTINEL_ID_0",
-				Value: "e791a161cb06f0d3eb0cc392117d34cf0eae9d71", // TODO: Should this be hard-coded?
+				Value: "25b71bd9d0e4a51945d8422cab53f27027397c12", // TODO: Should this be hard-coded?
 			},
 			{
 				Name:  "SENTINEL_ID_1",
-				Value: "d9b3204a90597a7500530efd881942d8145996ac", // TODO: Should this be hard-coded?
+				Value: "896627000a81c7bdad8dbdcffd39728c9c17b309", // TODO: Should this be hard-coded?
 			},
 			{
 				Name:  "SENTINEL_ID_2",
-				Value: "d9deb539c0402841c2492e9959c8086602fa4284", // TODO: Should this be hard-coded?
+				Value: "3acbca861108bc47379b71b1d87d1c137dce591f", // TODO: Should this be hard-coded?
 			},
 		},
 		Image:           getRedisHAContainerImage(cr),
@@ -285,15 +240,6 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: common.ArgoCDRedisHAConfigMapName,
-					},
-				},
-			},
-		}, {
-			Name: "probes",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDRedisProbesConfigMapName,
 					},
 				},
 			},
