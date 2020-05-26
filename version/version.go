@@ -16,5 +16,5 @@ package version
 
 var (
 	// Version is the ArgoCD Operator version.
-	Version = "0.0.8"
+	Version = "0.0.9"
 )
