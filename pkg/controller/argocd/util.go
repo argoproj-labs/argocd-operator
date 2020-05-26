@@ -483,6 +483,10 @@ func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
 
 // getRedisServerAddress will return the Redis service address for the given ArgoCD.
 func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	if cr.Spec.HA.Enabled {
+		return getRedisHAProxyAddress(cr)
+	}
+
 	suffix := fmt.Sprintf("%s:%v", common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort)
 	return nameWithSuffix(suffix, cr)
 }

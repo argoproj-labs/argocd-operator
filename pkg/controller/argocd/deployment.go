@@ -55,12 +55,8 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--operation-processors")
 	cmd = append(cmd, fmt.Sprint(getArgoServerOperationProcessors(cr)))
 
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisHAProxyAddress(cr))
-	} else {
-		cmd = append(cmd, "--redis")
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
@@ -204,21 +200,6 @@ func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-// getRedisSentinelArgs will return the command args for the Redis sentinels used in HA mode.
-func getRedisSentinelArgs(cr *argoprojv1a1.ArgoCD) []string {
-	args := make([]string, 0)
-
-	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
-		args = append(args, "--sentinel")
-		args = append(args, nameWithSuffix(fmt.Sprintf("redis-ha-announce-%d:%d", i, common.ArgoCDDefaultRedisSentinelPort), cr))
-	}
-
-	args = append(args, "--sentinelmaster")
-	args = append(args, "argocd") // TODO: Should this be cr.Name?
-
-	return args
-}
-
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
 func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
@@ -227,11 +208,7 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "argocd-repo-server")
 
 	cmd = append(cmd, "--redis")
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisHAProxyAddress(cr))
-	} else {
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	return cmd
 }
@@ -240,6 +217,10 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
+
+	if getArgoServerInsecure(cr) {
+		cmd = append(cmd, "--insecure")
+	}
 
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
@@ -250,16 +231,8 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, geRepoServerAddress(cr))
 
-	if getArgoServerInsecure(cr) {
-		cmd = append(cmd, "--insecure")
-	}
-
 	cmd = append(cmd, "--redis")
-	if cr.Spec.HA.Enabled {
-		cmd = append(cmd, getRedisHAProxyAddress(cr))
-	} else {
-		cmd = append(cmd, getRedisServerAddress(cr))
-	}
+	cmd = append(cmd, getRedisServerAddress(cr))
 
 	return cmd
 }
@@ -750,16 +723,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
-	}
-
-	var fsGroup int64 = 1000
-	var runAsNonRoot bool = true
-	var runAsUser int64 = 1000
-
-	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:      &fsGroup,
-		RunAsNonRoot: &runAsNonRoot,
-		RunAsUser:    &runAsUser,
 	}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-redis-ha-haproxy"
