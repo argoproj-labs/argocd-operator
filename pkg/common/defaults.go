@@ -31,7 +31,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:9b55703f06eff3b30320109f372fc15092fb07b9e0c1e2ee5c71fd7ff7a14b66" // v1.5.4
+	ArgoCDDefaultArgoVersion = "sha256:b83f7dafd3d7c21bbaea15d5ce13e699433d7736f5d441e752033663d4fa6e6c" // v1.5.5
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -86,7 +86,7 @@ const (
 	ArgoCDDefaultExportJobImage = "quay.io/jmckind/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:dad24d8a2b09cbe3c6c78f2d2cdf344a88b5735a3db5a6aec84dc8b57b2cbdd0" // v0.0.8
+	ArgoCDDefaultExportJobVersion = "sha256:7a4c3e99e4ca0a6f3ce00fac1433aa8e1d8c464545cd66560570c2b617099eda" // argo_153
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -167,7 +167,7 @@ const (
 	ArgoCDDefaultRedisHAProxyImage = "haproxy"
 
 	// ArgoCDDefaultRedisHAProxyVersion is the default Redis HAProxy image tag to use when not specified.
-	ArgoCDDefaultRedisHAProxyVersion = "sha256:cd4b3d4d27ae5931dc96b9632188590b7a6880469bcf07f478a3280dd0955336"
+	ArgoCDDefaultRedisHAProxyVersion = "sha256:cd4b3d4d27ae5931dc96b9632188590b7a6880469bcf07f478a3280dd0955336" // 2.0.4
 
 	// ArgoCDDefaultRedisImage is the Redis container image to use when not specified.
 	ArgoCDDefaultRedisImage = "redis"
