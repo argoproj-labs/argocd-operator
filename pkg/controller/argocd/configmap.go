@@ -589,9 +589,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 	}
 
 	cm.Data = map[string]string{
-		"init.sh":       getRedisInitScript(cr),
-		"redis.conf":    getRedisConf(cr),
-		"sentinel.conf": getRedisSentinelConf(cr),
+		"haproxy.cfg":     getRedisHAProxyConfig(cr),
+		"haproxy_init.sh": getRedisHAProxyScript(cr),
+		"init.sh":         getRedisInitScript(cr),
+		"redis.conf":      getRedisConf(cr),
+		"sentinel.conf":   getRedisSentinelConf(cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
