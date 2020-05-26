@@ -448,6 +448,8 @@ spec:
       passwordSecret:
         name: my-secret
         key: password
+    - type: git
+      url: https://github.com/argoproj/argocd-example-apps.git
 ```
 
 ## Initial SSH Known Hosts
