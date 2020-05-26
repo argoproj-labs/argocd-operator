@@ -32,8 +32,8 @@ kubectl create namespace argocd
 Once the namespace is created, set up the local context to use the new namespace.
 
 ```bash
-kubectl config set-context argocd/minikube --cluster argocd --namespace argocd --user argocd
-kubectl config use-context argocd/minikube
+kubectl config set-context argocd --cluster argocd --namespace argocd --user argocd
+kubectl config use-context argocd
 ```
 
 The remaining resources will now be created in the new namespace.
