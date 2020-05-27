@@ -1,4 +1,5 @@
 # Argo CD Operator
+
 [![Build Status](https://travis-ci.org/argoproj-labs/argocd-operator.svg?branch=master)](https://travis-ci.org/argoproj-labs/argocd-operator)
 [![Go Report Card](https://goreportcard.com/badge/argoproj-labs/argocd-operator "Go Report Card")](https://goreportcard.com/report/argoproj-labs/argocd-operator)
 [![Documentation Status](https://readthedocs.org/projects/argocd-operator/badge/?version=latest)](https://argocd-operator.readthedocs.io/en/latest/?badge=latest)
