@@ -7,9 +7,12 @@ metadata:
 spec:
   grafana:
     enabled: true
-    route: true
+    route:
+      enabled: true
   prometheus:
     enabled: true
-    route: true
+    route:
+      enabled: true
   server:
-    route: true
+    route:
+      enabled: true

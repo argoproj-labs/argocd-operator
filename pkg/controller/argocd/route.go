@@ -92,15 +92,21 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
+		// TODO: allow update of RouteSpec?
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 		return nil // Grafana itself or Route not enabled, do nothing.
+	}
+
+	// Add annotations if specified
+	if len(cr.Spec.Grafana.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Grafana.Ingress.Annotations
 	}
 
 	if len(cr.Spec.Grafana.Host) > 0 {
@@ -114,6 +120,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("grafana", cr)
 
+	// Override RouteSpec if specified
+	if cr.Spec.Grafana.Route.Spec != nil {
+		route.Spec = *cr.Spec.Grafana.Route.Spec
+	}
+
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
 	}
@@ -124,15 +135,20 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 		return nil // Prometheus itself or Route not enabled, do nothing.
+	}
+
+	// Add annotations if specified
+	if len(cr.Spec.Prometheus.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Prometheus.Ingress.Annotations
 	}
 
 	if len(cr.Spec.Prometheus.Host) > 0 {
@@ -146,6 +162,11 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = "prometheus-operated"
 
+	// Override RouteSpec if specified
+	if cr.Spec.Prometheus.Route.Spec != nil {
+		route.Spec = *cr.Spec.Prometheus.Route.Spec
+	}
+
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
 	}
@@ -156,15 +177,20 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Server.Route {
+		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Server.Route {
+	if !cr.Spec.Server.Route.Enabled {
 		return nil // Route not enabled, move along...
+	}
+
+	// Add annotations if specified
+	if len(cr.Spec.Server.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Server.Ingress.Annotations
 	}
 
 	if len(cr.Spec.Server.Host) > 0 {
@@ -192,6 +218,11 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationPassthrough,
 		}
+	}
+
+	// Override RouteSpec if specified
+	if cr.Spec.Server.Route.Spec != nil {
+		route.Spec = *cr.Spec.Server.Route.Spec
 	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {

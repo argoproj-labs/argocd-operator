@@ -149,9 +149,161 @@ spec:
                   description: Image is the Grafana container image.
                   type: string
                 ingress:
-                  description: Ingress toggles an Ingress resource for the Grafana
-                    conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for the Grafana Ingress
+                    resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Ingress resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle ingress support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the underlying IngresSpec
+                        for the Ingress resource.
+                      properties:
+                        backend:
+                          description: A default backend capable of servicing requests
+                            that don't match any rule. At least one of 'backend' or
+                            'rules' must be specified. This field is optional to allow
+                            the loadbalancer controller or defaulting logic to specify
+                            a global default.
+                          properties:
+                            serviceName:
+                              description: Specifies the name of the referenced service.
+                              type: string
+                            servicePort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: Specifies the port of the referenced service.
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - serviceName
+                          - servicePort
+                          type: object
+                        rules:
+                          description: A list of host rules used to configure the
+                            Ingress. If unspecified, or no rule matches, all traffic
+                            is sent to the default backend.
+                          items:
+                            description: IngressRule represents the rules mapping
+                              the paths under a specified host to the related backend
+                              services. Incoming requests are first evaluated for
+                              a host match, then routed to the backend associated
+                              with the matching IngressRuleValue.
+                            properties:
+                              host:
+                                description: "Host is the fully qualified domain name
+                                  of a network host, as defined by RFC 3986. Note
+                                  the following deviations from the \"host\" part
+                                  of the URI as defined in the RFC: 1. IPs are not
+                                  allowed. Currently an IngressRuleValue can only
+                                  apply to the \t  IP in the Spec of the parent Ingress.
+                                  2. The `:` delimiter is not respected because ports
+                                  are not allowed. \t  Currently the port of an Ingress
+                                  is implicitly :80 for http and \t  :443 for https.
+                                  Both these may change in the future. Incoming requests
+                                  are matched against the host before the IngressRuleValue.
+                                  If the host is unspecified, the Ingress routes all
+                                  traffic based on the specified IngressRuleValue."
+                                type: string
+                              http:
+                                description: 'HTTPIngressRuleValue is a list of http
+                                  selectors pointing to backends. In the example:
+                                  http://<host>/<path>?<searchpart> -> backend where
+                                  where parts of the url correspond to RFC 3986, this
+                                  resource will be used to match against everything
+                                  after the last ''/'' and before the first ''?''
+                                  or ''#''.'
+                                properties:
+                                  paths:
+                                    description: A collection of paths that map requests
+                                      to backends.
+                                    items:
+                                      description: HTTPIngressPath associates a path
+                                        regex with a backend. Incoming urls matching
+                                        the path are forwarded to the backend.
+                                      properties:
+                                        backend:
+                                          description: Backend defines the referenced
+                                            service endpoint to which the traffic
+                                            will be forwarded to.
+                                          properties:
+                                            serviceName:
+                                              description: Specifies the name of the
+                                                referenced service.
+                                              type: string
+                                            servicePort:
+                                              anyOf:
+                                              - type: integer
+                                              - type: string
+                                              description: Specifies the port of the
+                                                referenced service.
+                                              x-kubernetes-int-or-string: true
+                                          required:
+                                          - serviceName
+                                          - servicePort
+                                          type: object
+                                        path:
+                                          description: Path is an extended POSIX regex
+                                            as defined by IEEE Std 1003.1, (i.e this
+                                            follows the egrep/unix syntax, not the
+                                            perl syntax) matched against the path
+                                            of an incoming request. Currently it can
+                                            contain characters disallowed from the
+                                            conventional "path" part of a URL as defined
+                                            by RFC 3986. Paths must begin with a '/'.
+                                            If unspecified, the path defaults to a
+                                            catch all sending traffic to the backend.
+                                          type: string
+                                      required:
+                                      - backend
+                                      type: object
+                                    type: array
+                                required:
+                                - paths
+                                type: object
+                            type: object
+                          type: array
+                        tls:
+                          description: TLS configuration. Currently the Ingress only
+                            supports a single TLS port, 443. If multiple members of
+                            this list specify different hosts, they will be multiplexed
+                            on the same port according to the hostname specified through
+                            the SNI TLS extension, if the ingress controller fulfilling
+                            the ingress supports SNI.
+                          items:
+                            description: IngressTLS describes the transport layer
+                              security associated with an Ingress.
+                            properties:
+                              hosts:
+                                description: Hosts are a list of hosts included in
+                                  the TLS certificate. The values in this list must
+                                  match the name/s used in the tlsSecret. Defaults
+                                  to the wildcard host setting for the loadbalancer
+                                  controller fulfilling this Ingress, if left unspecified.
+                                items:
+                                  type: string
+                                type: array
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  used to terminate SSL traffic on 443. Field is left
+                                  optional to allow SSL routing based on SNI hostname
+                                  alone. If the SNI host in a listener conflicts with
+                                  the "Host" header field used by an IngressRule,
+                                  the SNI host is used for termination and value of
+                                  the Host header is used for routing.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 resources:
                   description: Resources defines the Compute Resources required by
                     the container for Grafana.
@@ -180,9 +332,179 @@ spec:
                       type: object
                   type: object
                 route:
-                  description: Route toggles an OpenShift Route resource for the Grafana
-                    conponent if supported.
-                  type: boolean
+                  description: Route defines the desired state for the Grafana Route
+                    resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Route resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle route support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the the underlying RouteSpec
+                        for the Route resource.
+                      properties:
+                        alternateBackends:
+                          description: alternateBackends allows up to 3 additional
+                            backends to be assigned to the route. Only the Service
+                            kind is allowed, and it will be defaulted to Service.
+                            Use the weight field in RouteTargetReference object to
+                            specify relative preference.
+                          items:
+                            description: RouteTargetReference specifies the target
+                              that resolve into endpoints. Only the 'Service' kind
+                              is allowed. Use 'weight' field to emphasize one over
+                              others.
+                            properties:
+                              kind:
+                                description: The kind of target that the route is
+                                  referring to. Currently, only 'Service' is allowed
+                                type: string
+                              name:
+                                description: name of the service/target that is being
+                                  referred to. e.g. name of the service
+                                type: string
+                              weight:
+                                description: weight as an integer between 0 and 256,
+                                  default 100, that specifies the target's relative
+                                  weight against other target reference objects. 0
+                                  suppresses requests to this backend.
+                                format: int32
+                                type: integer
+                            required:
+                            - kind
+                            - name
+                            - weight
+                            type: object
+                          type: array
+                        host:
+                          description: host is an alias/DNS that points to the service.
+                            Optional. If not specified a route name will typically
+                            be automatically chosen. Must follow DNS952 subdomain
+                            conventions.
+                          type: string
+                        path:
+                          description: path that the router watches for, to route
+                            traffic for to the service. Optional
+                          type: string
+                        port:
+                          description: If specified, the port to be used by the router.
+                            Most routers will use all endpoints exposed by the service
+                            by default - set this value to instruct routers which
+                            port to use.
+                          properties:
+                            targetPort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: The target port on pods selected by the
+                                service this route points to. If this is a string,
+                                it will be looked up as a named port in the target
+                                endpoints port list. Required
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - targetPort
+                          type: object
+                        subdomain:
+                          description: "subdomain is a DNS subdomain that is requested
+                            within the ingress controller's domain (as a subdomain).
+                            If host is set this field is ignored. An ingress controller
+                            may choose to ignore this suggested name, in which case
+                            the controller will report the assigned name in the status.ingress
+                            array or refuse to admit the route. If this value is set
+                            and the server does not support this field host will be
+                            populated automatically. Otherwise host is left empty.
+                            The field may have multiple parts separated by a dot,
+                            but not all ingress controllers may honor the request.
+                            This field may not be changed after creation except by
+                            a user with the update routes/custom-host permission.
+                            \n Example: subdomain `frontend` automatically receives
+                            the router subdomain `apps.mycluster.com` to have a full
+                            hostname `frontend.apps.mycluster.com`."
+                          type: string
+                        tls:
+                          description: The tls field provides the ability to configure
+                            certificates and termination for the route.
+                          properties:
+                            caCertificate:
+                              description: caCertificate provides the cert authority
+                                certificate contents
+                              type: string
+                            certificate:
+                              description: certificate provides certificate contents
+                              type: string
+                            destinationCACertificate:
+                              description: destinationCACertificate provides the contents
+                                of the ca certificate of the final destination.  When
+                                using reencrypt termination this file should be provided
+                                in order to have routers use it for health checks
+                                on the secure connection. If this field is not specified,
+                                the router may provide its own destination CA and
+                                perform hostname validation using the short service
+                                name (service.namespace.svc), which allows infrastructure
+                                generated certificates to automatically verify.
+                              type: string
+                            insecureEdgeTerminationPolicy:
+                              description: "insecureEdgeTerminationPolicy indicates
+                                the desired behavior for insecure connections to a
+                                route. While each router may make its own decisions
+                                on which ports to expose, this is normally port 80.
+                                \n * Allow - traffic is sent to the server on the
+                                insecure port (default) * Disable - no traffic is
+                                allowed on the insecure port. * Redirect - clients
+                                are redirected to the secure port."
+                              type: string
+                            key:
+                              description: key provides key file contents
+                              type: string
+                            termination:
+                              description: termination indicates termination type.
+                              type: string
+                          required:
+                          - termination
+                          type: object
+                        to:
+                          description: to is an object the route should use as the
+                            primary backend. Only the Service kind is allowed, and
+                            it will be defaulted to Service. If the weight field (0-256
+                            default 100) is set to zero, no traffic will be sent to
+                            this backend.
+                          properties:
+                            kind:
+                              description: The kind of target that the route is referring
+                                to. Currently, only 'Service' is allowed
+                              type: string
+                            name:
+                              description: name of the service/target that is being
+                                referred to. e.g. name of the service
+                              type: string
+                            weight:
+                              description: weight as an integer between 0 and 256,
+                                default 100, that specifies the target's relative
+                                weight against other target reference objects. 0 suppresses
+                                requests to this backend.
+                              format: int32
+                              type: integer
+                          required:
+                          - kind
+                          - name
+                          - weight
+                          type: object
+                        wildcardPolicy:
+                          description: Wildcard policy if any for the route. Currently
+                            only 'Subdomain' or 'None' is allowed.
+                          type: string
+                      required:
+                      - host
+                      - to
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 size:
                   description: Size is the replica count for the Grafana Deployment.
                   format: int32
@@ -227,19 +549,6 @@ spec:
               required:
               - name
               type: object
-            ingress:
-              description: Ingress defines the Ingress options for ArgoCD.
-              properties:
-                annotations:
-                  additionalProperties:
-                    type: string
-                  description: Annotations is the map of annotations to use for the
-                    Ingress resource.
-                  type: object
-                path:
-                  description: Path used for the Ingress resource.
-                  type: string
-              type: object
             initialRepositories:
               description: InitialRepositories to configure Argo CD with upon creation
                 of the cluster.
@@ -267,13 +576,335 @@ spec:
                   description: Host is the hostname to use for Ingress/Route resources.
                   type: string
                 ingress:
-                  description: Ingress toggles an Ingress resource for the Prometheus
-                    conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for the Prometheus
+                    Ingress resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Ingress resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle ingress support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the underlying IngresSpec
+                        for the Ingress resource.
+                      properties:
+                        backend:
+                          description: A default backend capable of servicing requests
+                            that don't match any rule. At least one of 'backend' or
+                            'rules' must be specified. This field is optional to allow
+                            the loadbalancer controller or defaulting logic to specify
+                            a global default.
+                          properties:
+                            serviceName:
+                              description: Specifies the name of the referenced service.
+                              type: string
+                            servicePort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: Specifies the port of the referenced service.
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - serviceName
+                          - servicePort
+                          type: object
+                        rules:
+                          description: A list of host rules used to configure the
+                            Ingress. If unspecified, or no rule matches, all traffic
+                            is sent to the default backend.
+                          items:
+                            description: IngressRule represents the rules mapping
+                              the paths under a specified host to the related backend
+                              services. Incoming requests are first evaluated for
+                              a host match, then routed to the backend associated
+                              with the matching IngressRuleValue.
+                            properties:
+                              host:
+                                description: "Host is the fully qualified domain name
+                                  of a network host, as defined by RFC 3986. Note
+                                  the following deviations from the \"host\" part
+                                  of the URI as defined in the RFC: 1. IPs are not
+                                  allowed. Currently an IngressRuleValue can only
+                                  apply to the \t  IP in the Spec of the parent Ingress.
+                                  2. The `:` delimiter is not respected because ports
+                                  are not allowed. \t  Currently the port of an Ingress
+                                  is implicitly :80 for http and \t  :443 for https.
+                                  Both these may change in the future. Incoming requests
+                                  are matched against the host before the IngressRuleValue.
+                                  If the host is unspecified, the Ingress routes all
+                                  traffic based on the specified IngressRuleValue."
+                                type: string
+                              http:
+                                description: 'HTTPIngressRuleValue is a list of http
+                                  selectors pointing to backends. In the example:
+                                  http://<host>/<path>?<searchpart> -> backend where
+                                  where parts of the url correspond to RFC 3986, this
+                                  resource will be used to match against everything
+                                  after the last ''/'' and before the first ''?''
+                                  or ''#''.'
+                                properties:
+                                  paths:
+                                    description: A collection of paths that map requests
+                                      to backends.
+                                    items:
+                                      description: HTTPIngressPath associates a path
+                                        regex with a backend. Incoming urls matching
+                                        the path are forwarded to the backend.
+                                      properties:
+                                        backend:
+                                          description: Backend defines the referenced
+                                            service endpoint to which the traffic
+                                            will be forwarded to.
+                                          properties:
+                                            serviceName:
+                                              description: Specifies the name of the
+                                                referenced service.
+                                              type: string
+                                            servicePort:
+                                              anyOf:
+                                              - type: integer
+                                              - type: string
+                                              description: Specifies the port of the
+                                                referenced service.
+                                              x-kubernetes-int-or-string: true
+                                          required:
+                                          - serviceName
+                                          - servicePort
+                                          type: object
+                                        path:
+                                          description: Path is an extended POSIX regex
+                                            as defined by IEEE Std 1003.1, (i.e this
+                                            follows the egrep/unix syntax, not the
+                                            perl syntax) matched against the path
+                                            of an incoming request. Currently it can
+                                            contain characters disallowed from the
+                                            conventional "path" part of a URL as defined
+                                            by RFC 3986. Paths must begin with a '/'.
+                                            If unspecified, the path defaults to a
+                                            catch all sending traffic to the backend.
+                                          type: string
+                                      required:
+                                      - backend
+                                      type: object
+                                    type: array
+                                required:
+                                - paths
+                                type: object
+                            type: object
+                          type: array
+                        tls:
+                          description: TLS configuration. Currently the Ingress only
+                            supports a single TLS port, 443. If multiple members of
+                            this list specify different hosts, they will be multiplexed
+                            on the same port according to the hostname specified through
+                            the SNI TLS extension, if the ingress controller fulfilling
+                            the ingress supports SNI.
+                          items:
+                            description: IngressTLS describes the transport layer
+                              security associated with an Ingress.
+                            properties:
+                              hosts:
+                                description: Hosts are a list of hosts included in
+                                  the TLS certificate. The values in this list must
+                                  match the name/s used in the tlsSecret. Defaults
+                                  to the wildcard host setting for the loadbalancer
+                                  controller fulfilling this Ingress, if left unspecified.
+                                items:
+                                  type: string
+                                type: array
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  used to terminate SSL traffic on 443. Field is left
+                                  optional to allow SSL routing based on SNI hostname
+                                  alone. If the SNI host in a listener conflicts with
+                                  the "Host" header field used by an IngressRule,
+                                  the SNI host is used for termination and value of
+                                  the Host header is used for routing.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 route:
-                  description: Route toggles an OpenShift Route resource for the Prometheus
-                    conponent if supported.
-                  type: boolean
+                  description: Route defines the desired state for the Prometheus
+                    Route resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Route resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle route support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the the underlying RouteSpec
+                        for the Route resource.
+                      properties:
+                        alternateBackends:
+                          description: alternateBackends allows up to 3 additional
+                            backends to be assigned to the route. Only the Service
+                            kind is allowed, and it will be defaulted to Service.
+                            Use the weight field in RouteTargetReference object to
+                            specify relative preference.
+                          items:
+                            description: RouteTargetReference specifies the target
+                              that resolve into endpoints. Only the 'Service' kind
+                              is allowed. Use 'weight' field to emphasize one over
+                              others.
+                            properties:
+                              kind:
+                                description: The kind of target that the route is
+                                  referring to. Currently, only 'Service' is allowed
+                                type: string
+                              name:
+                                description: name of the service/target that is being
+                                  referred to. e.g. name of the service
+                                type: string
+                              weight:
+                                description: weight as an integer between 0 and 256,
+                                  default 100, that specifies the target's relative
+                                  weight against other target reference objects. 0
+                                  suppresses requests to this backend.
+                                format: int32
+                                type: integer
+                            required:
+                            - kind
+                            - name
+                            - weight
+                            type: object
+                          type: array
+                        host:
+                          description: host is an alias/DNS that points to the service.
+                            Optional. If not specified a route name will typically
+                            be automatically chosen. Must follow DNS952 subdomain
+                            conventions.
+                          type: string
+                        path:
+                          description: path that the router watches for, to route
+                            traffic for to the service. Optional
+                          type: string
+                        port:
+                          description: If specified, the port to be used by the router.
+                            Most routers will use all endpoints exposed by the service
+                            by default - set this value to instruct routers which
+                            port to use.
+                          properties:
+                            targetPort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: The target port on pods selected by the
+                                service this route points to. If this is a string,
+                                it will be looked up as a named port in the target
+                                endpoints port list. Required
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - targetPort
+                          type: object
+                        subdomain:
+                          description: "subdomain is a DNS subdomain that is requested
+                            within the ingress controller's domain (as a subdomain).
+                            If host is set this field is ignored. An ingress controller
+                            may choose to ignore this suggested name, in which case
+                            the controller will report the assigned name in the status.ingress
+                            array or refuse to admit the route. If this value is set
+                            and the server does not support this field host will be
+                            populated automatically. Otherwise host is left empty.
+                            The field may have multiple parts separated by a dot,
+                            but not all ingress controllers may honor the request.
+                            This field may not be changed after creation except by
+                            a user with the update routes/custom-host permission.
+                            \n Example: subdomain `frontend` automatically receives
+                            the router subdomain `apps.mycluster.com` to have a full
+                            hostname `frontend.apps.mycluster.com`."
+                          type: string
+                        tls:
+                          description: The tls field provides the ability to configure
+                            certificates and termination for the route.
+                          properties:
+                            caCertificate:
+                              description: caCertificate provides the cert authority
+                                certificate contents
+                              type: string
+                            certificate:
+                              description: certificate provides certificate contents
+                              type: string
+                            destinationCACertificate:
+                              description: destinationCACertificate provides the contents
+                                of the ca certificate of the final destination.  When
+                                using reencrypt termination this file should be provided
+                                in order to have routers use it for health checks
+                                on the secure connection. If this field is not specified,
+                                the router may provide its own destination CA and
+                                perform hostname validation using the short service
+                                name (service.namespace.svc), which allows infrastructure
+                                generated certificates to automatically verify.
+                              type: string
+                            insecureEdgeTerminationPolicy:
+                              description: "insecureEdgeTerminationPolicy indicates
+                                the desired behavior for insecure connections to a
+                                route. While each router may make its own decisions
+                                on which ports to expose, this is normally port 80.
+                                \n * Allow - traffic is sent to the server on the
+                                insecure port (default) * Disable - no traffic is
+                                allowed on the insecure port. * Redirect - clients
+                                are redirected to the secure port."
+                              type: string
+                            key:
+                              description: key provides key file contents
+                              type: string
+                            termination:
+                              description: termination indicates termination type.
+                              type: string
+                          required:
+                          - termination
+                          type: object
+                        to:
+                          description: to is an object the route should use as the
+                            primary backend. Only the Service kind is allowed, and
+                            it will be defaulted to Service. If the weight field (0-256
+                            default 100) is set to zero, no traffic will be sent to
+                            this backend.
+                          properties:
+                            kind:
+                              description: The kind of target that the route is referring
+                                to. Currently, only 'Service' is allowed
+                              type: string
+                            name:
+                              description: name of the service/target that is being
+                                referred to. e.g. name of the service
+                              type: string
+                            weight:
+                              description: weight as an integer between 0 and 256,
+                                default 100, that specifies the target's relative
+                                weight against other target reference objects. 0 suppresses
+                                requests to this backend.
+                              format: int32
+                              type: integer
+                          required:
+                          - kind
+                          - name
+                          - weight
+                          type: object
+                        wildcardPolicy:
+                          description: Wildcard policy if any for the route. Currently
+                            only 'Subdomain' or 'None' is allowed.
+                          type: string
+                      required:
+                      - host
+                      - to
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 size:
                   description: Size is the replica count for the Prometheus StatefulSet.
                   format: int32
@@ -448,17 +1079,329 @@ spec:
                       description: Host is the hostname to use for Ingress/Route resources.
                       type: string
                     ingress:
-                      description: Ingress toggles GRPC Ingress resource(s) for the
-                        Argo CD Server conponent.
-                      type: boolean
+                      description: Ingress defines the desired state for the Argo
+                        CD Server GRPC Ingress resource.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations is a map of annotations to use
+                            for the Ingress resource.
+                          type: object
+                        enabled:
+                          description: Enabled will toggle ingress support.
+                          type: boolean
+                        spec:
+                          description: Spec allows override of the underlying IngresSpec
+                            for the Ingress resource.
+                          properties:
+                            backend:
+                              description: A default backend capable of servicing
+                                requests that don't match any rule. At least one of
+                                'backend' or 'rules' must be specified. This field
+                                is optional to allow the loadbalancer controller or
+                                defaulting logic to specify a global default.
+                              properties:
+                                serviceName:
+                                  description: Specifies the name of the referenced
+                                    service.
+                                  type: string
+                                servicePort:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  description: Specifies the port of the referenced
+                                    service.
+                                  x-kubernetes-int-or-string: true
+                              required:
+                              - serviceName
+                              - servicePort
+                              type: object
+                            rules:
+                              description: A list of host rules used to configure
+                                the Ingress. If unspecified, or no rule matches, all
+                                traffic is sent to the default backend.
+                              items:
+                                description: IngressRule represents the rules mapping
+                                  the paths under a specified host to the related
+                                  backend services. Incoming requests are first evaluated
+                                  for a host match, then routed to the backend associated
+                                  with the matching IngressRuleValue.
+                                properties:
+                                  host:
+                                    description: "Host is the fully qualified domain
+                                      name of a network host, as defined by RFC 3986.
+                                      Note the following deviations from the \"host\"
+                                      part of the URI as defined in the RFC: 1. IPs
+                                      are not allowed. Currently an IngressRuleValue
+                                      can only apply to the \t  IP in the Spec of
+                                      the parent Ingress. 2. The `:` delimiter is
+                                      not respected because ports are not allowed.
+                                      \t  Currently the port of an Ingress is implicitly
+                                      :80 for http and \t  :443 for https. Both these
+                                      may change in the future. Incoming requests
+                                      are matched against the host before the IngressRuleValue.
+                                      If the host is unspecified, the Ingress routes
+                                      all traffic based on the specified IngressRuleValue."
+                                    type: string
+                                  http:
+                                    description: 'HTTPIngressRuleValue is a list of
+                                      http selectors pointing to backends. In the
+                                      example: http://<host>/<path>?<searchpart> ->
+                                      backend where where parts of the url correspond
+                                      to RFC 3986, this resource will be used to match
+                                      against everything after the last ''/'' and
+                                      before the first ''?'' or ''#''.'
+                                    properties:
+                                      paths:
+                                        description: A collection of paths that map
+                                          requests to backends.
+                                        items:
+                                          description: HTTPIngressPath associates
+                                            a path regex with a backend. Incoming
+                                            urls matching the path are forwarded to
+                                            the backend.
+                                          properties:
+                                            backend:
+                                              description: Backend defines the referenced
+                                                service endpoint to which the traffic
+                                                will be forwarded to.
+                                              properties:
+                                                serviceName:
+                                                  description: Specifies the name
+                                                    of the referenced service.
+                                                  type: string
+                                                servicePort:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
+                                                  description: Specifies the port
+                                                    of the referenced service.
+                                                  x-kubernetes-int-or-string: true
+                                              required:
+                                              - serviceName
+                                              - servicePort
+                                              type: object
+                                            path:
+                                              description: Path is an extended POSIX
+                                                regex as defined by IEEE Std 1003.1,
+                                                (i.e this follows the egrep/unix syntax,
+                                                not the perl syntax) matched against
+                                                the path of an incoming request. Currently
+                                                it can contain characters disallowed
+                                                from the conventional "path" part
+                                                of a URL as defined by RFC 3986. Paths
+                                                must begin with a '/'. If unspecified,
+                                                the path defaults to a catch all sending
+                                                traffic to the backend.
+                                              type: string
+                                          required:
+                                          - backend
+                                          type: object
+                                        type: array
+                                    required:
+                                    - paths
+                                    type: object
+                                type: object
+                              type: array
+                            tls:
+                              description: TLS configuration. Currently the Ingress
+                                only supports a single TLS port, 443. If multiple
+                                members of this list specify different hosts, they
+                                will be multiplexed on the same port according to
+                                the hostname specified through the SNI TLS extension,
+                                if the ingress controller fulfilling the ingress supports
+                                SNI.
+                              items:
+                                description: IngressTLS describes the transport layer
+                                  security associated with an Ingress.
+                                properties:
+                                  hosts:
+                                    description: Hosts are a list of hosts included
+                                      in the TLS certificate. The values in this list
+                                      must match the name/s used in the tlsSecret.
+                                      Defaults to the wildcard host setting for the
+                                      loadbalancer controller fulfilling this Ingress,
+                                      if left unspecified.
+                                    items:
+                                      type: string
+                                    type: array
+                                  secretName:
+                                    description: SecretName is the name of the secret
+                                      used to terminate SSL traffic on 443. Field
+                                      is left optional to allow SSL routing based
+                                      on SNI hostname alone. If the SNI host in a
+                                      listener conflicts with the "Host" header field
+                                      used by an IngressRule, the SNI host is used
+                                      for termination and value of the Host header
+                                      is used for routing.
+                                    type: string
+                                type: object
+                              type: array
+                          type: object
+                      required:
+                      - enabled
+                      type: object
                   type: object
                 host:
                   description: Host is the hostname to use for Ingress/Route resources.
                   type: string
                 ingress:
-                  description: Ingress toggles Ingress resource(s) for the Argo CD
-                    Server conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for the Argo CD Server
+                    Ingress resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Ingress resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle ingress support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the underlying IngresSpec
+                        for the Ingress resource.
+                      properties:
+                        backend:
+                          description: A default backend capable of servicing requests
+                            that don't match any rule. At least one of 'backend' or
+                            'rules' must be specified. This field is optional to allow
+                            the loadbalancer controller or defaulting logic to specify
+                            a global default.
+                          properties:
+                            serviceName:
+                              description: Specifies the name of the referenced service.
+                              type: string
+                            servicePort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: Specifies the port of the referenced service.
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - serviceName
+                          - servicePort
+                          type: object
+                        rules:
+                          description: A list of host rules used to configure the
+                            Ingress. If unspecified, or no rule matches, all traffic
+                            is sent to the default backend.
+                          items:
+                            description: IngressRule represents the rules mapping
+                              the paths under a specified host to the related backend
+                              services. Incoming requests are first evaluated for
+                              a host match, then routed to the backend associated
+                              with the matching IngressRuleValue.
+                            properties:
+                              host:
+                                description: "Host is the fully qualified domain name
+                                  of a network host, as defined by RFC 3986. Note
+                                  the following deviations from the \"host\" part
+                                  of the URI as defined in the RFC: 1. IPs are not
+                                  allowed. Currently an IngressRuleValue can only
+                                  apply to the \t  IP in the Spec of the parent Ingress.
+                                  2. The `:` delimiter is not respected because ports
+                                  are not allowed. \t  Currently the port of an Ingress
+                                  is implicitly :80 for http and \t  :443 for https.
+                                  Both these may change in the future. Incoming requests
+                                  are matched against the host before the IngressRuleValue.
+                                  If the host is unspecified, the Ingress routes all
+                                  traffic based on the specified IngressRuleValue."
+                                type: string
+                              http:
+                                description: 'HTTPIngressRuleValue is a list of http
+                                  selectors pointing to backends. In the example:
+                                  http://<host>/<path>?<searchpart> -> backend where
+                                  where parts of the url correspond to RFC 3986, this
+                                  resource will be used to match against everything
+                                  after the last ''/'' and before the first ''?''
+                                  or ''#''.'
+                                properties:
+                                  paths:
+                                    description: A collection of paths that map requests
+                                      to backends.
+                                    items:
+                                      description: HTTPIngressPath associates a path
+                                        regex with a backend. Incoming urls matching
+                                        the path are forwarded to the backend.
+                                      properties:
+                                        backend:
+                                          description: Backend defines the referenced
+                                            service endpoint to which the traffic
+                                            will be forwarded to.
+                                          properties:
+                                            serviceName:
+                                              description: Specifies the name of the
+                                                referenced service.
+                                              type: string
+                                            servicePort:
+                                              anyOf:
+                                              - type: integer
+                                              - type: string
+                                              description: Specifies the port of the
+                                                referenced service.
+                                              x-kubernetes-int-or-string: true
+                                          required:
+                                          - serviceName
+                                          - servicePort
+                                          type: object
+                                        path:
+                                          description: Path is an extended POSIX regex
+                                            as defined by IEEE Std 1003.1, (i.e this
+                                            follows the egrep/unix syntax, not the
+                                            perl syntax) matched against the path
+                                            of an incoming request. Currently it can
+                                            contain characters disallowed from the
+                                            conventional "path" part of a URL as defined
+                                            by RFC 3986. Paths must begin with a '/'.
+                                            If unspecified, the path defaults to a
+                                            catch all sending traffic to the backend.
+                                          type: string
+                                      required:
+                                      - backend
+                                      type: object
+                                    type: array
+                                required:
+                                - paths
+                                type: object
+                            type: object
+                          type: array
+                        tls:
+                          description: TLS configuration. Currently the Ingress only
+                            supports a single TLS port, 443. If multiple members of
+                            this list specify different hosts, they will be multiplexed
+                            on the same port according to the hostname specified through
+                            the SNI TLS extension, if the ingress controller fulfilling
+                            the ingress supports SNI.
+                          items:
+                            description: IngressTLS describes the transport layer
+                              security associated with an Ingress.
+                            properties:
+                              hosts:
+                                description: Hosts are a list of hosts included in
+                                  the TLS certificate. The values in this list must
+                                  match the name/s used in the tlsSecret. Defaults
+                                  to the wildcard host setting for the loadbalancer
+                                  controller fulfilling this Ingress, if left unspecified.
+                                items:
+                                  type: string
+                                type: array
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  used to terminate SSL traffic on 443. Field is left
+                                  optional to allow SSL routing based on SNI hostname
+                                  alone. If the SNI host in a listener conflicts with
+                                  the "Host" header field used by an IngressRule,
+                                  the SNI host is used for termination and value of
+                                  the Host header is used for routing.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 insecure:
                   description: Insecure toggles the insecure flag.
                   type: boolean
@@ -490,9 +1433,179 @@ spec:
                       type: object
                   type: object
                 route:
-                  description: Ingress toggles OpenShift Route resource(s) for the
-                    Argo CD Server conponent.
-                  type: boolean
+                  description: Route defines the desired state for the Argo CD Server
+                    Route resource.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is a map of annotations to use for
+                        the Route resource.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle route support.
+                      type: boolean
+                    spec:
+                      description: Spec allows override of the the underlying RouteSpec
+                        for the Route resource.
+                      properties:
+                        alternateBackends:
+                          description: alternateBackends allows up to 3 additional
+                            backends to be assigned to the route. Only the Service
+                            kind is allowed, and it will be defaulted to Service.
+                            Use the weight field in RouteTargetReference object to
+                            specify relative preference.
+                          items:
+                            description: RouteTargetReference specifies the target
+                              that resolve into endpoints. Only the 'Service' kind
+                              is allowed. Use 'weight' field to emphasize one over
+                              others.
+                            properties:
+                              kind:
+                                description: The kind of target that the route is
+                                  referring to. Currently, only 'Service' is allowed
+                                type: string
+                              name:
+                                description: name of the service/target that is being
+                                  referred to. e.g. name of the service
+                                type: string
+                              weight:
+                                description: weight as an integer between 0 and 256,
+                                  default 100, that specifies the target's relative
+                                  weight against other target reference objects. 0
+                                  suppresses requests to this backend.
+                                format: int32
+                                type: integer
+                            required:
+                            - kind
+                            - name
+                            - weight
+                            type: object
+                          type: array
+                        host:
+                          description: host is an alias/DNS that points to the service.
+                            Optional. If not specified a route name will typically
+                            be automatically chosen. Must follow DNS952 subdomain
+                            conventions.
+                          type: string
+                        path:
+                          description: path that the router watches for, to route
+                            traffic for to the service. Optional
+                          type: string
+                        port:
+                          description: If specified, the port to be used by the router.
+                            Most routers will use all endpoints exposed by the service
+                            by default - set this value to instruct routers which
+                            port to use.
+                          properties:
+                            targetPort:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: The target port on pods selected by the
+                                service this route points to. If this is a string,
+                                it will be looked up as a named port in the target
+                                endpoints port list. Required
+                              x-kubernetes-int-or-string: true
+                          required:
+                          - targetPort
+                          type: object
+                        subdomain:
+                          description: "subdomain is a DNS subdomain that is requested
+                            within the ingress controller's domain (as a subdomain).
+                            If host is set this field is ignored. An ingress controller
+                            may choose to ignore this suggested name, in which case
+                            the controller will report the assigned name in the status.ingress
+                            array or refuse to admit the route. If this value is set
+                            and the server does not support this field host will be
+                            populated automatically. Otherwise host is left empty.
+                            The field may have multiple parts separated by a dot,
+                            but not all ingress controllers may honor the request.
+                            This field may not be changed after creation except by
+                            a user with the update routes/custom-host permission.
+                            \n Example: subdomain `frontend` automatically receives
+                            the router subdomain `apps.mycluster.com` to have a full
+                            hostname `frontend.apps.mycluster.com`."
+                          type: string
+                        tls:
+                          description: The tls field provides the ability to configure
+                            certificates and termination for the route.
+                          properties:
+                            caCertificate:
+                              description: caCertificate provides the cert authority
+                                certificate contents
+                              type: string
+                            certificate:
+                              description: certificate provides certificate contents
+                              type: string
+                            destinationCACertificate:
+                              description: destinationCACertificate provides the contents
+                                of the ca certificate of the final destination.  When
+                                using reencrypt termination this file should be provided
+                                in order to have routers use it for health checks
+                                on the secure connection. If this field is not specified,
+                                the router may provide its own destination CA and
+                                perform hostname validation using the short service
+                                name (service.namespace.svc), which allows infrastructure
+                                generated certificates to automatically verify.
+                              type: string
+                            insecureEdgeTerminationPolicy:
+                              description: "insecureEdgeTerminationPolicy indicates
+                                the desired behavior for insecure connections to a
+                                route. While each router may make its own decisions
+                                on which ports to expose, this is normally port 80.
+                                \n * Allow - traffic is sent to the server on the
+                                insecure port (default) * Disable - no traffic is
+                                allowed on the insecure port. * Redirect - clients
+                                are redirected to the secure port."
+                              type: string
+                            key:
+                              description: key provides key file contents
+                              type: string
+                            termination:
+                              description: termination indicates termination type.
+                              type: string
+                          required:
+                          - termination
+                          type: object
+                        to:
+                          description: to is an object the route should use as the
+                            primary backend. Only the Service kind is allowed, and
+                            it will be defaulted to Service. If the weight field (0-256
+                            default 100) is set to zero, no traffic will be sent to
+                            this backend.
+                          properties:
+                            kind:
+                              description: The kind of target that the route is referring
+                                to. Currently, only 'Service' is allowed
+                              type: string
+                            name:
+                              description: name of the service/target that is being
+                                referred to. e.g. name of the service
+                              type: string
+                            weight:
+                              description: weight as an integer between 0 and 256,
+                                default 100, that specifies the target's relative
+                                weight against other target reference objects. 0 suppresses
+                                requests to this backend.
+                              format: int32
+                              type: integer
+                          required:
+                          - kind
+                          - name
+                          - weight
+                          type: object
+                        wildcardPolicy:
+                          description: Wildcard policy if any for the route. Currently
+                            only 'Subdomain' or 'None' is allowed.
+                          type: string
+                      required:
+                      - host
+                      - to
+                      type: object
+                  required:
+                  - enabled
+                  type: object
                 service:
                   description: Service defines the options for the Service backing
                     the ArgoCD Server component.
