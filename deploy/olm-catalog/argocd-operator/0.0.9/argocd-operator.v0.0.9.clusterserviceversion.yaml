@@ -713,6 +713,14 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - endpoints
+          verbs:
+          - get
+        serviceAccountName: argocd-redis-ha-haproxy
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
           - secrets
           - configmaps
           verbs:
