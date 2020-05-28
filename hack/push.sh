@@ -13,9 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Script to push the operator container image to the remote container registry.
 
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
+# Push the container image
 echo "Pushing image ${ARGOCD_OPERATOR_IMAGE}"
 ${ARGOCD_OPERATOR_IMAGE_BUILDER} push ${ARGOCD_OPERATOR_IMAGE}

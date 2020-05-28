@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: ingress
+spec:
+  server:
+    grpc:
+      ingress: 
+        enabled: true
+    ingress: 
+      enabled: true
+    insecure: true
