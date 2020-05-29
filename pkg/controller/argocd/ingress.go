@@ -93,7 +93,7 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
 func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
-	ingress := newIngress(cr)
+	ingress := newIngressWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.Ingress {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
