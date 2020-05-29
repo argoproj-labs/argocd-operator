@@ -141,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	// Add TLS options
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
-			Hosts:      []string{cr.Name},
+			Hosts:      []string{getArgoServerHost(cr)},
 			SecretName: common.ArgoCDSecretName,
 		},
 	}
@@ -201,7 +201,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	// Add TLS options
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
-			Hosts:      []string{cr.Name},
+			Hosts:      []string{getArgoServerGRPCHost(cr)},
 			SecretName: common.ArgoCDSecretName,
 		},
 	}
