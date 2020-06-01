@@ -1,13 +1,11 @@
-# upstream-registry-builder v1.12.4
-FROM quay.io/operator-framework/upstream-registry-builder@sha256:8d392ab0587d5bcd19a40d60ac6bc8214e6b515605be3113edd01ea99ce95942 as builder
-
-COPY manifests manifests
-RUN ./bin/initializer -o ./bundles.db
-
 FROM scratch
-COPY --from=builder /build/bundles.db /bundles.db
-COPY --from=builder /build/bin/registry-server /registry-server
-COPY --from=builder /bin/grpc_health_probe /bin/grpc_health_probe
-EXPOSE 50051
-ENTRYPOINT ["/registry-server"]
-CMD ["--database", "bundles.db"]
+
+LABEL operators.operatorframework.io.bundle.channel.default.v1=alpha
+LABEL operators.operatorframework.io.bundle.channels.v1=alpha
+LABEL operators.operatorframework.io.bundle.manifests.v1=manifests/
+LABEL operators.operatorframework.io.bundle.mediatype.v1=registry+v1
+LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
+LABEL operators.operatorframework.io.bundle.package.v1=argocd-operator
+
+ADD manifests/*.yaml /manifests/
+ADD metadata/annotations.yaml /metadata/annotations.yaml

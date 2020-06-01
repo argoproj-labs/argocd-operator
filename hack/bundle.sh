@@ -13,6 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Script to build a bundle container image for publishing the operator in OLM.
 
 set -e
 
@@ -27,12 +29,16 @@ cp -r ${ARGOCD_OPERATOR_BUNDLE_DIR}/* ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/
 
 # Copy manifests 
 mkdir -p ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/manifests
-cp -r ${ARGOCD_OPERATOR_BUNDLE_MANIFEST_DIR} ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/manifests/
+cp ${ARGOCD_OPERATOR_BUNDLE_MANIFEST_DIR}/*.yaml ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/manifests/
 
-# Build the bundle registry container image
+# Copy metadata
+mkdir -p ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/metadata
+cp ${ARGOCD_OPERATOR_BUNDLE_METADATA_DIR}/*.yaml ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}/metadata/
+
+# Build the bundle container image
 echo "Building image ${ARGOCD_OPERATOR_BUNDLE_IMAGE}"
 ${ARGOCD_OPERATOR_IMAGE_BUILDER} build -t ${ARGOCD_OPERATOR_BUNDLE_IMAGE} ${ARGOCD_OPERATOR_BUNDLE_BUILD_DIR}
 
-# Push the bundle registry container image
+# Push the bundle container image
 echo "Pushing image ${ARGOCD_OPERATOR_BUNDLE_IMAGE}"
 ${ARGOCD_OPERATOR_IMAGE_BUILDER} push ${ARGOCD_OPERATOR_BUNDLE_IMAGE}

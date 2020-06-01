@@ -13,10 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Script to generate the operator documentation.
 
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
+# Generate go API docs
 refdocs \
     -api-dir "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1" \
     -config "${ARGOCD_OPERATOR_DOCS_DIR}/apidocs-config.json" \
