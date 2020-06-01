@@ -92,27 +92,48 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route {
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Grafana.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Grafana.Route.Annotations
+	}
+
+	// Allow override of the Host for the Route.
 	if len(cr.Spec.Grafana.Host) > 0 {
-		route.Spec.Host = cr.Spec.Grafana.Host
+		route.Spec.Host = cr.Spec.Grafana.Host // TODO: What additional role needed for this?
+	}
+
+	// Allow override of the Path for the Route
+	if len(cr.Spec.Grafana.Route.Path) > 0 {
+		route.Spec.Path = cr.Spec.Grafana.Route.Path
 	}
 
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("http"),
 	}
 
+	// Allow override of TLS options for the Route
+	if cr.Spec.Grafana.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Grafana.Route.TLS
+	}
+
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("grafana", cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Grafana.Route.WildcardPolicy
+	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
@@ -124,27 +145,43 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route {
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 		return nil // Prometheus itself or Route not enabled, do nothing.
 	}
 
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Prometheus.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Prometheus.Route.Annotations
+	}
+
+	// Allow override of the Host for the Route.
 	if len(cr.Spec.Prometheus.Host) > 0 {
-		route.Spec.Host = cr.Spec.Prometheus.Host
+		route.Spec.Host = cr.Spec.Prometheus.Host // TODO: What additional role needed for this?
 	}
 
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("web"),
 	}
 
+	// Allow override of TLS options for the Route
+	if cr.Spec.Prometheus.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Prometheus.Route.TLS
+	}
+
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = "prometheus-operated"
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Prometheus.Route.WildcardPolicy != nil && len(*cr.Spec.Prometheus.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Prometheus.Route.WildcardPolicy
+	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
@@ -156,23 +193,26 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
-		if !cr.Spec.Server.Route {
+		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
 	}
 
-	if !cr.Spec.Server.Route {
+	if !cr.Spec.Server.Route.Enabled {
 		return nil // Route not enabled, move along...
 	}
 
-	if len(cr.Spec.Server.Host) > 0 {
-		route.Spec.Host = cr.Spec.Server.Host
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Server.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Server.Route.Annotations
 	}
 
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("server", cr)
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Server.Host) > 0 {
+		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
+	}
 
 	if cr.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
@@ -192,6 +232,19 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationPassthrough,
 		}
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Server.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Server.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = nameWithSuffix("server", cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
 	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
