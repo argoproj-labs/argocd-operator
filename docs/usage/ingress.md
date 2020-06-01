@@ -86,9 +86,9 @@ metadata:
   labels:
     example: ingress
 spec:
-  ingress:
-    enabled: true
   server:
+    ingress:
+      enabled: true
     insecure: true
 ```
 

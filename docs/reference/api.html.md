@@ -60,7 +60,7 @@ string
 </em>
 </td>
 <td>
-<p>ApplicationInstanceLabelKey</p>
+<p>ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.</p>
 </td>
 </tr>
 <tr>
@@ -137,6 +137,19 @@ ArgoCDGrafanaSpec
 </tr>
 <tr>
 <td>
+<code>ha</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDHASpec">
+ArgoCDHASpec
+</a>
+</em>
+</td>
+<td>
+<p>HA options for High Availability support for the Redis component.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>helpChatURL</code></br>
 <em>
 string
@@ -183,15 +196,24 @@ ArgoCDImportSpec
 </tr>
 <tr>
 <td>
-<code>ingress</code></br>
+<code>initialRepositories</code></br>
 <em>
-<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
-ArgoCDIngressSpec
-</a>
+string
 </em>
 </td>
 <td>
-<p>Ingress defines the Ingress options for ArgoCD.</p>
+<p>InitialRepositories to configure Argo CD with upon creation of the cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialSSHKnownHosts</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.</p>
 </td>
 </tr>
 <tr>
@@ -213,7 +235,7 @@ string
 </em>
 </td>
 <td>
-<p>OIDCConfig is the configuration as an alternative to dex.</p>
+<p>OIDCConfig is the OIDC configuration as an alternative to dex.</p>
 </td>
 </tr>
 <tr>
@@ -257,13 +279,15 @@ ArgoCDRedisSpec
 </tr>
 <tr>
 <td>
-<code>repositories</code></br>
+<code>repo</code></br>
 <em>
-string
+<a href="#argoproj.io/v1alpha1.ArgoCDRepoSpec">
+ArgoCDRepoSpec
+</a>
 </em>
 </td>
 <td>
-<p>Repositories to configure Argo CD with.</p>
+<p>Repo defines the repo server options for Argo CD.</p>
 </td>
 </tr>
 <tr>
@@ -299,17 +323,6 @@ ArgoCDServerSpec
 </td>
 <td>
 <p>Server defines the options for the ArgoCD Server component.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sshKnownHosts</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.</p>
 </td>
 </tr>
 <tr>
@@ -444,6 +457,20 @@ ArgoCDApplicationControllerProcessorsSpec
 </em>
 </td>
 <td>
+<p>Processors contains the options for the Application Controller processors.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for the Application Controller.</p>
 </td>
 </tr>
 </tbody>
@@ -593,6 +620,19 @@ bool
 </tr>
 <tr>
 <td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for Dex.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -652,7 +692,18 @@ string
 </em>
 </td>
 <td>
-<p>ArgoCD is the name of the ArgoCD instance to export.</p>
+<p>Argocd is the name of the ArgoCD instance to export.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the container image to use for the export Job.</p>
 </td>
 </tr>
 <tr>
@@ -679,6 +730,17 @@ ArgoCDExportStorageSpec
 <p>Storage defines the storage configuration options.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Version is the tag/digest to use for the export Job container image.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -692,38 +754,6 @@ ArgoCDExportStatus
 </em>
 </td>
 <td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="argoproj.io/v1alpha1.ArgoCDExportLocalStorageSpec">ArgoCDExportLocalStorageSpec
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#argoproj.io/v1alpha1.ArgoCDExportStorageSpec">ArgoCDExportStorageSpec</a>)
-</p>
-<p>
-<p>ArgoCDExportLocalStorageSpec defines the desired state for local storage.</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>pvc</code></br>
-<em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaimspec-v1-core">
-Kubernetes core/v1.PersistentVolumeClaimSpec
-</a>
-</em>
-</td>
-<td>
-<p>PVC is the desired characteristics for a PersistentVolumeClaim.</p>
 </td>
 </tr>
 </tbody>
@@ -753,7 +783,18 @@ string
 </em>
 </td>
 <td>
-<p>ArgoCD is the name of the ArgoCD instance to export.</p>
+<p>Argocd is the name of the ArgoCD instance to export.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the container image to use for the export Job.</p>
 </td>
 </tr>
 <tr>
@@ -778,6 +819,17 @@ ArgoCDExportStorageSpec
 </td>
 <td>
 <p>Storage defines the storage configuration options.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Version is the tag/digest to use for the export Job container image.</p>
 </td>
 </tr>
 </tbody>
@@ -837,15 +889,37 @@ Unknown: For some reason the state of the ArgoCDExport could not be obtained.</p
 <tbody>
 <tr>
 <td>
-<code>local</code></br>
+<code>backend</code></br>
 <em>
-<a href="#argoproj.io/v1alpha1.ArgoCDExportLocalStorageSpec">
-ArgoCDExportLocalStorageSpec
+string
+</em>
+</td>
+<td>
+<p>Backend defines the storage backend to use, must be &ldquo;local&rdquo; (the default), &ldquo;aws&rdquo;, &ldquo;azure&rdquo; or &ldquo;gcp&rdquo;.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pvc</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaimspec-v1-core">
+Kubernetes core/v1.PersistentVolumeClaimSpec
 </a>
 </em>
 </td>
 <td>
-<p>Local defines options for storage local to the cluster.</p>
+<p>PVC is the desired characteristics for a PersistentVolumeClaim.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secretName</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SecretName is the name of a Secret with encryption key, credentials, etc.</p>
 </td>
 </tr>
 </tbody>
@@ -857,7 +931,7 @@ ArgoCDExportLocalStorageSpec
 <a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
 </p>
 <p>
-<p>ArgoCDGrafanaSpec defines the desired state for the Grafana server component.</p>
+<p>ArgoCDGrafanaSpec defines the desired state for the Grafana component.</p>
 </p>
 <table>
 <thead>
@@ -902,6 +976,43 @@ string
 </tr>
 <tr>
 <td>
+<code>ingress</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
+</em>
+</td>
+<td>
+<p>Ingress defines the desired state for an Ingress for the Grafana component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for Grafana.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>route</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Route toggles an OpenShift Route resource for the Grafana conponent if supported.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>size</code></br>
 <em>
 int32
@@ -920,6 +1031,36 @@ string
 </td>
 <td>
 <p>Version is the Grafana container image tag.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDHASpec">ArgoCDHASpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+</p>
+<p>
+<p>ArgoCDHASpec defines the desired state for High Availability support for Argo CD.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled will toggle HA support globally for Argo CD.</p>
 </td>
 </tr>
 </tbody>
@@ -969,7 +1110,10 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+<a href="#argoproj.io/v1alpha1.ArgoCDGrafanaSpec">ArgoCDGrafanaSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDServerGRPCSpec">ArgoCDServerGRPCSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDServerSpec">ArgoCDServerSpec</a>)
 </p>
 <p>
 <p>ArgoCDIngressSpec defines the desired state for the Ingress resources.</p>
@@ -990,7 +1134,7 @@ map[string]string
 </em>
 </td>
 <td>
-<p>Annotations is the map of annotations to use for the Ingress resource.</p>
+<p>Annotations is the map of annotations to apply to the Ingress.</p>
 </td>
 </tr>
 <tr>
@@ -1001,7 +1145,7 @@ bool
 </em>
 </td>
 <td>
-<p>Enabled will toggle Ingress support globally for ArgoCD.</p>
+<p>Enabled will toggle the creation of the Ingress.</p>
 </td>
 </tr>
 <tr>
@@ -1012,7 +1156,25 @@ string
 </em>
 </td>
 <td>
-<p>Path is the path to use for the Ingress resource.</p>
+<p>Path used for the Ingress resource.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ingresstls-v1beta1-extensions">
+[]Kubernetes extensions/v1beta1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS configuration. Currently the Ingress only supports a single TLS
+port, 443. If multiple members of this list specify different hosts, they
+will be multiplexed on the same port according to the hostname specified
+through the SNI TLS extension, if the ingress controller fulfilling the
+ingress supports SNI.</p>
 </td>
 </tr>
 </tbody>
@@ -1058,6 +1220,30 @@ string
 </tr>
 <tr>
 <td>
+<code>ingress</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
+</em>
+</td>
+<td>
+<p>Ingress defines the desired state for an Ingress for the Prometheus component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>route</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Route toggles an OpenShift Route resource for the Prometheus conponent if supported.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>size</code></br>
 <em>
 int32
@@ -1088,6 +1274,19 @@ int32
 <tbody>
 <tr>
 <td>
+<code>defaultPolicy</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DefaultPolicy is the name of the default role which Argo CD will falls back to, when
+authorizing API requests (optional). If omitted or empty, users may be still be able to login,
+but will see no apps, projects, etc&hellip;</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>policy</code></br>
 <em>
 string
@@ -1100,19 +1299,6 @@ p, subject, resource, action, object, effect
 Role definitions and bindings are in the form:
 g, subject, inherited-subject
 See <a href="https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md">https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md</a> for additional information.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>defaultPolicy</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>DefaultPolicy is the name of the default role which Argo CD will falls back to, when
-authorizing API requests (optional). If omitted or empty, users may be still be able to login,
-but will see no apps, projects, etc&hellip;</p>
 </td>
 </tr>
 <tr>
@@ -1159,6 +1345,19 @@ string
 </tr>
 <tr>
 <td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for Redis.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>version</code></br>
 <em>
 string
@@ -1166,6 +1365,81 @@ string
 </td>
 <td>
 <p>Version is the Redis container image tag.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDRepoSpec">ArgoCDRepoSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+</p>
+<p>
+<p>ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for Redis.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDServerAutoscaleSpec">ArgoCDServerAutoscaleSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDServerSpec">ArgoCDServerSpec</a>)
+</p>
+<p>
+<p>ArgoCDServerAutoscaleSpec defines the desired state for autoscaling the Argo CD Server component.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled will toggle autoscaling support for the Argo CD Server component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>hpa</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#horizontalpodautoscalerspec-v1-autoscaling">
+Kubernetes autoscaling/v1.HorizontalPodAutoscalerSpec
+</a>
+</em>
+</td>
+<td>
+<p>HPA defines the HorizontalPodAutoscaler options for the Argo CD Server component.</p>
 </td>
 </tr>
 </tbody>
@@ -1196,6 +1470,19 @@ string
 </td>
 <td>
 <p>Host is the hostname to use for Ingress/Route resources.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingress</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
+</em>
+</td>
+<td>
+<p>Ingress defines the desired state for the Argo CD Server GRPC Ingress.</p>
 </td>
 </tr>
 </tbody>
@@ -1251,6 +1538,19 @@ Kubernetes core/v1.ServiceType
 <tbody>
 <tr>
 <td>
+<code>autoscale</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDServerAutoscaleSpec">
+ArgoCDServerAutoscaleSpec
+</a>
+</em>
+</td>
+<td>
+<p>Autoscale defines the autoscale options for the Argo CD Server component.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>grpc</code></br>
 <em>
 <a href="#argoproj.io/v1alpha1.ArgoCDServerGRPCSpec">
@@ -1275,6 +1575,19 @@ string
 </tr>
 <tr>
 <td>
+<code>ingress</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
+</em>
+</td>
+<td>
+<p>Ingress defines the desired state for an Ingress for the Argo CD Server component.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>insecure</code></br>
 <em>
 bool
@@ -1282,6 +1595,30 @@ bool
 </td>
 <td>
 <p>Insecure toggles the insecure flag.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for the Argo CD server component.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>route</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Ingress toggles OpenShift Route resource(s) for the Argo CD Server conponent.</p>
 </td>
 </tr>
 <tr>
@@ -1324,7 +1661,7 @@ string
 </em>
 </td>
 <td>
-<p>ApplicationInstanceLabelKey</p>
+<p>ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.</p>
 </td>
 </tr>
 <tr>
@@ -1401,6 +1738,19 @@ ArgoCDGrafanaSpec
 </tr>
 <tr>
 <td>
+<code>ha</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDHASpec">
+ArgoCDHASpec
+</a>
+</em>
+</td>
+<td>
+<p>HA options for High Availability support for the Redis component.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>helpChatURL</code></br>
 <em>
 string
@@ -1447,15 +1797,24 @@ ArgoCDImportSpec
 </tr>
 <tr>
 <td>
-<code>ingress</code></br>
+<code>initialRepositories</code></br>
 <em>
-<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
-ArgoCDIngressSpec
-</a>
+string
 </em>
 </td>
 <td>
-<p>Ingress defines the Ingress options for ArgoCD.</p>
+<p>InitialRepositories to configure Argo CD with upon creation of the cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initialSSHKnownHosts</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.</p>
 </td>
 </tr>
 <tr>
@@ -1477,7 +1836,7 @@ string
 </em>
 </td>
 <td>
-<p>OIDCConfig is the configuration as an alternative to dex.</p>
+<p>OIDCConfig is the OIDC configuration as an alternative to dex.</p>
 </td>
 </tr>
 <tr>
@@ -1521,13 +1880,15 @@ ArgoCDRedisSpec
 </tr>
 <tr>
 <td>
-<code>repositories</code></br>
+<code>repo</code></br>
 <em>
-string
+<a href="#argoproj.io/v1alpha1.ArgoCDRepoSpec">
+ArgoCDRepoSpec
+</a>
 </em>
 </td>
 <td>
-<p>Repositories to configure Argo CD with.</p>
+<p>Repo defines the repo server options for Argo CD.</p>
 </td>
 </tr>
 <tr>
@@ -1563,17 +1924,6 @@ ArgoCDServerSpec
 </td>
 <td>
 <p>Server defines the options for the ArgoCD Server component.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>sshKnownHosts</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>SSHKnownHosts defines the SSH known hosts data for connecting Git repositories via SSH.</p>
 </td>
 </tr>
 <tr>
@@ -1653,9 +2003,25 @@ string
 <p>Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 There are five possible phase values:
 Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
-Running: All of the containers for the ArgoCD are running, or in the process of starting or restarting.
-Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
-Unknown: For some reason the state of the ArgoCD could not be obtained.</p>
+Available: All of the resources for the ArgoCD are ready.
+Failed: At least one resource has experienced a failure.
+Unknown: For some reason the state of the ArgoCD phase could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
+There are five possible server values:
+Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD server component are in a Ready state.
+Failed: At least one of the  Argo CD server component Pods had a failure.
+Unknown: For some reason the state of the Argo CD server component could not be obtained.</p>
 </td>
 </tr>
 </tbody>
@@ -1692,13 +2058,13 @@ ArgoCDCASpec
 </tr>
 <tr>
 <td>
-<code>certs</code></br>
+<code>initialCerts</code></br>
 <em>
 map[string]string
 </em>
 </td>
 <td>
-<p>Certs defines custom TLS certificates for connecting Git repositories via HTTPS.</p>
+<p>InitialCerts defines custom TLS certificates upon creation of the cluster for connecting Git repositories via HTTPS.</p>
 </td>
 </tr>
 </tbody>
@@ -1706,5 +2072,5 @@ map[string]string
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>4ff4739</code>.
+on git commit <code>a56324b</code>.
 </em></p>

@@ -149,9 +149,55 @@ spec:
                   description: Image is the Grafana container image.
                   type: string
                 ingress:
-                  description: Ingress toggles an Ingress resource for the Grafana
-                    conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for an Ingress for
+                    the Grafana component.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is the map of annotations to apply
+                        to the Ingress.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle the creation of the Ingress.
+                      type: boolean
+                    path:
+                      description: Path used for the Ingress resource.
+                      type: string
+                    tls:
+                      description: TLS configuration. Currently the Ingress only supports
+                        a single TLS port, 443. If multiple members of this list specify
+                        different hosts, they will be multiplexed on the same port
+                        according to the hostname specified through the SNI TLS extension,
+                        if the ingress controller fulfilling the ingress supports
+                        SNI.
+                      items:
+                        description: IngressTLS describes the transport layer security
+                          associated with an Ingress.
+                        properties:
+                          hosts:
+                            description: Hosts are a list of hosts included in the
+                              TLS certificate. The values in this list must match
+                              the name/s used in the tlsSecret. Defaults to the wildcard
+                              host setting for the loadbalancer controller fulfilling
+                              this Ingress, if left unspecified.
+                            items:
+                              type: string
+                            type: array
+                          secretName:
+                            description: SecretName is the name of the secret used
+                              to terminate SSL traffic on 443. Field is left optional
+                              to allow SSL routing based on SNI hostname alone. If
+                              the SNI host in a listener conflicts with the "Host"
+                              header field used by an IngressRule, the SNI host is
+                              used for termination and value of the Host header is
+                              used for routing.
+                            type: string
+                        type: object
+                      type: array
+                  required:
+                  - enabled
+                  type: object
                 resources:
                   description: Resources defines the Compute Resources required by
                     the container for Grafana.
@@ -227,19 +273,6 @@ spec:
               required:
               - name
               type: object
-            ingress:
-              description: Ingress defines the Ingress options for ArgoCD.
-              properties:
-                annotations:
-                  additionalProperties:
-                    type: string
-                  description: Annotations is the map of annotations to use for the
-                    Ingress resource.
-                  type: object
-                path:
-                  description: Path used for the Ingress resource.
-                  type: string
-              type: object
             initialRepositories:
               description: InitialRepositories to configure Argo CD with upon creation
                 of the cluster.
@@ -267,9 +300,55 @@ spec:
                   description: Host is the hostname to use for Ingress/Route resources.
                   type: string
                 ingress:
-                  description: Ingress toggles an Ingress resource for the Prometheus
-                    conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for an Ingress for
+                    the Prometheus component.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is the map of annotations to apply
+                        to the Ingress.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle the creation of the Ingress.
+                      type: boolean
+                    path:
+                      description: Path used for the Ingress resource.
+                      type: string
+                    tls:
+                      description: TLS configuration. Currently the Ingress only supports
+                        a single TLS port, 443. If multiple members of this list specify
+                        different hosts, they will be multiplexed on the same port
+                        according to the hostname specified through the SNI TLS extension,
+                        if the ingress controller fulfilling the ingress supports
+                        SNI.
+                      items:
+                        description: IngressTLS describes the transport layer security
+                          associated with an Ingress.
+                        properties:
+                          hosts:
+                            description: Hosts are a list of hosts included in the
+                              TLS certificate. The values in this list must match
+                              the name/s used in the tlsSecret. Defaults to the wildcard
+                              host setting for the loadbalancer controller fulfilling
+                              this Ingress, if left unspecified.
+                            items:
+                              type: string
+                            type: array
+                          secretName:
+                            description: SecretName is the name of the secret used
+                              to terminate SSL traffic on 443. Field is left optional
+                              to allow SSL routing based on SNI hostname alone. If
+                              the SNI host in a listener conflicts with the "Host"
+                              header field used by an IngressRule, the SNI host is
+                              used for termination and value of the Host header is
+                              used for routing.
+                            type: string
+                        type: object
+                      type: array
+                  required:
+                  - enabled
+                  type: object
                 route:
                   description: Route toggles an OpenShift Route resource for the Prometheus
                     conponent if supported.
@@ -384,7 +463,7 @@ spec:
               properties:
                 autoscale:
                   description: Autoscale defines the autoscale options for the Argo
-                    CD Server conponent.
+                    CD Server component.
                   properties:
                     enabled:
                       description: Enabled will toggle autoscaling support for the
@@ -448,17 +527,109 @@ spec:
                       description: Host is the hostname to use for Ingress/Route resources.
                       type: string
                     ingress:
-                      description: Ingress toggles GRPC Ingress resource(s) for the
-                        Argo CD Server conponent.
-                      type: boolean
+                      description: Ingress defines the desired state for the Argo
+                        CD Server GRPC Ingress.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations is the map of annotations to apply
+                            to the Ingress.
+                          type: object
+                        enabled:
+                          description: Enabled will toggle the creation of the Ingress.
+                          type: boolean
+                        path:
+                          description: Path used for the Ingress resource.
+                          type: string
+                        tls:
+                          description: TLS configuration. Currently the Ingress only
+                            supports a single TLS port, 443. If multiple members of
+                            this list specify different hosts, they will be multiplexed
+                            on the same port according to the hostname specified through
+                            the SNI TLS extension, if the ingress controller fulfilling
+                            the ingress supports SNI.
+                          items:
+                            description: IngressTLS describes the transport layer
+                              security associated with an Ingress.
+                            properties:
+                              hosts:
+                                description: Hosts are a list of hosts included in
+                                  the TLS certificate. The values in this list must
+                                  match the name/s used in the tlsSecret. Defaults
+                                  to the wildcard host setting for the loadbalancer
+                                  controller fulfilling this Ingress, if left unspecified.
+                                items:
+                                  type: string
+                                type: array
+                              secretName:
+                                description: SecretName is the name of the secret
+                                  used to terminate SSL traffic on 443. Field is left
+                                  optional to allow SSL routing based on SNI hostname
+                                  alone. If the SNI host in a listener conflicts with
+                                  the "Host" header field used by an IngressRule,
+                                  the SNI host is used for termination and value of
+                                  the Host header is used for routing.
+                                type: string
+                            type: object
+                          type: array
+                      required:
+                      - enabled
+                      type: object
                   type: object
                 host:
                   description: Host is the hostname to use for Ingress/Route resources.
                   type: string
                 ingress:
-                  description: Ingress toggles Ingress resource(s) for the Argo CD
-                    Server conponent.
-                  type: boolean
+                  description: Ingress defines the desired state for an Ingress for
+                    the Argo CD Server component.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: Annotations is the map of annotations to apply
+                        to the Ingress.
+                      type: object
+                    enabled:
+                      description: Enabled will toggle the creation of the Ingress.
+                      type: boolean
+                    path:
+                      description: Path used for the Ingress resource.
+                      type: string
+                    tls:
+                      description: TLS configuration. Currently the Ingress only supports
+                        a single TLS port, 443. If multiple members of this list specify
+                        different hosts, they will be multiplexed on the same port
+                        according to the hostname specified through the SNI TLS extension,
+                        if the ingress controller fulfilling the ingress supports
+                        SNI.
+                      items:
+                        description: IngressTLS describes the transport layer security
+                          associated with an Ingress.
+                        properties:
+                          hosts:
+                            description: Hosts are a list of hosts included in the
+                              TLS certificate. The values in this list must match
+                              the name/s used in the tlsSecret. Defaults to the wildcard
+                              host setting for the loadbalancer controller fulfilling
+                              this Ingress, if left unspecified.
+                            items:
+                              type: string
+                            type: array
+                          secretName:
+                            description: SecretName is the name of the secret used
+                              to terminate SSL traffic on 443. Field is left optional
+                              to allow SSL routing based on SNI hostname alone. If
+                              the SNI host in a listener conflicts with the "Host"
+                              header field used by an IngressRule, the SNI host is
+                              used for termination and value of the Host header is
+                              used for routing.
+                            type: string
+                        type: object
+                      type: array
+                  required:
+                  - enabled
+                  type: object
                 insecure:
                   description: Insecure toggles the insecure flag.
                   type: boolean
