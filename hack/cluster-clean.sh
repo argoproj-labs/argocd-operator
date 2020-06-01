@@ -13,11 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Script to clean up operator resources in a kubernetes cluster.
 
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
-
-# Clean up operator resources from a kubernetes cluster
 
 # ClusterRoles/Bindings
 kubectl delete clusterrolebinding \
