@@ -79,7 +79,7 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
 	phase := "Unknown"
 
-	if cr.Status.ApplicationController == "Running" && cr.Status.Server == "Running" {
+	if cr.Status.ApplicationController == "Running" && cr.Status.Redis == "Running" && cr.Status.Repo == "Running" && cr.Status.Server == "Running" {
 		phase = "Available"
 	} else {
 		phase = "Pending"
