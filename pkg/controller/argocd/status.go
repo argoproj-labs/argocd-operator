@@ -26,9 +26,23 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileStatusApplicationController(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileStatusDex(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileStatusPhase(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileStatusRedis(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusRepo(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileStatusServer(cr); err != nil {
 		return err
 	}
