@@ -306,6 +306,9 @@ type ArgoCDSpec struct {
 	// InitialRepositories to configure Argo CD with upon creation of the cluster.
 	InitialRepositories string `json:"initialRepositories,omitempty"`
 
+	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
+	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
+
 	// InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.
 	InitialSSHKnownHosts string `json:"initialSSHKnownHosts,omitempty"`
 

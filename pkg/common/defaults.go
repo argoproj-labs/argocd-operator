@@ -196,6 +196,9 @@ const (
 	// ArgoCDDefaultRepositories is the default repositories.
 	ArgoCDDefaultRepositories = ""
 
+	// ArgoCDDefaultRepositoryCredentials is the default repository credentials
+	ArgoCDDefaultRepositoryCredentials = ""
+
 	// ArgoCDDefaultResourceCustomizations is the default resource customizations.
 	ArgoCDDefaultResourceCustomizations = ""
 

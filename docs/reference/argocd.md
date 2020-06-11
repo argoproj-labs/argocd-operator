@@ -25,6 +25,7 @@ Name | Default | Description
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
+[**RepositoryCredentials**](#repository-credentials) | [Empty] | Git repository credential templates to configure Argo CD to use upon creation of the cluster.
 [**InitialSSHKnownHosts**](#initial-ssh-known-hosts) | [Default Argo CD Known Hosts] | Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
 [**KustomizeBuildOptions**](#kustomize-build-options) | [Empty] | The build options/parameters to use with `kustomize build`.
 [**OIDCConfig**](#oidc-config) | [Empty] | The OIDC configuration as an alternative to Dex.
@@ -450,6 +451,32 @@ spec:
         key: password
     - type: git
       url: https://github.com/argoproj/argocd-example-apps.git
+```
+
+## Repository Credentials
+
+Git repository credential templates to configure Argo CD to use upon creation of the cluster.
+
+This property maps directly to the `repository.credentials` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repository.credentials` field should then be made through the Argo CD web UI or CLI.
+
+### Repository Credentials Example
+
+The following example sets a value in the `argocd-cm` ConfigMap using the `RepositoryCredentials` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: repository-credentials
+spec:
+  repositoryCredentials: |
+    - sshPrivateKeySecret:
+        key: sshPrivateKey
+        name: my-ssh-secret
+      type: git
+      url: ssh://git@gitlab.com/my-org/
 ```
 
 ## Initial SSH Known Hosts
