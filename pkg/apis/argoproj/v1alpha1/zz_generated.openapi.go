@@ -395,9 +395,37 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 				Description: "ArgoCDStatus defines the observed state of ArgoCD",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"applicationController": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle. There are five possible ApplicationController values: Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the required Pods for the Argo CD application controller component are in a Ready state. Failed: At least one of the  Argo CD application controller component Pods had a failure. Unknown: For some reason the state of the Argo CD application controller component could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dex": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle. There are five possible dex values: Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the required Pods for the Argo CD Dex component are in a Ready state. Failed: At least one of the  Argo CD Dex component Pods had a failure. Unknown: For some reason the state of the Argo CD Dex component could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle. There are five possible phase values: Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Available: All of the resources for the ArgoCD are ready. Failed: At least one resource has experienced a failure. Unknown: For some reason the state of the ArgoCD phase could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"redis": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle. There are five possible redis values: Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the required Pods for the Argo CD Redis component are in a Ready state. Failed: At least one of the  Argo CD Redis component Pods had a failure. Unknown: For some reason the state of the Argo CD Redis component could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"repo": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle. There are five possible repo values: Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the required Pods for the Argo CD Repo component are in a Ready state. Failed: At least one of the  Argo CD Repo component Pods had a failure. Unknown: For some reason the state of the Argo CD Repo component could not be obtained.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -410,7 +438,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"phase", "server"},
+				Required: []string{"applicationController", "dex", "phase", "redis", "repo", "server"},
 			},
 		},
 	}

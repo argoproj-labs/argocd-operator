@@ -385,6 +385,22 @@ type ArgoCDSpec struct {
 // ArgoCDStatus defines the observed state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDStatus struct {
+	// ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
+	// There are five possible ApplicationController values:
+	// Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
+	// Failed: At least one of the  Argo CD application controller component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD application controller component could not be obtained.
+	ApplicationController string `json:"applicationController"`
+
+	// Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
+	// There are five possible dex values:
+	// Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
+	// Failed: At least one of the  Argo CD Dex component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
+	Dex string `json:"dex"`
+
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 	// There are five possible phase values:
 	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
@@ -392,6 +408,22 @@ type ArgoCDStatus struct {
 	// Failed: At least one resource has experienced a failure.
 	// Unknown: For some reason the state of the ArgoCD phase could not be obtained.
 	Phase string `json:"phase"`
+
+	// Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
+	// There are five possible redis values:
+	// Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
+	// Failed: At least one of the  Argo CD Redis component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD Redis component could not be obtained.
+	Redis string `json:"redis"`
+
+	// Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
+	// There are five possible repo values:
+	// Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
+	// Failed: At least one of the  Argo CD Repo component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD Repo component could not be obtained.
+	Repo string `json:"repo"`
 
 	// Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
 	// There are five possible server values:
