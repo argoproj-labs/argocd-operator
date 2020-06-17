@@ -217,11 +217,22 @@ Name | Default | Description
 Enabled | false | Toggle Grafana support globally for ArgoCD.
 Host | `example-argocd-grafana` | The hostname to use for Ingress/Route resources.
 Image | `grafana/grafana` | The container image for Grafana.
-Ingress | `false` | Toggles Ingress for Grafana.
+[Ingress](#grafana-ingress-options) | [Object] | Ingress configuration for Grafana.
 Resources | [Empty] | The container compute resources.
 [Route](#grafana-route-options) | [Object] | Route configuration options.
 Size | 1 | The replica count for the Grafana Deployment.
 Version | 6.7.1 (SHA) | The tag to use with the Grafana container image.
+
+### Grafana Ingress Options
+
+The following properties are available for configuring the Grafana Ingress.
+
+Name | Default | Description
+--- | --- | ---
+Annotations | [Empty] | The map of annotations to use for the Ingress resource.
+Enabled | `false` | Toggle creation of an Ingress resource.
+Path | `/` | Path to use for Ingress resources.
+TLS | [Empty] | TLS configuration for the Ingress.
 
 ### Grafana Route Options
 
@@ -251,7 +262,8 @@ spec:
     enabled: false
     host: example-argocd-grafana
     image: grafana/grafana
-    ingress: false
+    ingress:
+      enabled: false
     resources: {}
     route: false
     size: 1
@@ -387,38 +399,6 @@ argoproj.io/AppProject default unchanged
 argo-cd import complete
 ```
 
-## Ingress Options
-
-The following properties are available for configuring the Ingress for the cluster.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Path | / | Path to use for Ingress resources.
-
-### Ingress Example
-
-The following example shows how to override the various Ingress defaults.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: ingress
-spec:
-  ingress:
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      nginx.ingress.kubernetes.io/rewrite-target: /static/$2
-      cert-manager.io/cluster-issuer: letsencrypt
-    path: /testpath
-  server:
-    ingress: true
-    insecure: true
-```
-
 ## Initial Repositories
 
 Initial git repositories to configure Argo CD to use upon creation of the cluster.
@@ -545,6 +525,17 @@ Ingress | `false` | Toggles Ingress for Prometheus.
 [Route](#prometheus-route-options) | [Object] | Route configuration options.
 Size | 1 | The replica count for the Prometheus StatefulSet.
 
+### Prometheus Ingress Options
+
+The following properties are available for configuring the Prometheus Ingress.
+
+Name | Default | Description
+--- | --- | ---
+Annotations | [Empty] | The map of annotations to use for the Ingress resource.
+Enabled | `false` | Toggle creation of an Ingress resource.
+Path | `/` | Path to use for Ingress resources.
+TLS | [Empty] | TLS configuration for the Ingress.
+
 ### Prometheus Route Options
 
 The following properties are available to configure the Route for the Prometheus component.
@@ -572,7 +563,8 @@ spec:
   prometheus:
     enabled: false
     host: example-argocd-prometheus
-    ingress: false
+    ingress:
+      enabled: false
     route: false
     size: 1
 ```
@@ -738,7 +730,7 @@ Name | Default | Description
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
-Ingress | `false` | Toggles Ingress for the Argo CD Server component.
+[Ingress](#server-ingress-options) | [Object] | Ingress configuration for the Argo CD Server component.
 Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
@@ -760,7 +752,29 @@ The following properties are available to configure GRPC for the Argo CD Server 
 Name | Default | Description
 --- | --- | ---
 Host | `example-argocd-grpc` | The hostname to use for Ingress GRPC resources.
-Ingress | `false` | Toggles Ingress for the Argo CD Server GRPC component.
+[Ingress](#server-grpc-ingress-options) | [Object] | Ingress configuration for the Argo CD GRPC Server component.
+
+### Server GRPC Ingress Options
+
+The following properties are available for configuring the Argo CD server GRP Ingress.
+
+Name | Default | Description
+--- | --- | ---
+Annotations | [Empty] | The map of annotations to use for the Ingress resource.
+Enabled | `false` | Toggle creation of an Ingress resource.
+Path | `/` | Path to use for Ingress resources.
+TLS | [Empty] | TLS configuration for the Ingress.
+
+### Server Ingress Options
+
+The following properties are available for configuring the Argo CD server Ingress.
+
+Name | Default | Description
+--- | --- | ---
+Annotations | [Empty] | The map of annotations to use for the Ingress resource.
+Enabled | `false` | Toggle creation of an Ingress resource.
+Path | `/` | Path to use for Ingress resources.
+TLS | [Empty] | TLS configuration for the Ingress.
 
 ### Server Route Options
 
@@ -801,7 +815,8 @@ spec:
       host: example-argocd-grpc
       ingress: false
     host: example-argocd
-    ingress: false
+    ingress:
+      enabled: false
     insecure: false
     resources: {}
     route:

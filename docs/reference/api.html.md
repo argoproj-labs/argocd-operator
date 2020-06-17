@@ -218,19 +218,6 @@ string
 </tr>
 <tr>
 <td>
-<code>ingress</code></br>
-<em>
-<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
-ArgoCDIngressSpec
-</a>
-</em>
-</td>
-<td>
-<p>Ingress defines the Ingress options for ArgoCD.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>kustomizeBuildOptions</code></br>
 <em>
 string
@@ -991,11 +978,13 @@ string
 <td>
 <code>ingress</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
 </em>
 </td>
 <td>
-<p>Ingress toggles an Ingress resource for the Grafana component.</p>
+<p>Ingress defines the desired state for an Ingress for the Grafana component.</p>
 </td>
 </tr>
 <tr>
@@ -1123,7 +1112,10 @@ string
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+<a href="#argoproj.io/v1alpha1.ArgoCDGrafanaSpec">ArgoCDGrafanaSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDServerGRPCSpec">ArgoCDServerGRPCSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDServerSpec">ArgoCDServerSpec</a>)
 </p>
 <p>
 <p>ArgoCDIngressSpec defines the desired state for the Ingress resources.</p>
@@ -1144,7 +1136,18 @@ map[string]string
 </em>
 </td>
 <td>
-<p>Annotations is the map of annotations to use for the Ingress resource.</p>
+<p>Annotations is the map of annotations to apply to the Ingress.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled will toggle the creation of the Ingress.</p>
 </td>
 </tr>
 <tr>
@@ -1156,6 +1159,24 @@ string
 </td>
 <td>
 <p>Path used for the Ingress resource.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ingresstls-v1beta1-extensions">
+[]Kubernetes extensions/v1beta1.IngressTLS
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TLS configuration. Currently the Ingress only supports a single TLS
+port, 443. If multiple members of this list specify different hosts, they
+will be multiplexed on the same port according to the hostname specified
+through the SNI TLS extension, if the ingress controller fulfilling the
+ingress supports SNI.</p>
 </td>
 </tr>
 </tbody>
@@ -1203,11 +1224,13 @@ string
 <td>
 <code>ingress</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
 </em>
 </td>
 <td>
-<p>Ingress toggles an Ingress resource for the Prometheus component.</p>
+<p>Ingress defines the desired state for an Ingress for the Prometheus component.</p>
 </td>
 </tr>
 <tr>
@@ -1533,11 +1556,13 @@ string
 <td>
 <code>ingress</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
 </em>
 </td>
 <td>
-<p>Ingress toggles GRPC Ingress resource(s) for the Argo CD Server component.</p>
+<p>Ingress defines the desired state for the Argo CD Server GRPC Ingress.</p>
 </td>
 </tr>
 </tbody>
@@ -1632,11 +1657,13 @@ string
 <td>
 <code>ingress</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
+ArgoCDIngressSpec
+</a>
 </em>
 </td>
 <td>
-<p>Ingress toggles Ingress resource(s) for the Argo CD Server component.</p>
+<p>Ingress defines the desired state for an Ingress for the Argo CD Server component.</p>
 </td>
 </tr>
 <tr>
@@ -1870,19 +1897,6 @@ string
 </td>
 <td>
 <p>InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>ingress</code></br>
-<em>
-<a href="#argoproj.io/v1alpha1.ArgoCDIngressSpec">
-ArgoCDIngressSpec
-</a>
-</em>
-</td>
-<td>
-<p>Ingress defines the Ingress options for ArgoCD.</p>
 </td>
 </tr>
 <tr>
@@ -2140,5 +2154,5 @@ map[string]string
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>440b62f</code>.
+on git commit <code>a56324b</code>.
 </em></p>

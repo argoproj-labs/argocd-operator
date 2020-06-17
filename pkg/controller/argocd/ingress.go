@@ -34,13 +34,13 @@ func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return annotations
 }
 
-// getIngressPath will return the Ingress Path for the given ArgoCD.
-func getIngressPath(cr *argoprojv1a1.ArgoCD) string {
-	path := common.ArgoCDDefaultIngressPath
-	if len(cr.Spec.Ingress.Path) > 0 {
-		path = cr.Spec.Ingress.Path
+// getArgoServerPath will return the Ingress Path for the Argo CD component.
+func getPathOrDefault(path string) string {
+	result := common.ArgoCDDefaultIngressPath
+	if len(path) > 0 {
+		result = path
 	}
-	return path
+	return result
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.
@@ -95,14 +95,14 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Server.Ingress {
+		if !cr.Spec.Server.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if !cr.Spec.Server.Ingress {
+	if !cr.Spec.Server.Ingress.Enabled {
 		return nil // Ingress not enabled, move along...
 	}
 
@@ -112,8 +112,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
-	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = cr.Spec.Ingress.Annotations
+	if len(cr.Spec.Server.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Server.Ingress.Annotations
 	}
 
 	ingress.ObjectMeta.Annotations = atns
@@ -126,7 +126,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
 						{
-							Path: getIngressPath(cr),
+							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: nameWithSuffix("server", cr),
 								ServicePort: intstr.FromString("http"),
@@ -138,12 +138,19 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 		},
 	}
 
-	// Add TLS options
+	// Add default TLS options
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
-			Hosts:      []string{getArgoServerHost(cr)},
+			Hosts: []string{
+				getArgoServerHost(cr),
+			},
 			SecretName: common.ArgoCDSecretName,
 		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Server.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Server.Ingress.TLS
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
@@ -156,14 +163,14 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Server.GRPC.Ingress {
+		if !cr.Spec.Server.GRPC.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if !cr.Spec.Server.GRPC.Ingress {
+	if !cr.Spec.Server.GRPC.Ingress.Enabled {
 		return nil // Ingress not enabled, move along...
 	}
 
@@ -172,8 +179,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
-	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = cr.Spec.Ingress.Annotations
+	if len(cr.Spec.Server.GRPC.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Server.GRPC.Ingress.Annotations
 	}
 
 	ingress.ObjectMeta.Annotations = atns
@@ -186,7 +193,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
 						{
-							Path: getIngressPath(cr),
+							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: nameWithSuffix("server", cr),
 								ServicePort: intstr.FromString("https"),
@@ -201,9 +208,16 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	// Add TLS options
 	ingress.Spec.TLS = []extv1beta1.IngressTLS{
 		{
-			Hosts:      []string{getArgoServerGRPCHost(cr)},
+			Hosts: []string{
+				getArgoServerGRPCHost(cr),
+			},
 			SecretName: common.ArgoCDSecretName,
 		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Server.GRPC.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Server.GRPC.Ingress.TLS
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
@@ -216,14 +230,14 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress {
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
 		return nil // Grafana itself or Ingress not enabled, move along...
 	}
 
@@ -233,8 +247,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
-	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = cr.Spec.Ingress.Annotations
+	if len(cr.Spec.Grafana.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Grafana.Ingress.Annotations
 	}
 
 	ingress.ObjectMeta.Annotations = atns
@@ -247,7 +261,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
 						{
-							Path: getIngressPath(cr),
+							Path: getPathOrDefault(cr.Spec.Grafana.Ingress.Path),
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: nameWithSuffix("grafana", cr),
 								ServicePort: intstr.FromString("http"),
@@ -270,6 +284,11 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 		},
 	}
 
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Grafana.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Grafana.Ingress.TLS
+	}
+
 	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {
 		return err
 	}
@@ -280,14 +299,14 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress {
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
 		return nil // Prometheus itself or Ingress not enabled, move along...
 	}
 
@@ -297,8 +316,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
-	if len(cr.Spec.Ingress.Annotations) > 0 {
-		atns = cr.Spec.Ingress.Annotations
+	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Prometheus.Ingress.Annotations
 	}
 
 	ingress.ObjectMeta.Annotations = atns
@@ -311,7 +330,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 				HTTP: &extv1beta1.HTTPIngressRuleValue{
 					Paths: []extv1beta1.HTTPIngressPath{
 						{
-							Path: getIngressPath(cr),
+							Path: getPathOrDefault(cr.Spec.Prometheus.Ingress.Path),
 							Backend: extv1beta1.IngressBackend{
 								ServiceName: "prometheus-operated",
 								ServicePort: intstr.FromString("web"),
@@ -329,6 +348,11 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 			Hosts:      []string{cr.Name},
 			SecretName: common.ArgoCDSecretName,
 		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Prometheus.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Prometheus.Ingress.TLS
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ingress, r.scheme); err != nil {

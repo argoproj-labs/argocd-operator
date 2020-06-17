@@ -19,6 +19,7 @@ import (
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -110,8 +111,8 @@ type ArgoCDGrafanaSpec struct {
 	// Image is the Grafana container image.
 	Image string `json:"image,omitempty"`
 
-	// Ingress toggles an Ingress resource for the Grafana component.
-	Ingress bool `json:"ingress,omitempty"`
+	// Ingress defines the desired state for an Ingress for the Grafana component.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for Grafana.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -143,11 +144,22 @@ type ArgoCDImportSpec struct {
 
 // ArgoCDIngressSpec defines the desired state for the Ingress resources.
 type ArgoCDIngressSpec struct {
-	// Annotations is the map of annotations to use for the Ingress resource.
+	// Annotations is the map of annotations to apply to the Ingress.
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Enabled will toggle the creation of the Ingress.
+	Enabled bool `json:"enabled"`
 
 	// Path used for the Ingress resource.
 	Path string `json:"path,omitempty"`
+
+	// TLS configuration. Currently the Ingress only supports a single TLS
+	// port, 443. If multiple members of this list specify different hosts, they
+	// will be multiplexed on the same port according to the hostname specified
+	// through the SNI TLS extension, if the ingress controller fulfilling the
+	// ingress supports SNI.
+	// +optional
+	TLS []extv1beta1.IngressTLS `json:"tls,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -167,8 +179,8 @@ type ArgoCDPrometheusSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host,omitempty"`
 
-	// Ingress toggles an Ingress resource for the Prometheus component.
-	Ingress bool `json:"ingress,omitempty"`
+	// Ingress defines the desired state for an Ingress for the Prometheus component.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// Route defines the desired state for an OpenShift Route for the Prometheus component.
 	Route ArgoCDRouteSpec `json:"route,omitempty"`
@@ -247,8 +259,8 @@ type ArgoCDServerGRPCSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host,omitempty"`
 
-	// Ingress toggles GRPC Ingress resource(s) for the Argo CD Server component.
-	Ingress bool `json:"ingress,omitempty"`
+	// Ingress defines the desired state for the Argo CD Server GRPC Ingress.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 }
 
 // ArgoCDServerSpec defines the options for the ArgoCD Server component.
@@ -262,8 +274,8 @@ type ArgoCDServerSpec struct {
 	// Host is the hostname to use for Ingress/Route resources.
 	Host string `json:"host,omitempty"`
 
-	// Ingress toggles Ingress resource(s) for the Argo CD Server component.
-	Ingress bool `json:"ingress,omitempty"`
+	// Ingress defines the desired state for an Ingress for the Argo CD Server component.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// Insecure toggles the insecure flag.
 	Insecure bool `json:"insecure,omitempty"`
@@ -328,9 +340,6 @@ type ArgoCDSpec struct {
 
 	// InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.
 	InitialSSHKnownHosts string `json:"initialSSHKnownHosts,omitempty"`
-
-	// Ingress defines the Ingress options for ArgoCD.
-	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
 	// KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.
 	KustomizeBuildOptions string `json:"kustomizeBuildOptions,omitempty"`
