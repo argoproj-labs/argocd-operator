@@ -2076,6 +2076,38 @@ string
 <tbody>
 <tr>
 <td>
+<code>applicationController</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
+There are five possible ApplicationController values:
+Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
+Failed: At least one of the  Argo CD application controller component Pods had a failure.
+Unknown: For some reason the state of the Argo CD application controller component could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dex</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
+There are five possible dex values:
+Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
+Failed: At least one of the  Argo CD Dex component Pods had a failure.
+Unknown: For some reason the state of the Argo CD Dex component could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>phase</code></br>
 <em>
 string
@@ -2088,6 +2120,38 @@ Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more 
 Available: All of the resources for the ArgoCD are ready.
 Failed: At least one resource has experienced a failure.
 Unknown: For some reason the state of the ArgoCD phase could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>redis</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
+There are five possible redis values:
+Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
+Failed: At least one of the  Argo CD Redis component Pods had a failure.
+Unknown: For some reason the state of the Argo CD Redis component could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>repo</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
+There are five possible repo values:
+Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
+Failed: At least one of the  Argo CD Repo component Pods had a failure.
+Unknown: For some reason the state of the Argo CD Repo component could not be obtained.</p>
 </td>
 </tr>
 <tr>
@@ -2154,5 +2218,5 @@ map[string]string
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>a56324b</code>.
+on git commit <code>23f043d</code>.
 </em></p>
