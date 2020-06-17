@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	routev1 "github.com/openshift/api/route/v1"
+
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -115,8 +117,8 @@ type ArgoCDGrafanaSpec struct {
 	// Resources defines the Compute Resources required by the container for Grafana.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// Route toggles an OpenShift Route resource for the Grafana conponent if supported.
-	Route bool `json:"route,omitempty"`
+	// Route defines the desired state for an OpenShift Route for the Grafana component.
+	Route ArgoCDRouteSpec `json:"route,omitempty"`
 
 	// Size is the replica count for the Grafana Deployment.
 	Size *int32 `json:"size,omitempty"`
@@ -180,8 +182,8 @@ type ArgoCDPrometheusSpec struct {
 	// Ingress defines the desired state for an Ingress for the Prometheus component.
 	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
-	// Route toggles an OpenShift Route resource for the Prometheus conponent if supported.
-	Route bool `json:"route,omitempty"`
+	// Route defines the desired state for an OpenShift Route for the Prometheus component.
+	Route ArgoCDRouteSpec `json:"route,omitempty"`
 
 	// Size is the replica count for the Prometheus StatefulSet.
 	Size *int32 `json:"size,omitempty"`
@@ -225,6 +227,24 @@ type ArgoCDRepoSpec struct {
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
+// ArgoCDRouteSpec defines the desired state for an OpenShift Route.
+type ArgoCDRouteSpec struct {
+	// Annotations is the map of annotations to use for the Route resource.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Enabled will toggle the creation of the OpenShift Route.
+	Enabled bool `json:"enabled"`
+
+	// Path the router watches for, to route traffic for to the service.
+	Path string `json:"path,omitempty"`
+
+	// TLS provides the ability to configure certificates and termination for the Route.
+	TLS *routev1.TLSConfig `json:"tls,omitempty"`
+
+	// WildcardPolicy if any for the route. Currently only 'Subdomain' or 'None' is allowed.
+	WildcardPolicy *routev1.WildcardPolicyType `json:"wildcardPolicy,omitempty"`
+}
+
 // ArgoCDServerAutoscaleSpec defines the desired state for autoscaling the Argo CD Server component.
 type ArgoCDServerAutoscaleSpec struct {
 	// Enabled will toggle autoscaling support for the Argo CD Server component.
@@ -263,8 +283,8 @@ type ArgoCDServerSpec struct {
 	// Resources defines the Compute Resources required by the container for the Argo CD server component.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// Ingress toggles OpenShift Route resource(s) for the Argo CD Server conponent.
-	Route bool `json:"route,omitempty"`
+	// Route defines the desired state for an OpenShift Route for the Argo CD Server component.
+	Route ArgoCDRouteSpec `json:"route,omitempty"`
 
 	// Service defines the options for the Service backing the ArgoCD Server component.
 	Service ArgoCDServerServiceSpec `json:"service,omitempty"`

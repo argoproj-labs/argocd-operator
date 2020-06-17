@@ -1004,11 +1004,13 @@ Kubernetes core/v1.ResourceRequirements
 <td>
 <code>route</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDRouteSpec">
+ArgoCDRouteSpec
+</a>
 </em>
 </td>
 <td>
-<p>Route toggles an OpenShift Route resource for the Grafana conponent if supported.</p>
+<p>Route defines the desired state for an OpenShift Route for the Grafana component.</p>
 </td>
 </tr>
 <tr>
@@ -1235,11 +1237,13 @@ ArgoCDIngressSpec
 <td>
 <code>route</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDRouteSpec">
+ArgoCDRouteSpec
+</a>
 </em>
 </td>
 <td>
-<p>Route toggles an OpenShift Route resource for the Prometheus conponent if supported.</p>
+<p>Route defines the desired state for an OpenShift Route for the Prometheus component.</p>
 </td>
 </tr>
 <tr>
@@ -1397,6 +1401,82 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>Resources defines the Compute Resources required by the container for Redis.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDRouteSpec">ArgoCDRouteSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDGrafanaSpec">ArgoCDGrafanaSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</a>, 
+<a href="#argoproj.io/v1alpha1.ArgoCDServerSpec">ArgoCDServerSpec</a>)
+</p>
+<p>
+<p>ArgoCDRouteSpec defines the desired state for an OpenShift Route.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>annotations</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Annotations is the map of annotations to use for the Route resource.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled will toggle the creation of the OpenShift Route.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path the router watches for, to route traffic for to the service.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tls</code></br>
+<em>
+github.com/openshift/api/route/v1.TLSConfig
+</em>
+</td>
+<td>
+<p>TLS provides the ability to configure certificates and termination for the Route.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>wildcardPolicy</code></br>
+<em>
+github.com/openshift/api/route/v1.WildcardPolicyType
+</em>
+</td>
+<td>
+<p>WildcardPolicy if any for the route. Currently only &lsquo;Subdomain&rsquo; or &lsquo;None&rsquo; is allowed.</p>
 </td>
 </tr>
 </tbody>
@@ -1614,11 +1694,13 @@ Kubernetes core/v1.ResourceRequirements
 <td>
 <code>route</code></br>
 <em>
-bool
+<a href="#argoproj.io/v1alpha1.ArgoCDRouteSpec">
+ArgoCDRouteSpec
+</a>
 </em>
 </td>
 <td>
-<p>Ingress toggles OpenShift Route resource(s) for the Argo CD Server conponent.</p>
+<p>Route defines the desired state for an OpenShift Route for the Argo CD Server component.</p>
 </td>
 </tr>
 <tr>
