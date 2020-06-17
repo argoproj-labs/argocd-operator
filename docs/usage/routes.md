@@ -7,7 +7,7 @@ The following example shows the minimal required to create a new ArgoCD
 environment with the default configuration.
 
 ``` bash
-oc create -f examples/argocd-basic.yaml
+oc create -f examples/argocd-route.yaml
 ```
 
 There will be several resources created.
@@ -15,6 +15,7 @@ There will be several resources created.
 ``` bash
 oc get pods
 ```
+
 ``` bash
 NAME                                                     READY   STATUS    RESTARTS   AGE
 example-argocd-application-controller-7c74b5855b-brn7s   1/1     Running   0          29s
