@@ -188,6 +188,15 @@ func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
 	return repos
 }
 
+// getRepositoryCredentials will return the repository credentials for the given ArgoCD.
+func getRepositoryCredentials(cr *argoprojv1a1.ArgoCD) string {
+	repos := common.ArgoCDDefaultRepositoryCredentials
+	if len(cr.Spec.RepositoryCredentials) > 0 {
+		repos = cr.Spec.RepositoryCredentials
+	}
+	return repos
+}
+
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
 func getInitialSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
@@ -318,6 +327,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyResourceCustomizations] = getResourceCustomizations(cr)
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
+	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
