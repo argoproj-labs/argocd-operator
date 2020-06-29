@@ -292,6 +292,17 @@ ArgoCDRepoSpec
 </tr>
 <tr>
 <td>
+<code>repositoryCredentials</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resourceCustomizations</code></br>
 <em>
 string
@@ -1392,6 +1403,17 @@ string
 <tbody>
 <tr>
 <td>
+<code>mountsatoken</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>MountSAToken describes whether you would like to have the Repo server mount the service account token</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resources</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
@@ -1401,6 +1423,17 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>Resources defines the Compute Resources required by the container for Redis.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceaccount</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>ServiceAccount defines the ServiceAccount user that you would like the Repo server to use</p>
 </td>
 </tr>
 </tbody>
@@ -1975,6 +2008,17 @@ ArgoCDRepoSpec
 </tr>
 <tr>
 <td>
+<code>repositoryCredentials</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resourceCustomizations</code></br>
 <em>
 string
@@ -2218,5 +2262,5 @@ map[string]string
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>23f043d</code>.
+on git commit <code>1246ba4</code>.
 </em></p>
