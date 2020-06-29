@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -295,7 +296,14 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		return nil // Deployment found, do nothing
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
+		}
+		return nil // Deployment found with nothing to do, move along...
 	}
 
 	podSpec := &deploy.Spec.Template.Spec
@@ -401,7 +409,14 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		return nil // Deployment found, do nothing
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getDexContainerImage(cr)
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
+		}
+		return nil // Deployment found with nothing to do, move along...
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -737,20 +752,26 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		return nil // Deployment found, do nothing
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
+		}
+		return nil // Deployment found with nothing to do, move along...
 	}
 
-        automountToken := false
+	automountToken := false
+	if cr.Spec.Repo.MountSAToken {
+		automountToken = cr.Spec.Repo.MountSAToken
+	}
 
-        if cr.Spec.Repo.MountSAToken {
-          automountToken = cr.Spec.Repo.MountSAToken
-        }
+	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
 
-        deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
-
-        if cr.Spec.Repo.ServiceAccount != "" {
-          deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
-        }
+	if cr.Spec.Repo.ServiceAccount != "" {
+		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
+	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr),
@@ -828,7 +849,14 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		return nil // Deployment found, do nothing
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
+		}
+		return nil // Deployment found with nothing to do, move along...
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -903,4 +931,13 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 		return err
 	}
 	return r.client.Create(context.TODO(), deploy)
+}
+
+// shouldUpgradeArgoContainer will test that the given container should be upgraded based on the given Argo CD.
+// If an error occurs while verifying, the function will return false.
+func shouldUpgradeArgoContainer(cr *argoprojv1a1.ArgoCD, container corev1.Container) bool {
+	if container.Image != getArgoContainerImage(cr) {
+		return true
+	}
+	return false
 }
