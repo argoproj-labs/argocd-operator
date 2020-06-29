@@ -740,8 +740,17 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		return nil // Deployment found, do nothing
 	}
 
-	automountToken := false
-	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
+        automountToken := false
+
+        if cr.Spec.Repo.MountSAToken {
+          automountToken = cr.Spec.Repo.MountSAToken
+        }
+
+        deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
+
+        if cr.Spec.Repo.ServiceAccount != "" {
+          deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
+        }
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr),

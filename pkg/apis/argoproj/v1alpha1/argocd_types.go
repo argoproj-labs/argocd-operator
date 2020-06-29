@@ -225,6 +225,10 @@ type ArgoCDRedisSpec struct {
 type ArgoCDRepoSpec struct {
 	// Resources defines the Compute Resources required by the container for Redis.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+        // MountSAToken describes whether you would like to have the Repo server mount the service account token
+        MountSAToken	bool  `json:"mountsatoken,omitempty"`
+        // ServiceAccount defines the ServiceAccount user that you would like the Repo server to use
+	ServiceAccount	string	`json:"serviceaccount,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

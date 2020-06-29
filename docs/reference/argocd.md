@@ -660,6 +660,8 @@ The following properties are available for configuring the Repo server component
 Name | Default | Description
 --- | --- | ---
 Resources | [Empty] | The container compute resources.
+MountSAToken | false | Whether the ServiceAccount token should be mounted to the repo-server pod.
+ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
 
 ### Repo Example
 
@@ -675,6 +677,8 @@ metadata:
 spec:
   repo:
     resources: {}
+    mountsatoken: false
+    serviceaccount: ""
 ```
 
 ## Resource Customizations
