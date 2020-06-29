@@ -445,7 +445,6 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"applicationController", "dex", "phase", "redis", "repo", "server"},
 			},
 		},
 	}
