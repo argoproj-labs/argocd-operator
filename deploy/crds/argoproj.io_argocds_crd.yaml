@@ -544,6 +544,10 @@ spec:
             repo:
               description: Repo defines the repo server options for Argo CD.
               properties:
+                mountsatoken:
+                  description: MountSAToken describes whether you would like to have
+                    the Repo server mount the service account token
+                  type: boolean
                 resources:
                   description: Resources defines the Compute Resources required by
                     the container for Redis.
@@ -571,7 +575,15 @@ spec:
                         to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                       type: object
                   type: object
+                serviceaccount:
+                  description: ServiceAccount defines the ServiceAccount user that
+                    you would like the Repo server to use
+                  type: string
               type: object
+            repositoryCredentials:
+              description: RepositoryCredentials are the Git pull credentials to configure
+                Argo CD with upon creation of the cluster.
+              type: string
             resourceCustomizations:
               description: 'ResourceCustomizations customizes resource behavior. Keys
                 are in the form: group/Kind.'
