@@ -288,6 +288,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"repositoryCredentials": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"initialSSHKnownHosts": {
 						SchemaProps: spec.SchemaProps{
 							Description: "InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.",
