@@ -586,6 +586,14 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			return r.client.Delete(context.TODO(), deploy)
 		}
+
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisContainerImage(cr)
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
+		}
 		return nil // Deployment found, do nothing
 	}
 
@@ -624,6 +632,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
 			return r.client.Delete(context.TODO(), deploy)
+		}
+
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisHAProxyContainerImage(cr)
+
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), deploy)
 		}
 		return nil // Deployment found, do nothing
 	}
