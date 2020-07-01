@@ -38,7 +38,7 @@ Name | Default | Description
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
-[**Version**](#version) | v1.5.8 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Version**](#version) | v1.6.1 (SHA) | The tag to use with the container image for all Argo CD components.
 
 ## Application Instance Label Key
 
@@ -947,5 +947,5 @@ metadata:
   labels:
     example: version
 spec:
-  version: v1.5.8
+  version: v1.6.1
 ```
