@@ -400,7 +400,7 @@ type ArgoCDStatus struct {
 	// Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
 	// Failed: At least one of the  Argo CD application controller component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD application controller component could not be obtained.
-	ApplicationController string `json:"applicationController"`
+	ApplicationController string `json:"applicationController,omitempty"`
 
 	// Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
 	// There are five possible dex values:
@@ -408,7 +408,7 @@ type ArgoCDStatus struct {
 	// Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
 	// Failed: At least one of the  Argo CD Dex component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
-	Dex string `json:"dex"`
+	Dex string `json:"dex,omitempty"`
 
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 	// There are five possible phase values:
@@ -416,7 +416,7 @@ type ArgoCDStatus struct {
 	// Available: All of the resources for the ArgoCD are ready.
 	// Failed: At least one resource has experienced a failure.
 	// Unknown: For some reason the state of the ArgoCD phase could not be obtained.
-	Phase string `json:"phase"`
+	Phase string `json:"phase,omitempty"`
 
 	// Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
 	// There are five possible redis values:
@@ -424,7 +424,7 @@ type ArgoCDStatus struct {
 	// Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
 	// Failed: At least one of the  Argo CD Redis component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD Redis component could not be obtained.
-	Redis string `json:"redis"`
+	Redis string `json:"redis,omitempty"`
 
 	// Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
 	// There are five possible repo values:
@@ -432,7 +432,7 @@ type ArgoCDStatus struct {
 	// Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
 	// Failed: At least one of the  Argo CD Repo component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD Repo component could not be obtained.
-	Repo string `json:"repo"`
+	Repo string `json:"repo,omitempty"`
 
 	// Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
 	// There are five possible server values:
@@ -440,7 +440,7 @@ type ArgoCDStatus struct {
 	// Running: All of the required Pods for the Argo CD server component are in a Ready state.
 	// Failed: At least one of the  Argo CD server component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD server component could not be obtained.
-	Server string `json:"server"`
+	Server string `json:"server,omitempty"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
