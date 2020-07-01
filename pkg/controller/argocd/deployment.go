@@ -949,12 +949,3 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 	}
 	return r.client.Create(context.TODO(), deploy)
 }
-
-// shouldUpgradeArgoContainer will test that the given container should be upgraded based on the given Argo CD.
-// If an error occurs while verifying, the function will return false.
-func shouldUpgradeArgoContainer(cr *argoprojv1a1.ArgoCD, container corev1.Container) bool {
-	if container.Image != getArgoContainerImage(cr) {
-		return true
-	}
-	return false
-}
