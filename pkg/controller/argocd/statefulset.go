@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -70,6 +71,21 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
 			return r.client.Delete(context.TODO(), ss)
 		}
+
+		desiredImage := getRedisContainerImage(cr)
+		changed := false
+
+		for _, container := range ss.Spec.Template.Spec.Containers {
+			if container.Image != desiredImage {
+				container.Image = getRedisHAContainerImage(cr)
+			}
+		}
+
+		if changed {
+			ss.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.client.Update(context.TODO(), ss)
+		}
+
 		return nil // StatefulSet found, do nothing
 	}
 

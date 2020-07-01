@@ -223,12 +223,14 @@ type ArgoCDRedisSpec struct {
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
+	// MountSAToken describes whether you would like to have the Repo server mount the service account token
+	MountSAToken bool `json:"mountsatoken,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for Redis.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-        // MountSAToken describes whether you would like to have the Repo server mount the service account token
-        MountSAToken	bool  `json:"mountsatoken,omitempty"`
-        // ServiceAccount defines the ServiceAccount user that you would like the Repo server to use
-	ServiceAccount	string	`json:"serviceaccount,omitempty"`
+
+	// ServiceAccount defines the ServiceAccount user that you would like the Repo server to use
+	ServiceAccount string `json:"serviceaccount,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -342,9 +344,6 @@ type ArgoCDSpec struct {
 	// InitialRepositories to configure Argo CD with upon creation of the cluster.
 	InitialRepositories string `json:"initialRepositories,omitempty"`
 
-	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
-	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
-
 	// InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.
 	InitialSSHKnownHosts string `json:"initialSSHKnownHosts,omitempty"`
 
@@ -365,6 +364,9 @@ type ArgoCDSpec struct {
 
 	// Repo defines the repo server options for Argo CD.
 	Repo ArgoCDRepoSpec `json:"repo,omitempty"`
+
+	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
+	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
 	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind.
 	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`

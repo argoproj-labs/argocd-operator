@@ -333,6 +333,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec"),
 						},
 					},
+					"repositoryCredentials": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"resourceCustomizations": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind.",
@@ -438,7 +445,6 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 						},
 					},
 				},
-				Required: []string{"applicationController", "dex", "phase", "redis", "repo", "server"},
 			},
 		},
 	}
