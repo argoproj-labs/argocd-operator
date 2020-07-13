@@ -49,7 +49,6 @@ kubectl delete sa -n ${ARGOCD_OPERATOR_NAMESPACE} \
     argocd-dex-server \
     argocd-operator \
     argocd-redis-ha \
-    argocd-redis-ha-haproxy \
     argocd-server
 
 # CustomResourceDefinitions

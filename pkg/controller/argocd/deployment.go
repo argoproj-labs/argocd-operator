@@ -757,7 +757,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		},
 	}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-redis-ha-haproxy"
+	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-redis-ha"
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
