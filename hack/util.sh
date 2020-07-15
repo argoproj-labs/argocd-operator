@@ -23,7 +23,7 @@ source ${HACK_DIR}/env.sh
 
 # Build the util container image
 echo "Building image ${ARGOCD_OPERATOR_UTIL_IMAGE}"
-${ARGOCD_OPERATOR_IMAGE_BUILDER} build -t ${ARGOCD_OPERATOR_UTIL_IMAGE} ${ARGOCD_OPERATOR_UTIL_BUILD_DIR}
+${ARGOCD_OPERATOR_IMAGE_BUILDER} build --no-cache -t ${ARGOCD_OPERATOR_UTIL_IMAGE} ${ARGOCD_OPERATOR_UTIL_BUILD_DIR}
 
 # Push the util container image
 echo "Pushing image ${ARGOCD_OPERATOR_UTIL_IMAGE}"
