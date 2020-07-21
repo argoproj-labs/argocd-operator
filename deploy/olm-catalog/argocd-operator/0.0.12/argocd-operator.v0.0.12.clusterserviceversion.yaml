@@ -14,7 +14,6 @@ metadata:
   name: argocd-operator.v0.0.12
   namespace: placeholder
 spec:
-  apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
     - kind: Application
@@ -31,17 +30,23 @@ spec:
       name: argocdexports.argoproj.io
       version: v1alpha1
       displayName: ArgoCDExport
-      description: ArgoCDExport describes the desired state for the export of a given Argo CD deployment.
+      description: ArgoCDExport describes the desired state for the export of a given Argo CD cluster.
       resources:
-        - kind: CronJob
-          name: ''
-          version: batch/v1beta1
-        - kind: Job
-          name: ''
-          version: batch/v1
-        - kind: PersistentVolumeClaim
-          name: ''
-          version: v1
+      - kind: CronJob
+        name: ''
+        version: batch/v1beta1
+      - kind: Job
+        name: ''
+        version: batch/v1
+      - kind: PersistentVolumeClaim
+        name: ''
+        version: v1
+      - kind: Pod
+        name: ''
+        version: v1
+      - kind: Secret
+        name: ''
+        version: v1
       specDescriptors:
       - description: The name of the ArgoCD instance to export.
         displayName: ArgoCD
@@ -68,27 +73,30 @@ spec:
       displayName: ArgoCD
       description: ArgoCD is the representation of an Argo CD deployment.
       resources:
-        - kind: ConfigMap
-          name: ''
-          version: v1
-        - kind: Deployment
-          name: ''
-          version: apps/v1
-        - kind: Ingress
-          name: ''
-          version: extensions/v1
-        - kind: PersistentVolumeClaim
-          name: ''
-          version: v1
-        - kind: Secret
-          name: ''
-          version: v1
-        - kind: Service
-          name: ''
-          version: v1
-        - kind: StatefulSet
-          name: ''
-          version: apps/v1
+      - kind: ConfigMap
+        name: ''
+        version: v1
+      - kind: Deployment
+        name: ''
+        version: apps/v1
+      - kind: Ingress
+        name: ''
+        version: extensions/v1
+      - kind: PersistentVolumeClaim
+        name: ''
+        version: v1
+      - kind: Pod
+        name: ''
+        version: v1
+      - kind: Secret
+        name: ''
+        version: v1
+      - kind: Service
+        name: ''
+        version: v1
+      - kind: StatefulSet
+        name: ''
+        version: apps/v1
       specDescriptors:
       - description: 'The container image to use for the Argo CD components.'
         displayName: Image
@@ -170,7 +178,7 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Selected if a Grafana Ingress resource should be created.'
         displayName: 'Ingress Enabled'
-        path: grafana.ingress
+        path: grafana.ingress.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
@@ -182,7 +190,7 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
       - description: 'Selected if a Grafana Route resource should be created.'
         displayName: 'Route Enabled'
-        path: grafana.route
+        path: grafana.route.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
@@ -216,12 +224,6 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import'
           - 'urn:alm:descriptor:com.tectonic.ui:text'
-      - description: 'The path used for the Ingress resource.'
-        displayName: Path
-        path: ingress.path
-        x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
-          - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Selected if Prometheus resources should be created.'
         displayName: Enabled
         path: prometheus.enabled
@@ -236,13 +238,13 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Selected if a Prometheus Ingress resource should be created.'
         displayName: 'Ingress Enabled'
-        path: prometheus.ingress
+        path: prometheus.ingress.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
       - description: 'Selected if a Prometheus Route resource should be created.'
         displayName: 'Route Enabled'
-        path: prometheus.route
+        path: prometheus.route.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
@@ -320,7 +322,7 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Selected if an Ingress resource should be created.'
         displayName: 'Ingress Enabled'
-        path: server.ingress
+        path: server.ingress.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
@@ -338,7 +340,7 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
       - description: 'Selected if a Route resource should be created.'
         displayName: 'Route Enabled'
-        path: server.route
+        path: server.route.enabled
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
@@ -433,9 +435,29 @@ spec:
           - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       statusDescriptors:
+      - description: 'ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.'
+        displayName: ApplicationController
+        path: applicationController
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.'
+        displayName: Dex
+        path: dex
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.'
         displayName: Phase
         path: phase
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.'
+        displayName: Redis
+        path: redis
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.'
+        displayName: Repo
+        path: repo
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:text'
       - description: 'Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.'
