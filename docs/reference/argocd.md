@@ -277,7 +277,9 @@ The following properties are available for configuring High Availability for the
 
 Name | Default | Description
 --- | --- | ---
-Enabled | false | Toggle High Availability support globally for Argo CD.
+Enabled | `false` | Toggle High Availability support globally for Argo CD.
+RedisProxyImage | `haproxy` | The Redis HAProxy container image.
+RedisProxyVersion | `2.0.4` | The tag to use for the Redis HAProxy container image.
 
 ### HA Example
 
@@ -293,6 +295,8 @@ metadata:
 spec:
   ha:
     enabled: true
+    redisProxyImage: haproxy
+    redisProxyVersion: "2.0.4"
 ```
 
 ## Help Chat URL

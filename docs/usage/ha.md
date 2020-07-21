@@ -14,6 +14,8 @@ metadata:
 spec:
   ha:
     enabled: true
+    redisProxyImage: haproxy
+    redisProxyVersion: "2.0.4"
 ```
 
 ## OpenShift
