@@ -10,4 +10,4 @@ scorecard:
         cr-manifest:
           - examples/argocd-basic.yaml
           - examples/argocdexport-basic.yaml
-        csv-path: "deploy/olm-catalog/argocd-operator/0.0.6/argocd-operator.v0.0.6.clusterserviceversion.yaml"
+        csv-path: "deploy/olm-catalog/argocd-operator/0.0.12/argocd-operator.v0.0.12.clusterserviceversion.yaml"
