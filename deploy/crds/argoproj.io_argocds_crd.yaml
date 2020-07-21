@@ -307,6 +307,13 @@ spec:
                 enabled:
                   description: Enabled will toggle HA support globally for Argo CD.
                   type: boolean
+                redisProxyImage:
+                  description: RedisProxyImage is the Redis HAProxy container image.
+                  type: string
+                redisProxyVersion:
+                  description: RedisProxyVersion is the Redis HAProxy container image
+                    tag.
+                  type: string
               required:
               - enabled
               type: object
