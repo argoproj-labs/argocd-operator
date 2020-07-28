@@ -20,7 +20,7 @@ HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
 # Generate CRDs for API's
-operator-sdk generate crds
+operator-sdk generate crds --crd-version v1beta1
 
 # Generate Kubernetes code for custom resource
 operator-sdk generate k8s

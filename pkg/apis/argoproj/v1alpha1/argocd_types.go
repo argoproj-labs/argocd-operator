@@ -131,6 +131,12 @@ type ArgoCDGrafanaSpec struct {
 type ArgoCDHASpec struct {
 	// Enabled will toggle HA support globally for Argo CD.
 	Enabled bool `json:"enabled"`
+
+	// RedisProxyImage is the Redis HAProxy container image.
+	RedisProxyImage string `json:"redisProxyImage,omitempty"`
+
+	// RedisProxyVersion is the Redis HAProxy container image tag.
+	RedisProxyVersion string `json:"redisProxyVersion,omitempty"`
 }
 
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.
