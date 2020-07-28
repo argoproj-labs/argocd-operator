@@ -109,46 +109,22 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		return nil
 	}
 
+	tlsSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "tls")
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, tlsSecret.Name, tlsSecret) {
+		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to reconcile argo secret [%s]", tlsSecret.Name, secret.Name))
+		return nil
+	}
+
 	hashedPassword, err := argopass.HashPassword(string(clusterSecret.Data[common.ArgoCDKeyAdminPassword]))
 	if err != nil {
 		return err
 	}
 
 	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
-		actual := string(secret.Data[common.ArgoCDKeyAdminPassword])
-		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
-
-		valid, _ := argopass.VerifyPassword(expected, actual)
-		if !valid {
-			log.Info("cluster secret changed, updating argo secret")
-			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
-			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-
-			if err := r.client.Update(context.TODO(), secret); err != nil {
-				return err
-			}
-
-			// Trigger rollout of Grafana Deployment
-			deploy := newDeploymentWithSuffix("server", "server", cr)
-			if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
-				log.Info("unable to locate argo server deployment")
-				return nil
-			}
-
-			deploy.Spec.Template.ObjectMeta.Labels["admin.password.changed"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
-		}
-
-		return nil // Nothing changed, move along...
+		return r.reconcileExistingArgoSecret(cr, hashedPassword, secret, clusterSecret, tlsSecret)
 	}
 
 	// Secret not found, create it...
-
-	tlsSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "tls")
-	if !argoutil.IsObjectFound(r.client, cr.Namespace, tlsSecret.Name, tlsSecret) {
-		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to create argo secret [%s]", tlsSecret.Name, secret.Name))
-		return nil
-	}
 
 	sessionKey, err := generateArgoServerSessionKey()
 	if err != nil {
@@ -260,6 +236,54 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 
 	if err := r.reconcileGrafanaSecret(cr); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
+func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, password string, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+	changed := false
+
+	// Verify admin password
+	actualPwd := string(secret.Data[common.ArgoCDKeyAdminPassword])
+	expectedPwd := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
+
+	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
+	if !validPwd {
+		log.Info("cluster secret changed, updating argo secret")
+		secret.Data[common.ArgoCDKeyAdminPassword] = []byte(password)
+		secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
+		changed = true
+	}
+
+	// Verify TLS certificate and key
+	actualTLSCert := string(secret.Data[common.ArgoCDKeyTLSCert])
+	actualTLSKey := string(secret.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedTLSCert := string(tlsSecret.Data[common.ArgoCDKeyTLSCert])
+	expectedTLSKey := string(tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey])
+
+	if actualTLSCert != expectedTLSCert || actualTLSKey != expectedTLSKey {
+		log.Info("tls secret changed, updating argo secret")
+		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
+		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
+		changed = true
+	}
+
+	if changed {
+		if err := r.client.Update(context.TODO(), secret); err != nil {
+			return err
+		}
+
+		// Trigger rollout of Argo Server Deployment
+		deploy := newDeploymentWithSuffix("server", "server", cr)
+		if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
+			log.Info("unable to locate argo server deployment")
+			return nil
+		}
+
+		deploy.Spec.Template.ObjectMeta.Labels["secret.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		return r.client.Update(context.TODO(), deploy)
 	}
 
 	return nil
