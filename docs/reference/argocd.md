@@ -481,6 +481,13 @@ Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
 
 This property maps directly to the `ssh_known_hosts` field in the `argocd-ssh-known-hosts-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `ssh_known_hosts` field should then be made through the Argo CD web UI or CLI.
 
+The following properties are available for configuring the import process.
+
+Name | Default | Description
+--- | --- | ---
+ExcludeDefaultHosts | false | Whether you would like to exclude the default SSH Hosts entries that ArgoCD provides
+Keys | "" | Additional SSH Hosts entries that you would like to include with ArgoCD
+
 ### Initial SSH Known Hosts Example
 
 The following example sets a value in the `argocd-ssh-known-hosts-cm` ConfigMap using the `InitialSSHKnownHosts` property on the `ArgoCD` resource. The example values have been truncated for clarity.
@@ -493,9 +500,11 @@ metadata:
   labels:
     example: initial-ssh-known-hosts
 spec:
-  initialSSHKnownHosts: |
-    bitbucket.org ssh-rsa AAAAB3NzaC...
-    github.com ssh-rsa AAAAB3NzaC...
+  initialSSHKnownHosts:
+    excludedefaulthosts: false
+    keys: |
+      my-git.org ssh-rsa AAAAB3NzaC...
+      my-git.com ssh-rsa AAAAB3NzaC...
 ```
 
 ## Kustomize Build Options

@@ -348,7 +348,16 @@ spec:
             initialSSHKnownHosts:
               description: InitialSSHKnownHosts defines the SSH known hosts data upon
                 creation of the cluster for connecting Git repositories via SSH.
-              type: string
+              properties:
+                excludedefaulthosts:
+                  description: Defaulthosts describes whether you would like to include the default
+                    list of SSH Known Hosts provided by ArgoCD
+                  type: boolean
+                keys:
+                  description: Keys describes a custom set of SSH Known Hosts that you would like to have
+                    included in your ArgoCD server.
+                  type: string
+              type: object
             kustomizeBuildOptions:
               description: KustomizeBuildOptions is used to specify build options/parameters
                 to use with `kustomize build`.
