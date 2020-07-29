@@ -15,4 +15,5 @@ spec:
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
   server:
-    route: true
+    route:
+      enabled: true
