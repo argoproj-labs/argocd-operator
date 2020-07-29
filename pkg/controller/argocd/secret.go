@@ -30,9 +30,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// hasArgoAdminPasswordChanged will return true if the Argo admin password has changed.
+func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualPwd := string(actual.Data[common.ArgoCDKeyAdminPassword])
+	expectedPwd := string(expected.Data[common.ArgoCDKeyAdminPassword])
+
+	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
+	if !validPwd {
+		log.Info("admin password has changed")
+		return true
+	}
+	return false
+}
+
+// hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
+func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
+	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
+	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
+
+	if actualCert != expectedCert || actualKey != expectedKey {
+		log.Info("tls secret has changed")
+		return true
+	}
+	return false
+}
+
 // nowBytes is a shortcut function to return the current date/time in RFC3339 format.
 func nowBytes() []byte {
 	return []byte(time.Now().UTC().Format(time.RFC3339))
+}
+
+// nowDefault is a shortcut function to return the current date/time in the default format.
+func nowDefault() string {
+	return time.Now().UTC().Format("01022006-150406-MST")
 }
 
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
@@ -115,16 +147,15 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		return nil
 	}
 
+	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
+		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
+	}
+
+	// Secret not found, create it...
 	hashedPassword, err := argopass.HashPassword(string(clusterSecret.Data[common.ArgoCDKeyAdminPassword]))
 	if err != nil {
 		return err
 	}
-
-	if argoutil.IsObjectFound(r.client, cr.Namespace, secret.Name, secret) {
-		return r.reconcileExistingArgoSecret(cr, hashedPassword, secret, clusterSecret, tlsSecret)
-	}
-
-	// Secret not found, create it...
 
 	sessionKey, err := generateArgoServerSessionKey()
 	if err != nil {
@@ -242,48 +273,35 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
-func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, password string, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
-	// Verify admin password
-	actualPwd := string(secret.Data[common.ArgoCDKeyAdminPassword])
-	expectedPwd := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
+	if hasArgoAdminPasswordChanged(secret, clusterSecret) {
+		hashedPassword, err := argopass.HashPassword(string(clusterSecret.Data[common.ArgoCDKeyAdminPassword]))
+		if err != nil {
+			return err
+		}
 
-	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
-	if !validPwd {
-		log.Info("cluster secret changed, updating argo secret")
-		secret.Data[common.ArgoCDKeyAdminPassword] = []byte(password)
+		secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 		secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
 		changed = true
 	}
 
-	// Verify TLS certificate and key
-	actualTLSCert := string(secret.Data[common.ArgoCDKeyTLSCert])
-	actualTLSKey := string(secret.Data[common.ArgoCDKeyTLSPrivateKey])
-	expectedTLSCert := string(tlsSecret.Data[common.ArgoCDKeyTLSCert])
-	expectedTLSKey := string(tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey])
-
-	if actualTLSCert != expectedTLSCert || actualTLSKey != expectedTLSKey {
-		log.Info("tls secret changed, updating argo secret")
+	if hasArgoTLSChanged(secret, tlsSecret) {
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
 		changed = true
 	}
 
 	if changed {
+		log.Info("updating argo secret")
 		if err := r.client.Update(context.TODO(), secret); err != nil {
 			return err
 		}
 
 		// Trigger rollout of Argo Server Deployment
 		deploy := newDeploymentWithSuffix("server", "server", cr)
-		if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
-			log.Info("unable to locate argo server deployment")
-			return nil
-		}
-
-		deploy.Spec.Template.ObjectMeta.Labels["secret.changed"] = time.Now().UTC().Format("01022006-150406-MST")
-		return r.client.Update(context.TODO(), deploy)
+		return r.triggerRollout(deploy, "secret.changed")
 	}
 
 	return nil
@@ -327,13 +345,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 
 			// Trigger rollout of Grafana Deployment
 			deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
-			if !argoutil.IsObjectFound(r.client, deploy.Namespace, deploy.Name, deploy) {
-				log.Info("unable to locate grafana deployment")
-				return nil
-			}
-
-			deploy.Spec.Template.ObjectMeta.Labels["admin.password.changed"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
+			return r.triggerRollout(deploy, "admin.password.changed")
 		}
 		return nil // Nothing has changed, move along...
 	}
