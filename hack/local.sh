@@ -22,7 +22,4 @@ source ${HACK_DIR}/env.sh
 export GRAFANA_CONFIG_PATH="$(pwd)/grafana"
 export REDIS_CONFIG_PATH="$(pwd)/build/redis"
 
-operator-sdk run \
-    --local \
-    --operator-namespace ${ARGOCD_OPERATOR_NAMESPACE} \
-    --watch-namespace ${ARGOCD_OPERATOR_NAMESPACE}
+operator-sdk run local --watch-namespace ${ARGOCD_OPERATOR_NAMESPACE}
