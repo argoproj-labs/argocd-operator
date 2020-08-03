@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocdexports
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocdexports/status
   verbs:
@@ -27,7 +27,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocds
   verbs:
@@ -39,7 +39,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocds/status
   verbs:

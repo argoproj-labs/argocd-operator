@@ -5,7 +5,7 @@ metadata:
   name: argocdexport-viewer-role
 rules:
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocdexports
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocdexports/status
   verbs:

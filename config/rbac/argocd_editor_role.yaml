@@ -5,7 +5,7 @@ metadata:
   name: argocd-editor-role
 rules:
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocds
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - argoproj.io.argoproj.io
+  - argoproj.io
   resources:
   - argocds/status
   verbs:

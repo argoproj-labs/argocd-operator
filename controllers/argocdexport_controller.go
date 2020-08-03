@@ -34,8 +34,8 @@ type ArgoCDExportReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=argoproj.io.argoproj.io,resources=argocdexports,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=argoproj.io.argoproj.io,resources=argocdexports/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=argoproj.io,resources=argocdexports,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=argoproj.io,resources=argocdexports/status,verbs=get;update;patch
 
 func (r *ArgoCDExportReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()

@@ -5,4 +5,4 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
-  name: argocds.argoproj.io.argoproj.io
+  name: argocds.argoproj.io

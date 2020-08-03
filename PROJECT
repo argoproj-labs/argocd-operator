@@ -1,4 +1,4 @@
-domain: argoproj.io
+domain: ""
 layout: go.kubebuilder.io/v2
 repo: github.com/argoproj-labs/argocd-operator
 resources:

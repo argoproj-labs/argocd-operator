@@ -4,9 +4,9 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
-  name: argocdexports.argoproj.io.argoproj.io
+  name: argocdexports.argoproj.io
 spec:
-  group: argoproj.io.argoproj.io
+  group: argoproj.io
   names:
     kind: ArgoCDExport
     listKind: ArgoCDExportList
