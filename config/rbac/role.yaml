@@ -1,0 +1,48 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - argoproj.io.argoproj.io
+  resources:
+  - argocdexports
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - argoproj.io.argoproj.io
+  resources:
+  - argocdexports/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - argoproj.io.argoproj.io
+  resources:
+  - argocds
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - argoproj.io.argoproj.io
+  resources:
+  - argocds/status
+  verbs:
+  - get
+  - patch
+  - update

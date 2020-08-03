@@ -1,0 +1,7 @@
+apiVersion: argoproj.io.argoproj.io/v1alpha1
+kind: ArgoCDExport
+metadata:
+  name: argocdexport-sample
+spec:
+  # Add fields here
+  foo: bar
