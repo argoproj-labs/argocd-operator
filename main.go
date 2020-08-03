@@ -46,23 +46,6 @@ var (
 // init will setup the schemes used by the operator.
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	// Setup Scheme for Prometheus if available.
-	if resources.IsPrometheusAPIAvailable() {
-		if err := monitoringv1.AddToScheme(scheme); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Setup Scheme for OpenShift Routes if available.
-	if resources.IsRouteAPIAvailable() {
-		if err := routev1.AddToScheme(scheme); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -79,6 +62,27 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 	printVersion()
+
+	// Inspect cluster to verify availability of extra features
+	if err := resources.InspectCluster(); err != nil {
+		setupLog.Info("unable to inspect cluster")
+	}
+
+	// Setup Scheme for Prometheus if available.
+	if resources.IsPrometheusAPIAvailable() {
+		if err := monitoringv1.AddToScheme(scheme); err != nil {
+			setupLog.Error(err, "")
+			os.Exit(1)
+		}
+	}
+
+	// Setup Scheme for OpenShift Routes if available.
+	if resources.IsRouteAPIAvailable() {
+		if err := routev1.AddToScheme(scheme); err != nil {
+			setupLog.Error(err, "")
+			os.Exit(1)
+		}
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,

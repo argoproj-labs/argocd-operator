@@ -36,6 +36,19 @@ func FetchObject(client client.Client, namespace string, name string, obj runtim
 	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
 }
 
+// InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
+// OpenShift Routes.
+func InspectCluster() error {
+	if err := verifyPrometheusAPI(); err != nil {
+		return err
+	}
+
+	if err := verifyRouteAPI(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
 func IsObjectFound(client client.Client, namespace string, name string, obj runtime.Object) bool {
