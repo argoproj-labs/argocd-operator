@@ -39,8 +39,15 @@ type ArgoCDReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=argoproj.io,resources=argocds,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=argoproj.io,resources=argocds/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=placeholder,groups=apps,resources=deployments/finalizers,verbs=update
+// +kubebuilder:rbac:namespace=placeholder,groups=apps,resources=deployments;statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=argoproj.io,resources=argocds;argocds/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=argoproj.io,resources=argocds/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=placeholder,groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=core,resources=configmaps;events;persistentvolumeclaims;secrets;serviceaccounts;services;services/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=extensions,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=monitoring.coreos.com,resources=prometheuses;servicemonitors,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=route.openshift.io,resources=routes;routes/custom-host,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ArgoCDReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
