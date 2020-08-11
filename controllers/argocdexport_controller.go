@@ -20,6 +20,9 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	batchv1 "k8s.io/api/batch/v1"
+	batchv1b1 "k8s.io/api/batch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,8 +37,10 @@ type ArgoCDExportReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=argoproj.io,resources=argocdexports,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=argoproj.io,resources=argocdexports/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=placeholder,groups=argoproj.io,resources=argocdexports;argocdexports/finalizers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=argoproj.io,resources=argocdexports/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=placeholder,groups=batch,resources=cronjobs;jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=placeholder,groups=core,resources=persistentvolumeclaims;secrets,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ArgoCDExportReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
@@ -49,5 +54,9 @@ func (r *ArgoCDExportReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 func (r *ArgoCDExportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&argoprojiov1alpha1.ArgoCDExport{}).
+		Owns(&batchv1b1.CronJob{}).
+		Owns(&batchv1.Job{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
+		Owns(&corev1.Secret{}).
 		Complete(r)
 }
