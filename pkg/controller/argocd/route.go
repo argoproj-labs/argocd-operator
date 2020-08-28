@@ -191,13 +191,14 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.
 func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
+
 	route := newRouteWithSuffix("server", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
+	found := argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route)
+	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.client.Delete(context.TODO(), route)
 		}
-		return nil // Route found, do nothing
 	}
 
 	if !cr.Spec.Server.Route.Enabled {
@@ -250,5 +251,8 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, route, r.scheme); err != nil {
 		return err
 	}
-	return r.client.Create(context.TODO(), route)
+	if !found {
+		return r.client.Create(context.TODO(), route)
+	}
+	return r.client.Update(context.TODO(), route)
 }
