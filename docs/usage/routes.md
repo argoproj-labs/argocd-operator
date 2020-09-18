@@ -38,4 +38,10 @@ example-argocd-server       example-argocd-server-argocd.apps.test.example.com  
 ```
 
 The Route is `example-argocd-server` in this example and should be available at the HOST/PORT value listed. The admin 
-password is the name for the server Pod from above (`example-argocd-server-7d56c5bf4d-9wxz6` in this example).
+password is stored in the `argocd-cluster` secret in the installation namespace:
+
+To get the password for the admin user:
+
+```shell
+$ kubectl get secret argocd-cluster -n argocd -ojsonpath='{.data.admin\.password}' | base64 --decode
+```
