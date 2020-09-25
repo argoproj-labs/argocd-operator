@@ -34,6 +34,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -556,6 +557,16 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	log.Info("reconcling roles")
+	if err := r.reconcileRoles(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconcling rolebindings")
+	if err := r.reconcileRoleBindings(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling service accounts")
 	if err := r.reconcileServiceAccounts(cr); err != nil {
 		return err
@@ -679,6 +690,14 @@ func watchResources(c controller.Controller) error {
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	if err := watchOwnedResource(c, &appsv1.StatefulSet{}); err != nil {
+		return err
+	}
+
+	if err := watchOwnedResource(c, &v1.Role{}); err != nil {
+		return err
+	}
+
+	if err := watchOwnedResource(c, &v1.RoleBinding{}); err != nil {
 		return err
 	}
 

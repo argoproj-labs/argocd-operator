@@ -25,6 +25,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	applicationController = "argocd-application-controller"
+	dexServer             = "argocd-dex-server"
+	redisHa               = "argocd-redis-ha"
+	server                = "argocd-server"
+)
+
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
 func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoprojv1a1.ArgoCD) string {
 	uri := r.getArgoServerURI(cr)
@@ -58,6 +65,32 @@ func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.Ser
 func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileDexServiceAccount(cr); err != nil {
 		return err
+	}
+
+	if err := r.reconcileServiceAccount(dexServer, cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServiceAccount(applicationController, cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServiceAccount(redisHa, cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServiceAccount(server, cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileServiceAccount(serviceAccountName string, cr *argoprojv1a1.ArgoCD) error {
+	sa := newServiceAccountWithName(serviceAccountName, cr)
+	if !argoutil.IsObjectFound(r.client, cr.Namespace, serviceAccountName, sa) {
+		sa := newServiceAccountWithName(serviceAccountName, cr)
+		return r.client.Create(context.TODO(), sa)
 	}
 	return nil
 }
