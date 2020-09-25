@@ -701,6 +701,10 @@ func watchResources(c controller.Controller) error {
 		return err
 	}
 
+	if err := watchOwnedResource(c, &v1.ClusterRoleBinding{}); err != nil {
+		return err
+	}
+
 	if IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		if err := watchOwnedResource(c, &routev1.Route{}); err != nil {

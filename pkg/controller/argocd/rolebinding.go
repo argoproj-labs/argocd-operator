@@ -11,13 +11,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// newClusterRoleBinding returns a new ClusterRoleBinding instance.
+func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
+	return &v1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   cr.Name,
+			Labels: map[string]string{},
+		},
+	}
+}
+
+// newClusterRoleBindingWithname creates a new ClusterRoleBinding with the given name for the given ArgCD.
+func newClusterRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
+	roleBinding := newClusterRoleBinding(cr)
+	roleBinding.ObjectMeta.Name = name
+
+	labels := roleBinding.ObjectMeta.Labels
+	labels[common.ArgoCDKeyName] = name
+	roleBinding.ObjectMeta.Labels = labels
+
+	return roleBinding
+}
+
 // newRoleBinding returns a new RoleBinding instance.
 func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Name:   cr.Name,
+			Labels: labelsForCluster(cr),
 		},
 	}
 }
@@ -39,6 +60,9 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileRoleBinding(applicationController, cr); err != nil {
 		return err
 	}
+	if err := r.reconcileClusterRoleBinding(applicationController, cr); err != nil {
+		return err
+	}
 
 	if err := r.reconcileRoleBinding(dexServer, cr); err != nil {
 		return err
@@ -51,7 +75,57 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileRoleBinding(server, cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileClusterRoleBinding(server, cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterRoleBinding(applicationController, cr); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// reconcileClusterRoleBinding ensures that a specific clusterrolebinding is present
+func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) error {
+
+	rbacClient := r.kc.RbacV1()
+
+	roleBinding, err := rbacClient.ClusterRoleBindings().Get(context.TODO(), name, metav1.GetOptions{})
+	roleBindingExists := true
+	if err != nil {
+		if errors.IsNotFound(err) {
+			roleBindingExists = false
+			roleBinding = newClusterRoleBindingWithname(name, cr)
+		} else {
+			return err
+		}
+	}
+
+	roleBinding.Subjects = []v1.Subject{
+		{
+			Kind:      v1.ServiceAccountKind,
+			Name:      name,
+			Namespace: cr.Namespace,
+		},
+	}
+	roleBinding.RoleRef = v1.RoleRef{
+		APIGroup: v1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     name,
+	}
+
+	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
+	if roleBindingExists {
+		_, err = rbacClient.ClusterRoleBindings().Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = rbacClient.ClusterRoleBindings().Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+	}
+	return err
 }
 
 // reconcileRoleBinding ensures that a specific rolebinding is present
@@ -72,8 +146,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, cr *argoprojv1a1.Arg
 
 	roleBinding.Subjects = []v1.Subject{
 		{
-			Kind: v1.ServiceAccountKind,
-			Name: name,
+			Kind:      v1.ServiceAccountKind,
+			Name:      name,
+			Namespace: cr.Namespace,
 		},
 	}
 	roleBinding.RoleRef = v1.RoleRef{
@@ -84,8 +159,12 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, cr *argoprojv1a1.Arg
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		return r.client.Update(context.TODO(), roleBinding)
+		_, err = rbacClient.RoleBindings(cr.Namespace).Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = rbacClient.RoleBindings(cr.Namespace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
 	}
-
-	return r.client.Create(context.TODO(), roleBinding)
+	return err
 }

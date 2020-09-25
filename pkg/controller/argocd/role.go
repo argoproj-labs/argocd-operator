@@ -35,25 +35,84 @@ func newRole(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	}
 }
 
+// newClusterRoleWithName creates a new ClusterRole with the given name for the given ArgCD.
+func newClusterRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
+	sa := newClusterRole(name, cr)
+	sa.Name = name
+
+	lbls := sa.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	sa.ObjectMeta.Labels = lbls
+
+	return sa
+}
+
+// newClusterRole returns a new ClusterRole instance.
+func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
+	return &v1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: map[string]string{},
+		},
+	}
+}
+
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRole(applicationController, getPolicyRuleApplicationController(), cr); err != nil {
+	if err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRole(dexServer, getPolicyRuleDexServer(), cr); err != nil {
+	if err := r.reconcileRole(dexServer, policyRuleForDexServer(), cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRole(server, getPolicyRuleServer(), cr); err != nil {
+	if err := r.reconcileRole(server, policyRuleForServer(), cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRole(redisHa, getPolicyRuleRedisHa(), cr); err != nil {
+	if err := r.reconcileRole(redisHa, policyRuleForRedisHa(), cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterRole(applicationController, policyRuleForApplicationControllerClusterRole(), cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterRole(server, policyRuleForServerClusterRole(), cr); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// reconcileClusterRole
+func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+	rbacClient := r.kc.RbacV1()
+
+	role, err := rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+	roleExists := true
+	if err != nil {
+		if errors.IsNotFound(err) {
+			roleExists = false
+			role = newClusterRoleWithName(name, cr)
+		} else {
+			return err
+		}
+	}
+
+	role.Rules = policyRules
+
+	if roleExists {
+		_, err = rbacClient.ClusterRoles().Update(context.TODO(), role, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	} else {
+		controllerutil.SetControllerReference(cr, role, r.scheme)
+		_, err = rbacClient.ClusterRoles().Create(context.TODO(), role, metav1.CreateOptions{})
+	}
+	return err
 }
 
 // reconcileRole
