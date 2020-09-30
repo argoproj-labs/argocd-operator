@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -50,21 +51,16 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
 func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
-	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-application-controller")
-
-	cmd = append(cmd, "--operation-processors")
-	cmd = append(cmd, fmt.Sprint(getArgoServerOperationProcessors(cr)))
-
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, getRedisServerAddress(cr))
-
-	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, nameWithSuffix("repo-server:8081", cr))
-
-	cmd = append(cmd, "--status-processors")
-	cmd = append(cmd, fmt.Sprint(getArgoServerStatusProcessors(cr)))
-
+	cmd := []string{
+		"argocd-application-controller",
+		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
+		"--redis", getRedisServerAddress(cr),
+		"--repo-server", nameWithSuffix("repo-server:8081", cr),
+		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
+	}
+	if cr.Spec.Controller.AppSync != nil {
+		cmd = append(cmd, "--app-resync", strconv.FormatInt(*cr.Spec.Controller.AppSync, 10))
+	}
 	return cmd
 }
 

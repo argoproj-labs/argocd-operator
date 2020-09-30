@@ -59,6 +59,11 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Resources defines the Compute Resources required by the container for the Application Controller.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// AppSync is used to control the poll frequency, by default the ArgoCD controller polls Git every 3m by default.
+	// Set this to a number of seconds, e.g. 600 for 10 minutes.
+	// +optional
+	AppSync *int64 `json:"appSync"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
