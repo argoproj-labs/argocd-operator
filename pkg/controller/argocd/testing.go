@@ -15,9 +15,11 @@
 package argocd
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/apis"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -62,4 +64,28 @@ func assertNoError(t *testing.T, err error) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func initialCerts(t *testing.T, host string) argoCDOpt {
+	t.Helper()
+	return func(a *argoprojv1alpha1.ArgoCD) {
+		key, err := argoutil.NewPrivateKey()
+		assertNoError(t, err)
+		cert, err := argoutil.NewSelfSignedCACertificate(key)
+		assertNoError(t, err)
+		encoded := argoutil.EncodeCertificatePEM(cert)
+
+		a.Spec.TLS.InitialCerts = map[string]string{
+			host: string(encoded),
+		}
+	}
+}
+
+func stringMapKeys(m map[string]string) []string {
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
+	}
+	sort.Strings(r)
+	return r
 }
