@@ -15,6 +15,8 @@
 package v1alpha1
 
 import (
+	"time"
+
 	routev1 "github.com/openshift/api/route/v1"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -60,10 +62,13 @@ type ArgoCDApplicationControllerSpec struct {
 	// Resources defines the Compute Resources required by the container for the Application Controller.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// AppSync is used to control the poll frequency, by default the ArgoCD controller polls Git every 3m by default.
-	// Set this to a number of seconds, e.g. 600 for 10 minutes.
+	// AppSync is used to control the sync frequency, by default the ArgoCD
+	// controller polls Git every 3m by default.
+	//
+	// Set this to a duration, e.g. 10m or 600s to control the synchronisation
+	// frequency.
 	// +optional
-	AppSync *int64 `json:"appSync"`
+	AppSync *time.Duration `json:"appSync"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

@@ -3,6 +3,7 @@ package argocd
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -67,7 +68,7 @@ func Test_getArgoApplicationControllerComand(t *testing.T) {
 		},
 		{
 			"configured appSync",
-			[]argoCDOpt{appSync(600)},
+			[]argoCDOpt{appSync(time.Minute * 10)},
 			[]string{
 				"argocd-application-controller",
 				"--operation-processors",
@@ -106,9 +107,9 @@ func operationProcessors(n int32) argoCDOpt {
 	}
 }
 
-func appSync(n int64) argoCDOpt {
+func appSync(d time.Duration) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.AppSync = &n
+		a.Spec.Controller.AppSync = &d
 	}
 }
 

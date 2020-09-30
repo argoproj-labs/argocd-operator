@@ -19,6 +19,8 @@
 package v1alpha1
 
 import (
+	time "time"
+
 	routev1 "github.com/openshift/api/route/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	v1 "k8s.io/api/core/v1"
@@ -81,7 +83,7 @@ func (in *ArgoCDApplicationControllerSpec) DeepCopyInto(out *ArgoCDApplicationCo
 	}
 	if in.AppSync != nil {
 		in, out := &in.AppSync, &out.AppSync
-		*out = new(int64)
+		*out = new(time.Duration)
 		**out = **in
 	}
 	return

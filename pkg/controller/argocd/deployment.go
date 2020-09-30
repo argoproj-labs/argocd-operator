@@ -59,7 +59,7 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
 	}
 	if cr.Spec.Controller.AppSync != nil {
-		cmd = append(cmd, "--app-resync", strconv.FormatInt(*cr.Spec.Controller.AppSync, 10))
+		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
 	return cmd
 }
