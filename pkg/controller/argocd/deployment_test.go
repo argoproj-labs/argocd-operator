@@ -1,19 +1,76 @@
 package argocd
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/google/go-cmp/cmp"
 )
 
-var (
-	testNamespace  = "argocd"
-	testArgoCDName = "argocd"
-)
+func TestReconcileArgoCD_reconcileApplicationControllerDeployment(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	fatalIfError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	command := deployment.Spec.Template.Spec.Containers[0].Command
+	want := []string{
+		"argocd-application-controller",
+		"--operation-processors", "10",
+		"--redis", "argocd-redis:6379",
+		"--repo-server", "argocd-repo-server:8081",
+		"--status-processors", "20"}
+	if diff := cmp.Diff(want, command); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+}
+
+func TestReconcileArgoCD_reconcileApplicationControllerDeployment_withUpdate(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+
+	a = makeTestArgoCD(controllerProcessors(30))
+	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	fatalIfError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	command := deployment.Spec.Template.Spec.Containers[0].Command
+	want := []string{
+		"argocd-application-controller",
+		"--operation-processors", "10",
+		"--redis", "argocd-redis:6379",
+		"--repo-server", "argocd-repo-server:8081",
+		"--status-processors", "30"}
+	if diff := cmp.Diff(want, command); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+}
 
 func Test_getArgoApplicationControllerComand(t *testing.T) {
 	cmdTests := []struct {
@@ -109,21 +166,6 @@ func operationProcessors(n int32) argoCDOpt {
 
 func appSync(d time.Duration) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.AppSync = &d
+		a.Spec.Controller.AppSync = &metav1.Duration{Duration: d}
 	}
-}
-
-type argoCDOpt func(*argoprojv1alpha1.ArgoCD)
-
-func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
 }

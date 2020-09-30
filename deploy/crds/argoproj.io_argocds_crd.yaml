@@ -48,8 +48,7 @@ spec:
                     default the ArgoCD controller polls Git every 3m by default. \n
                     Set this to a duration, e.g. 10m or 600s to control the synchronisation
                     frequency."
-                  format: int64
-                  type: integer
+                  type: string
                 processors:
                   description: Processors contains the options for the Application
                     Controller processors.

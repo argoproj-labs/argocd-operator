@@ -53,6 +53,8 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"oidc.config":                  "",
 		"repositories":                 "",
 		"repository.credentials":       "",
+		"resource.customizations":      "",
+		"resource.inclusions":          "",
 		"resource.exclusions":          "",
 		"statusbadge.enabled":          "false",
 		"url":                          "https://argocd-server",

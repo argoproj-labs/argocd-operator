@@ -15,8 +15,6 @@
 package v1alpha1
 
 import (
-	"time"
-
 	routev1 "github.com/openshift/api/route/v1"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -68,7 +66,7 @@ type ArgoCDApplicationControllerSpec struct {
 	// Set this to a duration, e.g. 10m or 600s to control the synchronisation
 	// frequency.
 	// +optional
-	AppSync *time.Duration `json:"appSync"`
+	AppSync *metav1.Duration `json:"appSync,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

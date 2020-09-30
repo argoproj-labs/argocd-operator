@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -294,9 +295,18 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
+		updated := false
 		if actualImage != desiredImage {
 			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
 			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			updated = true
+		}
+		desiredCommand := getArgoApplicationControllerCommand(cr)
+		if !reflect.DeepEqual(desiredCommand, deploy.Spec.Template.Spec.Containers[0].Command) {
+			deploy.Spec.Template.Spec.Containers[0].Command = desiredCommand
+			updated = true
+		}
+		if updated {
 			return r.client.Update(context.TODO(), deploy)
 		}
 		return nil // Deployment found with nothing to do, move along...
