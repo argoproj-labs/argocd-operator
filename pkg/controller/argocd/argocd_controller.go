@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,6 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 )
 
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
@@ -89,9 +90,11 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	if err := r.reconcileResources(argocd); err != nil {
-		// Error reconciling ArgoCD sub-resources - requeue the request.
-		return reconcile.Result{}, err
+	if argocd.ObjectMeta.DeletionTimestamp.IsZero() {
+		if err := r.reconcileResources(argocd); err != nil {
+			// Error reconciling ArgoCD sub-resources - requeue the request.
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Return and don't requeue
