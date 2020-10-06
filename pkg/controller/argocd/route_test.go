@@ -20,11 +20,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 )
 
-const (
-	testArgoCDName = "testing-argocd"
-	testNamespace  = "testing-argocd"
-)
-
 func TestReconcileRouteSetsInsecure(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()
@@ -44,7 +39,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 		},
 	}
 	_, err := r.Reconcile(req)
-	fatalIfError(t, err, "reconcile: (%v): %s", req, err)
+	assertNoError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -114,7 +109,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		},
 	}
 	_, err := r.Reconcile(req)
-	fatalIfError(t, err, "reconcile: (%v): %s", req, err)
+	assertNoError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -143,7 +138,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 	_, err = r.Reconcile(req)
-	fatalIfError(t, err, "reconcile: (%v): %s", req, err)
+	assertNoError(t, err)
 
 	loaded = &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -198,6 +193,7 @@ func fatalIfError(t *testing.T, err error, format string, a ...interface{}) {
 }
 
 func loadSecret(t *testing.T, c client.Client, name string) *corev1.Secret {
+	t.Helper()
 	secret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: testNamespace}, secret)
 	fatalIfError(t, err, "failed to load secret %q", name)

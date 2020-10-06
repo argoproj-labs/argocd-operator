@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -20,10 +22,10 @@ func TestReconcileArgoCD_reconcileApplicationControllerDeployment(t *testing.T) 
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	fatalIfError(t, r.client.Get(
+	assertNoError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -47,13 +49,13 @@ func TestReconcileArgoCD_reconcileApplicationControllerDeployment_withUpdate(t *
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
 
 	a = makeTestArgoCD(controllerProcessors(30))
-	fatalIfError(t, r.reconcileApplicationControllerDeployment(a))
+	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	fatalIfError(t, r.client.Get(
+	assertNoError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -155,6 +157,88 @@ func Test_getArgoApplicationControllerComand(t *testing.T) {
 func controllerProcessors(n int32) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Controller.Processors.Status = n
+	}
+}
+
+// TODO: This needs more testing for the rest of the RepoDeployment container
+// fields.
+
+// reconcileRepoDeployment creates a Deployment with the correct volumes for the
+// repo-server.
+func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileRepoDeployment(a)
+	assertNoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assertNoError(t, err)
+
+	want := []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Volumes); diff != "" {
+		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
+	}
+}
+
+// reconcileRepoDeployment creates a Deployment with the correct mounts for the
+// repo-server.
+func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileRepoDeployment(a)
+	assertNoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assertNoError(t, err)
+
+	want := []corev1.VolumeMount{
+		{Name: "ssh-known-hosts", MountPath: "/app/config/ssh"},
+		{Name: "tls-certs", MountPath: "/app/config/tls"},
+		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
+	}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
+		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
 	}
 }
 

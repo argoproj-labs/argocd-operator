@@ -153,7 +153,7 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 // getResourceCustomizations will return the resource customizations for the given ArgoCD.
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
-	if len(cr.Spec.ResourceCustomizations) > 0 {
+	if cr.Spec.ResourceCustomizations != "" {
 		rc = cr.Spec.ResourceCustomizations
 	}
 	return rc
@@ -312,7 +312,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		return r.reconcileExistingArgoConfigMap(cm, cr)
 	}
 
-	if len(cm.Data) <= 0 {
+	if cm.Data == nil {
 		cm.Data = make(map[string]string)
 	}
 
@@ -325,7 +325,9 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
-	cm.Data[common.ArgoCDKeyResourceCustomizations] = getResourceCustomizations(cr)
+	if c := getResourceCustomizations(cr); c != "" {
+		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
+	}
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
