@@ -202,8 +202,11 @@ const (
 	// ArgoCDDefaultResourceCustomizations is the default resource customizations.
 	ArgoCDDefaultResourceCustomizations = ""
 
-	// ArgoCDDefaultResourceExclusions is the default resource exlcusions.
+	// ArgoCDDefaultResourceExclusions is the default resource exclusions.
 	ArgoCDDefaultResourceExclusions = ""
+
+	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
+	ArgoCDDefaultResourceInclusions = ""
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048

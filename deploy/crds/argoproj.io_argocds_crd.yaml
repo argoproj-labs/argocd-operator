@@ -350,12 +350,12 @@ spec:
                 creation of the cluster for connecting Git repositories via SSH.
               properties:
                 excludedefaulthosts:
-                  description: Defaulthosts describes whether you would like to include the default
-                    list of SSH Known Hosts provided by ArgoCD
+                  description: ExcludeDefaultHosts describes whether you would like
+                    to include the default list of SSH Known Hosts provided by ArgoCD.
                   type: boolean
                 keys:
-                  description: Keys describes a custom set of SSH Known Hosts that you would like to have
-                    included in your ArgoCD server.
+                  description: Keys describes a custom set of SSH Known Hosts that
+                    you would like to have included in your ArgoCD server.
                   type: string
               type: object
             kustomizeBuildOptions:
@@ -607,6 +607,10 @@ spec:
             resourceExclusions:
               description: ResourceExclusions is used to completely ignore entire
                 classes of resource group/kinds.
+              type: string
+            resourceInclusions:
+              description: ResourceInclusions is used to only include specific group/kinds
+                in the reconciliation process.
               type: string
             server:
               description: Server defines the options for the ArgoCD Server component.
