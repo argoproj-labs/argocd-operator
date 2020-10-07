@@ -380,6 +380,10 @@ type ArgoCDSpec struct {
 	// ResourceExclusions is used to completely ignore entire classes of resource group/kinds.
 	ResourceExclusions string `json:"resourceExclusions,omitempty"`
 
+	// ResourceInclusions is used to only include specific group/kinds in the
+	// reconciliation process.
+	ResourceInclusions string `json:"resourceInclusions,omitempty"`
+
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
@@ -459,6 +463,11 @@ type ArgoCDTLSSpec struct {
 }
 
 type SSHHostsSpec struct {
-	ExcludeDefaultHosts bool   `json:"excludedefaulthosts,omitempty"`
-	Keys                string `json:"keys,omitempty"`
+	// ExcludeDefaultHosts describes whether you would like to include the default
+	// list of SSH Known Hosts provided by ArgoCD.
+	ExcludeDefaultHosts bool `json:"excludedefaulthosts,omitempty"`
+
+	// Keys describes a custom set of SSH Known Hosts that you would like to
+	// have included in your ArgoCD server.
+	Keys string `json:"keys,omitempty"`
 }

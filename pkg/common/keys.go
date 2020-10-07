@@ -122,6 +122,9 @@ const (
 	// ArgoCDKeyResourceExclusions is the configuration key for resource exclusions.
 	ArgoCDKeyResourceExclusions = "resource.exclusions"
 
+	// ArgoCDKeyResourceInclusions is the configuration key for resource inclusions.
+	ArgoCDKeyResourceInclusions = "resource.inclusions"
+
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
 

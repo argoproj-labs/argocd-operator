@@ -162,8 +162,17 @@ func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
 func getResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
 	re := common.ArgoCDDefaultResourceExclusions
-	if len(cr.Spec.ResourceExclusions) > 0 {
+	if cr.Spec.ResourceExclusions != "" {
 		re = cr.Spec.ResourceExclusions
+	}
+	return re
+}
+
+// getResourceInclusions will return the resource inclusions for the given ArgoCD.
+func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
+	re := common.ArgoCDDefaultResourceInclusions
+	if cr.Spec.ResourceInclusions != "" {
+		re = cr.Spec.ResourceInclusions
 	}
 	return re
 }
@@ -318,6 +327,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
 	cm.Data[common.ArgoCDKeyResourceCustomizations] = getResourceCustomizations(cr)
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
 	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
