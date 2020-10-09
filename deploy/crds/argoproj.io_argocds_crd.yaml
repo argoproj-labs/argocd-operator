@@ -43,6 +43,12 @@ spec:
               description: Controller defines the Application Controller options for
                 ArgoCD.
               properties:
+                appSync:
+                  description: "AppSync is used to control the sync frequency, by
+                    default the ArgoCD controller polls Git every 3m by default. \n
+                    Set this to a duration, e.g. 10m or 600s to control the synchronisation
+                    frequency."
+                  type: string
                 processors:
                   description: Processors contains the options for the Application
                     Controller processors.

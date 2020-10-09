@@ -17,13 +17,13 @@ package argocd
 import (
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/apis"
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 )
 
 const (
@@ -35,24 +35,17 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
 	fatalIfError(t, apis.AddToScheme(s))
 
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewFakeClientWithScheme(s, objs...)
 	return &ReconcileArgoCD{
 		client: cl,
 		scheme: s,
 	}
 }
 
-func fatalIfError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
+type argoCDOpt func(*argoprojv1alpha1.ArgoCD)
 
-type argoCDOpt func(*argov1alpha1.ArgoCD)
-
-func makeTestArgoCD(opts ...argoCDOpt) *argov1alpha1.ArgoCD {
-	a := &argov1alpha1.ArgoCD{
+func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
+	a := &argoprojv1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
@@ -62,4 +55,11 @@ func makeTestArgoCD(opts ...argoCDOpt) *argov1alpha1.ArgoCD {
 		o(a)
 	}
 	return a
+}
+
+func fatalIfError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
