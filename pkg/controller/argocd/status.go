@@ -57,8 +57,10 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoprojv1a1.
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
-		if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-			status = "Running"
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
 		}
 	}
 
@@ -77,8 +79,10 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
-		if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-			status = "Running"
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
 		}
 	}
 
@@ -115,8 +119,10 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 		if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 			status = "Pending"
 
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
+			if deploy.Spec.Replicas != nil {
+				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+					status = "Running"
+				}
 			}
 		}
 	} else {
@@ -146,8 +152,10 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
-		if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-			status = "Running"
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
 		}
 	}
 
@@ -166,8 +174,11 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
-		if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-			status = "Running"
+		// TODO: Refactor these checks.
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
 		}
 	}
 
