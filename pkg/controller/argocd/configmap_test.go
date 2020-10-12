@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -23,8 +24,57 @@ import (
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
+
+var _ reconcile.Reconciler = &ReconcileArgoCD{}
+
+func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileTLSCerts(a))
+
+	configMap := &corev1.ConfigMap{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      common.ArgoCDTLSCertsConfigMapName,
+			Namespace: a.Namespace,
+		},
+		configMap))
+
+	want := []string{"root-ca.example.com"}
+	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
+		t.Fatalf("got %#v, want %#v\n", k, want)
+	}
+}
+
+func TestReconcileArgoCD_reconcileTLSCerts_withUpdate(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	assertNoError(t, r.reconcileTLSCerts(a))
+
+	a = makeTestArgoCD(initialCerts(t, "testing.example.com"))
+	assertNoError(t, r.reconcileTLSCerts(a))
+
+	configMap := &corev1.ConfigMap{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      common.ArgoCDTLSCertsConfigMapName,
+			Namespace: a.Namespace,
+		},
+		configMap))
+
+	want := []string{"testing.example.com"}
+	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
+		t.Fatalf("got %#v, want %#v\n", k, want)
+	}
+}
 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))

@@ -636,14 +636,13 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		return nil // ConfigMap found, move along...
-	}
-
 	cm.Data = getInitialTLSCerts(cr)
-
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
+	}
+
+	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		return r.client.Update(context.TODO(), cm)
 	}
 	return r.client.Create(context.TODO(), cm)
 }
