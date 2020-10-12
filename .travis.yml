@@ -15,7 +15,7 @@ cache:
 before_install:
   - git clone https://github.com/operator-framework/operator-sdk $GOPATH/src/github.com/operator-framework/operator-sdk
   - cd $GOPATH/src/github.com/operator-framework/operator-sdk
-  - git checkout v0.17.0
+  - git checkout v0.19.4
   - make tidy
   - make install
   - cd $GOPATH/src/github.com/argoproj-labs/argocd-operator
