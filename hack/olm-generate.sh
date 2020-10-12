@@ -21,8 +21,8 @@ source ${HACK_DIR}/env.sh
 
 # Generate CSV 
 echo "Generating CSV for version ${ARGOCD_OPERATOR_VERSION}"
-operator-sdk generate csv \
+operator-sdk generate packagemanifests \
     --operator-name ${ARGOCD_OPERATOR_NAME} \
-    --csv-version ${ARGOCD_OPERATOR_VERSION} \
+    --version ${ARGOCD_OPERATOR_VERSION} \
     --from-version ${ARGOCD_OPERATOR_PREVIOUS_VERSION} \
     --update-crds
