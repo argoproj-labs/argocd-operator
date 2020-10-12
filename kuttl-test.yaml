@@ -1,5 +1,6 @@
 apiVersion: kudo.dev/v1alpha1
 kind: TestSuite
+crdDir: ./deploy/crds/
 testDirs:
-- tests/e2e/
-timeout: 120
+- ./tests/e2e/
+startKIND: false
