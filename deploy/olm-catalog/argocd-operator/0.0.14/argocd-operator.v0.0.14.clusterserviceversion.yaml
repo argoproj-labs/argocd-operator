@@ -35,19 +35,52 @@ spec:
       displayName: ArgoCDExport
       description: ArgoCDExport describes the desired state for the export of a given Argo CD cluster.
       resources:
+      - kind: ArgoCD
+        name: ''
+        version: v1alpha1
+      - kind: ArgoCDExport
+        name: ''
+        version: v1alpha1
+      - kind: ConfigMap
+        name: ''
+        version: v1
       - kind: CronJob
         name: ''
-        version: batch/v1beta1
+        version: v1beta1
+      - kind: Deployment
+        name: ''
+        version: v1
+      - kind: Ingress
+        name: ''
+        version: v1beta1
       - kind: Job
         name: ''
-        version: batch/v1
+        version: v1
       - kind: PersistentVolumeClaim
         name: ''
         version: v1
       - kind: Pod
         name: ''
         version: v1
+      - kind: Prometheus
+        name: ''
+        version: v1
+      - kind: ReplicaSet
+        name: ''
+        version: v1
+      - kind: Route
+        name: ''
+        version: v1
       - kind: Secret
+        name: ''
+        version: v1
+      - kind: Service
+        name: ''
+        version: v1
+      - kind: ServiceMonitor
+        name: ''
+        version: v1
+      - kind: StatefulSet
         name: ''
         version: v1
       specDescriptors:
@@ -76,19 +109,40 @@ spec:
       displayName: ArgoCD
       description: ArgoCD is the representation of an Argo CD deployment.
       resources:
+      - kind: ArgoCD
+        name: ''
+        version: v1alpha1
+      - kind: ArgoCDExport
+        name: ''
+        version: v1alpha1
       - kind: ConfigMap
         name: ''
         version: v1
+      - kind: CronJob
+        name: ''
+        version: v1beta1
       - kind: Deployment
         name: ''
-        version: apps/v1
+        version: v1
       - kind: Ingress
         name: ''
-        version: extensions/v1
+        version: v1beta1
+      - kind: Job
+        name: ''
+        version: v1
       - kind: PersistentVolumeClaim
         name: ''
         version: v1
       - kind: Pod
+        name: ''
+        version: v1
+      - kind: Prometheus
+        name: ''
+        version: v1
+      - kind: ReplicaSet
+        name: ''
+        version: v1
+      - kind: Route
         name: ''
         version: v1
       - kind: Secret
@@ -97,9 +151,12 @@ spec:
       - kind: Service
         name: ''
         version: v1
+      - kind: ServiceMonitor
+        name: ''
+        version: v1
       - kind: StatefulSet
         name: ''
-        version: apps/v1
+        version: v1
       specDescriptors:
       - description: 'The container image to use for the Argo CD components.'
         displayName: Image
@@ -584,7 +641,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: argocd-operator
-                image: quay.io/redhat-cop/argocd-operator@sha256:98cf0265a10fe63d868c554090a310c2b2e96038d0c5ec14802c7741538dea59
+                image: quay.io/jmckind/argocd-operator:latest
                 imagePullPolicy: Always
                 name: argocd-operator
                 resources: {}
