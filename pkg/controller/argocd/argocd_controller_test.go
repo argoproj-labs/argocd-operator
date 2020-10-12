@@ -49,7 +49,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 		},
 	}
 	res, err := r.Reconcile(req)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
@@ -76,7 +76,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 		},
 	}
 	res, err := r.Reconcile(req)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}

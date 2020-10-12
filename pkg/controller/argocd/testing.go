@@ -33,7 +33,7 @@ const (
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
-	fatalIfError(t, apis.AddToScheme(s))
+	assertNoError(t, apis.AddToScheme(s))
 
 	cl := fake.NewFakeClientWithScheme(s, objs...)
 	return &ReconcileArgoCD{
@@ -57,7 +57,7 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func fatalIfError(t *testing.T, err error) {
+func assertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatal(err)

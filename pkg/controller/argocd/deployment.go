@@ -833,9 +833,14 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			{
 				Name:      "ssh-known-hosts",
 				MountPath: "/app/config/ssh",
-			}, {
+			},
+			{
 				Name:      "tls-certs",
 				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "gpg-keyring",
+				MountPath: "/app/config/gpg/keys",
 			},
 		},
 	}}
@@ -850,7 +855,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 					},
 				},
 			},
-		}, {
+		},
+		{
 			Name: "tls-certs",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -858,6 +864,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 						Name: common.ArgoCDTLSCertsConfigMapName,
 					},
 				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}

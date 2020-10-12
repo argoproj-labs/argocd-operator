@@ -32,14 +32,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 
 	want := map[string]string{
 		"application.instanceLabelKey": "mycompany.com/appname",
@@ -53,7 +53,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"oidc.config":                  "",
 		"repositories":                 "",
 		"repository.credentials":       "",
-		"resource.customizations":      "",
 		"resource.inclusions":          "",
 		"resource.exclusions":          "",
 		"statusbadge.enabled":          "false",
@@ -75,16 +74,39 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	fatalIfError(t, err)
+	assertNoError(t, err)
 
 	if c := cm.Data["resource.inclusions"]; c != customizations {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
+	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	customizations := "testing: testing"
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.ResourceCustomizations = customizations
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assertNoError(t, err)
+
+	if c := cm.Data["resource.customizations"]; c != customizations {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
 	}
 }
