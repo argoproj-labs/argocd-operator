@@ -206,9 +206,6 @@ spec:
                         values:
                           description: Values is Helm values, typically defined as a block
                           type: string
-                        version:
-                          description: Version is the Helm version to use for templating with
-                          type: string
                       type: object
                     ksonnet:
                       description: Ksonnet holds ksonnet specific options
@@ -297,7 +294,7 @@ spec:
                   description: SyncStrategy describes how to perform the sync
                   properties:
                     apply:
-                      description: Apply will perform a `kubectl apply` to perform the sync.
+                      description: Apply wil perform a `kubectl apply` to perform the sync.
                       properties:
                         force:
                           description: Force indicates whether or not to supply the --force flag to `kubectl apply`. The --force flag deletes and re-create the resource, when PATCH encounters conflict and has retried for 5 times.
@@ -467,9 +464,6 @@ spec:
                     values:
                       description: Values is Helm values, typically defined as a block
                       type: string
-                    version:
-                      description: Version is the Helm version to use for templating with
-                      type: string
                   type: object
                 ksonnet:
                   description: Ksonnet holds ksonnet specific options
@@ -555,9 +549,6 @@ spec:
                 automated:
                   description: Automated will keep an application synced to the target revision
                   properties:
-                    allowEmpty:
-                      description: 'AllowEmpty allows apps have zero live resources (default: false)'
-                      type: boolean
                     prune:
                       description: 'Prune will prune resources automatically as part of automated sync (default: false)'
                       type: boolean
@@ -743,9 +734,6 @@ spec:
                             type: array
                           values:
                             description: Values is Helm values, typically defined as a block
-                            type: string
-                          version:
-                            description: Version is the Helm version to use for templating with
                             type: string
                         type: object
                       ksonnet:
@@ -1024,9 +1012,6 @@ spec:
                                 values:
                                   description: Values is Helm values, typically defined as a block
                                   type: string
-                                version:
-                                  description: Version is the Helm version to use for templating with
-                                  type: string
                               type: object
                             ksonnet:
                               description: Ksonnet holds ksonnet specific options
@@ -1115,7 +1100,7 @@ spec:
                           description: SyncStrategy describes how to perform the sync
                           properties:
                             apply:
-                              description: Apply will perform a `kubectl apply` to perform the sync.
+                              description: Apply wil perform a `kubectl apply` to perform the sync.
                               properties:
                                 force:
                                   description: Force indicates whether or not to supply the --force flag to `kubectl apply`. The --force flag deletes and re-create the resource, when PATCH encounters conflict and has retried for 5 times.
@@ -1281,9 +1266,6 @@ spec:
                               type: array
                             values:
                               description: Values is Helm values, typically defined as a block
-                              type: string
-                            version:
-                              description: Version is the Helm version to use for templating with
                               type: string
                           type: object
                         ksonnet:
@@ -1536,9 +1518,6 @@ spec:
                               type: array
                             values:
                               description: Values is Helm values, typically defined as a block
-                              type: string
-                            version:
-                              description: Version is the Helm version to use for templating with
                               type: string
                           type: object
                         ksonnet:
