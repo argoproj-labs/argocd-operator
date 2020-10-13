@@ -452,12 +452,6 @@ spec:
         x-descriptors:
           - 'urn:alm:descriptor:com.tectonic.ui:text'
           - 'urn:alm:descriptor:com.tectonic.ui:advanced'
-      - description: 'The initial SSH known hosts data for connecting Git repositories via SSH.'
-        displayName: 'Initial SSH Known Hosts'
-        path: initialSSHKnownHosts
-        x-descriptors:
-          - 'urn:alm:descriptor:com.tectonic.ui:text'
-          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
       - description: 'The build options/parameters to use with `kustomize build`.'
         displayName: 'Kustomize Build Options'
         path: kustomizeBuildOptions
