@@ -13,7 +13,7 @@ Name | Default | Description
 [**Image**](#image) | `quay.io/jmckind/argocd-operator-util` | The container image for the export Job.
 [**Schedule**](#schedule) | [Empty] | Export schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
 [**Storage**](#storage-options) | [Object] | The storage configuration options.
-[**Version**](#version) | v0.0.13 (SHA) | The tag to use with the container image for the export Job.
+[**Version**](#version) | v0.0.14 (SHA) | The tag to use with the container image for the export Job.
 
 ## Argocd
 
@@ -116,5 +116,5 @@ metadata:
   labels:
     example: version
 spec:
-  version: v0.0.13
+  version: v0.0.14
 ```

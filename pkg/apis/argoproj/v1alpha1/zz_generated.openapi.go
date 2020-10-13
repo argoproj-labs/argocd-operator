@@ -291,8 +291,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"initialSSHKnownHosts": {
 						SchemaProps: spec.SchemaProps{
 							Description: "InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.",
-							Type:        []string{"string"},
-							Format:      "",
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.SSHHostsSpec"),
 						},
 					},
 					"kustomizeBuildOptions": {
@@ -354,6 +353,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"resourceInclusions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceInclusions is used to only include specific group/kinds in the reconciliation process.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"server": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Server defines the options for the ArgoCD Server component.",
@@ -391,7 +397,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec", "./pkg/apis/argoproj/v1alpha1.SSHHostsSpec"},
 	}
 }
 
