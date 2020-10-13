@@ -135,6 +135,9 @@ spec:
                   description: Version is the Dex container image tag.
                   type: string
               type: object
+            disableAdmin:
+              description: DisableAdmin will disable the admin user.
+              type: boolean
             gaAnonymizeUsers:
               description: GAAnonymizeUsers toggles user IDs being hashed before sending
                 to google analytics.

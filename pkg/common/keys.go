@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting..
+	ArgoCDKeyAdminEnabled = "admin.enabled"
+
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.
 	ArgoCDKeyApplicationInstanceLabelKey = "application.instanceLabelKey"
 

@@ -228,6 +228,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec"),
 						},
 					},
+					"disableAdmin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisableAdmin will disable the admin user.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"gaTrackingID": {
 						SchemaProps: spec.SchemaProps{
 							Description: "GATrackingID is the google analytics tracking ID to use.",
