@@ -465,7 +465,7 @@ spec:
 
 Git repository credential templates to configure Argo CD to use upon creation of the cluster.
 
-This property maps directly to the `repository.credentials` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repository.credentials` field should then be made to the `argocd-cm` ConfigMap directly or by using the Argo CD web UI or CLI.
+This property maps directly to the `repository.credentials` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repository.credentials` field should then be made to the `argocd-cm` ConfigMap directly or by using the Argo CD web UI or CLI. See the [Argo CD Documentation](https://argoproj.github.io/argo-cd/operator-manual/declarative-setup/#repository-credentials) for the specifics on setting repository credentials.
 
 ### Repository Credentials Example
 
