@@ -107,7 +107,6 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 
 	role.Rules = policyRules
 
-	controllerutil.SetControllerReference(cr, role, r.scheme)
 	if roleExists {
 		_, err = rbacClient.ClusterRoles().Update(context.TODO(), role, metav1.UpdateOptions{})
 		if err != nil {

@@ -74,17 +74,13 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	/*
+	if err := r.reconcileClusterRoleBinding(server, cr); err != nil {
+		return err
+	}
 
-		if err := r.reconcileClusterRoleBinding(server, cr); err != nil {
-			return err
-		}
-
-		if err := r.reconcileClusterRoleBinding(applicationController, cr); err != nil {
-			return err
-		}
-
-	*/
+	if err := r.reconcileClusterRoleBinding(applicationController, cr); err != nil {
+		return err
+	}
 
 	if err := r.reconcileManagedNamespaces(cr); err != nil {
 		return err
@@ -122,7 +118,6 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, cr *argoprojv
 		Name:     generateResourceName(name, cr),
 	}
 
-	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
 		_, err = rbacClient.ClusterRoleBindings().Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
 		if err != nil {
@@ -160,18 +155,16 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 	if err != nil {
 		if errors.IsNotFound(err) {
 			roleBindingExists = false
-
 			roleBinding = &v1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cr.Name,
 					Namespace: managedNamespace,
 				},
 			}
+		} else {
+			return err
 		}
-	} else {
-		return err
 	}
-
 	roleBinding.Subjects = []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
