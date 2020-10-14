@@ -74,7 +74,7 @@ func TestReconcileArgoCD_reconcileApplicationControllerDeployment_withUpdate(t *
 	}
 }
 
-func Test_getArgoApplicationControllerComand(t *testing.T) {
+func Test_getArgoApplicationControllerCommand(t *testing.T) {
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
@@ -251,5 +251,47 @@ func operationProcessors(n int32) argoCDOpt {
 func appSync(d time.Duration) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Controller.AppSync = &metav1.Duration{Duration: d}
+	}
+}
+
+func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	d := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, d)
+
+	err := r.reconcileRepoDeployment(a)
+	assertNoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assertNoError(t, err)
+
+	if l := len(deployment.Spec.Template.Spec.Volumes); l != 3 {
+		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 3", l)
+	}
+
+	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 3 {
+		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 3", l)
 	}
 }
