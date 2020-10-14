@@ -774,17 +774,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
 func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
-		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
 	automountToken := false
 	if cr.Spec.Repo.MountSAToken {
 		automountToken = cr.Spec.Repo.MountSAToken
@@ -872,6 +861,32 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+	}
+
+	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			changed = true
+		}
+
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
