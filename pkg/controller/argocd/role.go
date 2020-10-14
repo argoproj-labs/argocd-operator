@@ -11,6 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+func generateResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) string {
+	return cr.Name + "-" + argoComponentName
+}
+
 // newRoleWithName creates a new ServiceAccount with the given name for the given ArgCD.
 func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	sa := newRole(name, cr)
@@ -38,7 +42,7 @@ func newRole(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 // newClusterRoleWithName creates a new ClusterRole with the given name for the given ArgCD.
 func newClusterRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	sa := newClusterRole(name, cr)
-	sa.Name = name
+	sa.Name = generateResourceName(name, cr)
 
 	lbls := sa.ObjectMeta.Labels
 	lbls[common.ArgoCDKeyName] = name
@@ -51,7 +55,7 @@ func newClusterRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRol
 func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
+			Name:   generateResourceName(name, cr),
 			Labels: map[string]string{},
 		},
 	}
@@ -90,7 +94,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	rbacClient := r.kc.RbacV1()
 
-	role, err := rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+	role, err := rbacClient.ClusterRoles().Get(context.TODO(), generateResourceName(name, cr), metav1.GetOptions{})
 	roleExists := true
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -103,13 +107,13 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 
 	role.Rules = policyRules
 
+	controllerutil.SetControllerReference(cr, role, r.scheme)
 	if roleExists {
 		_, err = rbacClient.ClusterRoles().Update(context.TODO(), role, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 	} else {
-		controllerutil.SetControllerReference(cr, role, r.scheme)
 		_, err = rbacClient.ClusterRoles().Create(context.TODO(), role, metav1.CreateOptions{})
 	}
 	return err
@@ -132,13 +136,13 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	role.Rules = policyRules
 
+	controllerutil.SetControllerReference(cr, role, r.scheme)
 	if roleExists {
 		_, err = rbacClient.Roles(cr.Namespace).Update(context.TODO(), role, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 	} else {
-		controllerutil.SetControllerReference(cr, role, r.scheme)
 		_, err = rbacClient.Roles(cr.Namespace).Create(context.TODO(), role, metav1.CreateOptions{})
 	}
 	return err
