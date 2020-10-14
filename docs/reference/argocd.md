@@ -38,7 +38,7 @@ Name | Default | Description
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
-[**Version**](#version) | v1.6.1 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Version**](#version) | v1.7.7 (SHA) | The tag to use with the container image for all Argo CD components.
 
 ## Application Instance Label Key
 
@@ -169,6 +169,18 @@ spec:
     policy: |
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
+```
+
+### Important Note regarding Role Mappings:
+
+To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
+
+A quick fix will be to create an `admins` group, add the user to the group and then apply the `cluster-admin` role to the group. 
+
+```
+oc adm groups new admins
+oc adm groups add-users admins USER
+oc adm policy add-cluster-role-to-group cluster-admin admins
 ```
 
 ## GA Tracking ID
@@ -453,7 +465,7 @@ spec:
 
 Git repository credential templates to configure Argo CD to use upon creation of the cluster.
 
-This property maps directly to the `repository.credentials` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repository.credentials` field should then be made through the Argo CD web UI or CLI.
+This property maps directly to the `repository.credentials` field in the `argocd-cm` ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Modifications to the `repository.credentials` field should then be made to the `argocd-cm` ConfigMap directly or by using the Argo CD web UI or CLI. See the [Argo CD Documentation](https://argoproj.github.io/argo-cd/operator-manual/declarative-setup/#repository-credentials) for the specifics on setting repository credentials.
 
 ### Repository Credentials Example
 
@@ -960,5 +972,5 @@ metadata:
   labels:
     example: version
 spec:
-  version: v1.6.1
+  version: v1.7.7
 ```

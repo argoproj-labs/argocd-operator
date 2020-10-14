@@ -31,7 +31,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:0a8fa1fee472568c2ec49dc1a71d3af56613b6b62353560a3682abc24492daee" // v1.6.1
+	ArgoCDDefaultArgoVersion = "sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f" // v1.7.7
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -86,7 +86,7 @@ const (
 	ArgoCDDefaultExportJobImage = "quay.io/jmckind/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:91743a6f8ed9423bab5c68ee6ad2450b2d123dd52f1de836bcbb33d531778487" // v0.0.13
+	ArgoCDDefaultExportJobVersion = "sha256:f987796f3b4be500516689b24988f5c27f8d4f6e537b5c5d862090451de90794" // v0.0.14
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -202,8 +202,11 @@ const (
 	// ArgoCDDefaultResourceCustomizations is the default resource customizations.
 	ArgoCDDefaultResourceCustomizations = ""
 
-	// ArgoCDDefaultResourceExclusions is the default resource exlcusions.
+	// ArgoCDDefaultResourceExclusions is the default resource exclusions.
 	ArgoCDDefaultResourceExclusions = ""
+
+	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
+	ArgoCDDefaultResourceInclusions = ""
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048

@@ -153,7 +153,7 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 // getResourceCustomizations will return the resource customizations for the given ArgoCD.
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
-	if len(cr.Spec.ResourceCustomizations) > 0 {
+	if cr.Spec.ResourceCustomizations != "" {
 		rc = cr.Spec.ResourceCustomizations
 	}
 	return rc
@@ -162,8 +162,17 @@ func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
 func getResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
 	re := common.ArgoCDDefaultResourceExclusions
-	if len(cr.Spec.ResourceExclusions) > 0 {
+	if cr.Spec.ResourceExclusions != "" {
 		re = cr.Spec.ResourceExclusions
+	}
+	return re
+}
+
+// getResourceInclusions will return the resource inclusions for the given ArgoCD.
+func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
+	re := common.ArgoCDDefaultResourceInclusions
+	if cr.Spec.ResourceInclusions != "" {
+		re = cr.Spec.ResourceInclusions
 	}
 	return re
 }
@@ -303,7 +312,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		return r.reconcileExistingArgoConfigMap(cm, cr)
 	}
 
-	if len(cm.Data) <= 0 {
+	if cm.Data == nil {
 		cm.Data = make(map[string]string)
 	}
 
@@ -316,8 +325,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
-	cm.Data[common.ArgoCDKeyResourceCustomizations] = getResourceCustomizations(cr)
+	if c := getResourceCustomizations(cr); c != "" {
+		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
+	}
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
 	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -624,14 +636,13 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
-		return nil // ConfigMap found, move along...
-	}
-
 	cm.Data = getInitialTLSCerts(cr)
-
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
+	}
+
+	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		return r.client.Update(context.TODO(), cm)
 	}
 	return r.client.Create(context.TODO(), cm)
 }

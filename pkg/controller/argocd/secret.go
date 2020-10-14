@@ -81,9 +81,11 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 		return nil, err
 	}
 
+	// This puts both ca.crt and tls.crt into the secret.
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:       argoutil.EncodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey: argoutil.EncodePrivateKeyPEM(key),
+		corev1.TLSCertKey:              argoutil.EncodeCertificatePEM(cert),
+		corev1.ServiceAccountRootCAKey: argoutil.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey:        argoutil.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil

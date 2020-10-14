@@ -1,9 +1,16 @@
 apiVersion: kudo.dev/v1alpha1
 kind: TestStep
 kubectl:
-- apply -f ../../../deploy/service_account.yaml
-- apply -f ../../../deploy/role.yaml
-- apply -f ../../../deploy/role_binding.yaml
-- apply -f ../../../deploy/argo-cd/
-- apply -f ../../../deploy/crds/
-- apply -f ../../../deploy/operator.yaml
+commands:
+  - command: kubectl apply -f ../../../deploy/service_account.yaml
+    namespaced: true
+  - command: kubectl apply -f ../../../deploy/role.yaml
+    namespaced: true
+  - command: kubectl apply -f ../../../deploy/role_binding.yaml
+    namespaced: true
+  - command: kubectl apply -f ../../../deploy/argo-cd/
+    namespaced: false
+  - command: kubectl apply -f ../../../deploy/crds/
+    namespaced: false
+  - command: kubectl apply -f ../../../deploy/operator.yaml
+    namespaced: true
