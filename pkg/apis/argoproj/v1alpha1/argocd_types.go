@@ -331,6 +331,9 @@ type ArgoCDSpec struct {
 	// Dex defines the Dex server options for ArgoCD.
 	Dex ArgoCDDexSpec `json:"dex,omitempty"`
 
+	// DisableAdmin will disable the admin user.
+	DisableAdmin bool `json:"disableAdmin,omitempty"`
+
 	// GATrackingID is the google analytics tracking ID to use.
 	GATrackingID string `json:"gaTrackingID,omitempty"`
 

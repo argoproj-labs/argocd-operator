@@ -15,6 +15,7 @@ Name | Default | Description
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**Dex**](#dex-options) | [Object] | Dex configuration options.
+[**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
 [**Grafana**](#grafana-options) | [Object] | Grafana configuration options.
@@ -181,6 +182,25 @@ A quick fix will be to create an `admins` group, add the user to the group and t
 oc adm groups new admins
 oc adm groups add-users admins USER
 oc adm policy add-cluster-role-to-group cluster-admin admins
+```
+
+## Disable Admin
+
+Disable the admin user. This property maps directly to the `admin.enabled` field in the `argocd-cm` ConfigMap.
+
+### Disable Admin Example
+
+The following example disables the admin user using the `DisableAdmin` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: disable-admin
+spec:
+  disableAdmin: true
 ```
 
 ## GA Tracking ID
