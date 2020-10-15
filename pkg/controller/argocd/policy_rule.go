@@ -29,6 +29,43 @@ func policyRuleForApplicationControllerClusterRole() []v1.PolicyRule {
 	}
 }
 
+func policyRoleForClusterConfig() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"operators.coreos.com",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+		{
+			APIGroups: []string{
+				"config.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		}, {
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"namespaces",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+	}
+}
+
 func policyRuleForServerClusterRole() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{

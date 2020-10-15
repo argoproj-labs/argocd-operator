@@ -11,6 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const (
+	openshiftConfigNamespace = "openshift-config"
+)
+
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
 func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
@@ -136,6 +140,9 @@ func (r *ReconcileArgoCD) reconcileManagedNamespaces(cr *argoprojv1a1.ArgoCD) er
 	if cr.Spec.ManagementScope.Namespaces != nil {
 		namespacesToBeManaged = *cr.Spec.ManagementScope.Namespaces
 	}
+	if cr.Spec.ManagementScope.ClusterConfig != nil && *cr.Spec.ManagementScope.ClusterConfig == true {
+		namespacesToBeManaged = append(namespacesToBeManaged, openshiftConfigNamespace)
+	}
 
 	for _, namespace := range namespacesToBeManaged {
 		err := r.reconcileArgoApplier(applicationController, cr, namespace)
@@ -178,7 +185,6 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 		Name:     "admin",
 	}
 
-	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
 		_, err = rbacClient.RoleBindings(managedNamespace).Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
 		if err != nil {

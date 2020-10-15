@@ -79,7 +79,13 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileClusterRole(applicationController, policyRuleForApplicationControllerClusterRole(), cr); err != nil {
+	rules := []v1.PolicyRule{}
+	if cr.Spec.ManagementScope.ClusterConfig != nil && *cr.Spec.ManagementScope.ClusterConfig {
+		rules = append(rules, policyRoleForClusterConfig()...)
+	}
+
+	rules = append(rules, policyRuleForApplicationControllerClusterRole()...)
+	if err := r.reconcileClusterRole(applicationController, rules, cr); err != nil {
 		return err
 	}
 

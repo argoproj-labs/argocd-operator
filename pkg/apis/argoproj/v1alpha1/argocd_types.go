@@ -49,8 +49,8 @@ type ArgoCDScope struct {
 	// application controller can deploy applications to.
 	Namespaces *[]string `json:"namespaces,omitempty"`
 
-	// ClusterConfig when enabled lets ArgoCD managed cluster-scoped resources.
-	ClusterConfig *bool `json:"cluster,omitempty"`
+	// Cluster when enabled lets ArgoCD manage cluster resources.
+	Cluster *bool `json:"cluster,omitempty"`
 }
 
 // ArgoCDApplicationControllerProcessorsSpec defines the options for the ArgoCD Application Controller processors.
