@@ -140,9 +140,13 @@ func (r *ReconcileArgoCD) reconcileManagedNamespaces(cr *argoprojv1a1.ArgoCD) er
 	if cr.Spec.ManagementScope.Namespaces != nil {
 		namespacesToBeManaged = *cr.Spec.ManagementScope.Namespaces
 	}
-	if cr.Spec.ManagementScope.ClusterConfig != nil && *cr.Spec.ManagementScope.ClusterConfig == true {
-		namespacesToBeManaged = append(namespacesToBeManaged, openshiftConfigNamespace)
-	}
+	/*
+		if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
+			if os.Getenv("ARGOCD_CLUSTER_CONFIG_ENABLED") == "true" {
+				namespacesToBeManaged = append(namespacesToBeManaged, openshiftConfigNamespace)
+			}
+		}
+	*/
 
 	for _, namespace := range namespacesToBeManaged {
 		err := r.reconcileArgoApplier(applicationController, cr, namespace)

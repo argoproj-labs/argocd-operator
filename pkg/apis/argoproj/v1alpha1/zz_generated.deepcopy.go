@@ -560,8 +560,8 @@ func (in *ArgoCDScope) DeepCopyInto(out *ArgoCDScope) {
 			copy(*out, *in)
 		}
 	}
-	if in.ClusterConfig != nil {
-		in, out := &in.ClusterConfig, &out.ClusterConfig
+	if in.Cluster != nil {
+		in, out := &in.Cluster, &out.Cluster
 		*out = new(bool)
 		**out = **in
 	}

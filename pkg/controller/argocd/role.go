@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"os"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -80,8 +81,11 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	rules := []v1.PolicyRule{}
-	if cr.Spec.ManagementScope.ClusterConfig != nil && *cr.Spec.ManagementScope.ClusterConfig {
-		rules = append(rules, policyRoleForClusterConfig()...)
+
+	if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
+		if os.Getenv("ARGOCD_CLUSTER_CONFIG_ENABLED") == "true" {
+			rules = append(rules, policyRoleForClusterConfig()...)
+		}
 	}
 
 	rules = append(rules, policyRuleForApplicationControllerClusterRole()...)

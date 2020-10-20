@@ -44,6 +44,28 @@ func policyRoleForClusterConfig() []v1.PolicyRule {
 		},
 		{
 			APIGroups: []string{
+				"operator.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+		{
+			APIGroups: []string{
+				"user.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+		{
+			APIGroups: []string{
 				"config.openshift.io",
 			},
 			Resources: []string{
@@ -58,6 +80,29 @@ func policyRoleForClusterConfig() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"namespaces",
+				"persistentvolumeclaims",
+				"persistentvolumes",
+				"configmaps",
+			},
+			Verbs: []string{
+				"*",
+			},
+		}, {
+			APIGroups: []string{
+				"rbac.authorization.k8s.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		}, {
+			APIGroups: []string{
+				"storage.k8s.io",
+			},
+			Resources: []string{
+				"*",
 			},
 			Verbs: []string{
 				"*",
