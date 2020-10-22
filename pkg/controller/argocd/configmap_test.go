@@ -138,6 +138,25 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.DisableAdmin = true
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileGPGKeysConfigMap(a)
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDGPGKeysConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assertNoError(t, err)
+	// Currently the gpg keys configmap is empty
+}
+
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	customizations := "testing: testing"

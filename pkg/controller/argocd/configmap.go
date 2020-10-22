@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	syslog "log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -275,7 +276,7 @@ func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	return nil
+	return r.reconcileGPGKeysConfigMap(cr)
 }
 
 // reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
@@ -649,6 +650,20 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
 		return r.client.Update(context.TODO(), cm)
+	}
+	return r.client.Create(context.TODO(), cm)
+}
+
+// reconcileGPGKeysConfigMap creates a gpg-keys config map
+func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	syslog.Println("KEVIN!!! reconciling GPG Keys")
+	cm := newConfigMapWithName(common.ArgoCDGPGKeysConfigMapName, cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
+		return nil
+	}
+	syslog.Printf("KEVIN!!! %#v\n", cm)
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
 	}
 	return r.client.Create(context.TODO(), cm)
 }
