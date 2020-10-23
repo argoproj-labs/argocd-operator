@@ -22,7 +22,7 @@ Name | Default | Description
 [**HA**](#ha-options) | [Object] | High Availability options.
 [**HelpChatURL**](#help-chat-url) | `https://mycorp.slack.com/argo-cd` | URL for getting chat help, this will typically be your Slack channel for support.
 [**HelpChatText**](#help-chat-text) | `Chat now!` | The text for getting chat help.
-[**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components.
+[**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
@@ -123,7 +123,7 @@ The following properties are available for configuring the Dex component.
 Name | Default | Description
 --- | --- | ---
 Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
-Image | `quay.io/dexidp/dex` | The container image for Dex.
+Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
 OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
 Resources | [Empty] | The container compute resources.
 Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
@@ -250,7 +250,7 @@ Name | Default | Description
 --- | --- | ---
 Enabled | false | Toggle Grafana support globally for ArgoCD.
 Host | `example-argocd-grafana` | The hostname to use for Ingress/Route resources.
-Image | `grafana/grafana` | The container image for Grafana.
+Image | `grafana/grafana` | The container image for Grafana. This overrides the `ARGOCD_GRAFANA_IMAGE` environment variable.
 [Ingress](#grafana-ingress-options) | [Object] | Ingress configuration for Grafana.
 Resources | [Empty] | The container compute resources.
 [Route](#grafana-route-options) | [Object] | Route configuration options.
@@ -311,7 +311,7 @@ The following properties are available for configuring High Availability for the
 Name | Default | Description
 --- | --- | ---
 Enabled | `false` | Toggle High Availability support globally for Argo CD.
-RedisProxyImage | `haproxy` | The Redis HAProxy container image.
+RedisProxyImage | `haproxy` | The Redis HAProxy container image. This overrides the `ARGOCD_REDIS_HA_IMAGE`.
 RedisProxyVersion | `2.0.4` | The tag to use for the Redis HAProxy container image.
 
 ### HA Example
@@ -677,7 +677,7 @@ The following properties are available for configuring the Redis component.
 
 Name | Default | Description
 --- | --- | ---
-Image | `redis` | The container image for Redis.
+Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDIS_IMAGE` environment variable.
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
 
