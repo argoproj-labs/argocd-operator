@@ -17,8 +17,10 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -292,26 +294,6 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
 func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
-		updated := false
-		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			updated = true
-		}
-		desiredCommand := getArgoApplicationControllerCommand(cr)
-		if !reflect.DeepEqual(desiredCommand, deploy.Spec.Template.Spec.Containers[0].Command) {
-			deploy.Spec.Template.Spec.Containers[0].Command = desiredCommand
-			updated = true
-		}
-		if updated {
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
 	podSpec := &deploy.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
@@ -328,6 +310,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
+		Env: proxyEnvVars(),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8082,
@@ -353,7 +336,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 	} else {
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.client, cr),
-			Env:             getArgoImportContainerEnv(export),
+			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
@@ -364,6 +347,34 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 	}
 
 	podSpec.ServiceAccountName = "argocd-application-controller"
+
+	existing := newDeploymentWithSuffix("application-controller", "application-controller", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		changed := false
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		desiredCommand := getArgoApplicationControllerCommand(cr)
+		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
@@ -414,17 +425,6 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getDexContainerImage(cr)
-		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
 			"/shared/argocd-util",
@@ -433,6 +433,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		Image:           getDexContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "dex",
+		Env:             proxyEnvVars(),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
@@ -455,6 +456,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			"/usr/local/bin/argocd-util",
 			"/shared",
 		},
+		Env:             proxyEnvVars(),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
@@ -472,6 +474,35 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		},
 	}}
 
+	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getDexContainerImage(cr)
+		changed := false
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].Env,
+			deploy.Spec.Template.Spec.InitContainers[0].Env) {
+			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
 	}
@@ -481,24 +512,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		if !cr.Spec.Grafana.Enabled {
-			// Deployment exists but enabled flag has been set to false, delete the Deployment
-			return r.client.Delete(context.TODO(), deploy)
-		}
-		if hasGrafanaSpecChanged(deploy, cr) {
-			deploy.Spec.Replicas = cr.Spec.Grafana.Size
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found, do nothing
-	}
-
-	if !cr.Spec.Grafana.Enabled {
-		return nil // Grafana not enabled, do nothing.
-	}
-
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
-
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
@@ -508,6 +522,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 				ContainerPort: 3000,
 			},
 		},
+		Env:       proxyEnvVars(),
 		Resources: getGrafanaResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -578,6 +593,32 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 		},
 	}
 
+	existing := newDeploymentWithSuffix("grafana", "grafana", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Grafana.Enabled {
+			// Deployment exists but enabled flag has been set to false, delete the Deployment
+			return r.client.Delete(context.TODO(), existing)
+		}
+		changed := false
+		if hasGrafanaSpecChanged(existing, cr) {
+			existing.Spec.Replicas = cr.Spec.Grafana.Size
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
 	}
@@ -587,26 +628,6 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		if cr.Spec.HA.Enabled {
-			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
-			return r.client.Delete(context.TODO(), deploy)
-		}
-
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisContainerImage(cr)
-		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found, do nothing
-	}
-
-	if cr.Spec.HA.Enabled {
-		return nil // HA enabled, do nothing.
-	}
-
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args: []string{
 			"--save",
@@ -623,8 +644,39 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 			},
 		},
 		Resources: getRedisResources(cr),
+		Env:       proxyEnvVars(),
 	}}
 
+	existing := newDeploymentWithSuffix("redis", "redis", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		if cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			return r.client.Delete(context.TODO(), deploy)
+		}
+		changed := false
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil // HA enabled, do nothing.
+	}
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
 	}
@@ -687,6 +739,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		Image:           getRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "haproxy",
+		Env:             proxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -725,6 +778,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		Image:           getRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
+		Env:             proxyEnvVars(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config-volume",
@@ -798,6 +852,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
+		Env:  proxyEnvVars(),
 		Name: "argocd-repo-server",
 		Ports: []corev1.ContainerPort{
 			{
@@ -882,6 +937,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
+			existing.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
 
 		if changed {
 			return r.client.Update(context.TODO(), existing)
@@ -898,21 +958,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
-		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.client.Update(context.TODO(), deploy)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
+		Env:             proxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -952,9 +1002,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			},
 		},
 	}}
-
 	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-server"
-
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
@@ -977,6 +1025,27 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 		},
 	}
 
+	existing := newDeploymentWithSuffix("server", "server", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getArgoContainerImage(cr)
+		changed := false
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+		if changed {
+			return r.client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
 	}
@@ -992,4 +1061,29 @@ func (r *ReconcileArgoCD) triggerRollout(deployment *appsv1.Deployment, key stri
 
 	deployment.Spec.Template.ObjectMeta.Labels[key] = nowDefault()
 	return r.client.Update(context.TODO(), deployment)
+}
+
+func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
+	result := []corev1.EnvVar{}
+	for _, v := range vars {
+		result = append(result, v)
+	}
+	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
+	for _, p := range proxyKeys {
+		if k, v := caseInsensitiveGetenv(p); k != "" {
+			result = append(result, corev1.EnvVar{Name: k, Value: v})
+		}
+	}
+	return result
+}
+
+func caseInsensitiveGetenv(s string) (string, string) {
+	if v := os.Getenv(s); v != "" {
+		return s, v
+	}
+	ls := strings.ToLower(s)
+	if v := os.Getenv(ls); v != "" {
+		return ls, v
+	}
+	return "", ""
 }
