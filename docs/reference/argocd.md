@@ -948,7 +948,7 @@ spec:
       annotations: {}
       enabled: false
       path: /
-      TLS:
+      tls:
         insecureEdgeTerminationPolicy: Redirect
         termination: passthrough
       wildcardPolicy: None
