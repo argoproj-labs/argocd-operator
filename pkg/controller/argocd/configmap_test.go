@@ -93,6 +93,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 
 	want := map[string]string{
 		"application.instanceLabelKey": "mycompany.com/appname",
+		"admin.enabled":                "true",
 		"configManagementPlugins":      "",
 		"dex.config":                   "",
 		"ga.anonymizeusers":            "false",
@@ -113,6 +114,47 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	if diff := cmp.Diff(want, cm.Data); diff != "" {
 		t.Fatalf("reconcileArgoConfigMap failed:\n%s", diff)
 	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.DisableAdmin = true
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assertNoError(t, err)
+
+	if c := cm.Data["admin.enabled"]; c != "false" {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
+	}
+}
+
+func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.DisableAdmin = true
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileGPGKeysConfigMap(a)
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDGPGKeysConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assertNoError(t, err)
+	// Currently the gpg keys configmap is empty
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {

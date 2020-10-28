@@ -15,6 +15,7 @@ Name | Default | Description
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**Dex**](#dex-options) | [Object] | Dex configuration options.
+[**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
 [**Grafana**](#grafana-options) | [Object] | Grafana configuration options.
@@ -34,6 +35,7 @@ Name | Default | Description
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
 [**ResourceCustomizations**](#resource-customizations) | [Empty] | Customize resource behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
+[**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
@@ -181,6 +183,25 @@ A quick fix will be to create an `admins` group, add the user to the group and t
 oc adm groups new admins
 oc adm groups add-users admins USER
 oc adm policy add-cluster-role-to-group cluster-admin admins
+```
+
+## Disable Admin
+
+Disable the admin user. This property maps directly to the `admin.enabled` field in the `argocd-cm` ConfigMap.
+
+### Disable Admin Example
+
+The following example disables the admin user using the `DisableAdmin` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: disable-admin
+spec:
+  disableAdmin: true
 ```
 
 ## GA Tracking ID
@@ -775,6 +796,54 @@ spec:
       - Snapshot
       clusters:
       - "*.local"
+```
+
+### Resource Exclusions Example
+
+The following example sets a value in the `argocd-cm` ConfigMap using the `ResourceExclusions` property on the `ArgoCD` resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: resource-exclusions
+spec:
+  resourceExclusions: |
+    - apiGroups:
+      - repositories.stash.appscode.com
+      kinds:
+      - Snapshot
+      clusters:
+      - "*.local"
+```
+
+## Resource Inclusions
+
+In addition to exclusions, you might configure the list of included resources using the resourceInclusions setting.
+
+By default, all resource group/kinds are included. The resourceInclusions setting allows customizing the list of included group/kinds.
+
+### Resource Inclusions Example
+
+The following example sets a value in the `argocd-cm` ConfigMap using the `ResourceInclusions` property on the `ArgoCD` resource.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: resource-inclusion
+spec:
+  resourceInclusions: |
+    - apiGroups:
+      - "*"
+      kinds:
+      - Deployment
+      clusters:
+      - https://192.168.0.20
 ```
 
 ## Server Options

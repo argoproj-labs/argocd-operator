@@ -10,166 +10,159 @@ spec:
     plural: argocds
     singular: argocd
   scope: Namespaced
-  versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: ArgoCD is the Schema for the argocds API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: ArgoCDSpec defines the desired state of ArgoCD
-            properties:
-              applicationInstanceLabelKey:
-                description: ApplicationInstanceLabelKey is the key name where Argo
-                  CD injects the app name as a tracking label.
-                type: string
-              configManagementPlugins:
-                description: ConfigManagementPlugins is used to specify additional
-                  config management plugins.
-                type: string
-              controller:
-                description: Controller defines the Application Controller options
-                  for ArgoCD.
-                properties:
-                  appSync:
-                    description: "AppSync is used to control the sync frequency, by
-                      default the ArgoCD controller polls Git every 3m by default.
-                      \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
-                      frequency."
-                    type: string
-                  processors:
-                    description: Processors contains the options for the Application
-                      Controller processors.
-                    properties:
-                      operation:
-                        description: Operation is the number of application operation
-                          processors.
-                        format: int32
-                        type: integer
-                      status:
-                        description: Status is the number of application status processors.
-                        format: int32
-                        type: integer
-                    type: object
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for the Application Controller.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                    type: object
-                type: object
-              dex:
-                description: Dex defines the Dex server options for ArgoCD.
-                properties:
-                  config:
-                    description: Config is the dex connector configuration.
-                    type: string
-                  image:
-                    description: Image is the Dex container image.
-                    type: string
-                  openShiftOAuth:
-                    description: OpenShiftOAuth enables OpenShift OAuth authentication
-                      for the Dex server.
-                    type: boolean
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for Dex.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
-                        type: object
-                    type: object
-                  version:
-                    description: Version is the Dex container image tag.
-                    type: string
-                type: object
-              gaAnonymizeUsers:
-                description: GAAnonymizeUsers toggles user IDs being hashed before
-                  sending to google analytics.
-                type: boolean
-              gaTrackingID:
-                description: GATrackingID is the google analytics tracking ID to use.
-                type: string
-              grafana:
-                description: Grafana defines the Grafana server options for ArgoCD.
-                properties:
-                  enabled:
-                    description: Enabled will toggle Grafana support globally for
-                      ArgoCD.
-                    type: boolean
-                  host:
-                    description: Host is the hostname to use for Ingress/Route resources.
-                    type: string
-                  image:
-                    description: Image is the Grafana container image.
-                    type: string
-                  ingress:
-                    description: Ingress defines the desired state for an Ingress
-                      for the Grafana component.
-                    properties:
-                      annotations:
-                        additionalProperties:
-                          type: string
-                        description: Annotations is the map of annotations to apply
-                          to the Ingress.
-                        type: object
-                      enabled:
-                        description: Enabled will toggle the creation of the Ingress.
-                        type: boolean
-                      path:
-                        description: Path used for the Ingress resource.
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ArgoCD is the Schema for the argocds API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ArgoCDSpec defines the desired state of ArgoCD
+          properties:
+            applicationInstanceLabelKey:
+              description: ApplicationInstanceLabelKey is the key name where Argo
+                CD injects the app name as a tracking label.
+              type: string
+            configManagementPlugins:
+              description: ConfigManagementPlugins is used to specify additional config
+                management plugins.
+              type: string
+            controller:
+              description: Controller defines the Application Controller options for
+                ArgoCD.
+              properties:
+                appSync:
+                  description: "AppSync is used to control the sync frequency, by
+                    default the ArgoCD controller polls Git every 3m by default. \n
+                    Set this to a duration, e.g. 10m or 600s to control the synchronisation
+                    frequency."
+                  type: string
+                processors:
+                  description: Processors contains the options for the Application
+                    Controller processors.
+                  properties:
+                    operation:
+                      description: Operation is the number of application operation
+                        processors.
+                      format: int32
+                      type: integer
+                    status:
+                      description: Status is the number of application status processors.
+                      format: int32
+                      type: integer
+                  type: object
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for the Application Controller.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+              type: object
+            dex:
+              description: Dex defines the Dex server options for ArgoCD.
+              properties:
+                config:
+                  description: Config is the dex connector configuration.
+                  type: string
+                image:
+                  description: Image is the Dex container image.
+                  type: string
+                openShiftOAuth:
+                  description: OpenShiftOAuth enables OpenShift OAuth authentication
+                    for the Dex server.
+                  type: boolean
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Dex.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                version:
+                  description: Version is the Dex container image tag.
+                  type: string
+              type: object
+            disableAdmin:
+              description: DisableAdmin will disable the admin user.
+              type: boolean
+            gaAnonymizeUsers:
+              description: GAAnonymizeUsers toggles user IDs being hashed before sending
+                to google analytics.
+              type: boolean
+            gaTrackingID:
+              description: GATrackingID is the google analytics tracking ID to use.
+              type: string
+            grafana:
+              description: Grafana defines the Grafana server options for ArgoCD.
+              properties:
+                enabled:
+                  description: Enabled will toggle Grafana support globally for ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                image:
+                  description: Image is the Grafana container image.
+                  type: string
+                ingress:
+                  description: Ingress defines the desired state for an Ingress for
+                    the Grafana component.
+                  properties:
+                    annotations:
+                      additionalProperties:
                         type: string
                       tls:
                         description: TLS configuration. Currently the Ingress only

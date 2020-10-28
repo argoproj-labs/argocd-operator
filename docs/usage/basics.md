@@ -53,8 +53,8 @@ deployment.apps/example-argocd-server                   1/1     1            1  
 
 ### ConfigMaps
 
-There are several ConfigMaps that are used by Argo CD. The `argocd-server` component reads and writes to these 
-ConfigMaps based on user interaction with the web UI or via the `argocd` CLI. It is worth noting that the name 
+There are several ConfigMaps that are used by Argo CD. The `argocd-server` component reads and writes to these
+ConfigMaps based on user interaction with the web UI or via the `argocd` CLI. It is worth noting that the name
 `argocd-cm` is hard-coded, thus limiting us to one Argo CD cluster per namespace to avoid conflicts.
 
 ```bash
@@ -65,12 +65,12 @@ configmap/argocd-ssh-known-hosts-cm   1      33s
 configmap/argocd-tls-certs-cm         0      33s
 ```
 
-The operator will create these ConfigMaps for the cluster and set the initial values based on properties on the 
+The operator will create these ConfigMaps for the cluster and set the initial values based on properties on the
 `ArgoCD` custom resource.
 
 ### Secrets
 
-There is a Secret that is used by Argo CD named `argocd-secret`. The `argocd-server` component reads this secret to 
+There is a Secret that is used by Argo CD named `argocd-secret`. The `argocd-server` component reads this secret to
 obtain the admin password for authentication.
 
 This Secret is managed by the operator and should not be changed directly.
@@ -106,13 +106,13 @@ metadata:
 type: Opaque
 ```
 
-The operator will watch for changes to the `admin.password` value. When a change is made the password is synchronized to 
+The operator will watch for changes to the `admin.password` value. When a change is made the password is synchronized to
 Argo CD and Grafana automatically.
 
 Fetch the admin password from the cluster Secret.
 
 ``` bash
-kubectl get secret example-argocd-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
+kubectl -n argocd get secret example-argocd-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
 ```
 
 ### Deployments
@@ -150,10 +150,10 @@ argocd-operator-metrics         ClusterIP   10.97.124.166    <none>        8383/
 
 ## Server API & UI
 
-The Argo CD server component exposes the API and UI. The operator creates a Service to expose this component and 
+The Argo CD server component exposes the API and UI. The operator creates a Service to expose this component and
 can be accessed through the various methods available in Kubernetes.
 
-Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) to 
+Follow the ArgoCD [Getting Started Guide](https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-ui) to
 create a new application from the UI.
 
 ### Local Machine
@@ -161,14 +161,14 @@ create a new application from the UI.
 In the most simple case, the Service port can be forwarded to the local machine.
 
 ```bash
-kubectl port-forward service/example-argocd-server 8443:443
+kubectl -n argocd port-forward service/example-argocd-server 8443:443
 ```
 
 The server UI should be available at [https://localhost:8443/](https://localhost:8443/).
 
 ### Ingress
 
-See the [ingress][docs_ingress] documentation for steps to enable and use the Ingress support provided by the operator. 
+See the [ingress][docs_ingress] documentation for steps to enable and use the Ingress support provided by the operator.
 
 ### OpenShift Route
 
