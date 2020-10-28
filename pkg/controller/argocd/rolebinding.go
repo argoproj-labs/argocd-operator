@@ -86,10 +86,6 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileManagedNamespaces(cr); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -131,30 +127,6 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, cr *argoprojv
 		_, err = rbacClient.ClusterRoleBindings().Create(context.TODO(), roleBinding, metav1.CreateOptions{})
 	}
 	return err
-}
-
-// generateNameOfRoleBindingForCrossNamespace ensures that a specific rolebinding is present
-func (r *ReconcileArgoCD) reconcileManagedNamespaces(cr *argoprojv1a1.ArgoCD) error {
-
-	var namespacesToBeManaged []string
-	if cr.Spec.ManagementScope.Namespaces != nil {
-		namespacesToBeManaged = *cr.Spec.ManagementScope.Namespaces
-	}
-	/*
-		if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
-			if os.Getenv("ARGOCD_CLUSTER_CONFIG_ENABLED") == "true" {
-				namespacesToBeManaged = append(namespacesToBeManaged, openshiftConfigNamespace)
-			}
-		}
-	*/
-
-	for _, namespace := range namespacesToBeManaged {
-		err := r.reconcileArgoApplier(applicationController, cr, namespace)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // reconcileArgoApplier ensures that a specific rolebinding is present in a managedNamespace

@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"os"
+	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -62,6 +63,23 @@ func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	}
 }
 
+func allowedNamespace(current string, configuredList string) bool {
+	isAllowedNamespace := false
+	if configuredList != "" {
+		if configuredList == "*" {
+			isAllowedNamespace = true
+		} else {
+			namespaceList := strings.Split(configuredList, ",")
+			for _, n := range namespaceList {
+				if n == current {
+					isAllowedNamespace = true
+				}
+			}
+		}
+	}
+	return isAllowedNamespace
+}
+
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
@@ -83,7 +101,8 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	rules := []v1.PolicyRule{}
 
 	if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
-		if os.Getenv("ARGOCD_CLUSTER_CONFIG_ENABLED") == "true" {
+		if os.Getenv("ARGOCD_CLUSTER_CONFIG_ENABLED") == "true" &&
+			allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 			rules = append(rules, policyRoleForClusterConfig()...)
 		}
 	}

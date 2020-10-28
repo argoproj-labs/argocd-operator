@@ -45,10 +45,6 @@ type ArgoCD struct {
 
 // ArgoCDScope defines the scope of resources that ArgoCD would be managing
 type ArgoCDScope struct {
-	// Namespaces is list of the namespaces where the argocd
-	// application controller can deploy applications to.
-	Namespaces *[]string `json:"namespaces,omitempty"`
-
 	// Cluster when enabled lets ArgoCD manage cluster resources.
 	Cluster *bool `json:"cluster,omitempty"`
 }

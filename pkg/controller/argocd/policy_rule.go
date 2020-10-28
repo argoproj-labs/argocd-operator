@@ -74,7 +74,19 @@ func policyRoleForClusterConfig() []v1.PolicyRule {
 			Verbs: []string{
 				"*",
 			},
-		}, {
+		},
+		{
+			APIGroups: []string{
+				"console.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+		{
 			APIGroups: []string{
 				"",
 			},

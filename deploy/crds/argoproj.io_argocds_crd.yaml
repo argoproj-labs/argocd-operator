@@ -377,15 +377,8 @@ spec:
                   scope managed by argocd.
                 properties:
                   cluster:
-                    description: ClusterConfig when enabled lets ArgoCD managed cluster-scoped
-                      resources.
+                    description: Cluster when enabled lets ArgoCD manage cluster resources.
                     type: boolean
-                  namespaces:
-                    description: Namespaces is list of the namespaces where the argocd
-                      application controller can deploy applications to.
-                    items:
-                      type: string
-                    type: array
                 type: object
               oidcConfig:
                 description: OIDCConfig is the OIDC configuration as an alternative
