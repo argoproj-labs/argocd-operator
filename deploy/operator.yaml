@@ -15,7 +15,7 @@ spec:
       serviceAccountName: argocd-operator
       containers:
         - name: argocd-operator
-          image: quay.io/redhat-cop/argocd-operator@sha256:d661aba8a5bc7c8a69cd7d5da8193585118b93f3e7ef14a213e1fa9c2684b47c
+          image: quay.io/redhat-cop/argocd-operator@sha256:7d9bf7d4ddf229a3980d60ef650d6e016e1c61569885917b7e1bd5f1bf90cdc3
           command:
           - argocd-operator
           imagePullPolicy: Always
