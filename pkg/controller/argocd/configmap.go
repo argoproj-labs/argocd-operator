@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	syslog "log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -656,12 +655,10 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
 func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoprojv1a1.ArgoCD) error {
-	syslog.Println("KEVIN!!! reconciling GPG Keys")
 	cm := newConfigMapWithName(common.ArgoCDGPGKeysConfigMapName, cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, cm.Name, cm) {
 		return nil
 	}
-	syslog.Printf("KEVIN!!! %#v\n", cm)
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err
 	}
