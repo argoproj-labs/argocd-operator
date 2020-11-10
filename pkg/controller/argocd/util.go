@@ -34,6 +34,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -646,7 +647,7 @@ func setDefaults(cr *argoprojv1a1.ArgoCD) bool {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller) error {
+func watchResources(c controller.Controller, clusterRoleBindingMapper handler.ToRequestsFunc) error {
 	// Watch for changes to primary resource ArgoCD
 	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -674,6 +675,21 @@ func watchResources(c controller.Controller) error {
 
 	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	if err := watchOwnedResource(c, &extv1beta1.Ingress{}); err != nil {
+		return err
+	}
+
+	if err := watchOwnedResource(c, &v1.Role{}); err != nil {
+		return err
+	}
+
+	if err := watchOwnedResource(c, &v1.RoleBinding{}); err != nil {
+		return err
+	}
+
+	handlerClusterRoleBinding := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: clusterRoleBindingMapper,
+	}
+	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, handlerClusterRoleBinding); err != nil {
 		return err
 	}
 

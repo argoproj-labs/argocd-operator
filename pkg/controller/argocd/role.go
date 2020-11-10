@@ -88,6 +88,11 @@ func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return sa
 }
 
+func (r *ReconcileArgoCD) getClusterRole(name string) (*v1.ClusterRole, error) {
+	rbacClient := r.kc.RbacV1()
+	return rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+}
+
 // reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
 	rbacClient := r.kc.RbacV1()

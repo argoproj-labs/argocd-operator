@@ -75,6 +75,14 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, cr); err != nil {
+		return err
+	}
+
 	// specialized handling for dex
 
 	if err := r.reconcileDexServiceAccount(cr); err != nil {
@@ -116,6 +124,24 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 	sa.ObjectMeta.Annotations = ann
 
 	return r.client.Update(context.TODO(), sa)
+}
+
+func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, cr *argoprojv1a1.ArgoCD) error {
+	var role *v1.ClusterRole
+	var sa *corev1.ServiceAccount
+	var err error
+
+	// setup role for
+	if role, err = r.getClusterRole(name); err != nil {
+		return err
+	}
+
+	sa, err = r.reconcileServiceAccount(name, cr)
+	if err != nil {
+		return err
+	}
+
+	return r.reconcileClusterRoleBinding(name, role, sa, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
