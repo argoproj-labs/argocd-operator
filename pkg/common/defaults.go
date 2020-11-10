@@ -15,6 +15,18 @@
 package common
 
 const (
+	// ArgoCDApplicationControllerComponent is the name of the application controller  control plane component
+	ArgoCDApplicationControllerComponent = "argocd-application-controller"
+
+	// ArgoCDServerComponent is the name of the Dex server control plane component
+	ArgoCDServerComponent = "argocd-server"
+
+	// ArgoCDRedisHAComponent is the name of the Redis control plane component
+	ArgoCDRedisHAComponent = "argocd-redis-ha"
+
+	// ArgoCDDexServerComponent is the name of the Dex server control plane component
+	ArgoCDDexServerComponent = "argocd-dex-server"
+
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
 
