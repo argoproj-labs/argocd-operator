@@ -39,3 +39,23 @@ metadata:
   name: example-argocd-server
 status:
   readyReplicas: 1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: example-argocd-application-controller
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: example-argocd-server
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: example-argocd-redis
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: example-argocd-dex-server

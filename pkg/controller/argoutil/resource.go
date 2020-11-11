@@ -73,6 +73,14 @@ func DefaultLabels(name string) map[string]string {
 	}
 }
 
+// DefaultAnnotations returns the default set of annotations for child resources of ArgoCD
+func DefaultAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
+	return map[string]string{
+		common.AnnotationName:      cr.Name,
+		common.AnnotationNamespace: cr.Namespace,
+	}
+}
+
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
 // The result will be stored in the given object.
 func FetchObject(client client.Client, namespace string, name string, obj runtime.Object) error {

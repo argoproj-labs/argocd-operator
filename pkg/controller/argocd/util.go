@@ -640,6 +640,15 @@ func labelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return labels
 }
 
+// annotationsForCluster returns the labels for all cluster resources.
+func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
+	labels := argoutil.DefaultAnnotations(cr)
+	for key, val := range cr.ObjectMeta.Annotations {
+		labels[key] = val
+	}
+	return labels
+}
+
 // setDefaults sets the default vaules for the spec and returns true if the spec was changed.
 func setDefaults(cr *argoprojv1a1.ArgoCD) bool {
 	changed := false
