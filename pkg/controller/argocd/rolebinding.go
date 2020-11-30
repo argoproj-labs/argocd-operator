@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -62,13 +63,11 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 
 func (r *ReconcileArgoCD) reconcileRoleBinding(name string, role *v1.Role, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {
 
-	rbacClient := r.kc.RbacV1()
-
-	// get expectated name
+	// get expected name
 	roleBinding := newRoleBindingWithname(name, cr)
 
 	// fetch existing rolebinding by name
-	roleBinding, err := rbacClient.RoleBindings(cr.Namespace).Get(context.TODO(), roleBinding.Name, metav1.GetOptions{})
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -94,25 +93,20 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, role *v1.Role, sa *c
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		_, err = rbacClient.RoleBindings(cr.Namespace).Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
+		err = r.client.Update(context.TODO(), roleBinding)
 	} else {
-		_, err = rbacClient.RoleBindings(cr.Namespace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+		err = r.client.Create(context.TODO(), roleBinding)
 	}
 	return err
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {
 
-	rbacClient := r.kc.RbacV1()
-
-	// get expectated name
+	// get expected name
 	roleBinding := newClusterRoleBindingWithname(name, cr)
 
 	// fetch existing rolebinding by name
-	roleBinding, err := rbacClient.ClusterRoleBindings().Get(context.TODO(), roleBinding.Name, metav1.GetOptions{})
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -138,12 +132,10 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		_, err = rbacClient.ClusterRoleBindings().Update(context.TODO(), roleBinding, metav1.UpdateOptions{})
-		if err != nil {
-			return err
-		}
+		err = r.client.Update(context.TODO(), roleBinding)
+
 	} else {
-		_, err = rbacClient.ClusterRoleBindings().Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+		err = r.client.Create(context.TODO(), roleBinding)
 	}
 	return err
 }

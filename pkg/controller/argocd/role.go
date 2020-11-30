@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -49,17 +50,17 @@ func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 }
 
 func (r *ReconcileArgoCD) getClusterRole(name string) (*v1.ClusterRole, error) {
-	rbacClient := r.kc.RbacV1()
-	return rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+	clusterRole := &v1.ClusterRole{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: name}, clusterRole) //rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
+	return clusterRole, err
 }
 
-// reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
-	rbacClient := r.kc.RbacV1()
 
 	role := newRoleWithName(name, cr)
-	role, err := rbacClient.Roles(cr.Namespace).Get(context.TODO(), role.Name, metav1.GetOptions{})
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role) //rbacClient.Roles(cr.Namespace).Get(context.TODO(), role.Name, metav1.GetOptions{})
 	roleExists := true
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			roleExists = false
@@ -73,12 +74,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	controllerutil.SetControllerReference(cr, role, r.scheme)
 	if roleExists {
-		_, err = rbacClient.Roles(cr.Namespace).Update(context.TODO(), role, metav1.UpdateOptions{})
-		if err != nil {
-			return nil, err
-		}
+		err = r.client.Update(context.TODO(), role)
 	} else {
-		role, err = rbacClient.Roles(cr.Namespace).Create(context.TODO(), role, metav1.CreateOptions{})
+		err = r.client.Create(context.TODO(), role)
 	}
 	return role, err
 }
