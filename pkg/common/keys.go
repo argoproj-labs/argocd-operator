@@ -160,4 +160,24 @@ const (
 
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
+
+	// ArgoCDDexImageEnvName is the environment variable used to get the image
+	// to used for the Dex container.
+	ArgoCDDexImageEnvName = "ARGOCD_DEX_IMAGE"
+
+	// ArgoCDImageEnvName is the environment variable used to get the image
+	// to used for the argocd container.
+	ArgoCDImageEnvName = "ARGOCD_IMAGE"
+
+	// ArgoCDRedisHAImageEnvName is the environment variable used to get the image
+	// to used for the Redis HA Proxy image.
+	ArgoCDRedisHAImageEnvName = "ARGOCD_REDIS_HA_IMAGE"
+
+	// ArgoCDRedisImageEnvName is the environment variable used to get the image
+	// to used for the Redis container.
+	ArgoCDRedisImageEnvName = "ARGOCD_REDIS_IMAGE"
+
+	// ArgoCDGrafanaImageEnvName is the environment variable used to get the image
+	// to used for the Grafana container.
+	ArgoCDGrafanaImageEnvName = "ARGOCD_GRAFANA_IMAGE"
 )
