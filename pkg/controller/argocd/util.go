@@ -563,7 +563,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	log.Info("reconciling `deployment`s")
+	log.Info("reconciling deployments")
 	if err := r.reconcileDeployments(cr); err != nil {
 		return err
 	}
