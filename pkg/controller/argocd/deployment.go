@@ -229,7 +229,7 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, getDexServerAddress(cr))
 
 	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, geRepoServerAddress(cr))
+	cmd = append(cmd, getRepoServerAddress(cr))
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, getRedisServerAddress(cr))
@@ -242,8 +242,8 @@ func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("http://%s:%d", nameWithSuffix("dex-server", cr), common.ArgoCDDefaultDexHTTPPort)
 }
 
-// geRepoServerAddress will return the Argo CD repo server address.
-func geRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
+// getRepoServerAddress will return the Argo CD repo server address.
+func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s:%d", nameWithSuffix("repo-server", cr), common.ArgoCDDefaultRepoServerPort)
 }
 

@@ -49,7 +49,7 @@ type DexConnector struct {
 	Type   string                 `yaml:"type"`
 }
 
-// getGrafanaAdminPassword will generate and return the admin password for Argo CD.
+// generateArgoAdminPassword will generate and return the admin password for Argo CD.
 func generateArgoAdminPassword() ([]byte, error) {
 	pass, err := password.Generate(
 		common.ArgoCDDefaultAdminPasswordLength,
@@ -223,24 +223,6 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultDexVersion
 	}
 	return argoutil.CombineImageTag(img, tag)
-}
-
-// getDexInitContainers will return the init-containers for the Dex server.
-func getDexInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
-	return []corev1.Container{{
-		Command: []string{
-			"cp",
-			"/usr/local/bin/argocd-util",
-			"/shared",
-		},
-		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "copyutil",
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "static-files",
-			MountPath: "/shared",
-		}},
-	}}
 }
 
 // getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
@@ -581,7 +563,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	log.Info("reconciling deployments")
+	log.Info("reconciling `deployment`s")
 	if err := r.reconcileDeployments(cr); err != nil {
 		return err
 	}
