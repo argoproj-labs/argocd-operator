@@ -30,6 +30,8 @@ Have a look at the scripts in the `hack` directory for all of the environment va
 
 Run the provided shell script to build the operator. A container image wil be created locally.
 
+The path to the `operator-sdk` binary can be overridden with by setting `OPERATOR_SDK`.
+
 ``` bash
 hack/build.sh
 ```
