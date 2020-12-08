@@ -648,12 +648,6 @@ func labelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return labels
 }
 
-// setDefaults sets the default vaules for the spec and returns true if the spec was changed.
-func setDefaults(cr *argoprojv1a1.ArgoCD) bool {
-	changed := false
-	return changed
-}
-
 // watchResources will register Watches for each of the supported Resources.
 func watchResources(c controller.Controller) error {
 	// Watch for changes to primary resource ArgoCD
