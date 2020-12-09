@@ -414,6 +414,158 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	podSpec := corev1.PodSpec{
+		Volumes: []corev1.Volume{
+			{
+				Name: "static-files",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		},
+		InitContainers: []corev1.Container{
+			{
+				Name:  "copyutil",
+				Image: getArgoContainerImage(a),
+				Command: []string{
+					"cp",
+					"/usr/local/bin/argocd-util",
+					"/shared",
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "static-files",
+						MountPath: "/shared",
+					},
+				},
+				ImagePullPolicy: corev1.PullAlways,
+			},
+		},
+		Containers: []corev1.Container{
+			{
+				Name:  "dex",
+				Image: getDexContainerImage(a),
+				Command: []string{
+					"/shared/argocd-util",
+					"rundex",
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 5556,
+					},
+					{
+						Name:          "grpc",
+						ContainerPort: 5557,
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "static-files", MountPath: "/shared"}},
+				ImagePullPolicy: corev1.PullAlways,
+			},
+		},
+		ServiceAccountName: "argocd-dex-server",
+	}
+
+	if diff := cmp.Diff(podSpec, deployment.Spec.Template.Spec); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+}
+
+func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	// Creates the deployment and then changes the CR and rereconciles.
+	assertNoError(t, r.reconcileDexDeployment(a))
+	a.Spec.Image = "justatest"
+	a.Spec.Version = "latest"
+	a.Spec.Dex.Image = "testdex"
+	a.Spec.Dex.Version = "v0.0.1"
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	podSpec := corev1.PodSpec{
+		Volumes: []corev1.Volume{
+			{
+				Name: "static-files",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		},
+		InitContainers: []corev1.Container{
+			{
+				Name:  "copyutil",
+				Image: "justatest:latest",
+				Command: []string{
+					"cp",
+					"/usr/local/bin/argocd-util",
+					"/shared",
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "static-files",
+						MountPath: "/shared",
+					},
+				},
+				ImagePullPolicy: corev1.PullAlways,
+			},
+		},
+		Containers: []corev1.Container{
+			{
+				Name:  "dex",
+				Image: "testdex:v0.0.1",
+				Command: []string{
+					"/shared/argocd-util",
+					"rundex",
+				},
+				Ports: []corev1.ContainerPort{
+					{
+						Name:          "http",
+						ContainerPort: 5556,
+					},
+					{
+						Name:          "grpc",
+						ContainerPort: 5557,
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "static-files", MountPath: "/shared"}},
+				ImagePullPolicy: corev1.PullAlways,
+			},
+		},
+		ServiceAccountName: "argocd-dex-server",
+	}
+
+	if diff := cmp.Diff(podSpec, deployment.Spec.Template.Spec); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+}
+
 func restoreEnv(t *testing.T) {
 	keys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"}
 	env := map[string]string{}
