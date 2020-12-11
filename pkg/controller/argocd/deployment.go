@@ -476,6 +476,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
+		if cr.Spec.Dex.Disabled {
+			// Deployment exists but disabled flag has been set, delete the Deployment
+			return r.client.Delete(context.TODO(), existing)
+		}
 		changed := false
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getDexContainerImage(cr)
@@ -509,6 +513,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			return r.client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if cr.Spec.Dex.Disabled {
+		return nil // Dex not enabled, do nothing.
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {

@@ -18,6 +18,7 @@ import (
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/google/go-cmp/cmp"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -566,6 +567,48 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Dex.Disabled = true
+	})
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNotFound(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+}
+
+// When Dex is disabled, the Dex Deployment should be removed.
+func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	a = makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Dex.Disabled = true
+	})
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNotFound(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+}
+
 func restoreEnv(t *testing.T) {
 	keys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"}
 	env := map[string]string{}
@@ -642,5 +685,12 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 				}
 			}
 		}
+	}
+}
+
+func assertNotFound(t *testing.T, err error) {
+	t.Helper()
+	if !apierrors.IsNotFound(err) {
+		t.Fatalf("expected not found got %#v\n", err)
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -55,12 +54,10 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	}
 
 	deployment := &appsv1.Deployment{}
-	if !apierrors.IsNotFound(r.client.Get(context.TODO(), types.NamespacedName{
+	assertNotFound(t, r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-redis",
 		Namespace: testNamespace,
-	}, deployment)) {
-		t.Fatalf("expected not found error, got %#v\n", err)
-	}
+	}, deployment))
 }
 
 func TestReconcileArgoCD_Reconcile(t *testing.T) {
