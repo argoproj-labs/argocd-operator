@@ -97,6 +97,9 @@ spec:
                 config:
                   description: Config is the dex connector configuration.
                   type: string
+                disabled:
+                  description: If Disabled is true, then Dex will not be setup.
+                  type: boolean
                 image:
                   description: Image is the Dex container image.
                   type: string

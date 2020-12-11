@@ -86,7 +86,7 @@ type ArgoCDCertificateSpec struct {
 
 // ArgoCDDexSpec defines the desired state for the Dex server component.
 type ArgoCDDexSpec struct {
-	//Config is the dex connector configuration.
+	// Config is the dex connector configuration.
 	Config string `json:"config,omitempty"`
 
 	// Image is the Dex container image.
@@ -100,6 +100,9 @@ type ArgoCDDexSpec struct {
 
 	// Version is the Dex container image tag.
 	Version string `json:"version,omitempty"`
+
+	// If Disabled is true, then Dex will not be setup.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 // ArgoCDDexOAuthSpec defines the desired state for the Dex OAuth configuration.
