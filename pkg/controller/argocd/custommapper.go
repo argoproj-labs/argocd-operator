@@ -19,8 +19,11 @@ func (r *ReconcileArgoCD) clusterRoleBindingMapper(o handler.MapObject) []reconc
 		}
 	}
 
-	result := []reconcile.Request{
-		{namespacedArgoCDObject},
+	var result = []reconcile.Request{}
+	if namespacedArgoCDObject.Name != "" && namespacedArgoCDObject.Namespace != "" {
+		result = []reconcile.Request{
+			{namespacedArgoCDObject},
+		}
 	}
 	return result
 }
