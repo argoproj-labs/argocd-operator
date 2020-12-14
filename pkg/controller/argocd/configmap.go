@@ -319,7 +319,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
-	cm.Data[common.ArgoCDKeyDexConfig] = getDexConfig(cr)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
 	cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
@@ -337,15 +336,17 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	dexConfig := getDexConfig(cr)
-	if len(dexConfig) <= 0 && cr.Spec.Dex.OpenShiftOAuth {
-		cfg, err := r.getOpenShiftDexConfig(cr)
-		if err != nil {
-			return err
+	if !isDexDisabled() {
+		dexConfig := getDexConfig(cr)
+		if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
+			cfg, err := r.getOpenShiftDexConfig(cr)
+			if err != nil {
+				return err
+			}
+			dexConfig = cfg
 		}
-		dexConfig = cfg
+		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
-	cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err

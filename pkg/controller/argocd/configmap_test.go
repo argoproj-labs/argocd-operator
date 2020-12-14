@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"os"
 	"reflect"
 	"testing"
 
@@ -135,6 +136,28 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 
 	if c := cm.Data["admin.enabled"]; c != "false" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
+	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	os.Setenv("DISABLE_DEX", "true")
+	err := r.reconcileArgoConfigMap(a)
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assertNoError(t, err)
+
+	if c, ok := cm.Data["dex.config"]; ok {
+		t.Fatalf("reconcileArgoConfigMap failed, dex.config = %q", c)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -259,6 +260,48 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
 		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
 	}
+}
+
+func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	os.Setenv("DISABLE_DEX", "true")
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNotFound(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+}
+
+// When Dex is disabled, the Dex Deployment should be removed.
+func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	os.Setenv("DISABLE_DEX", "true")
+
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	a = makeTestArgoCD()
+	assertNoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNotFound(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
 }
 
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
@@ -567,7 +610,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 }
 
 func restoreEnv(t *testing.T) {
-	keys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"}
+	keys := []string{
+		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "no_proxy",
+		"DISABLE_DEX"}
 	env := map[string]string{}
 	for _, v := range keys {
 		env[v] = os.Getenv(v)
@@ -642,5 +688,12 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 				}
 			}
 		}
+	}
+}
+
+func assertNotFound(t *testing.T, err error) {
+	t.Helper()
+	if !apierrors.IsNotFound(err) {
+		t.Fatalf("expected not found got %#v", err)
 	}
 }
