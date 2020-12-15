@@ -474,10 +474,14 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		},
 	}}
 	dexDisabled := isDexDisabled()
+	if dexDisabled {
+		log.Info("reconciling for dex, but dex is disabled")
+	}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
 		if dexDisabled {
+			log.Info("deleting the existing dex deployment because dex is disabled")
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.client.Delete(context.TODO(), existing)
 		}
