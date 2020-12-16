@@ -700,6 +700,105 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Server.Insecure = true
+	})
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileServerDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	want := corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullAlways,
+				Command: []string{
+					"argocd-server",
+					"--insecure",
+					"--staticassets",
+					"/shared/app",
+					"--dex-server",
+					"http://argocd-dex-server:5556",
+					"--repo-server",
+					"argocd-repo-server:8081",
+					"--redis",
+					"argocd-redis:6379",
+				},
+				Ports: []corev1.ContainerPort{
+					{ContainerPort: 8080},
+					{ContainerPort: 8083},
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "ssh-known-hosts",
+						MountPath: "/app/config/ssh",
+					}, {
+						Name:      "tls-certs",
+						MountPath: "/app/config/tls",
+					},
+				},
+			},
+		},
+		Volumes: []corev1.Volume{
+			{
+				Name: "ssh-known-hosts",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDKnownHostsConfigMapName,
+						},
+					},
+				},
+			}, {
+				Name: "tls-certs",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDTLSCertsConfigMapName,
+						},
+					},
+				},
+			},
+		},
+		ServiceAccountName: "argocd-server",
+	}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
+		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
+	}
+}
+
 func restoreEnv(t *testing.T) {
 	keys := []string{
 		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
