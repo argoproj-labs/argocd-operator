@@ -14,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
@@ -171,12 +172,6 @@ func Test_getArgoApplicationControllerCommand(t *testing.T) {
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
 		}
-	}
-}
-
-func controllerProcessors(n int32) argoCDOpt {
-	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.Processors.Status = n
 	}
 }
 
@@ -472,7 +467,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		deployment))
-	podSpec := corev1.PodSpec{
+	want := corev1.PodSpec{
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -525,7 +520,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		ServiceAccountName: "argocd-dex-server",
 	}
 
-	if diff := cmp.Diff(podSpec, deployment.Spec.Template.Spec); diff != "" {
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
 }
@@ -551,7 +546,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		deployment))
-	podSpec := corev1.PodSpec{
+	want := corev1.PodSpec{
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -604,8 +599,104 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 		ServiceAccountName: "argocd-dex-server",
 	}
 
-	if diff := cmp.Diff(podSpec, deployment.Spec.Template.Spec); diff != "" {
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+}
+
+func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assertNoError(t, r.reconcileServerDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assertNoError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	want := corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullAlways,
+				Command: []string{
+					"argocd-server",
+					"--staticassets",
+					"/shared/app",
+					"--dex-server",
+					"http://argocd-dex-server:5556",
+					"--repo-server",
+					"argocd-repo-server:8081",
+					"--redis",
+					"argocd-redis:6379",
+				},
+				Ports: []corev1.ContainerPort{
+					{ContainerPort: 8080},
+					{ContainerPort: 8083},
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "ssh-known-hosts",
+						MountPath: "/app/config/ssh",
+					}, {
+						Name:      "tls-certs",
+						MountPath: "/app/config/tls",
+					},
+				},
+			},
+		},
+		Volumes: []corev1.Volume{
+			{
+				Name: "ssh-known-hosts",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDKnownHostsConfigMapName,
+						},
+					},
+				},
+			}, {
+				Name: "tls-certs",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDTLSCertsConfigMapName,
+						},
+					},
+				},
+			},
+		},
+		ServiceAccountName: "argocd-server",
+	}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
+		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 }
 
@@ -695,5 +786,11 @@ func assertNotFound(t *testing.T, err error) {
 	t.Helper()
 	if !apierrors.IsNotFound(err) {
 		t.Fatalf("expected not found got %#v", err)
+	}
+}
+
+func controllerProcessors(n int32) argoCDOpt {
+	return func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Controller.Processors.Status = n
 	}
 }
