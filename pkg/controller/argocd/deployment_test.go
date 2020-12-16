@@ -809,6 +809,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	a = makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Server.Insecure = true
 	})
+	assertNoError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
 	assertNoError(t, r.client.Get(
