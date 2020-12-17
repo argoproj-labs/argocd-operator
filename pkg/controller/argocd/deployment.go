@@ -1062,6 +1062,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
 			changed = true
 		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
+			deploy.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changed = true
+		}
 		if changed {
 			return r.client.Update(context.TODO(), existing)
 		}
