@@ -18,9 +18,8 @@ import (
 func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Labels:    labelsForCluster(cr),
-			Namespace: cr.Namespace,
+			Name:   cr.Name,
+			Labels: labelsForCluster(cr),
 		},
 	}
 }
@@ -70,12 +69,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, role *v1.Role, sa *c
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
-		if errors.IsNotFound(err) {
-			roleBindingExists = false
-			roleBinding = newRoleBindingWithname(name, cr)
-		} else {
-			return err
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("Failed to get the rolebinding associated with %s : %s", name, err)
 		}
+		roleBindingExists = false
+		roleBinding = newRoleBindingWithname(name, cr)
 	}
 
 	roleBinding.Subjects = []v1.Subject{
@@ -93,11 +91,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, role *v1.Role, sa *c
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		err = r.client.Update(context.TODO(), roleBinding)
-	} else {
-		err = r.client.Create(context.TODO(), roleBinding)
+		return r.client.Update(context.TODO(), roleBinding)
 	}
-	return err
+	return r.client.Create(context.TODO(), roleBinding)
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {
@@ -109,12 +105,11 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
-		if errors.IsNotFound(err) {
-			roleBindingExists = false
-			roleBinding = newClusterRoleBindingWithname(name, cr)
-		} else {
+		if !errors.IsNotFound(err) {
 			return err
 		}
+		roleBindingExists = false
+		roleBinding = newClusterRoleBindingWithname(name, cr)
 	}
 
 	roleBinding.Subjects = []v1.Subject{
@@ -132,10 +127,7 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		err = r.client.Update(context.TODO(), roleBinding)
-
-	} else {
-		err = r.client.Create(context.TODO(), roleBinding)
+		return r.client.Update(context.TODO(), roleBinding)
 	}
-	return err
+	return r.client.Create(context.TODO(), roleBinding)
 }

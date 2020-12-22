@@ -62,12 +62,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	roleExists := true
 
 	if err != nil {
-		if errors.IsNotFound(err) {
-			roleExists = false
-			role = newRoleWithName(name, cr)
-		} else {
-			return nil, err
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("Failed to reconcile the role for the service account associated with %s : %s", name, err)
 		}
+		roleExists = false
+		role = newRoleWithName(name, cr)
 	}
 
 	role.Rules = policyRules

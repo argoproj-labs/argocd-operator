@@ -131,7 +131,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 	var sa *corev1.ServiceAccount
 	var err error
 
-	// setup role for
 	if role, err = r.getClusterRole(name); err != nil {
 		return err
 	}
@@ -149,7 +148,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules 
 	var sa *corev1.ServiceAccount
 	var err error
 
-	// setup role for
 	if role, err = r.reconcileRole(name, rules, cr); err != nil {
 		return err
 	}
