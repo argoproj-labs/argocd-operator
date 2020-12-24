@@ -12,6 +12,7 @@ require (
 	github.com/sethvargo/go-password v0.2.0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.3.0
+	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible

@@ -346,7 +346,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	podSpec.ServiceAccountName = "argocd-application-controller"
+	podSpec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-application-controller")
 
 	existing := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
@@ -466,7 +466,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		}},
 	}}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = common.ArgoCDDefaultDexServiceAccountName
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
 		Name: "static-files",
 		VolumeSource: corev1.VolumeSource{
@@ -839,7 +839,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		},
 	}
 
-	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-redis-ha"
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
 		return err
@@ -1024,7 +1024,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			},
 		},
 	}}
-	deploy.Spec.Template.Spec.ServiceAccountName = "argocd-server"
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",

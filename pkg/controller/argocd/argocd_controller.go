@@ -48,7 +48,7 @@ func Add(mgr manager.Manager) error {
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileArgoCD) error {
 	// Create a new controller
 	c, err := controller.New("argocd-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -56,7 +56,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Register watches for all controller resources
-	if err := watchResources(c); err != nil {
+	if err := watchResources(c, r.clusterRoleBindingMapper); err != nil {
 		return err
 	}
 
@@ -64,7 +64,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) *ReconcileArgoCD {
 	return &ReconcileArgoCD{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
