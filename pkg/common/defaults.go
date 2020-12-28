@@ -89,7 +89,7 @@ const (
 	ArgoCDDefaultDexHTTPPort = 5556
 
 	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
-	ArgoCDDefaultDexServiceAccountName = "dex-server"
+	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
 	ArgoCDDefaultDexVersion = "sha256:01e996b4b60edcc5cc042227c6965dd63ba68764c25d86b481b0d65f6e4da308" // v2.22.0

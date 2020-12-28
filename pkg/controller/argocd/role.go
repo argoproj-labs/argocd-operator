@@ -37,9 +37,8 @@ func newRole(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Name:   name,
+			Labels: labelsForCluster(cr),
 		},
 	}
 }
