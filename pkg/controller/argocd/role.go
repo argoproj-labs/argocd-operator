@@ -106,7 +106,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
 
 	clusterRole := newClusterRoleWithName(name, cr)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name, Namespace: cr.Namespace}, clusterRole)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole)
 	roleExists := true
 
 	if err != nil {
