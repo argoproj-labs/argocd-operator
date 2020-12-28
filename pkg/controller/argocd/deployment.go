@@ -1024,7 +1024,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			},
 		},
 	}}
-	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "server")
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
