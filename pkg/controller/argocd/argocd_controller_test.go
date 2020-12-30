@@ -75,6 +75,9 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
+
+	createClusterRoles(t, r.client)
+
 	res, err := r.Reconcile(req)
 	assertNoError(t, err)
 	if res.Requeue {

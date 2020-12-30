@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -33,21 +34,11 @@ func newRole(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	}
 }
 
-// newClusterRole returns a new ClusterRole instance.
-func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
-	return &v1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labelsForCluster(cr),
-		},
-	}
-}
-
 func generateResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) string {
 	return cr.Name + "-" + argoComponentName
 }
 
-// newRoleWithName creates a new ClusterRole with the given name for the given ArgoCD.
+// newRoleWithName creates a new Role with the given name for the given ArgoCD.
 func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	sa := newRole(name, cr)
 	sa.Name = fmt.Sprintf("%s-%s", cr.Name, name)
@@ -59,22 +50,20 @@ func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return sa
 }
 
-// newClusterRoleWithName creates a new ClusterRole with the given name for the given ArgoCD.
-func newClusterRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
-	sa := newClusterRole(name, cr)
-	sa.Name = fmt.Sprintf("%s-%s", cr.Name, name)
-
-	lbls := sa.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	sa.ObjectMeta.Labels = lbls
-
-	return sa
-}
-
 func (r *ReconcileArgoCD) getClusterRole(name string) (*v1.ClusterRole, error) {
-	clusterRole := &v1.ClusterRole{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: name}, clusterRole) //rbacClient.ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
-	return clusterRole, err
+	clusterRoleList := &v1.ClusterRoleList{}
+	err := r.client.List(context.TODO(), clusterRoleList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, clusterRole := range clusterRoleList.Items {
+		if strings.Contains(clusterRole.Name, name) {
+			return &clusterRole, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unable to find ClusterRole: %s", name)
 }
 
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
@@ -100,29 +89,4 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		err = r.client.Create(context.TODO(), role)
 	}
 	return role, err
-}
-
-func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
-
-	clusterRole := newClusterRoleWithName(name, cr)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole)
-	roleExists := true
-
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("Failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
-		}
-		roleExists = false
-		clusterRole = newClusterRoleWithName(name, cr)
-	}
-
-	clusterRole.Rules = policyRules
-
-	controllerutil.SetControllerReference(cr, clusterRole, r.scheme)
-	if roleExists {
-		err = r.client.Update(context.TODO(), clusterRole)
-	} else {
-		err = r.client.Create(context.TODO(), clusterRole)
-	}
-	return clusterRole, err
 }
