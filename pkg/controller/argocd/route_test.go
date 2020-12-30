@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,6 +39,9 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 			Namespace: testNamespace,
 		},
 	}
+
+	createClusterRoles(t, r.client)
+
 	_, err := r.Reconcile(req)
 	assertNoError(t, err)
 
@@ -108,6 +112,9 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 			Namespace: testNamespace,
 		},
 	}
+
+	createClusterRoles(t, r.client)
+
 	_, err := r.Reconcile(req)
 	assertNoError(t, err)
 
@@ -205,4 +212,20 @@ func testNamespacedName(name string) types.NamespacedName {
 		Name:      name,
 		Namespace: testNamespace,
 	}
+}
+
+func createClusterRoles(t *testing.T, c client.Client) {
+	t.Helper()
+
+	assertNoError(t, c.Create(context.TODO(), &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "argocd-server",
+		},
+	}))
+
+	assertNoError(t, c.Create(context.TODO(), &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "argocd-application-controller",
+		},
+	}))
 }

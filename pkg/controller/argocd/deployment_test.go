@@ -517,7 +517,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				ImagePullPolicy: corev1.PullAlways,
 			},
 		},
-		ServiceAccountName: "argocd-dex-server",
+		ServiceAccountName: "argocd-argocd-dex-server",
 	}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
@@ -596,7 +596,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				ImagePullPolicy: corev1.PullAlways,
 			},
 		},
-		ServiceAccountName: "argocd-dex-server",
+		ServiceAccountName: "argocd-argocd-dex-server",
 	}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
@@ -692,7 +692,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 				},
 			},
 		},
-		ServiceAccountName: "argocd-server",
+		ServiceAccountName: "argocd-argocd-server",
 	}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
@@ -791,7 +791,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 				},
 			},
 		},
-		ServiceAccountName: "argocd-server",
+		ServiceAccountName: "argocd-argocd-server",
 	}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
@@ -893,7 +893,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 				},
 			},
 		},
-		ServiceAccountName: "argocd-server",
+		ServiceAccountName: "argocd-argocd-server",
 	}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {

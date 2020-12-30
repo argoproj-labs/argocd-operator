@@ -36,3 +36,21 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
+
+func TestGetClusterRole(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	createClusterRoles(t, r.client)
+
+	serverClusterRole := "argocd-server"
+	clusterRole, err := r.getClusterRole(serverClusterRole)
+	assertNoError(t, err)
+	assert.Equal(t, serverClusterRole, clusterRole.Name)
+
+	controllerClusterRole := "argocd-application-controller"
+	clusterRole, err = r.getClusterRole(controllerClusterRole)
+	assertNoError(t, err)
+	assert.Equal(t, controllerClusterRole, clusterRole.Name)
+}

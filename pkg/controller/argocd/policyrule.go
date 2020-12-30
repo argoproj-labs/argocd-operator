@@ -55,8 +55,8 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 			},
 
 			Resources: []string{
-				"CronJob",
-				"Job",
+				"cronjobs",
+				"jobs",
 			},
 			Verbs: []string{
 				"*",
@@ -64,7 +64,6 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 		},
 		{
 			APIGroups: []string{
-				"apiGroups",
 				"argoproj.io",
 			},
 
@@ -74,18 +73,6 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"*",
-			},
-		},
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"events",
-			},
-			Verbs: []string{
-				"create",
-				"list",
 			},
 		},
 	}
