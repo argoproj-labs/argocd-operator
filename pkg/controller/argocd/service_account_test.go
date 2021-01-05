@@ -102,5 +102,5 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 
 	// fetch it
 	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))
-	assert.Equal(t, workloadIdentifier, reconcileClusterRoleBinding.RoleRef.Name)
+	assert.Equal(t, expectedName, reconcileClusterRoleBinding.RoleRef.Name)
 }
