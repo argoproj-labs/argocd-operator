@@ -53,11 +53,11 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
-	// undersirable change.
+	// Update the ClusterRole with undesirable policy rules
 	reconciledClusterRole.Rules = policyRuleForRedisHa()
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
 
-	// overwrite it.
+	// Check if the undesirable policy rules are overwritten by the reconciler
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)

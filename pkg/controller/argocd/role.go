@@ -49,13 +49,14 @@ func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return sa
 }
 
-func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
+func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        generateResourceName(name, cr),
 			Labels:      labelsForCluster(cr),
 			Annotations: annotationsForCluster(cr),
 		},
+		Rules: rules,
 	}
 }
 
@@ -85,27 +86,16 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
+	clusterRole := newClusterRole(name, policyRules, cr)
 
-	clusterRole := newClusterRole(name, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole)
-	clusterRoleExists := true
-
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("Failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
+			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
 		}
-		clusterRoleExists = false
-		clusterRole = newClusterRole(name, cr)
+		return clusterRole, r.client.Create(context.TODO(), newClusterRole(name, policyRules, cr))
 	}
 
 	clusterRole.Rules = policyRules
-
-	controllerutil.SetControllerReference(cr, clusterRole, r.scheme)
-	if clusterRoleExists {
-		err = r.client.Update(context.TODO(), clusterRole)
-	} else {
-		err = r.client.Create(context.TODO(), clusterRole)
-	}
-
-	return clusterRole, err
+	return clusterRole, r.client.Update(context.TODO(), clusterRole)
 }
