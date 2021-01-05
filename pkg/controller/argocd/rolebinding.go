@@ -18,8 +18,9 @@ import (
 func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   cr.Name,
-			Labels: labelsForCluster(cr),
+			Name:        cr.Name,
+			Labels:      labelsForCluster(cr),
+			Annotations: annotationsForCluster(cr),
 		},
 	}
 }

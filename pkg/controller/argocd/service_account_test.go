@@ -78,7 +78,7 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 
 	// objective is to verify if the right SA associations have happened.
 
-	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, a))
+	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForServerClusterRole(), a))
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
@@ -98,7 +98,7 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.Equal(t, reconcileClusterRoleBinding.RoleRef.Name, dirtyClusterRoleBinding.RoleRef.Name)
 
 	// Have the reconciler override them
-	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, a))
+	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForServerClusterRole(), a))
 
 	// fetch it
 	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))

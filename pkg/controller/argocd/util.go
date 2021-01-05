@@ -701,7 +701,12 @@ func watchResources(c controller.Controller, clusterRoleBindingMapper handler.To
 	handlerClusterRoleBinding := &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: clusterRoleBindingMapper,
 	}
+
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, handlerClusterRoleBinding); err != nil {
+		return err
+	}
+
+	if err := c.Watch(&source.Kind{Type: &v1.ClusterRole{}}, handlerClusterRoleBinding); err != nil {
 		return err
 	}
 

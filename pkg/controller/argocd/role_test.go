@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,20 +38,26 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
 
-func TestGetClusterRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	createClusterRoles(t, r.client)
-
-	serverClusterRole := "argocd-server"
-	clusterRole, err := r.getClusterRole(serverClusterRole)
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	expectedRules := policyRuleForApplicationControllerClusterRole()
+	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assertNoError(t, err)
-	assert.Equal(t, serverClusterRole, clusterRole.Name)
 
-	controllerClusterRole := "argocd-application-controller"
-	clusterRole, err = r.getClusterRole(controllerClusterRole)
-	assertNoError(t, err)
-	assert.Equal(t, controllerClusterRole, clusterRole.Name)
+	reconciledClusterRole := &v1.ClusterRole{}
+	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: workloadIdentifier}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
+
+	// undersirable change.
+	reconciledClusterRole.Rules = policyRuleForRedisHa()
+	assertNoError(t, r.client.Update(context.TODO(), reconciledClusterRole))
+
+	// overwrite it.
+	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: workloadIdentifier}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 }

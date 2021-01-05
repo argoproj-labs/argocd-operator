@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -50,20 +49,14 @@ func newRoleWithName(name string, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return sa
 }
 
-func (r *ReconcileArgoCD) getClusterRole(name string) (*v1.ClusterRole, error) {
-	clusterRoleList := &v1.ClusterRoleList{}
-	err := r.client.List(context.TODO(), clusterRoleList)
-	if err != nil {
-		return nil, err
+func newClusterRole(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
+	return &v1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Labels:      labelsForCluster(cr),
+			Annotations: annotationsForCluster(cr),
+		},
 	}
-
-	for _, clusterRole := range clusterRoleList.Items {
-		if strings.Contains(clusterRole.Name, name) {
-			return &clusterRole, nil
-		}
-	}
-
-	return nil, fmt.Errorf("Unable to find ClusterRole: %s", name)
 }
 
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
@@ -89,4 +82,30 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		err = r.client.Create(context.TODO(), role)
 	}
 	return role, err
+}
+
+func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
+
+	clusterRole := newClusterRole(name, cr)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole)
+	clusterRoleExists := true
+
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("Failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
+		}
+		clusterRoleExists = false
+		clusterRole = newClusterRole(name, cr)
+	}
+
+	clusterRole.Rules = policyRules
+
+	controllerutil.SetControllerReference(cr, clusterRole, r.scheme)
+	if clusterRoleExists {
+		err = r.client.Update(context.TODO(), clusterRole)
+	} else {
+		err = r.client.Create(context.TODO(), clusterRole)
+	}
+
+	return clusterRole, err
 }

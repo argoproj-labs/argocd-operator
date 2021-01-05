@@ -22,7 +22,7 @@ func (r *ReconcileArgoCD) clusterRoleBindingMapper(o handler.MapObject) []reconc
 	var result = []reconcile.Request{}
 	if namespacedArgoCDObject.Name != "" && namespacedArgoCDObject.Namespace != "" {
 		result = []reconcile.Request{
-			{namespacedArgoCDObject},
+			{NamespacedName: namespacedArgoCDObject},
 		}
 	}
 	return result
