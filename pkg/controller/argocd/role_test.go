@@ -48,17 +48,42 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, err)
 
-	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledClusterRole := &v1.ClusterRole{}
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	clusterRoleName := generateResourceName(workloadIdentifier, a)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
-	// Update the ClusterRole with undesirable policy rules
+	// undersirable change.
 	reconciledClusterRole.Rules = policyRuleForRedisHa()
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
 
-	// Check if the undesirable policy rules are overwritten by the reconciler
+	// overwrite it.
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
+}
+
+func TestReconcileArgoCDClusterConfig_reconcileClusterRole(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCDForClusterConfig()
+	r := makeTestReconciler(t, a)
+
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	expectedRules := policyRoleForClusterConfig()
+	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, err)
+
+	reconciledClusterRole := &v1.ClusterRole{}
+	clusterRoleName := generateResourceName(workloadIdentifier, a)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
+
+	// undersirable change.
+	reconciledClusterRole.Rules = policyRuleForRedisHa()
+	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
+
+	// overwrite it.
+	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 }

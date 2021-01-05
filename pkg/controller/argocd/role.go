@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -60,18 +61,74 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 	}
 }
 
+func allowedNamespace(current string, configuredList string) bool {
+	isAllowedNamespace := false
+	if configuredList != "" {
+		if configuredList == "*" {
+			isAllowedNamespace = true
+		} else {
+			namespaceList := strings.Split(configuredList, ",")
+			for _, n := range namespaceList {
+				if n == current {
+					isAllowedNamespace = true
+				}
+			}
+		}
+	}
+	return isAllowedNamespace
+}
+
+// reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
+func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role, error error) {
+	if role, err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
+		return role, err
+	}
+
+	if role, err := r.reconcileRole(dexServer, policyRuleForDexServer(), cr); err != nil {
+		return role, err
+	}
+
+	if role, err := r.reconcileRole(server, policyRuleForServer(), cr); err != nil {
+		return role, err
+	}
+
+	if role, err := r.reconcileRole(redisHa, policyRuleForRedisHa(), cr); err != nil {
+		return role, err
+	}
+
+	rules := []v1.PolicyRule{}
+
+	if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
+		if allowedNamespace(cr.Namespace, cr.Spec.ManagementScope.Namespaces) {
+			rules = append(rules, policyRoleForClusterConfig()...)
+		}
+	}
+
+	rules = append(rules, policyRuleForApplicationControllerClusterRole()...)
+	if _, err := r.reconcileClusterRole(applicationController, rules, cr); err != nil {
+		return nil, err
+	}
+
+	if _, err := r.reconcileClusterRole(server, policyRuleForServerClusterRole(), cr); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
 
 	role := newRoleWithName(name, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role) //rbacClient.Roles(cr.Namespace).Get(context.TODO(), role.Name, metav1.GetOptions{})
 	roleExists := true
-
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("Failed to reconcile the role for the service account associated with %s : %s", name, err)
+		if errors.IsNotFound(err) {
+			roleExists = false
+			role = newRoleWithName(name, cr)
+		} else {
+			return role, err
 		}
-		roleExists = false
-		role = newRoleWithName(name, cr)
 	}
 
 	role.Rules = policyRules
@@ -79,6 +136,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	controllerutil.SetControllerReference(cr, role, r.scheme)
 	if roleExists {
 		err = r.client.Update(context.TODO(), role)
+		if err != nil {
+			return role, err
+		}
 	} else {
 		err = r.client.Create(context.TODO(), role)
 	}
