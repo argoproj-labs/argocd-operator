@@ -46,19 +46,19 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedRules := policyRuleForApplicationControllerClusterRole()
 	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledClusterRole := &v1.ClusterRole{}
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
 	// undersirable change.
 	reconciledClusterRole.Rules = policyRuleForRedisHa()
-	assertNoError(t, r.client.Update(context.TODO(), reconciledClusterRole))
+	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
 
 	// overwrite it.
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 }
