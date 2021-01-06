@@ -23,6 +23,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/google/go-cmp/cmp"
+	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,10 +37,10 @@ func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileTLSCerts(a))
+	assert.NilError(t, r.reconcileTLSCerts(a))
 
 	configMap := &corev1.ConfigMap{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      common.ArgoCDTLSCertsConfigMapName,
@@ -57,13 +58,13 @@ func TestReconcileArgoCD_reconcileTLSCerts_withUpdate(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assertNoError(t, r.reconcileTLSCerts(a))
+	assert.NilError(t, r.reconcileTLSCerts(a))
 
 	a = makeTestArgoCD(initialCerts(t, "testing.example.com"))
-	assertNoError(t, r.reconcileTLSCerts(a))
+	assert.NilError(t, r.reconcileTLSCerts(a))
 
 	configMap := &corev1.ConfigMap{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      common.ArgoCDTLSCertsConfigMapName,
@@ -83,14 +84,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	want := map[string]string{
 		"application.instanceLabelKey": "mycompany.com/appname",
@@ -125,14 +126,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	if c := cm.Data["admin.enabled"]; c != "false" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
@@ -147,14 +148,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 
 	os.Setenv("DISABLE_DEX", "true")
 	err := r.reconcileArgoConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	if c, ok := cm.Data["dex.config"]; ok {
 		t.Fatalf("reconcileArgoConfigMap failed, dex.config = %q", c)
@@ -169,14 +170,14 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileGPGKeysConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDGPGKeysConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 	// Currently the gpg keys configmap is empty
 }
 
@@ -189,14 +190,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	if c := cm.Data["resource.inclusions"]; c != customizations {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
@@ -212,14 +213,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      common.ArgoCDConfigMapName,
 		Namespace: testNamespace,
 	}, cm)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	if c := cm.Data["resource.customizations"]; c != customizations {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)

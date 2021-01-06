@@ -37,32 +37,32 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	expectedRules := policyRuleForApplicationController()
 	workloadIdentifier := "xrb"
 
-	assertNoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NilError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconciledRole := &v1.Role{}
 	reconcileRoleBinding := &v1.RoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconcileRoleBinding))
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconcileRoleBinding))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
 	// undesirable changes
 	reconciledRole.Rules = policyRuleForRedisHa()
-	assertNoError(t, r.client.Update(context.TODO(), reconciledRole))
+	assert.NilError(t, r.client.Update(context.TODO(), reconciledRole))
 
 	// fetch it
 	dirtyRole := &v1.Role{}
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, dirtyRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, dirtyRole))
 	assert.DeepEqual(t, reconciledRole.Rules, dirtyRole.Rules)
 
 	// Have the reconciler override them
-	assertNoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NilError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
 
 	// fetch it
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
 
@@ -74,33 +74,33 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	workloadIdentifier := "xrb"
 
 	clusterRole := v1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}, Rules: policyRuleForApplicationController()}
-	assertNoError(t, r.client.Create(context.TODO(), &clusterRole))
+	assert.NilError(t, r.client.Create(context.TODO(), &clusterRole))
 
 	// objective is to verify if the right SA associations have happened.
 
-	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForServerClusterRole(), a))
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
 
 	// undesirable changes
 	reconcileClusterRoleBinding.RoleRef.Name = "z"
 	reconcileClusterRoleBinding.Subjects[0].Name = "z"
-	assertNoError(t, r.client.Update(context.TODO(), reconcileClusterRoleBinding))
+	assert.NilError(t, r.client.Update(context.TODO(), reconcileClusterRoleBinding))
 
 	// fetch it
 	dirtyClusterRoleBinding := &v1.ClusterRoleBinding{}
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, dirtyClusterRoleBinding))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, dirtyClusterRoleBinding))
 	assert.Equal(t, reconcileClusterRoleBinding.RoleRef.Name, dirtyClusterRoleBinding.RoleRef.Name)
 
 	// Have the reconciler override them
-	assertNoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForServerClusterRole(), a))
 
 	// fetch it
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))
-	assert.Equal(t, workloadIdentifier, reconcileClusterRoleBinding.RoleRef.Name)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconcileClusterRoleBinding))
+	assert.Equal(t, expectedName, reconcileClusterRoleBinding.RoleRef.Name)
 }

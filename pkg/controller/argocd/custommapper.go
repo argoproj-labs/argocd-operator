@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (r *ReconcileArgoCD) clusterRoleBindingMapper(o handler.MapObject) []reconcile.Request {
+func (r *ReconcileArgoCD) clusterResourceMapper(o handler.MapObject) []reconcile.Request {
 	crbAnnotations := o.Meta.GetAnnotations()
 	namespacedArgoCDObject := client.ObjectKey{}
 
@@ -22,7 +22,7 @@ func (r *ReconcileArgoCD) clusterRoleBindingMapper(o handler.MapObject) []reconc
 	var result = []reconcile.Request{}
 	if namespacedArgoCDObject.Name != "" && namespacedArgoCDObject.Namespace != "" {
 		result = []reconcile.Request{
-			{namespacedArgoCDObject},
+			{NamespacedName: namespacedArgoCDObject},
 		}
 	}
 	return result

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,10 +44,10 @@ func TestReconcileArgoCD_reconcileApplicationControllerDeployment(t *testing.T) 
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
+	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -70,13 +71,13 @@ func TestReconcileArgoCD_reconcileApplicationControllerDeployment_withUpdate(t *
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
+	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
 
 	a = makeTestArgoCD(controllerProcessors(30))
-	assertNoError(t, r.reconcileApplicationControllerDeployment(a))
+	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -186,14 +187,14 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileRepoDeployment(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	deployment := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	want := []corev1.Volume{
 		{
@@ -237,14 +238,14 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileRepoDeployment(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	deployment := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	want := []corev1.VolumeMount{
 		{Name: "ssh-known-hosts", MountPath: "/app/config/ssh"},
@@ -264,7 +265,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 	r := makeTestReconciler(t, a)
 
 	os.Setenv("DISABLE_DEX", "true")
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
 	assertNotFound(t, r.client.Get(
@@ -284,10 +285,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 	r := makeTestReconciler(t, a)
 	os.Setenv("DISABLE_DEX", "true")
 
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 
 	a = makeTestArgoCD()
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
 	assertNotFound(t, r.client.Get(
@@ -314,7 +315,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileDeployments(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	for _, v := range deploymentNames {
 		assertDeploymentHasProxyVars(t, r.client, v)
@@ -334,7 +335,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	})
 	r := makeTestReconciler(t, a)
 	err := r.reconcileDeployments(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 	for _, v := range deploymentNames {
 		refuteDeploymentHasProxyVars(t, r.client, v)
 	}
@@ -346,7 +347,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(logf.ZapLogger(true))
 
 	err = r.reconcileDeployments(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	for _, v := range deploymentNames {
 		assertDeploymentHasProxyVars(t, r.client, v)
@@ -367,7 +368,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileDeployments(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	assertDeploymentHasProxyVars(t, r.client, "argocd-redis-ha-haproxy")
 }
@@ -396,14 +397,14 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	r := makeTestReconciler(t, a, d)
 
 	err := r.reconcileRepoDeployment(a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	deployment := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	if l := len(deployment.Spec.Template.Spec.Volumes); l != 3 {
 		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 3", l)
@@ -457,10 +458,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -531,15 +532,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	// Creates the deployment and then changes the CR and rereconciles.
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 	a.Spec.Image = "justatest"
 	a.Spec.Version = "latest"
 	a.Spec.Dex.Image = "testdex"
 	a.Spec.Dex.Version = "v0.0.1"
-	assertNoError(t, r.reconcileDexDeployment(a))
+	assert.NilError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -609,10 +610,10 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileServerDeployment(a))
+	assert.NilError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -707,10 +708,10 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileServerDeployment(a))
+	assert.NilError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -804,15 +805,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assertNoError(t, r.reconcileServerDeployment(a))
+	assert.NilError(t, r.reconcileServerDeployment(a))
 
 	a = makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Server.Insecure = true
 	})
-	assertNoError(t, r.reconcileServerDeployment(a))
+	assert.NilError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNoError(t, r.client.Get(
+	assert.NilError(t, r.client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -936,7 +937,7 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		Name:      name,
 		Namespace: testNamespace,
 	}, deployment)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	want := []corev1.EnvVar{
 		{Name: "HTTP_PROXY", Value: testHTTPProxy},
@@ -962,7 +963,7 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		Name:      name,
 		Namespace: testNamespace,
 	}, deployment)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	names := []string{"http_proxy", "https_proxy", "no_proxy"}
 	for _, name := range names {

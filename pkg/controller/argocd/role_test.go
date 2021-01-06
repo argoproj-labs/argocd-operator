@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,37 +21,44 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	workloadIdentifier := "x"
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
 	// undersirable change.
 	reconciledRole.Rules = policyRuleForRedisHa()
-	assertNoError(t, r.client.Update(context.TODO(), reconciledRole))
+	assert.NilError(t, r.client.Update(context.TODO(), reconciledRole))
 
 	// overwrite it.
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
-	assertNoError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
 
-func TestGetClusterRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	createClusterRoles(t, r.client)
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	expectedRules := policyRuleForApplicationControllerClusterRole()
+	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, err)
 
-	serverClusterRole := "argocd-server"
-	clusterRole, err := r.getClusterRole(serverClusterRole)
-	assertNoError(t, err)
-	assert.Equal(t, serverClusterRole, clusterRole.Name)
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	reconciledClusterRole := &v1.ClusterRole{}
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
-	controllerClusterRole := "argocd-application-controller"
-	clusterRole, err = r.getClusterRole(controllerClusterRole)
-	assertNoError(t, err)
-	assert.Equal(t, controllerClusterRole, clusterRole.Name)
+	// Update the ClusterRole with undesirable policy rules
+	reconciledClusterRole.Rules = policyRuleForRedisHa()
+	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
+
+	// Check if the undesirable policy rules are overwritten by the reconciler
+	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 }

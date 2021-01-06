@@ -659,7 +659,7 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterRoleBindingMapper handler.ToRequestsFunc) error {
+func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc) error {
 	// Watch for changes to primary resource ArgoCD
 	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -698,10 +698,15 @@ func watchResources(c controller.Controller, clusterRoleBindingMapper handler.To
 		return err
 	}
 
-	handlerClusterRoleBinding := &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: clusterRoleBindingMapper,
+	clusterResourceHandler := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: clusterResourceMapper,
 	}
-	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, handlerClusterRoleBinding); err != nil {
+
+	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler); err != nil {
+		return err
+	}
+
+	if err := c.Watch(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler); err != nil {
 		return err
 	}
 

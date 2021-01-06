@@ -94,7 +94,7 @@ func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
 				client: tt.fields.client,
 				scheme: tt.fields.scheme,
 			}
-			if got := r.clusterRoleBindingMapper(tt.args.o); !reflect.DeepEqual(got, tt.want) {
+			if got := r.clusterResourceMapper(tt.args.o); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileArgoCD.clusterRoleBindingMapper() = %v, want %v", got, tt.want)
 			}
 		})

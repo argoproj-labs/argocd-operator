@@ -166,3 +166,69 @@ func policyRuleForServer() []v1.PolicyRule {
 		},
 	}
 }
+
+func policyRuleForApplicationControllerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			NonResourceURLs: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+	}
+}
+
+func policyRuleForServerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"list",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"pods",
+				"pods/log",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+	}
+}
