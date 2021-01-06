@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,7 +41,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	}
 
 	_, err := r.Reconcile(req)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -111,7 +112,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 
 	_, err := r.Reconcile(req)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -140,7 +141,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 	_, err = r.Reconcile(req)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 
 	loaded = &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)

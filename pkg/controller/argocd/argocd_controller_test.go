@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +50,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 		},
 	}
 	res, err := r.Reconcile(req)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
@@ -77,7 +78,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	}
 
 	res, err := r.Reconcile(req)
-	assertNoError(t, err)
+	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}

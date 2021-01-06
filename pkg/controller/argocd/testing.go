@@ -20,6 +20,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/pkg/apis"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	"gotest.tools/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -35,7 +36,7 @@ const (
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
-	assertNoError(t, apis.AddToScheme(s))
+	assert.NilError(t, apis.AddToScheme(s))
 
 	cl := fake.NewFakeClientWithScheme(s, objs...)
 	return &ReconcileArgoCD{
@@ -59,20 +60,13 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func assertNoError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
-		assertNoError(t, err)
+		assert.NilError(t, err)
 		cert, err := argoutil.NewSelfSignedCACertificate(key)
-		assertNoError(t, err)
+		assert.NilError(t, err)
 		encoded := argoutil.EncodeCertificatePEM(cert)
 
 		a.Spec.TLS.InitialCerts = map[string]string{
