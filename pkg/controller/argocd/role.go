@@ -79,7 +79,7 @@ func allowedNamespace(current string, configuredList string) bool {
 }
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role, error error) {
+func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role, err error) {
 	if role, err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return role, err
 	}
@@ -96,15 +96,13 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 		return role, err
 	}
 
-	rules := []v1.PolicyRule{}
-
+	rules := policyRuleForApplicationControllerClusterRole()
 	if cr.Spec.ManagementScope.Cluster != nil && *cr.Spec.ManagementScope.Cluster {
 		if allowedNamespace(cr.Namespace, cr.Spec.ManagementScope.Namespaces) {
-			rules = append(rules, policyRoleForClusterConfig()...)
+			rules = append(rules, policyRulesForClusterConfig()...)
 		}
 	}
 
-	rules = append(rules, policyRuleForApplicationControllerClusterRole()...)
 	if _, err := r.reconcileClusterRole(applicationController, rules, cr); err != nil {
 		return nil, err
 	}
@@ -118,7 +116,6 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 
 // reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
-
 	role := newRoleWithName(name, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role) //rbacClient.Roles(cr.Namespace).Get(context.TODO(), role.Name, metav1.GetOptions{})
 	roleExists := true
@@ -134,15 +131,14 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	role.Rules = policyRules
 
 	controllerutil.SetControllerReference(cr, role, r.scheme)
-	if roleExists {
-		err = r.client.Update(context.TODO(), role)
-		if err != nil {
-			return role, err
-		}
-	} else {
-		err = r.client.Create(context.TODO(), role)
+
+	if err := applyRoleModifiers(cr, role); err != nil {
+		return nil, err
 	}
-	return role, err
+	if roleExists {
+		return role, r.client.Update(context.TODO(), role)
+	}
+	return role, r.client.Create(context.TODO(), role)
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {

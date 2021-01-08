@@ -14,10 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const (
-	openshiftConfigNamespace = "openshift-config"
-)
-
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
 func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
@@ -104,7 +100,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	roleBindingExists := true
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("Failed to get the rolebinding associated with %s : %s", name, err)
+			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 		}
 		roleBindingExists = false
 		roleBinding = newRoleBindingWithname(name, cr)
@@ -125,11 +121,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
-		err = r.client.Update(context.TODO(), roleBinding)
-	} else {
-		err = r.client.Create(context.TODO(), roleBinding)
+		return r.client.Update(context.TODO(), roleBinding)
 	}
-	return err
+
+	return r.client.Create(context.TODO(), roleBinding)
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {

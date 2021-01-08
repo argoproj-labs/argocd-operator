@@ -3,7 +3,6 @@ package argocd
 import v1 "k8s.io/api/rbac/v1"
 
 func policyRuleForApplicationController() []v1.PolicyRule {
-
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{
@@ -79,7 +78,6 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 }
 
 func policyRuleForRedisHa() []v1.PolicyRule {
-
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{
@@ -233,7 +231,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 	}
 }
 
-func policyRoleForClusterConfig() []v1.PolicyRule {
+func policyRulesForClusterConfig() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{
