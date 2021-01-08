@@ -17,6 +17,7 @@
 # Environment variables used in development. This file is sourced in the other scripts.
 
 # General vars
+export ARGOCD_BUILD_ARGS="--go-build-args -tags=openshift"
 export ARGOCD_OPERATOR_NAME=${ARGOCD_OPERATOR_NAME:-"argocd-operator"}
 export ARGOCD_OPERATOR_NAMESPACE=${ARGOCD_OPERATOR_NAMESPACE:-"argocd"}
 export ARGOCD_OPERATOR_VERSION=${ARGOCD_OPERATOR_VERSION:-`awk '$1 == "Version" {gsub(/"/, "", $3); print $3}' version/version.go`}

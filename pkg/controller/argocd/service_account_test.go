@@ -34,7 +34,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 
 	// objective is to verify if the right rule associations have happened.
 
-	expectedRules := policyRuleForApplicationController()
+	expectedRules := PolicyRuleForApplicationController()
 	workloadIdentifier := "xrb"
 
 	assert.NilError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))

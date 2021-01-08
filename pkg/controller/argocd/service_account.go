@@ -67,7 +67,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDApplicationControllerComponent, PolicyRuleForApplicationController(), cr); err != nil {
 		return err
 	}
 

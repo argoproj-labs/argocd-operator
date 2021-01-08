@@ -18,7 +18,7 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	p := policyRuleForApplicationController()
+	p := PolicyRuleForApplicationController()
 
 	workloadIdentifier := "xrb"
 
@@ -38,7 +38,6 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 
 	roleBinding = &rbacv1.RoleBinding{}
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
-
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
@@ -66,31 +65,4 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
-}
-
-func TestReconcileArgoCD_reconcileRoleBinding_with_extensions(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	p := policyRuleForApplicationController()
-
-	workloadIdentifier := "xrb"
-
-	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
-
-	roleBinding := &rbacv1.RoleBinding{}
-	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
-
-	// undesirable changes
-	roleBinding.RoleRef.Name = "not-xrb"
-	roleBinding.Subjects[0].Name = "not-xrb"
-	assert.NilError(t, r.client.Update(context.TODO(), roleBinding))
-
-	// try reconciling it again to ensure undesirable changes are overwritten
-	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
-
-	roleBinding = &rbacv1.RoleBinding{}
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
-
 }

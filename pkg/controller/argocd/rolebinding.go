@@ -62,7 +62,7 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
 func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr); err != nil {
+	if err := r.reconcileRoleBinding(applicationController, PolicyRuleForApplicationController(), cr); err != nil {
 		return err
 	}
 	if err := r.reconcileRoleBinding(dexServer, policyRuleForDexServer(), cr); err != nil {
@@ -164,21 +164,20 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 
 // reconcileArgoApplier ensures that a specific rolebinding is present in a managedNamespace
 func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string, cr *argoprojv1a1.ArgoCD, managedNamespace string) error {
-	roleBinding := newRoleBindingWithname(controlPlaneServiceAccount, cr)
 
+	roleBinding := newRoleBindingWithname(controlPlaneServiceAccount, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
-		if errors.IsNotFound(err) {
-			roleBindingExists = false
-			roleBinding = &v1.RoleBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      cr.Name,
-					Namespace: managedNamespace,
-				},
-			}
-		} else {
+		if !errors.IsNotFound(err) {
 			return err
+		}
+		roleBindingExists = false
+		roleBinding = &v1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cr.Name,
+				Namespace: managedNamespace,
+			},
 		}
 	}
 	roleBinding.Subjects = []v1.Subject{
@@ -194,10 +193,8 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 		Name:     "admin",
 	}
 
-	if roleBindingExists {
-		err = r.client.Update(context.TODO(), roleBinding)
-	} else {
-		err = r.client.Create(context.TODO(), roleBinding)
+	if !roleBindingExists {
+		return r.client.Create(context.TODO(), roleBinding)
 	}
-	return err
+	return r.client.Update(context.TODO(), roleBinding)
 }

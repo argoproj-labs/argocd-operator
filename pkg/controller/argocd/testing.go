@@ -60,26 +60,6 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForClusterConfig(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	var clusterConfig = true
-	a := &argoprojv1alpha1.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			ManagementScope: argoprojv1alpha1.ArgoCDScope{
-				Namespaces: testNamespace,
-				Cluster:    &clusterConfig,
-			},
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
-}
-
 func assertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
