@@ -318,9 +318,8 @@ type ArgoCDServerServiceSpec struct {
 
 // ArgoCDScope defines the scope of resources that ArgoCD would be managing
 type ArgoCDScope struct {
-	// Cluster when enabled lets ArgoCD manage cluster resources.
-	Cluster    bool     `json:"cluster,omitempty"`
-	Namespaces []string `json:"namespaces,omitempty"`
+	// List of namespaces where ArgoCD is allowed to manage cluster resources.
+	ClusterConfigNamespaces []string `json:"clusterconfignamespaces,omitempty"`
 }
 
 // ArgoCDSpec defines the desired state of ArgoCD

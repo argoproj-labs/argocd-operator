@@ -49,7 +49,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role, err error) {
-	if role, err := r.reconcileRole(applicationController, PolicyRuleForApplicationController(), cr); err != nil {
+	if role, err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return role, err
 	}
 
@@ -84,7 +84,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return nil, err
+			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 		}
 		return role, r.client.Create(context.TODO(), role)
 	}
@@ -97,15 +97,16 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
 
 	clusterRole := newClusterRole(name, policyRules, cr)
-	ApplyReconcilerHook(cr, clusterRole)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, clusterRole)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
 		}
+		applyReconcilerHook(cr, clusterRole)
 		return clusterRole, r.client.Create(context.TODO(), newClusterRole(name, policyRules, cr))
 	}
 
 	clusterRole.Rules = policyRules
+	applyReconcilerHook(cr, clusterRole)
 	return clusterRole, r.client.Update(context.TODO(), clusterRole)
 }

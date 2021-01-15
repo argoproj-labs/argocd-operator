@@ -2,7 +2,8 @@ package argocd
 
 import v1 "k8s.io/api/rbac/v1"
 
-func PolicyRuleForApplicationController() []v1.PolicyRule {
+func policyRuleForApplicationController() []v1.PolicyRule {
+
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{
@@ -78,6 +79,7 @@ func PolicyRuleForApplicationController() []v1.PolicyRule {
 }
 
 func policyRuleForRedisHa() []v1.PolicyRule {
+
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{

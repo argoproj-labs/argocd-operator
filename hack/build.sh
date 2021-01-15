@@ -23,3 +23,5 @@ source ${HACK_DIR}/env.sh
 
 echo "Building image ${ARGOCD_OPERATOR_IMAGE}"
 ${OPERATOR_SDK} build ${ARGOCD_OPERATOR_IMAGE} ${ARGOCD_BUILD_ARGS} --image-builder ${ARGOCD_OPERATOR_IMAGE_BUILDER}
+# export ${ARGOCD_BUILD_ARGS}="--go-build-args "-tags openshift"" to add openshift package to the build process that
+# registers a reconciler hook which modifies the reconciler to create ArgoCD for Cluster Config. 

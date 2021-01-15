@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 var (
@@ -17,16 +16,17 @@ var (
 type Hook func(*argoprojv1alpha1.ArgoCD, interface{}) error
 
 // Register adds a modifier for updating resources during reconciliation.
-func Register(h Hook) {
+func Register(h ...Hook) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	hooks = append(hooks, h)
+	hooks = append(hooks, h...)
 }
 
-func ApplyReconcilerHook(cr *argoprojv1alpha1.ArgoCD, r *rbacv1.ClusterRole) error {
+func applyReconcilerHook(cr *argoprojv1alpha1.ArgoCD, i interface{}) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	for _, v := range hooks {
-		err := v(cr, r)
-		if err != nil {
+		if err := v(cr, i); err != nil {
 			return err
 		}
 	}

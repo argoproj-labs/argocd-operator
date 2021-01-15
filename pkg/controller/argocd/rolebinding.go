@@ -41,9 +41,10 @@ func newClusterRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.Clu
 func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Labels:    labelsForCluster(cr),
-			Namespace: cr.Namespace,
+			Name:        cr.Name,
+			Labels:      labelsForCluster(cr),
+			Annotations: annotationsForCluster(cr),
+			Namespace:   cr.Namespace,
 		},
 	}
 }
@@ -62,19 +63,19 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
 func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRoleBinding(applicationController, PolicyRuleForApplicationController(), cr); err != nil {
-		return err
+	if err := r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr); err != nil {
+		return fmt.Errorf("error reconciling roleBinding for %q: %w", applicationController, err)
 	}
 	if err := r.reconcileRoleBinding(dexServer, policyRuleForDexServer(), cr); err != nil {
-		return err
+		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
 
 	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(), cr); err != nil {
-		return err
+		return fmt.Errorf("error reconciling roleBinding for %q: %w", redisHa, err)
 	}
 
 	if err := r.reconcileRoleBinding(server, policyRuleForServer(), cr); err != nil {
-		return err
+		return fmt.Errorf("error reconciling roleBinding for %q: %w", server, err)
 	}
 	return nil
 }
@@ -145,7 +146,7 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	roleBinding.Subjects = []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
-			Name:      name,
+			Name:      generateResourceName(name, cr),
 			Namespace: cr.Namespace,
 		},
 	}
