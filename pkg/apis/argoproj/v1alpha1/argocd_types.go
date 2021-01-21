@@ -316,9 +316,19 @@ type ArgoCDServerServiceSpec struct {
 	Type corev1.ServiceType `json:"type"`
 }
 
+// ArgoCDScope defines the scope of resources that ArgoCD would be managing
+type ArgoCDScope struct {
+	// List of namespaces where ArgoCD is allowed to manage cluster resources.
+	ClusterConfigNamespaces []string `json:"clusterconfignamespaces,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
+
+	// ManagementScope defines the cluster scope or namespace scope managed by argocd.
+	ManagementScope ArgoCDScope `json:"managementScope,omitempty"`
+
 	// ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
 

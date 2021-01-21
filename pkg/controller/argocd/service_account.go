@@ -139,25 +139,11 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 	if err != nil {
 		return err
 	}
-
 	return r.reconcileClusterRoleBinding(name, role, sa, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
-	var role *v1.Role
-	var sa *corev1.ServiceAccount
-	var err error
-
-	if role, err = r.reconcileRole(name, rules, cr); err != nil {
-		return err
-	}
-
-	sa, err = r.reconcileServiceAccount(name, cr)
-	if err != nil {
-		return err
-	}
-
-	return r.reconcileRoleBinding(name, role, sa, cr)
+	return r.reconcileRoleBinding(name, rules, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {

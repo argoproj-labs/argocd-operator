@@ -21,6 +21,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/apis"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	"gotest.tools/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -30,8 +33,9 @@ import (
 )
 
 const (
-	testNamespace  = "argocd"
-	testArgoCDName = "argocd"
+	testNamespace             = "argocd"
+	testArgoCDName            = "argocd"
+	testApplicationController = "argocd-application-controller"
 )
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
@@ -58,6 +62,86 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 		o(a)
 	}
 	return a
+}
+
+func makeTestArgoCDForClusterConfig(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
+	allowedNamespaces := []string{testNamespace, "dummyNamespace"}
+	a := &argoprojv1alpha1.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+		Spec: argoprojv1alpha1.ArgoCDSpec{
+			ManagementScope: argoprojv1alpha1.ArgoCDScope{
+				ClusterConfigNamespaces: allowedNamespaces,
+			},
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
+func makeTestClusterRole() *v1.ClusterRole {
+	return &v1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testApplicationController,
+			Namespace: testNamespace,
+		},
+		Rules: makeTestPolicyRules(),
+	}
+}
+
+func makeTestDeployment() *appsv1.Deployment {
+	var replicas int32 = 1
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testApplicationController,
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "name",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func makeTestPolicyRules() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"foo.example.com",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
+	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func initialCerts(t *testing.T, host string) argoCDOpt {

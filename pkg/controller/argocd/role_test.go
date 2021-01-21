@@ -28,11 +28,12 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
-	// undersirable change.
+	// update reconciledRole policy rules to RedisHa policy rules
 	reconciledRole.Rules = policyRuleForRedisHa()
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledRole))
 
-	// overwrite it.
+	// Check if the RedisHa policy rules are overwritten to Application Controller
+	// policy rules by the reconciler
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
@@ -48,17 +49,18 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, err)
 
-	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledClusterRole := &v1.ClusterRole{}
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	clusterRoleName := generateResourceName(workloadIdentifier, a)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
-	// Update the ClusterRole with undesirable policy rules
+	// update reconciledRole policy rules to RedisHa policy rules
 	reconciledClusterRole.Rules = policyRuleForRedisHa()
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
 
-	// Check if the undesirable policy rules are overwritten by the reconciler
+	// Check if the RedisHa policy rules are overwritten to Application Controller
+	// policy rules for cluster role by the reconciler
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, reconciledClusterRole))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 }
