@@ -725,6 +725,12 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 		return err
 	}
 
+	// Inspect cluster to verify availability of extra features
+	// This sets the flags that are used in subsequent checks
+	if err := InspectCluster(); err != nil {
+		log.Info("unable to inspect cluster")
+	}
+
 	if IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		if err := watchOwnedResource(c, &routev1.Route{}); err != nil {
