@@ -115,6 +115,15 @@ Fetch the admin password from the cluster Secret.
 kubectl -n argocd get secret example-argocd-cluster -o jsonpath='{.data.admin\.password}' | base64 -d
 ```
 
+To change the admin password you'll need to modify the cluster secret like this:
+
+```shell
+$ kubectl -n argocd patch secret example-argocd-cluster \
+  -p '{"stringData": {
+    "admin.password": "newpassword2021"
+  }}'
+```
+
 ### Deployments
 
 There are several Deployments that are managed by the operator for the different components that make up an Argo CD cluster.
