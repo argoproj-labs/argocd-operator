@@ -11,11 +11,13 @@ import (
 
 func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
+
 	a := makeTestArgoCDForClusterConfig()
 	testClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.Name + "-" + testApplicationController,
-			Namespace: a.Namespace,
+			Name: a.Name + "-" + testApplicationController,
 		},
 		Rules: makeTestPolicyRules(),
 	}
@@ -27,6 +29,9 @@ func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileNotApplicableClusterRole(t *testing.T) {
 
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
+
 	a := makeTestArgoCDForClusterConfig()
 	testClusterRole := makeTestClusterRole()
 
@@ -35,6 +40,9 @@ func TestReconcileArgoCD_reconcileNotApplicableClusterRole(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
+
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
 
 	a := makeTestArgoCDForClusterConfig()
 	testApplicableClusterRole := &rbacv1.ClusterRole{
@@ -57,22 +65,45 @@ func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
 
 func TestReconcileArgoCD_testDeployment(t *testing.T) {
 
-	a := makeTestArgoCDForClusterConfig()
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
 
+	a := makeTestArgoCDForClusterConfig()
 	testDeployment := makeTestDeployment()
 	// reconcilerHook should not error on a Deployment resource
 	assert.NilError(t, reconcilerHook(a, testDeployment))
 }
 
+func TestReconcileArgoCD_notInClusterConfigNamespaces(t *testing.T) {
+
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
+
+	a := makeTestArgoCD()
+	testClusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: a.Name + "-" + testApplicationController,
+		},
+		Rules: makeTestPolicyRules(),
+	}
+	assert.NilError(t, reconcilerHook(a, testClusterRole))
+
+	want := makeTestPolicyRules()
+	assert.DeepEqual(t, want, testClusterRole.Rules)
+}
+
 func TestAllowedNamespaces(t *testing.T) {
 
 	argocdNamespace := testNamespace
-	allowedNamespaceList := []string{"foo", "bar", testNamespace}
-	assert.DeepEqual(t, true, allowedNamespace(argocdNamespace, allowedNamespaceList))
+	clusterConfigNamespaces := "foo,bar,argocd"
+	assert.DeepEqual(t, true, allowedNamespace(argocdNamespace, clusterConfigNamespaces))
 
-	allowedNamespaceList = []string{"*"}
-	assert.DeepEqual(t, true, allowedNamespace(argocdNamespace, allowedNamespaceList))
+	clusterConfigNamespaces = "foo, bar, argocd"
+	assert.DeepEqual(t, true, allowedNamespace(argocdNamespace, clusterConfigNamespaces))
 
-	allowedNamespaceList = []string{"foo", "bar"}
-	assert.DeepEqual(t, false, allowedNamespace(argocdNamespace, allowedNamespaceList))
+	clusterConfigNamespaces = "*"
+	assert.DeepEqual(t, true, allowedNamespace(argocdNamespace, clusterConfigNamespaces))
+
+	clusterConfigNamespaces = "foo,bar"
+	assert.DeepEqual(t, false, allowedNamespace(argocdNamespace, clusterConfigNamespaces))
 }

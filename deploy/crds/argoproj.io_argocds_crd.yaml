@@ -371,17 +371,6 @@ spec:
               description: KustomizeBuildOptions is used to specify build options/parameters
                 to use with `kustomize build`.
               type: string
-            managementScope:
-              description: ManagementScope defines the cluster scope or namespace
-                scope managed by argocd.
-              properties:
-                clusterconfignamespaces:
-                  description: List of namespaces where ArgoCD is allowed to manage
-                    cluster resources.
-                  items:
-                    type: string
-                  type: array
-              type: object
             oidcConfig:
               description: OIDCConfig is the OIDC configuration as an alternative
                 to dex.

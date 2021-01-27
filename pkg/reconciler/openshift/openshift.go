@@ -1,6 +1,9 @@
 package openshift
 
 import (
+	"os"
+	"strings"
+
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -15,7 +18,7 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-argocd-application-controller" {
-			if len(cr.Spec.ManagementScope.ClusterConfigNamespaces) > 0 {
+			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
 			}
 		}
@@ -118,17 +121,27 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 	}
 }
 
-func allowedNamespace(current string, configuredList []string) bool {
-	if len(configuredList) > 0 {
-		if configuredList[0] == "*" {
+func allowedNamespace(current string, namespaces string) bool {
+
+	clusterConfigNamespaces := splitList(namespaces)
+	if len(clusterConfigNamespaces) > 0 {
+		if clusterConfigNamespaces[0] == "*" {
 			return true
 		}
 
-		for _, n := range configuredList {
+		for _, n := range clusterConfigNamespaces {
 			if n == current {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+func splitList(s string) []string {
+	elems := strings.Split(s, ",")
+	for i := range elems {
+		elems[i] = strings.TrimSpace(elems[i])
+	}
+	return elems
 }

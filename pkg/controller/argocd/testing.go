@@ -64,25 +64,6 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForClusterConfig(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	allowedNamespaces := []string{testNamespace, "dummyNamespace"}
-	a := &argoprojv1alpha1.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			ManagementScope: argoprojv1alpha1.ArgoCDScope{
-				ClusterConfigNamespaces: allowedNamespaces,
-			},
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
-}
-
 func makeTestClusterRole() *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{

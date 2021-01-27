@@ -48,7 +48,7 @@ func TestReconcileArgoCD_testDeploymentHook(t *testing.T) {
 
 func TestReconcileArgoCD_testMultipleHooks(t *testing.T) {
 	defer resetHooks()()
-	a := makeTestArgoCDForClusterConfig()
+	a := makeTestArgoCD()
 
 	testDeployment := makeTestDeployment()
 	testClusterRole := makeTestClusterRole()
@@ -70,7 +70,7 @@ func TestReconcileArgoCD_testMultipleHooks(t *testing.T) {
 
 func TestReconcileArgoCD_hooks_end_upon_error(t *testing.T) {
 	defer resetHooks()()
-	a := makeTestArgoCDForClusterConfig()
+	a := makeTestArgoCD()
 	Register(testErrorHook, testClusterRoleHook)
 
 	testClusterRole := makeTestClusterRole()
