@@ -1,17 +1,20 @@
 package openshift
 
 import (
+	"log"
 	"os"
 	"strings"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	rbacv1 "k8s.io/api/rbac/v1"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func init() {
 	argocd.Register(reconcilerHook)
+	if err := argocd.VerifyRouteAPI(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {

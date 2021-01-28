@@ -537,14 +537,9 @@ func nameWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", cr.Name, suffix)
 }
 
-// InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
-// OpenShift Routes.
+// InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus
 func InspectCluster() error {
 	if err := verifyPrometheusAPI(); err != nil {
-		return err
-	}
-
-	if err := verifyRouteAPI(); err != nil {
 		return err
 	}
 	return nil

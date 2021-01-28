@@ -34,8 +34,8 @@ func IsRouteAPIAvailable() bool {
 	return routeAPIFound
 }
 
-// verifyRouteAPI will verify that the Prometheus API is present.
-func verifyRouteAPI() error {
+// VerifyRouteAPI detects the OpenShift Route API, and if it's available, configures the reconciliation so that Routes are created when setting up ArgoCD
+func VerifyRouteAPI() error {
 	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
 	if err != nil {
 		return err
