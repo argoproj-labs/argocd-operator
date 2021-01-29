@@ -171,3 +171,46 @@ func TestContainerImages_configuration(t *testing.T) {
 		})
 	}
 }
+
+var argoServerURITests = []struct {
+	name         string
+	routeEnabled bool
+	opts         []argoCDOpt
+	want         string
+}{
+	{
+		name:         "test with no host name - default",
+		routeEnabled: false,
+		want:         "https://argocd-server",
+	},
+	{
+		name:         "test with external host name",
+		routeEnabled: false,
+		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Server.Host = "test-host-name"
+		}},
+		want: "https://test-host-name",
+	},
+}
+
+func setRouteAPIFound(t *testing.T, routeEnabled bool) {
+	routeAPIEnabledTemp := routeAPIFound
+	t.Cleanup(func() {
+		routeAPIFound = routeAPIEnabledTemp
+	})
+	routeAPIFound = routeEnabled
+}
+
+func TestGetArgoServerURI(t *testing.T) {
+	for _, tt := range argoServerURITests {
+		t.Run(tt.name, func(t *testing.T) {
+			cr := makeTestArgoCD(tt.opts...)
+			r := &ReconcileArgoCD{}
+			setRouteAPIFound(t, tt.routeEnabled)
+			result := r.getArgoServerURI(cr)
+			if result != tt.want {
+				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
+			}
+		})
+	}
+}
