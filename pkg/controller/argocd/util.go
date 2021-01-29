@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"text/template"
@@ -166,9 +167,14 @@ func getArgoServerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements
 }
 
 // getArgoServerURI will return the URI for the ArgoCD server.
-// The hostname for argocd-server is from the route, ingress or service name in that order.
+// The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
 func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("server", cr) // Default to service name
+
+	// Use the external hostname provided by the user
+	if cr.Spec.Server.Host != "" {
+		host = cr.Spec.Server.Host
+	}
 
 	// Use Ingress host if enabled
 	if cr.Spec.Server.Ingress.Enabled {
@@ -184,6 +190,10 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 		if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
 		}
+	}
+
+	if _, err := url.ParseRequestURI(host); err == nil {
+		return host
 	}
 
 	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
