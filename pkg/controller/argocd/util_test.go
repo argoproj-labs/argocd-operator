@@ -173,35 +173,35 @@ func TestContainerImages_configuration(t *testing.T) {
 }
 
 var argoServerURITests = []struct {
-	name        string
-	description string
-	opts        []argoCDOpt
-	want        string
+	name         string
+	routeEnabled bool
+	opts         []argoCDOpt
+	want         string
 }{
 	{
-		name:        "test with no host name - default",
-		description: "test case when no hostname is provided and both ingress and route are disabled",
-		want:        "https://argocd-server",
+		name:         "test with no host name - default",
+		routeEnabled: false,
+		want:         "https://argocd-server",
 	},
 	{
-		name:        "test with external host name - no scheme",
-		description: "test case when external hostname is provided without scheme and both ingress and route are disabled",
+		name:         "test with external host name - no scheme",
+		routeEnabled: false,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
 			a.Spec.Server.Host = "test-host-name"
 		}},
 		want: "https://test-host-name",
 	},
 	{
-		name:        "test with external host name - scheme provided",
-		description: "test case when external hostname is provided with https scheme and both ingress and route are disabled",
+		name:         "test with external host name - scheme provided",
+		routeEnabled: false,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
 			a.Spec.Server.Host = "https://test-host-name"
 		}},
 		want: "https://test-host-name",
 	},
 	{
-		name:        "test with external http host name",
-		description: "test case when external hostname is provided with http scheme and both ingress and route are disabled",
+		name:         "test with external http host name",
+		routeEnabled: false,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
 			a.Spec.Server.Host = "http://test-host-name"
 		}},
@@ -209,13 +209,24 @@ var argoServerURITests = []struct {
 	},
 }
 
+func setRouteAPIFound(t *testing.T, routeEnabled bool) {
+	routeAPIEnabledTemp := routeAPIFound
+	t.Cleanup(func() {
+		routeAPIFound = routeAPIEnabledTemp
+	})
+	routeAPIFound = routeEnabled
+}
+
 func TestGetArgoServerURI(t *testing.T) {
 	for _, tt := range argoServerURITests {
-		cr := makeTestArgoCD(tt.opts...)
-		r := &ReconcileArgoCD{}
-		result := r.getArgoServerURI(cr)
-		if result != tt.want {
-			t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			cr := makeTestArgoCD(tt.opts...)
+			r := &ReconcileArgoCD{}
+			setRouteAPIFound(t, tt.routeEnabled)
+			result := r.getArgoServerURI(cr)
+			if result != tt.want {
+				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
+			}
+		})
 	}
 }
