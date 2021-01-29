@@ -184,28 +184,12 @@ var argoServerURITests = []struct {
 		want:         "https://argocd-server",
 	},
 	{
-		name:         "test with external host name - no scheme",
+		name:         "test with external host name",
 		routeEnabled: false,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
 			a.Spec.Server.Host = "test-host-name"
 		}},
 		want: "https://test-host-name",
-	},
-	{
-		name:         "test with external host name - scheme provided",
-		routeEnabled: false,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Server.Host = "https://test-host-name"
-		}},
-		want: "https://test-host-name",
-	},
-	{
-		name:         "test with external http host name",
-		routeEnabled: false,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Server.Host = "http://test-host-name"
-		}},
-		want: "http://test-host-name",
 	},
 }
 

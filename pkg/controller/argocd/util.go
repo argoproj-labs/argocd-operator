@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"text/template"
@@ -190,10 +189,6 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 		if argoutil.IsObjectFound(r.client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
 		}
-	}
-
-	if _, err := url.ParseRequestURI(host); err == nil {
-		return host
 	}
 
 	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
