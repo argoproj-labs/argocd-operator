@@ -5,9 +5,11 @@ import (
 	"strings"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	rbacv1 "k8s.io/api/rbac/v1"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func init() {
@@ -21,6 +23,12 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
 			}
+		}
+	case *appsv1.Deployment:
+		if o.ObjectMeta.Name == cr.Name+"-redis" {
+			o.Spec.Template.Spec.Containers = []corev1.Container{{
+				Args: append([]string{"redis-server"}, o.Spec.Template.Spec.Containers[0].Args...),
+			}}
 		}
 	}
 	return nil
