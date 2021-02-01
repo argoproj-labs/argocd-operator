@@ -8,7 +8,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -25,10 +24,8 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 			}
 		}
 	case *appsv1.Deployment:
-		if o.ObjectMeta.Name == cr.Name+"-redis" {
-			o.Spec.Template.Spec.Containers = []corev1.Container{{
-				Args: append([]string{"redis-server"}, o.Spec.Template.Spec.Containers[0].Args...),
-			}}
+		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
+			o.Spec.Template.Spec.Containers[0].Args = append([]string{"redis-server"}, o.Spec.Template.Spec.Containers[0].Args...)
 		}
 	}
 	return nil
