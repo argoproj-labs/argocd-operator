@@ -107,3 +107,20 @@ func TestAllowedNamespaces(t *testing.T) {
 	clusterConfigNamespaces = "foo,bar"
 	assert.DeepEqual(t, false, allowedNamespace(argocdNamespace, clusterConfigNamespaces))
 }
+
+func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
+	a := makeTestArgoCD()
+	testDeployment := makeTestDeployment()
+
+	testDeployment.ObjectMeta.Name = a.Name + "-" + "redis"
+	want := append(getArgsForRedhatRedis(), testDeployment.Spec.Template.Spec.Containers[0].Args...)
+
+	assert.NilError(t, reconcilerHook(a, testDeployment))
+	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
+
+	testDeployment.ObjectMeta.Name = a.Name + "-" + "not-redis"
+	want = testDeployment.Spec.Template.Spec.Containers[0].Args
+
+	assert.NilError(t, reconcilerHook(a, testDeployment))
+	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
+}

@@ -5,9 +5,10 @@ import (
 	"strings"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	rbacv1 "k8s.io/api/rbac/v1"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+
+	appsv1 "k8s.io/api/apps/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 func init() {
@@ -22,8 +23,22 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
 			}
 		}
+	case *appsv1.Deployment:
+		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
+			o.Spec.Template.Spec.Containers[0].Args = append(getArgsForRedhatRedis(), o.Spec.Template.Spec.Containers[0].Args...)
+		}
 	}
 	return nil
+}
+
+// For OpenShift, we use a custom build of Redis provided by Red Hat
+// which requires additional args in comparison to stock redis.
+func getArgsForRedhatRedis() []string {
+	return []string{
+		"redis-server",
+		"--protected-mode",
+		"no",
+	}
 }
 
 // policyRulesForClusterConfig defines rules for cluster config.

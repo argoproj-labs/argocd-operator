@@ -902,6 +902,31 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	}
 }
 
+func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
+
+	assert.NilError(t, r.reconcileRedisDeployment(cr))
+	d := &appsv1.Deployment{}
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.DeepEqual(t, int32(3), *d.Spec.Replicas)
+}
+
+func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	defer resetHooks()()
+	Register(testErrorHook)
+
+	assert.Error(t, r.reconcileRedisDeployment(cr), "this is a test error")
+}
+
 func restoreEnv(t *testing.T) {
 	keys := []string{
 		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",

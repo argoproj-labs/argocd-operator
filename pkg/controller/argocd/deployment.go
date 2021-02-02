@@ -669,6 +669,10 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		Env:       proxyEnvVars(),
 	}}
 
+	if err := applyReconcilerHook(cr, deploy); err != nil {
+		return err
+	}
+
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
 		if cr.Spec.HA.Enabled {
