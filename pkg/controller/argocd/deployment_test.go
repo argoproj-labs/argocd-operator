@@ -906,23 +906,25 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
-	Register(testReconcilerHook)
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
 
 	assert.NilError(t, r.reconcileRedisDeployment(cr))
 	d := &appsv1.Deployment{}
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: cr.Name+"-redis", Namespace: cr.Namespace}, d))
-	assert.DeepEqual(t, int32(4), *d.Spec.Replicas)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.DeepEqual(t, int32(3), *d.Spec.Replicas)
 }
 
-func testReconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
-	switch o := v.(type) {
-	case *appsv1.Deployment:
-		var x int32 = 4
-		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
-			o.Spec.Replicas = &x
-		}
-	}
-	return nil
+func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	defer resetHooks()()
+	Register(testErrorHook)
+
+	assert.Error(t, r.reconcileRedisDeployment(cr), "this is a test error")
 }
 
 func restoreEnv(t *testing.T) {
@@ -1019,4 +1021,3 @@ func controllerProcessors(n int32) argoCDOpt {
 		a.Spec.Controller.Processors.Status = n
 	}
 }
-

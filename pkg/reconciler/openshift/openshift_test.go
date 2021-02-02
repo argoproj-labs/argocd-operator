@@ -113,7 +113,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	testDeployment := makeTestDeployment()
 
 	testDeployment.ObjectMeta.Name = a.Name + "-" + "redis"
-	want := append([]string{"redis-server"}, testDeployment.Spec.Template.Spec.Containers[0].Args ...)
+	want := append(getArgsForRedhatRedis(), testDeployment.Spec.Template.Spec.Containers[0].Args...)
 
 	assert.NilError(t, reconcilerHook(a, testDeployment))
 	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)

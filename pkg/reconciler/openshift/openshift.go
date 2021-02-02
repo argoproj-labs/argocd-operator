@@ -25,10 +25,20 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 		}
 	case *appsv1.Deployment:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
-			o.Spec.Template.Spec.Containers[0].Args = append([]string{"redis-server"}, o.Spec.Template.Spec.Containers[0].Args...)
+			o.Spec.Template.Spec.Containers[0].Args = append(getArgsForRedhatRedis(), o.Spec.Template.Spec.Containers[0].Args...)
 		}
 	}
 	return nil
+}
+
+// For OpenShift, we use a custom build of Redis provided by Red Hat
+// which requires additional args in comparison to stock redis.
+func getArgsForRedhatRedis() []string {
+	return []string{
+		"redis-server",
+		"--protected-mode",
+		"no",
+	}
 }
 
 // policyRulesForClusterConfig defines rules for cluster config.
