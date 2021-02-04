@@ -72,12 +72,13 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			return r.client.Delete(context.TODO(), ss)
 		}
 
-		desiredImage := getRedisContainerImage(cr)
+		desiredImage := getRedisHAContainerImage(cr)
 		changed := false
 
-		for _, container := range ss.Spec.Template.Spec.Containers {
+		for i, container := range ss.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
-				container.Image = getRedisHAContainerImage(cr)
+				ss.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				changed = true
 			}
 		}
 
