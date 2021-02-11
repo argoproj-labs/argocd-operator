@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"gotest.tools/assert"
@@ -104,4 +105,23 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	// fetch it
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.Equal(t, expectedName, reconcileClusterRoleBinding.RoleRef.Name)
+}
+
+func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	// Dex is enabled, creates a new Service Account for it
+	sa, err := r.reconcileServiceAccount(dexServer, a)
+	assert.NilError(t, err)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
+
+	//Disable dex, deletes any existing Service Account for it
+	os.Setenv("DISABLE_DEX", "true")
+	defer os.Unsetenv("DISABLE_DEX")
+
+	sa, err = r.reconcileServiceAccount(dexServer, a)
+	assert.NilError(t, err)
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
 }
