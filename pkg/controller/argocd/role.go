@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
+	
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -79,16 +79,22 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 
 // reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
-
 	role := newRole(name, policyRules, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 		}
+		if name == dexServer && isDexDisabled() {
+			return role, nil // Dex is disabled, do nothing
+		}
 		return role, r.client.Create(context.TODO(), role)
 	}
 
+	if name == dexServer && isDexDisabled() {
+		// Delete any existing Role created for Dex
+		return role, r.client.Delete(context.TODO(), role)
+	}
 	role.Rules = policyRules
 	controllerutil.SetControllerReference(cr, role, r.scheme)
 	return role, r.client.Update(context.TODO(), role)

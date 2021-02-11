@@ -3,14 +3,14 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"gotest.tools/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -38,6 +38,26 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 
 	roleBinding = &rbacv1.RoleBinding{}
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+}
+
+func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	rules := policyRuleForDexServer()
+	rb := newRoleBindingWithname(dexServer, a)
+
+	// Dex is enabled, creates a role binding
+	assert.NilError(t, r.reconcileRoleBinding(dexServer, rules, a))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
+
+	// Disable Dex, deletes the existing role binding
+	os.Setenv("DISABLE_DEX", "true")
+	defer os.Unsetenv("DISABLE_DEX")
+
+	assert.NilError(t, r.reconcileRoleBinding(dexServer, rules, a))
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {

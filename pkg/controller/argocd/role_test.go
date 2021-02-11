@@ -3,13 +3,13 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -37,6 +37,29 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+}
+
+func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	rules := policyRuleForDexServer()
+	role := newRole(dexServer, rules, a)
+
+	// Dex is enabled
+	_, err := r.reconcileRole(dexServer, rules, a)
+	assert.NilError(t, err)
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
+	assert.DeepEqual(t, rules, role.Rules)
+
+	// Disable Dex
+	os.Setenv("DISABLE_DEX", "true")
+	defer os.Unsetenv("DISABLE_DEX")
+
+	_, err = r.reconcileRole(dexServer, rules, a)
+	assert.NilError(t, err)
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
 }
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
