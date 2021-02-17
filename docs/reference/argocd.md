@@ -169,7 +169,7 @@ spec:
   rbac:
     defaultPolicy: 'role:readonly'
     policy: |
-      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
     scopes: '[groups]'
 ```
 
@@ -177,12 +177,12 @@ spec:
 
 To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
 
-A quick fix will be to create an `admins` group, add the user to the group and then apply the `cluster-admin` role to the group. 
+A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
 
 ```
-oc adm groups new admins
-oc adm groups add-users admins USER
-oc adm policy add-cluster-role-to-group cluster-admin admins
+oc adm groups new cluster-admins
+oc adm groups add-users cluster-admins USER
+oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
 ```
 
 ## Disable Admin
