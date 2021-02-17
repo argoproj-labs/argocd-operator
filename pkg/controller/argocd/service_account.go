@@ -25,6 +25,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
@@ -167,10 +168,14 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		return sa, nil
 	}
 
+	if err := controllerutil.SetControllerReference(cr, sa, r.scheme); err != nil {
+		return nil, err
+	}
+
 	err := r.client.Create(context.TODO(), sa)
 	if err != nil {
 		return nil, err
 	}
 
-	return sa, err
+	return sa, nil
 }

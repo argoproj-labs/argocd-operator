@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -115,4 +117,12 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 	clusterRole.Rules = policyRules
 	applyReconcilerHook(cr, clusterRole)
 	return clusterRole, r.client.Update(context.TODO(), clusterRole)
+}
+
+func deleteClusterRole(client client.Client, name string) error {
+	clusterRole := v1.ClusterRole{}
+	if argoutil.IsObjectFound(client, "", name, &clusterRole) {
+		return client.Delete(context.TODO(), &clusterRole)
+	}
+	return nil
 }

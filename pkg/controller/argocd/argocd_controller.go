@@ -90,13 +90,39 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	if argocd.ObjectMeta.DeletionTimestamp.IsZero() {
-		if err := r.reconcileResources(argocd); err != nil {
-			// Error reconciling ArgoCD sub-resources - requeue the request.
+	if argocd.GetDeletionTimestamp() != nil {
+		if argocd.IsDeletionFinalizerPresent() {
+			if err := r.deleteClusterResources(argocd); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			if err := r.removeDeletionFinalizer(argocd); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	}
+
+	if !argocd.IsDeletionFinalizerPresent() {
+		if err := r.addDeletionFinalizer(argocd); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 
+	if err := r.reconcileResources(argocd); err != nil {
+		// Error reconciling ArgoCD sub-resources - requeue the request.
+		return reconcile.Result{}, err
+	}
+
 	// Return and don't requeue
 	return reconcile.Result{}, nil
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

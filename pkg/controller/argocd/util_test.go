@@ -7,6 +7,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	"gotest.tools/assert"
 )
 
 const (
@@ -212,5 +213,29 @@ func TestGetArgoServerURI(t *testing.T) {
 				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
 			}
 		})
+	}
+}
+
+func TestRemoveDeletionFinalizer(t *testing.T) {
+	a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+	r := makeTestReconciler(t, a)
+
+	err := r.removeDeletionFinalizer(a)
+	assert.NilError(t, err)
+
+	if a.IsDeletionFinalizerPresent() {
+		t.Fatal("Expected deletion finalizer to be removed")
+	}
+}
+
+func TestAddDeletionFinalizer(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.addDeletionFinalizer(a)
+	assert.NilError(t, err)
+
+	if !a.IsDeletionFinalizerPresent() {
+		t.Fatal("Expected deletion finalizer to be added")
 	}
 }

@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -653,6 +654,50 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
+	appController := generateResourceName(common.ArgoCDApplicationControllerComponent, cr)
+	server := generateResourceName(common.ArgoCDServerComponent, cr)
+
+	if err := deleteClusterRole(r.client, appController); err != nil {
+		return err
+	}
+
+	if err := deleteClusterRole(r.client, server); err != nil {
+		return err
+	}
+
+	if err := deleteClusterRoleBinding(r.client, "cluster-"+appController); err != nil {
+		return err
+	}
+
+	if err := deleteClusterRoleBinding(r.client, "cluster-"+server); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	return r.client.Update(context.TODO(), argocd)
+}
+
+func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	return r.client.Update(context.TODO(), argocd)
+}
+
+func removeString(slice []string, s string) []string {
+	var result []string
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return result
 }
 
 // labelsForCluster returns the labels for all cluster resources.

@@ -21,13 +21,17 @@ import (
 
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 )
 
 var _ reconcile.Reconciler = &ReconcileArgoCD{}
@@ -96,5 +100,81 @@ func deletedAt(now time.Time) argoCDOpt {
 	return func(a *argov1alpha1.ArgoCD) {
 		wrapped := metav1.NewTime(now)
 		a.ObjectMeta.DeletionTimestamp = &wrapped
+	}
+}
+
+func TestReconcileArgoCD_CleanUp(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+
+	resources := []runtime.Object{a}
+	resources = append(resources, clusterResources(a)...)
+	r := makeTestReconciler(t, resources...)
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	res, err := r.Reconcile(req)
+	assert.NilError(t, err)
+	if res.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// check if cluster resources are deleted
+	tt := []struct {
+		name     string
+		resource runtime.Object
+	}{
+		{
+			common.ArgoCDApplicationControllerComponent,
+			newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, a),
+		},
+		{
+			common.ArgoCDServerComponent,
+			newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, a),
+		},
+		{
+			common.ArgoCDApplicationControllerComponent,
+			newClusterRoleBinding(common.ArgoCDApplicationControllerComponent, a),
+		},
+		{
+			common.ArgoCDServerComponent,
+			newClusterRoleBinding(common.ArgoCDServerComponent, a),
+		},
+	}
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			if argoutil.IsObjectFound(r.client, "", test.name, test.resource) {
+				t.Errorf("Expected %s cluster resource to be deleted", test.name)
+			}
+		})
+	}
+
+	// check if argocd instance is deleted
+	argocd := argov1alpha1.ArgoCD{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      testArgoCDName,
+		Namespace: testNamespace,
+	}, &argocd); err != nil {
+		t.Fatal("Expected argocd instance to be deleted")
+	}
+}
+
+func addFinalizer(finalizer string) argoCDOpt {
+	return func(a *argov1alpha1.ArgoCD) {
+		a.Finalizers = append(a.Finalizers, finalizer)
+	}
+}
+
+func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
+	return []runtime.Object{
+		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
+		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
+		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),
+		newClusterRoleBindingWithname(common.ArgoCDServerComponent, argocd),
 	}
 }

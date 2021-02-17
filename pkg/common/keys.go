@@ -180,4 +180,7 @@ const (
 	// ArgoCDGrafanaImageEnvName is the environment variable used to get the image
 	// to used for the Grafana container.
 	ArgoCDGrafanaImageEnvName = "ARGOCD_GRAFANA_IMAGE"
+
+	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
+	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"
 )
