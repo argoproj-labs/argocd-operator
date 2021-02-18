@@ -109,6 +109,11 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 	}
 
+	// get the latest version of argocd instance before reconciling
+	if err = r.client.Get(context.TODO(), request.NamespacedName, argocd); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if err := r.reconcileResources(argocd); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
