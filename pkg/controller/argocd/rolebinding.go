@@ -28,7 +28,7 @@ func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole
 // newClusterRoleBindingWithname creates a new ClusterRoleBinding with the given name for the given ArgCD.
 func newClusterRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	roleBinding := newClusterRoleBinding(name, cr)
-	roleBinding.Name = "cluster-" + generateResourceName(name, cr)
+	roleBinding.Name = generateClusterResourceName(name, cr)
 
 	labels := roleBinding.ObjectMeta.Labels
 	labels[common.ArgoCDKeyName] = name
@@ -160,7 +160,7 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	roleBinding.RoleRef = v1.RoleRef{
 		APIGroup: v1.GroupName,
 		Kind:     "ClusterRole",
-		Name:     generateResourceName(name, cr),
+		Name:     generateClusterResourceName(name, cr),
 	}
 
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
