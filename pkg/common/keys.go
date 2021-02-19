@@ -101,6 +101,9 @@ const (
 	// ArgoCDKeyPartOf is the resource part-of key for labels.
 	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
 
+	// ArgoCDKeyManagedBy is the managed-by key for labels.
+	ArgoCDKeyManagedBy = "app.kubernetes.io/managed-by"
+
 	// ArgoCDKeyStatefulSetPodName is the resource StatefulSet Pod Name key for labels.
 	ArgoCDKeyStatefulSetPodName = "statefulset.kubernetes.io/pod-name"
 

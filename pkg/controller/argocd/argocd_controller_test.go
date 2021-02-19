@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,19 +130,19 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 		resource runtime.Object
 	}{
 		{
-			common.ArgoCDApplicationControllerComponent,
+			fmt.Sprintf("ClusterRole %s", common.ArgoCDApplicationControllerComponent),
 			newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, a),
 		},
 		{
-			common.ArgoCDServerComponent,
+			fmt.Sprintf("ClusterRole %s", common.ArgoCDServerComponent),
 			newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, a),
 		},
 		{
-			common.ArgoCDApplicationControllerComponent,
+			fmt.Sprintf("ClusterRoleBinding %s", common.ArgoCDApplicationControllerComponent),
 			newClusterRoleBinding(common.ArgoCDApplicationControllerComponent, a),
 		},
 		{
-			common.ArgoCDServerComponent,
+			fmt.Sprintf("ClusterRoleBinding %s", common.ArgoCDServerComponent),
 			newClusterRoleBinding(common.ArgoCDServerComponent, a),
 		},
 	}
@@ -149,18 +150,9 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
 			if argoutil.IsObjectFound(r.client, "", test.name, test.resource) {
-				t.Errorf("Expected %s cluster resource to be deleted", test.name)
+				t.Errorf("Expected %s to be deleted", test.name)
 			}
 		})
-	}
-
-	// check if argocd instance is deleted
-	argocd := argov1alpha1.ArgoCD{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{
-		Name:      testArgoCDName,
-		Namespace: testNamespace,
-	}, &argocd); err != nil {
-		t.Fatal("Expected argocd instance to be deleted")
 	}
 }
 

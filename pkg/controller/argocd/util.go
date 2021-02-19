@@ -37,7 +37,10 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -657,26 +660,43 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
-	appController := generateResourceName(common.ArgoCDApplicationControllerComponent, cr)
-	server := generateResourceName(common.ArgoCDServerComponent, cr)
-
-	if err := deleteClusterRole(r.client, appController); err != nil {
+	selector, err := argocdInstanceSelector(cr.Name)
+	if err != nil {
 		return err
 	}
 
-	if err := deleteClusterRole(r.client, server); err != nil {
+	clusterRoleList := &v1.ClusterRoleList{}
+	if err := filterObjectsBySelector(r.client, clusterRoleList, selector); err != nil {
 		return err
 	}
 
-	if err := deleteClusterRoleBinding(r.client, "cluster-"+appController); err != nil {
+	if err := deleteClusterRoles(r.client, clusterRoleList); err != nil {
 		return err
 	}
 
-	if err := deleteClusterRoleBinding(r.client, "cluster-"+server); err != nil {
+	clusterBindingsList := &v1.ClusterRoleBindingList{}
+	if err := filterObjectsBySelector(r.client, clusterBindingsList, selector); err != nil {
+		return err
+	}
+
+	if err := deleteClusterRoleBindings(r.client, clusterBindingsList); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func filterObjectsBySelector(c client.Client, objectList runtime.Object, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
+}
+
+func argocdInstanceSelector(name string) (labels.Selector, error) {
+	selector := labels.NewSelector()
+	requirement, err := labels.NewRequirement(common.ArgoCDKeyManagedBy, selection.Equals, []string{name})
+	if err != nil {
+		return nil, err
+	}
+	return selector.Add(*requirement), nil
 }
 
 func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {

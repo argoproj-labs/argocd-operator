@@ -6,7 +6,6 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -209,10 +208,11 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 	return r.client.Update(context.TODO(), roleBinding)
 }
 
-func deleteClusterRoleBinding(client client.Client, name string) error {
-	clusterRoleBinding := v1.ClusterRoleBinding{}
-	if argoutil.IsObjectFound(client, "", name, &clusterRoleBinding) {
-		return client.Delete(context.TODO(), &clusterRoleBinding)
+func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
+	for _, clusterBinding := range clusterBindingList.Items {
+		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {
+			return err
+		}
 	}
 	return nil
 }
