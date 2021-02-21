@@ -244,7 +244,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 
 // getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
 func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, common.ArgoCDDefaultDexServiceAccountName)
+	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
 }
 
 // getDexOAuthClientID will return the OAuth client secret for the given ArgoCD.
