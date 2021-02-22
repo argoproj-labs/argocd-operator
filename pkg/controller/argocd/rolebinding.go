@@ -211,7 +211,7 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
 	for _, clusterBinding := range clusterBindingList.Items {
 		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {
-			return err
+			return fmt.Errorf("failed to delete ClusterRoleBinding %q during cleanup: %w", clusterBinding.Name, err)
 		}
 	}
 	return nil

@@ -121,7 +121,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) error {
 	for _, clusterRole := range clusterRoleList.Items {
 		if err := c.Delete(context.TODO(), &clusterRole); err != nil {
-			return err
+			return fmt.Errorf("failed to delete ClusterRole %q during cleanup: %w", clusterRole.Name, err)
 		}
 	}
 	return nil

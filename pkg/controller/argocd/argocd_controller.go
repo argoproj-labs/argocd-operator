@@ -122,12 +122,3 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 	// Return and don't requeue
 	return reconcile.Result{}, nil
 }
-
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}

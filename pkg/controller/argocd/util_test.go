@@ -239,3 +239,18 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		t.Fatal("Expected deletion finalizer to be added")
 	}
 }
+
+func TestArgoCDInstanceSelector(t *testing.T) {
+	t.Run("Selector for a Valid name", func(t *testing.T) {
+		validName := "argocd-server"
+		selector, err := argocdInstanceSelector(validName)
+		assert.NilError(t, err)
+		assert.Equal(t, selector.String(), "app.kubernetes.io/managed-by=argocd-server")
+	})
+	t.Run("Selector for an Invalid name", func(t *testing.T) {
+		invalidName := "argocd-*/"
+		selector, err := argocdInstanceSelector(invalidName)
+		assert.ErrorContains(t, err, `failed to create a requirement for invalid label value: "argocd-*/`)
+		assert.Equal(t, selector, nil)
+	})
+}
