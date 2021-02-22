@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,7 +94,7 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 	if argocd.GetDeletionTimestamp() != nil {
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
-				return reconcile.Result{}, err
+				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
 			if err := r.removeDeletionFinalizer(argocd); err != nil {

@@ -667,7 +667,7 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 
 	clusterRoleList := &v1.ClusterRoleList{}
 	if err := filterObjectsBySelector(r.client, clusterRoleList, selector); err != nil {
-		return err
+		return fmt.Errorf("failed to filter ClusterRoles for %s: %w", cr.Name, err)
 	}
 
 	if err := deleteClusterRoles(r.client, clusterRoleList); err != nil {
@@ -676,7 +676,7 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 
 	clusterBindingsList := &v1.ClusterRoleBindingList{}
 	if err := filterObjectsBySelector(r.client, clusterBindingsList, selector); err != nil {
-		return err
+		return fmt.Errorf("failed to filter ClusterRoleBindings for %s: %w", cr.Name, err)
 	}
 
 	if err := deleteClusterRoleBindings(r.client, clusterBindingsList); err != nil {
@@ -701,12 +701,18 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 
 func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
 	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
-	return r.client.Update(context.TODO(), argocd)
+	if err := r.client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
+	}
+	return nil
 }
 
 func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
-	return r.client.Update(context.TODO(), argocd)
+	if err := r.client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
 }
 
 func removeString(slice []string, s string) []string {

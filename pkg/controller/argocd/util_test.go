@@ -217,27 +217,39 @@ func TestGetArgoServerURI(t *testing.T) {
 }
 
 func TestRemoveDeletionFinalizer(t *testing.T) {
-	a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
-	r := makeTestReconciler(t, a)
-
-	err := r.removeDeletionFinalizer(a)
-	assert.NilError(t, err)
-
-	if a.IsDeletionFinalizerPresent() {
-		t.Fatal("Expected deletion finalizer to be removed")
-	}
+	t.Run("ArgoCD resource present", func(t *testing.T) {
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		r := makeTestReconciler(t, a)
+		err := r.removeDeletionFinalizer(a)
+		assert.NilError(t, err)
+		if a.IsDeletionFinalizerPresent() {
+			t.Fatal("Expected deletion finalizer to be removed")
+		}
+	})
+	t.Run("ArgoCD resource absent", func(t *testing.T) {
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		r := makeTestReconciler(t)
+		err := r.removeDeletionFinalizer(a)
+		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
+	})
 }
 
 func TestAddDeletionFinalizer(t *testing.T) {
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	err := r.addDeletionFinalizer(a)
-	assert.NilError(t, err)
-
-	if !a.IsDeletionFinalizerPresent() {
-		t.Fatal("Expected deletion finalizer to be added")
-	}
+	t.Run("ArgoCD resource present", func(t *testing.T) {
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+		err := r.addDeletionFinalizer(a)
+		assert.NilError(t, err)
+		if !a.IsDeletionFinalizerPresent() {
+			t.Fatal("Expected deletion finalizer to be added")
+		}
+	})
+	t.Run("ArgoCD resource absent", func(t *testing.T) {
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t)
+		err := r.addDeletionFinalizer(a)
+		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
+	})
 }
 
 func TestArgoCDInstanceSelector(t *testing.T) {
