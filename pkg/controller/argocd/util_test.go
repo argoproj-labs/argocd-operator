@@ -7,6 +7,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	"gotest.tools/assert"
 )
 
 const (
@@ -213,4 +214,55 @@ func TestGetArgoServerURI(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRemoveDeletionFinalizer(t *testing.T) {
+	t.Run("ArgoCD resource present", func(t *testing.T) {
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		r := makeTestReconciler(t, a)
+		err := r.removeDeletionFinalizer(a)
+		assert.NilError(t, err)
+		if a.IsDeletionFinalizerPresent() {
+			t.Fatal("Expected deletion finalizer to be removed")
+		}
+	})
+	t.Run("ArgoCD resource absent", func(t *testing.T) {
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		r := makeTestReconciler(t)
+		err := r.removeDeletionFinalizer(a)
+		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
+	})
+}
+
+func TestAddDeletionFinalizer(t *testing.T) {
+	t.Run("ArgoCD resource present", func(t *testing.T) {
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+		err := r.addDeletionFinalizer(a)
+		assert.NilError(t, err)
+		if !a.IsDeletionFinalizerPresent() {
+			t.Fatal("Expected deletion finalizer to be added")
+		}
+	})
+	t.Run("ArgoCD resource absent", func(t *testing.T) {
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t)
+		err := r.addDeletionFinalizer(a)
+		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
+	})
+}
+
+func TestArgoCDInstanceSelector(t *testing.T) {
+	t.Run("Selector for a Valid name", func(t *testing.T) {
+		validName := "argocd-server"
+		selector, err := argocdInstanceSelector(validName)
+		assert.NilError(t, err)
+		assert.Equal(t, selector.String(), "app.kubernetes.io/managed-by=argocd-server")
+	})
+	t.Run("Selector for an Invalid name", func(t *testing.T) {
+		invalidName := "argocd-*/"
+		selector, err := argocdInstanceSelector(invalidName)
+		assert.ErrorContains(t, err, `failed to create a requirement for invalid label value: "argocd-*/`)
+		assert.Equal(t, selector, nil)
+	})
 }

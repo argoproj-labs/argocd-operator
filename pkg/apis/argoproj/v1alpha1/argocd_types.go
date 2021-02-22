@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	routev1 "github.com/openshift/api/route/v1"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -482,4 +483,14 @@ type SSHHostsSpec struct {
 	// Keys describes a custom set of SSH Known Hosts that you would like to
 	// have included in your ArgoCD server.
 	Keys string `json:"keys,omitempty"`
+}
+
+// IsDeletionFinalizerPresent checks if the instance has deletion finalizer
+func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
+	for _, finalizer := range argocd.GetFinalizers() {
+		if finalizer == common.ArgoCDDeletionFinalizer {
+			return true
+		}
+	}
+	return false
 }

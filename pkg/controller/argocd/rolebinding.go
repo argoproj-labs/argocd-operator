@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -205,4 +206,13 @@ func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string
 		return r.client.Create(context.TODO(), roleBinding)
 	}
 	return r.client.Update(context.TODO(), roleBinding)
+}
+
+func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
+	for _, clusterBinding := range clusterBindingList.Items {
+		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {
+			return fmt.Errorf("failed to delete ClusterRoleBinding %q during cleanup: %w", clusterBinding.Name, err)
+		}
+	}
+	return nil
 }

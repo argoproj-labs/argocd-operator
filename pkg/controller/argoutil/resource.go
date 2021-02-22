@@ -68,8 +68,9 @@ func CreateEvent(client client.Client, action string, message string, reason str
 // DefaultLabels returns the default set of labels for controllers.
 func DefaultLabels(name string) map[string]string {
 	return map[string]string{
-		common.ArgoCDKeyName:   name,
-		common.ArgoCDKeyPartOf: common.ArgoCDAppName,
+		common.ArgoCDKeyName:      name,
+		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+		common.ArgoCDKeyManagedBy: name,
 	}
 }
 

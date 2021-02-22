@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -36,7 +37,10 @@ import (
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -653,6 +657,73 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
+	selector, err := argocdInstanceSelector(cr.Name)
+	if err != nil {
+		return err
+	}
+
+	clusterRoleList := &v1.ClusterRoleList{}
+	if err := filterObjectsBySelector(r.client, clusterRoleList, selector); err != nil {
+		return fmt.Errorf("failed to filter ClusterRoles for %s: %w", cr.Name, err)
+	}
+
+	if err := deleteClusterRoles(r.client, clusterRoleList); err != nil {
+		return err
+	}
+
+	clusterBindingsList := &v1.ClusterRoleBindingList{}
+	if err := filterObjectsBySelector(r.client, clusterBindingsList, selector); err != nil {
+		return fmt.Errorf("failed to filter ClusterRoleBindings for %s: %w", cr.Name, err)
+	}
+
+	if err := deleteClusterRoleBindings(r.client, clusterBindingsList); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func filterObjectsBySelector(c client.Client, objectList runtime.Object, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
+}
+
+func argocdInstanceSelector(name string) (labels.Selector, error) {
+	selector := labels.NewSelector()
+	requirement, err := labels.NewRequirement(common.ArgoCDKeyManagedBy, selection.Equals, []string{name})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a requirement for %w", err)
+	}
+	return selector.Add(*requirement), nil
+}
+
+func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	if err := r.client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := r.client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
+}
+
+func removeString(slice []string, s string) []string {
+	var result []string
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return result
 }
 
 // labelsForCluster returns the labels for all cluster resources.

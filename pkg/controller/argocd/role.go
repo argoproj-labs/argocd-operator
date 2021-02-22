@@ -9,7 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -115,4 +116,13 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 	clusterRole.Rules = policyRules
 	applyReconcilerHook(cr, clusterRole)
 	return clusterRole, r.client.Update(context.TODO(), clusterRole)
+}
+
+func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) error {
+	for _, clusterRole := range clusterRoleList.Items {
+		if err := c.Delete(context.TODO(), &clusterRole); err != nil {
+			return fmt.Errorf("failed to delete ClusterRole %q during cleanup: %w", clusterRole.Name, err)
+		}
+	}
+	return nil
 }
