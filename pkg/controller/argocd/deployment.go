@@ -58,13 +58,19 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
 		"--redis", getRedisServerAddress(cr),
-		"--repo-server", nameWithSuffix("repo-server:8081", cr),
+		"--repo-server", generateRepoServerAddress(cr),
 		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
 	}
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
 	return cmd
+}
+
+// generateRepoServerAddress gets the address of the repo-server within the namespace;
+// This function is used here, and by ApplicationSet deployment function.
+func generateRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	return nameWithSuffix("repo-server:8081", cr)
 }
 
 func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {

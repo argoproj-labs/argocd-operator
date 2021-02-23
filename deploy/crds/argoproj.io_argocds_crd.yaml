@@ -35,6 +35,10 @@ spec:
               description: ApplicationInstanceLabelKey is the key name where Argo
                 CD injects the app name as a tracking label.
               type: string
+            applicationSet:
+              description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
+                controller should be installed.
+              type: object
             configManagementPlugins:
               description: ConfigManagementPlugins is used to specify additional config
                 management plugins.

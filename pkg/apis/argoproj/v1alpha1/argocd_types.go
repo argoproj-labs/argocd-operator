@@ -69,6 +69,10 @@ type ArgoCDApplicationControllerSpec struct {
 	AppSync *metav1.Duration `json:"appSync,omitempty"`
 }
 
+// ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
+type ArgoCDApplicationSet struct {
+}
+
 // ArgoCDCASpec defines the CA options for ArgCD.
 type ArgoCDCASpec struct {
 	// ConfigMapName is the name of the ConfigMap containing the CA Certificate.
@@ -319,6 +323,9 @@ type ArgoCDServerServiceSpec struct {
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
+
+	// ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
+	ApplicationSet *ArgoCDApplicationSet `json:"applicationSet,omitempty"`
 
 	// ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
