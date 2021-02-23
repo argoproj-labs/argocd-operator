@@ -453,6 +453,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Command: []string{
 			"cp",
+			"-n",
 			"/usr/local/bin/argocd-util",
 			"/shared",
 		},

@@ -483,6 +483,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Image: getArgoContainerImage(a),
 				Command: []string{
 					"cp",
+					"-n",
 					"/usr/local/bin/argocd-util",
 					"/shared",
 				},
@@ -562,6 +563,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Image: "justatest:latest",
 				Command: []string{
 					"cp",
+					"-n",
 					"/usr/local/bin/argocd-util",
 					"/shared",
 				},
