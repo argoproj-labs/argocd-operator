@@ -163,6 +163,23 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 			},
 		},
 
+		// Events
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+
 		// Read Secrets/ConfigMaps
 		{
 			APIGroups: []string{""},
