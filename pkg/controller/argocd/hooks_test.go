@@ -29,6 +29,14 @@ func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	return nil
 }
 
+func testRoleBindingHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+	switch o := v.(type) {
+	case *v1.RoleBinding:
+		o.RoleRef.Name = "test-admin-role"
+	}
+	return nil
+}
+
 func testErrorHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	return errMsg
 }

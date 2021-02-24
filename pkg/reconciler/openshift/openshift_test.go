@@ -124,3 +124,20 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	assert.NilError(t, reconcilerHook(a, testDeployment))
 	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
 }
+
+func TestReconcileArgoCD_reconcileRoleBinding_applicationController(t *testing.T) {
+	a := makeTestArgoCD()
+	testRoleBinding := makeTestRoleBinding()
+
+	testRoleBinding.ObjectMeta.Name = a.Name + "-argocd-application-controller"
+	want := "admin"
+
+	assert.NilError(t, reconcilerHook(a, testRoleBinding))
+	assert.DeepEqual(t, testRoleBinding.RoleRef.Name, want)
+
+	testRoleBinding = makeTestRoleBinding()
+	testRoleBinding.ObjectMeta.Name = a.Name + "-" + "not-argocd-application-controller"
+
+	assert.NilError(t, reconcilerHook(a, testRoleBinding))
+	assert.DeepEqual(t, testRoleBinding.RoleRef.Name, "")
+}

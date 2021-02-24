@@ -27,6 +27,11 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
 			o.Spec.Template.Spec.Containers[0].Args = append(getArgsForRedhatRedis(), o.Spec.Template.Spec.Containers[0].Args...)
 		}
+	case *rbacv1.RoleBinding:
+		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-argocd-application-controller" {
+			o.RoleRef.Kind = "ClusterRole"
+			o.RoleRef.Name = "admin"
+		}
 	}
 	return nil
 }
