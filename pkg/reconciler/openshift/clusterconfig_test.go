@@ -93,3 +93,14 @@ func makeTestDeployment() *appsv1.Deployment {
 		},
 	}
 }
+
+func makeTestRoleBinding() *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+		Subjects: []rbacv1.Subject{},
+		RoleRef:  rbacv1.RoleRef{},
+	}
+}
