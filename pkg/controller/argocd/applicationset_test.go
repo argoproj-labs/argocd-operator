@@ -116,6 +116,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 		"deployments",
 		"secrets",
 		"configmaps",
+		"events",
 		"applicationsets/status",
 		"applications",
 		"applicationsets",
