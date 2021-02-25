@@ -247,7 +247,7 @@ func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
 }
 
-// getDexOAuthClientID will return the OAuth client secret for the given ArgoCD.
+// getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.client, cr.Namespace, sa.Name, sa); err != nil {

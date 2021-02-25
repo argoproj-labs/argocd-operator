@@ -22,9 +22,12 @@ import (
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	"github.com/google/go-cmp/cmp"
+	"gopkg.in/yaml.v2"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -138,6 +141,51 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	if c := cm.Data["admin.enabled"]; c != "false" {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
 	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Dex.OpenShiftOAuth = true
+	})
+	sa := &corev1.ServiceAccount{
+		TypeMeta:   metav1.TypeMeta{Kind: "ServiceAccount", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{Name: "argocd-argocd-dex-server", Namespace: "argocd"},
+		Secrets: []corev1.ObjectReference{{
+			Name: "token",
+		}},
+	}
+
+	secret := argoutil.NewSecretWithName(metav1.ObjectMeta{Name: "token", Namespace: "argocd"}, "token")
+	r := makeTestReconciler(t, a, sa, secret)
+	err := r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+
+	dex, ok := cm.Data["dex.config"]
+	if !ok {
+		t.Fatal("reconcileArgoConfigMap with dex failed")
+	}
+
+	m := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(dex), &m)
+	if err != nil {
+		t.Fatalf("unmarshal '%q' failed: %v", dex, err)
+	}
+	connectors, ok := m["connectors"]
+	if !ok {
+		t.Fatal("no connectors found in dex.config")
+	}
+	dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
+	config := dexConnector["config"]
+	assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
