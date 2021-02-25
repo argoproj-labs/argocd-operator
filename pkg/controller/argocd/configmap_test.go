@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -176,9 +177,8 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 	m := make(map[string]interface{})
 	err = yaml.Unmarshal([]byte(dex), &m)
-	if err != nil {
-		t.Fatalf("unmarshal '%q' failed: %v", dex, err)
-	}
+	assert.NilError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
+
 	connectors, ok := m["connectors"]
 	if !ok {
 		t.Fatal("no connectors found in dex.config")
