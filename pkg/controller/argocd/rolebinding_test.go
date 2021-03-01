@@ -72,7 +72,7 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	assert.NilError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, expectedServiceAccount, a))
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	expectedName := fmt.Sprintf("cluster-%s-%s", a.Name, workloadIdentifier)
+	expectedName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 
 	// update role reference and subject of the clusterrolebinding

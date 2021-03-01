@@ -83,11 +83,12 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
-	expectedClusterRoleBindingName := fmt.Sprintf("cluster-%s-%s", a.Name, workloadIdentifier)
-	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	expectedClusterRoleBindingName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
+	expectedClusterRoleName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
+	expectedNameSA := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconciledServiceAccount))
 
 	// undesirable changes
 	reconcileClusterRoleBinding.RoleRef.Name = "z"
@@ -104,7 +105,7 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 
 	// fetch it
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
-	assert.Equal(t, expectedName, reconcileClusterRoleBinding.RoleRef.Name)
+	assert.Equal(t, expectedClusterRoleName, reconcileClusterRoleBinding.RoleRef.Name)
 }
 
 func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
