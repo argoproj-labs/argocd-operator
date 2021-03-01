@@ -73,7 +73,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.NilError(t, err)
 
 	reconciledClusterRole := &v1.ClusterRole{}
-	clusterRoleName := generateClusterResourceName(workloadIdentifier, a)
+	clusterRoleName := GenerateUniqueResourceName(workloadIdentifier, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 

@@ -17,7 +17,7 @@ func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 	a := makeTestArgoCDForClusterConfig()
 	testClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: a.Name + a.Namespace + "-" + testApplicationController,
+			Name: a.Name + "-" + a.Namespace + "-" + testApplicationController,
 		},
 		Rules: makeTestPolicyRules(),
 	}
@@ -47,7 +47,7 @@ func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
 	a := makeTestArgoCDForClusterConfig()
 	testApplicableClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      a.Name + a.Namespace + "-" + testApplicationController,
+			Name:      a.Name + "-" + a.Namespace + "-" + testApplicationController,
 			Namespace: a.Namespace,
 		},
 		Rules: makeTestPolicyRules(),

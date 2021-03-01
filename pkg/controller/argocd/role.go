@@ -36,15 +36,15 @@ func generateResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) str
 	return cr.Name + "-" + argoComponentName
 }
 
-// generateClusterResourceName generates unique names for cluster scoped resources
-func generateClusterResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) string {
+// GenerateUniqueResourceName generates unique names for cluster scoped resources
+func GenerateUniqueResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) string {
 	return cr.Name + "-" + cr.Namespace + "-" + argoComponentName
 }
 
 func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        generateClusterResourceName(name, cr),
+			Name:        GenerateUniqueResourceName(name, cr),
 			Labels:      labelsForCluster(cr),
 			Annotations: annotationsForCluster(cr),
 		},

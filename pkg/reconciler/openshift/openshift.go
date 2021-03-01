@@ -18,7 +18,7 @@ func init() {
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
-		if o.ObjectMeta.Name == cr.ObjectMeta.Name + cr.ObjectMeta.Namespace + "-argocd-application-controller" {
+		if o.ObjectMeta.Name == argocd.GenerateUniqueResourceName("argocd-application-controller", cr) {
 			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
 			}
