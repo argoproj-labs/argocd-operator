@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -86,6 +87,21 @@ func getArgoApplicationControllerResources(cr *argoprojv1a1.ArgoCD) corev1.Resou
 	}
 
 	return resources
+}
+
+// getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
+func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := []string{
+		"argocd-application-controller",
+		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
+		"--redis", getRedisServerAddress(cr),
+		"--repo-server", getRepoServerAddress(cr),
+		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
+	}
+	if cr.Spec.Controller.AppSync != nil {
+		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
+	}
+	return cmd
 }
 
 // getArgoContainerImage will return the container image for ArgoCD.

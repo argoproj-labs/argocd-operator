@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -32,149 +31,11 @@ const (
 var (
 	deploymentNames = []string{
 		"argocd-repo-server",
-		"argocd-application-controller",
 		"argocd-dex-server",
 		"argocd-grafana",
 		"argocd-redis",
 		"argocd-server"}
 )
-
-func TestReconcileArgoCD_reconcileApplicationControllerDeployment(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-application-controller",
-			Namespace: a.Namespace,
-		},
-		deployment))
-	command := deployment.Spec.Template.Spec.Containers[0].Command
-	want := []string{
-		"argocd-application-controller",
-		"--operation-processors", "10",
-		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
-		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "20"}
-	if diff := cmp.Diff(want, command); diff != "" {
-		t.Fatalf("reconciliation failed:\n%s", diff)
-	}
-}
-
-func TestReconcileArgoCD_reconcileApplicationControllerDeployment_withUpdate(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
-
-	a = makeTestArgoCD(controllerProcessors(30))
-	assert.NilError(t, r.reconcileApplicationControllerDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-application-controller",
-			Namespace: a.Namespace,
-		},
-		deployment))
-	command := deployment.Spec.Template.Spec.Containers[0].Command
-	want := []string{
-		"argocd-application-controller",
-		"--operation-processors", "10",
-		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
-		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "30"}
-	if diff := cmp.Diff(want, command); diff != "" {
-		t.Fatalf("reconciliation failed:\n%s", diff)
-	}
-}
-
-func Test_getArgoApplicationControllerCommand(t *testing.T) {
-	cmdTests := []struct {
-		name string
-		opts []argoCDOpt
-		want []string
-	}{
-		{
-			"defaults",
-			[]argoCDOpt{},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-			},
-		},
-		{
-			"configured status processors",
-			[]argoCDOpt{controllerProcessors(30)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"30",
-			},
-		},
-		{
-			"configured operation processors",
-			[]argoCDOpt{operationProcessors(15)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"15",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-			},
-		},
-		{
-			"configured appSync",
-			[]argoCDOpt{appSync(time.Minute * 10)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--app-resync",
-				"600",
-			},
-		},
-	}
-
-	for _, tt := range cmdTests {
-		cr := makeTestArgoCD(tt.opts...)
-		cmd := getArgoApplicationControllerCommand(cr)
-
-		if !reflect.DeepEqual(cmd, tt.want) {
-			t.Fatalf("got %#v, want %#v", cmd, tt.want)
-		}
-	}
-}
 
 // TODO: This needs more testing for the rest of the RepoDeployment container
 // fields.
