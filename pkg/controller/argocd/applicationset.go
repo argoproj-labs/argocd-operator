@@ -17,9 +17,11 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -76,7 +78,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 				},
 			},
 		}},
-		Image:           "quay.io/argocdapplicationset/argocd-applicationset:v0.1.0",
+		Image:           getApplicationSetContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 	}}
@@ -138,6 +140,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 			Resources: []string{
 				"applications",
 				"applicationsets",
+				"appprojects",
 				"applicationsets/finalizers",
 			},
 			Verbs: []string{
@@ -266,6 +269,35 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.Ar
 	}
 
 	return r.client.Create(context.TODO(), roleBinding)
+}
+
+func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+
+	img := ""
+	tag := ""
+
+	// First pull from spec, if it exists
+	if cr.Spec.ApplicationSet != nil {
+		img = cr.Spec.ApplicationSet.Image
+		tag = cr.Spec.ApplicationSet.Version
+	}
+
+	// If spec is empty, use the defaults
+	if img == "" {
+		img = common.ArgoCDDefaultApplicationSetImage
+		defaultImg = true
+	}
+	if tag == "" {
+		tag = common.ArgoCDDefaultApplicationSetVersion
+		defaultTag = true
+	}
+
+	// If an env var is specified then use that, but don't override the spec values (if they are present)
+	if e := os.Getenv(common.ArgoCDApplicationSetEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
 }
 
 func setAppSetLabels(obj *metav1.ObjectMeta) {

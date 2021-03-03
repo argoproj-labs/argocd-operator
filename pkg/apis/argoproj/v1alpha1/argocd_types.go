@@ -71,6 +71,12 @@ type ArgoCDApplicationControllerSpec struct {
 
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 type ArgoCDApplicationSet struct {
+
+	// Image is the Argo CD ApplicationSet image (optional)
+	Image string `json:"image,omitempty"`
+
+	// Version is the Argo CD ApplicationSet image tag. (optional)
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

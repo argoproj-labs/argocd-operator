@@ -16,9 +16,13 @@ package argocd
 
 import (
 	"context"
+	"os"
 	"sort"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	"github.com/google/go-cmp/cmp"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -60,7 +64,7 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 				},
 			},
 		}},
-		Image:           "quay.io/argocdapplicationset/argocd-applicationset:v0.1.0",
+		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 	}}
@@ -68,6 +72,86 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
+}
+
+func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+
+	tests := []struct {
+		name                   string
+		appSetField            *v1alpha1.ArgoCDApplicationSet
+		envVars                map[string]string
+		expectedContainerImage string
+	}{
+		{
+			name:                   "unspecified fields should use default",
+			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
+			expectedContainerImage: argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
+		},
+		{
+			name: "ensure that sha hashes are formatted correctly",
+			appSetField: &v1alpha1.ArgoCDApplicationSet{
+				Image:   "custom-image",
+				Version: "sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+			},
+			expectedContainerImage: "custom-image@sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+		},
+		{
+			name: "custom image should properly substitute",
+			appSetField: &v1alpha1.ArgoCDApplicationSet{
+				Image:   "custom-image",
+				Version: "custom-version",
+			},
+			expectedContainerImage: "custom-image:custom-version",
+		},
+		{
+			name:                   "verify env var substitution overrides default",
+			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
+			envVars:                map[string]string{common.ArgoCDApplicationSetEnvName: "custom-env-image"},
+			expectedContainerImage: "custom-env-image",
+		},
+
+		{
+			name: "env var should not override spec fields",
+			appSetField: &v1alpha1.ArgoCDApplicationSet{
+				Image:   "custom-image",
+				Version: "custom-version",
+			},
+			envVars:                map[string]string{common.ArgoCDApplicationSetEnvName: "custom-env-image"},
+			expectedContainerImage: "custom-image:custom-version",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			for testEnvName, testEnvValue := range test.envVars {
+				os.Setenv(testEnvName, testEnvValue)
+			}
+
+			a := makeTestArgoCD()
+			r := makeTestReconciler(t, a)
+
+			a.Spec.ApplicationSet = test.appSetField
+
+			sa := corev1.ServiceAccount{}
+			assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+			deployment := &appsv1.Deployment{}
+			assert.NilError(t, r.client.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-applicationset-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			specImage := deployment.Spec.Template.Spec.Containers[0].Image
+			assert.Equal(t, specImage, test.expectedContainerImage)
+
+		})
+	}
+
 }
 
 func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
@@ -120,6 +204,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 		"applicationsets/status",
 		"applications",
 		"applicationsets",
+		"appprojects",
 		"applicationsets/finalizers",
 	}
 

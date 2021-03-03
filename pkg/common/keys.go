@@ -161,6 +161,10 @@ const (
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
+	// ArgoCDApplicationSetEnvName is the environment variable used to get the image
+	// for the ApplicationSet controller
+	ArgoCDApplicationSetEnvName = "ARGOCD_APPLICATION_SET_IMAGE"
+
 	// ArgoCDDexImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.
 	ArgoCDDexImageEnvName = "ARGOCD_DEX_IMAGE"
