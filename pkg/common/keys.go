@@ -163,7 +163,7 @@ const (
 
 	// ArgoCDApplicationSetEnvName is the environment variable used to get the image
 	// for the ApplicationSet controller
-	ArgoCDApplicationSetEnvName = "ARGOCD_APPLICATION_SET_IMAGE"
+	ArgoCDApplicationSetEnvName = "ARGOCD_APPLICATIONSET_IMAGE"
 
 	// ArgoCDDexImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.

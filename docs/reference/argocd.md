@@ -12,6 +12,7 @@ The ArgoCD Custom Resource consists of the following properties.
 Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
+[**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**Dex**](#dex-options) | [Object] | Dex configuration options.
@@ -62,6 +63,31 @@ metadata:
 spec:
   applicationInstanceLabelKey: mycompany.com/appname
 ```
+
+## ApplicationSet Controller Options
+
+The following properties are available for configuring the ApplicationSet controller component.
+
+Name | Default | Description
+--- | --- | ---
+Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
+Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
+
+### ApplicationSet Controller Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: applicationset
+spec:
+  applicationSet: {}
+```
+
 
 ## Config Management Plugins
 
