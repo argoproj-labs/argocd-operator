@@ -58,7 +58,7 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
 		"--redis", getRedisServerAddress(cr),
-		"--repo-server", nameWithSuffix("repo-server:8081", cr),
+		"--repo-server", getRepoServerAddress(cr),
 		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
 	}
 	if cr.Spec.Controller.AppSync != nil {
@@ -239,12 +239,12 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("http://%s:%d", nameWithSuffix("dex-server", cr), common.ArgoCDDefaultDexHTTPPort)
+	return fmt.Sprintf("http://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("%s:%d", nameWithSuffix("repo-server", cr), common.ArgoCDDefaultRepoServerPort)
+	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.

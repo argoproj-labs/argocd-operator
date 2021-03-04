@@ -416,8 +416,7 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 
 // getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
 func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
-	suffix := fmt.Sprintf("redis-ha-haproxy:%v", common.ArgoCDDefaultRedisPort)
-	return nameWithSuffix(suffix, cr)
+	return fqdnServiceRef("redis-ha-haproxy", common.ArgoCDDefaultRedisPort, cr)
 }
 
 // getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
@@ -512,9 +511,7 @@ func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
-
-	suffix := fmt.Sprintf("%s:%v", common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort)
-	return nameWithSuffix(suffix, cr)
+	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
 }
 
 // loadTemplateFile will parse a template with the given path and execute it with the given params.
@@ -539,6 +536,12 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 // "example-argocd-foo" being returned.
 func nameWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s-%s", cr.Name, suffix)
+}
+
+// fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func fqdnServiceRef(service string, port int, cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
