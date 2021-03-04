@@ -36,6 +36,12 @@ const (
 	// ArgoCDDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default admin password.
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
+	// ArgoCDDefaultApplicationSetImage is the Argo CD Application Set container image to use when not specified.
+	ArgoCDDefaultApplicationSetImage = "quay.io/argocdapplicationset/argocd-applicationset"
+
+	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
+	ArgoCDDefaultApplicationSetVersion = "v0.1.0"
+
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "mycompany.com/appname"
 

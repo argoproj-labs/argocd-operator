@@ -659,6 +659,13 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if cr.Spec.ApplicationSet != nil {
+		log.Info("reconciling ApplicationSet controller")
+		if err := r.reconcileApplicationSetController(cr); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
