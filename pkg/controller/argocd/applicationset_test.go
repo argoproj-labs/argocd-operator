@@ -55,7 +55,7 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
 	want := []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", generateRepoServerAddress(a)},
+		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a)},
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{

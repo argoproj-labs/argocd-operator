@@ -69,7 +69,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
 
 	podSpec.Containers = []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", generateRepoServerAddress(cr)},
+		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(cr)},
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
