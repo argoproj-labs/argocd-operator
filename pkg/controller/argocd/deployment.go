@@ -58,19 +58,13 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
 		"--redis", getRedisServerAddress(cr),
-		"--repo-server", generateRepoServerAddress(cr),
+		"--repo-server", getRepoServerAddress(cr),
 		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
 	}
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
 	return cmd
-}
-
-// generateRepoServerAddress gets the address of the repo-server within the namespace;
-// This function is used here, and by ApplicationSet deployment function.
-func generateRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return nameWithSuffix("repo-server:8081", cr)
 }
 
 func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
@@ -245,12 +239,12 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("http://%s:%d", nameWithSuffix("dex-server", cr), common.ArgoCDDefaultDexHTTPPort)
+	return fmt.Sprintf("http://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("%s:%d", nameWithSuffix("repo-server", cr), common.ArgoCDDefaultRepoServerPort)
+	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
