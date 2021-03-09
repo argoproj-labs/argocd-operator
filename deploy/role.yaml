@@ -78,3 +78,9 @@ rules:
   - routes/custom-host
   verbs:
   - '*'
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'

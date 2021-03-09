@@ -49,6 +49,8 @@ NOTE: The ClusterRoleBindings defined in `deploy/role_binding.yaml` use the `arg
 kubectl create -f deploy/service_account.yaml
 kubectl create -f deploy/role.yaml
 kubectl create -f deploy/role_binding.yaml
+kubectl create -f deploy/cluster_role.yaml
+kubectl create -f deploy/cluster_role_binding.yaml
 ```
 
 ### CRDs
