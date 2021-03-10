@@ -437,14 +437,21 @@ func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
 
 // getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
 func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
 	img := cr.Spec.HA.RedisProxyImage
 	if len(img) <= 0 {
 		img = common.ArgoCDDefaultRedisHAProxyImage
+		defaultImg = true
 	}
 
 	tag := cr.Spec.HA.RedisProxyVersion
 	if len(tag) <= 0 {
 		tag = common.ArgoCDDefaultRedisHAProxyVersion
+		defaultTag = true
+	}
+
+	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
 	}
 
 	return argoutil.CombineImageTag(img, tag)

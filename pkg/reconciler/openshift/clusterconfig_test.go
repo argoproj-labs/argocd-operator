@@ -1,6 +1,10 @@
 package openshift
 
 import (
+	"fmt"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -103,4 +107,141 @@ func makeTestRoleBinding() *rbacv1.RoleBinding {
 		Subjects: []rbacv1.Subject{},
 		RoleRef:  rbacv1.RoleRef{},
 	}
+}
+
+func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
+	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+}
+
+func newStatefulSetWithName(name string, component string, cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
+	ss := newStatefulSet(cr)
+	ss.ObjectMeta.Name = name
+
+	lbls := ss.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
+	ss.ObjectMeta.Labels = lbls
+
+	return ss
+}
+
+func newStatefulSet(cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
+	ss := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
+		},
+	}
+
+	ss.Spec.Template.Spec.Containers = []corev1.Container{
+		{
+			Args: []string{
+				"/data/conf/redis.conf",
+			},
+			Command: []string{
+				"redis-server",
+			},
+			Image:           "dummy-image",
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			LivenessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisPort),
+					},
+				},
+				InitialDelaySeconds: int32(15),
+			},
+			Name: "redis",
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+				Name:          "redis",
+			}},
+			Resources: corev1.ResourceRequirements{},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					MountPath: "/data",
+					Name:      "data",
+				},
+			},
+		},
+		{
+			Args: []string{
+				"/data/conf/sentinel.conf",
+			},
+			Command: []string{
+				"redis-sentinel",
+			},
+			Image:           "dummy-image",
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			LivenessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisSentinelPort),
+					},
+				},
+				InitialDelaySeconds: int32(15),
+			},
+			Name: "sentinel",
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: common.ArgoCDDefaultRedisSentinelPort,
+				Name:          "sentinel",
+			}},
+			Resources: corev1.ResourceRequirements{},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					MountPath: "/data",
+					Name:      "data",
+				},
+			},
+		},
+	}
+
+	ss.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Args: []string{
+			"/readonly-config/init.sh",
+		},
+		Command: []string{
+			"sh",
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "SENTINEL_ID_0",
+				Value: "25b71bd9d0e4a51945d8422cab53f27027397c12",
+			},
+			{
+				Name:  "SENTINEL_ID_1",
+				Value: "896627000a81c7bdad8dbdcffd39728c9c17b309",
+			},
+			{
+				Name:  "SENTINEL_ID_2",
+				Value: "3acbca861108bc47379b71b1d87d1c137dce591f",
+			},
+		},
+		Image:           "dummy-image",
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "config-init",
+		Resources:       corev1.ResourceRequirements{},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: "/readonly-config",
+				Name:      "config",
+				ReadOnly:  true,
+			},
+			{
+				MountPath: "/data",
+				Name:      "data",
+			},
+		},
+	}}
+
+	return &ss
+}
+
+func labelsForCluster(cr *argoprojv1alpha1.ArgoCD) map[string]string {
+	labels := argoutil.DefaultLabels(cr.Name)
+	for key, val := range cr.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	return labels
 }

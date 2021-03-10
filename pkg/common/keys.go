@@ -176,8 +176,12 @@ const (
 	// to used for the argocd container.
 	ArgoCDImageEnvName = "ARGOCD_IMAGE"
 
+	// ArgoCDRedisHAProxyImageEnvName is the environment variable used to get the image
+	// to used for the Redis HA Proxy container.
+	ArgoCDRedisHAProxyImageEnvName = "ARGOCD_REDIS_HA_PROXY_IMAGE"
+
 	// ArgoCDRedisHAImageEnvName is the environment variable used to get the image
-	// to used for the Redis HA Proxy image.
+	// to used for the the Redis container in HA mode.
 	ArgoCDRedisHAImageEnvName = "ARGOCD_REDIS_HA_IMAGE"
 
 	// ArgoCDRedisImageEnvName is the environment variable used to get the image

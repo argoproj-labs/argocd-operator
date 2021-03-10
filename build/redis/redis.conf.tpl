@@ -8,3 +8,4 @@ rdbchecksum yes
 rdbcompression yes
 repl-diskless-sync yes
 save ""
+protected-mode no

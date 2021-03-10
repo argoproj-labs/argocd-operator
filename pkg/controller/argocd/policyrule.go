@@ -92,6 +92,20 @@ func policyRuleForRedisHa() []v1.PolicyRule {
 				"get",
 			},
 		},
+		{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				"nonroot",
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		},
 	}
 }
 

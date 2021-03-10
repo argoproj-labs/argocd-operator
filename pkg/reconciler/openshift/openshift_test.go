@@ -125,6 +125,54 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
 }
 
+func TestReconcileArgoCD_reconcileRedisHaProxyDeployment(t *testing.T) {
+	a := makeTestArgoCD()
+	testDeployment := makeTestDeployment()
+
+	testDeployment.ObjectMeta.Name = a.Name + "-redis-ha-haproxy"
+	want := append(getCommandForRedhatRedisHaProxy(), testDeployment.Spec.Template.Spec.Containers[0].Command...)
+
+	assert.NilError(t, reconcilerHook(a, testDeployment))
+	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Command, want)
+	assert.Equal(t, 0, len(testDeployment.Spec.Template.Spec.Containers[0].Args))
+
+	testDeployment = makeTestDeployment()
+	testDeployment.ObjectMeta.Name = a.Name + "-" + "not-redis-ha-haproxy"
+	want = testDeployment.Spec.Template.Spec.Containers[0].Command
+
+	assert.NilError(t, reconcilerHook(a, testDeployment))
+	assert.DeepEqual(t, testDeployment.Spec.Template.Spec.Containers[0].Command, want)
+}
+
+func TestReconcileArgoCD_reconcileRedisHaServerStatefulSet(t *testing.T) {
+	a := makeTestArgoCD()
+	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
+
+	assert.NilError(t, reconcilerHook(a, s))
+
+	// Check the name to ensure we're looking at the right container definition
+	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Name, "redis")
+	assert.DeepEqual(t, s.Spec.Template.Spec.Containers[0].Args, getArgsForRedhatHaRedisServer())
+	assert.Equal(t, 0, len(s.Spec.Template.Spec.Containers[0].Command))
+
+	// Check the name to ensure we're looking at the right container definition
+	assert.Equal(t, s.Spec.Template.Spec.Containers[1].Name, "sentinel")
+	assert.DeepEqual(t, s.Spec.Template.Spec.Containers[1].Args, getArgsForRedhatHaRedisSentinel())
+	assert.Equal(t, 0, len(s.Spec.Template.Spec.Containers[1].Command))
+
+	assert.DeepEqual(t, s.Spec.Template.Spec.InitContainers[0].Args, getArgsForRedhatHaRedisInitContainer())
+	assert.Equal(t, 0, len(s.Spec.Template.Spec.InitContainers[0].Command))
+
+	s = newStatefulSetWithSuffix("not-redis-ha-server", "redis", a)
+
+	want0 := s.Spec.Template.Spec.Containers[0].Args
+	want1 := s.Spec.Template.Spec.Containers[1].Args
+
+	assert.NilError(t, reconcilerHook(a, s))
+	assert.DeepEqual(t, s.Spec.Template.Spec.Containers[0].Args, want0)
+	assert.DeepEqual(t, s.Spec.Template.Spec.Containers[1].Args, want1)
+}
+
 func TestReconcileArgoCD_reconcileRoleBinding_applicationController(t *testing.T) {
 	a := makeTestArgoCD()
 	testRoleBinding := makeTestRoleBinding()

@@ -18,6 +18,7 @@ const (
 	grafanaTestImage = "testing/grafana:latest"
 	redisTestImage   = "testing/redis:latest"
 	redisHATestImage = "testing/redis:latest-ha"
+	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
 )
 
 var imageTests = []struct {
@@ -156,6 +157,34 @@ var imageTests = []struct {
 				os.Setenv(common.ArgoCDRedisHAImageEnvName, old)
 			})
 			os.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
+		},
+	},
+	{
+		name:      "redis ha proxy default configuration",
+		imageFunc: getRedisHAProxyContainerImage,
+		want: argoutil.CombineImageTag(
+			common.ArgoCDDefaultRedisHAProxyImage,
+			common.ArgoCDDefaultRedisHAProxyVersion),
+	},
+	{
+		name:      "redis ha proxy spec configuration",
+		imageFunc: getRedisHAProxyContainerImage,
+		want:      redisHAProxyTestImage,
+		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.HA.RedisProxyImage = "testing/redis-ha-haproxy"
+			a.Spec.HA.RedisProxyVersion = "latest-ha"
+		}},
+	},
+	{
+		name:      "redis ha proxy env configuration",
+		imageFunc: getRedisHAProxyContainerImage,
+		want:      redisHAProxyTestImage,
+		pre: func(t *testing.T) {
+			old := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName)
+			t.Cleanup(func() {
+				os.Setenv(common.ArgoCDRedisHAProxyImageEnvName, old)
+			})
+			os.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
 		},
 	},
 }
