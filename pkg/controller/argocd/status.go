@@ -53,12 +53,12 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
-	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, deploy.Name, deploy) {
+	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	if argoutil.IsObjectFound(r.client, cr.Namespace, ss.Name, ss) {
 		status = "Pending"
 
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+		if ss.Spec.Replicas != nil {
+			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
 				status = "Running"
 			}
 		}

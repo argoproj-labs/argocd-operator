@@ -2,7 +2,9 @@ package argocd
 
 import (
 	"os"
+	"reflect"
 	"testing"
+	"time"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -265,4 +267,84 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 		assert.ErrorContains(t, err, `failed to create a requirement for invalid label value: "argocd-*/`)
 		assert.Equal(t, selector, nil)
 	})
+}
+
+func TestGetArgoApplicationControllerCommand(t *testing.T) {
+	cmdTests := []struct {
+		name string
+		opts []argoCDOpt
+		want []string
+	}{
+		{
+			"defaults",
+			[]argoCDOpt{},
+			[]string{
+				"argocd-application-controller",
+				"--operation-processors",
+				"10",
+				"--redis",
+				"argocd-redis.argocd.svc.cluster.local:6379",
+				"--repo-server",
+				"argocd-repo-server.argocd.svc.cluster.local:8081",
+				"--status-processors",
+				"20",
+			},
+		},
+		{
+			"configured status processors",
+			[]argoCDOpt{controllerProcessors(30)},
+			[]string{
+				"argocd-application-controller",
+				"--operation-processors",
+				"10",
+				"--redis",
+				"argocd-redis.argocd.svc.cluster.local:6379",
+				"--repo-server",
+				"argocd-repo-server.argocd.svc.cluster.local:8081",
+				"--status-processors",
+				"30",
+			},
+		},
+		{
+			"configured operation processors",
+			[]argoCDOpt{operationProcessors(15)},
+			[]string{
+				"argocd-application-controller",
+				"--operation-processors",
+				"15",
+				"--redis",
+				"argocd-redis.argocd.svc.cluster.local:6379",
+				"--repo-server",
+				"argocd-repo-server.argocd.svc.cluster.local:8081",
+				"--status-processors",
+				"20",
+			},
+		},
+		{
+			"configured appSync",
+			[]argoCDOpt{appSync(time.Minute * 10)},
+			[]string{
+				"argocd-application-controller",
+				"--operation-processors",
+				"10",
+				"--redis",
+				"argocd-redis.argocd.svc.cluster.local:6379",
+				"--repo-server",
+				"argocd-repo-server.argocd.svc.cluster.local:8081",
+				"--status-processors",
+				"20",
+				"--app-resync",
+				"600",
+			},
+		},
+	}
+
+	for _, tt := range cmdTests {
+		cr := makeTestArgoCD(tt.opts...)
+		cmd := getArgoApplicationControllerCommand(cr)
+
+		if !reflect.DeepEqual(cmd, tt.want) {
+			t.Fatalf("got %#v, want %#v", cmd, tt.want)
+		}
+	}
 }

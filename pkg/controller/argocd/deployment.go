@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -50,21 +49,6 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1
 		return export
 	}
 	return nil
-}
-
-// getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
-func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
-	cmd := []string{
-		"argocd-application-controller",
-		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
-		"--redis", getRedisServerAddress(cr),
-		"--repo-server", getRepoServerAddress(cr),
-		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
-	}
-	if cr.Spec.Controller.AppSync != nil {
-		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
-	}
-	return cmd
 }
 
 func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
@@ -291,105 +275,9 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
-// reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
-func (r *ReconcileArgoCD) reconcileApplicationControllerDeployment(cr *argoprojv1a1.ArgoCD) error {
-	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	podSpec := &deploy.Spec.Template.Spec
-	podSpec.Containers = []corev1.Container{{
-		Command:         getArgoApplicationControllerCommand(cr),
-		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "argocd-application-controller",
-		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8082),
-				},
-			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
-		},
-		Env: proxyEnvVars(),
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: 8082,
-			},
-		},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8082),
-				},
-			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
-		},
-		Resources: getArgoApplicationControllerResources(cr),
-	}}
-
-	// Handle import/restore from ArgoCDExport
-	export := r.getArgoCDExport(cr)
-	if export == nil {
-		log.Info("existing argocd export not found, skipping import")
-	} else {
-		podSpec.InitContainers = []corev1.Container{{
-			Command:         getArgoImportCommand(r.client, cr),
-			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
-			Image:           getArgoImportContainerImage(export),
-			ImagePullPolicy: corev1.PullAlways,
-			Name:            "argocd-import",
-			VolumeMounts:    getArgoImportVolumeMounts(export),
-		}}
-
-		podSpec.Volumes = getArgoImportVolumes(export)
-	}
-
-	podSpec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-application-controller")
-
-	existing := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
-		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
-		changed := false
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-		desiredCommand := getArgoApplicationControllerCommand(cr)
-		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
-			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
-			changed = true
-		}
-
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
-			deploy.Spec.Template.Spec.Containers[0].Env) {
-			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			changed = true
-		}
-
-		if changed {
-			return r.client.Update(context.TODO(), existing)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
-	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
-		return err
-	}
-	return r.client.Create(context.TODO(), deploy)
-}
-
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
-	err := r.reconcileApplicationControllerDeployment(cr)
-	if err != nil {
-		return err
-	}
-
-	err = r.reconcileDexDeployment(cr)
+	err := r.reconcileDexDeployment(cr)
 	if err != nil {
 		return err
 	}
