@@ -83,7 +83,7 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.
 }
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
-	ss := newStatefulSetWithSuffix("redis-ha", "redis", cr)
+	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, ss.Name, ss) {
 		if !cr.Spec.HA.Enabled {
 			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
@@ -114,10 +114,20 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
+	ss.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+		},
+	}
+
+	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
 			"checksum/init-config": "552ee3bec8fe5d9d865e371f7b615c6d472253649eb65d53ed4ae874f782647c", // TODO: Should this be hard-coded?
+		},
+		Labels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 		},
 	}
 
@@ -256,7 +266,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		RunAsUser:    &runAsUser,
 	}
 
-	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("redis-ha", cr)
+	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
 	ss.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{

@@ -24,7 +24,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	s := newStatefulSetWithSuffix("redis-ha", "redis", a)
+	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 
 	assert.NilError(t, r.reconcileRedisStatefulSet(a))
 	// resource Creation should fail as HA was disabled
@@ -36,7 +36,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	s := newStatefulSetWithSuffix("redis-ha", "redis", a)
+	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 
 	a.Spec.HA.Enabled = true
 	// test resource is Created when HA is enabled
