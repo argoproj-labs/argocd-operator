@@ -147,6 +147,16 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 			Verbs: []string{
 				"*",
 			},
+		}, {
+			APIGroups: []string{
+				"compliance.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
 		},
 	}
 }
