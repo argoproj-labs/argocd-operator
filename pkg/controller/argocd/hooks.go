@@ -13,7 +13,7 @@ var (
 
 // Hook changes resources as they are created or updated by the
 // reconciler.
-type Hook func(*argoprojv1alpha1.ArgoCD, interface{}) error
+type Hook func(*argoprojv1alpha1.ArgoCD, interface{}, string) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(h ...Hook) {
@@ -22,11 +22,11 @@ func Register(h ...Hook) {
 	hooks = append(hooks, h...)
 }
 
-func applyReconcilerHook(cr *argoprojv1alpha1.ArgoCD, i interface{}) error {
+func applyReconcilerHook(cr *argoprojv1alpha1.ArgoCD, i interface{}, hint string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, v := range hooks {
-		if err := v(cr, i); err != nil {
+		if err := v(cr, i, hint); err != nil {
 			return err
 		}
 	}

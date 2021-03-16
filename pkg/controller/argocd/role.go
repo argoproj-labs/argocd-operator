@@ -67,7 +67,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 		return role, err
 	}
 
-	if role, err := r.reconcileRole(redisHa, policyRuleForRedisHa(), cr); err != nil {
+	if role, err := r.reconcileRole(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
 		return role, err
 	}
 
@@ -114,12 +114,12 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
 		}
-		applyReconcilerHook(cr, clusterRole)
+		applyReconcilerHook(cr, clusterRole, "")
 		return clusterRole, r.client.Create(context.TODO(), newClusterRole(name, policyRules, cr))
 	}
 
 	clusterRole.Rules = policyRules
-	applyReconcilerHook(cr, clusterRole)
+	applyReconcilerHook(cr, clusterRole, "")
 	return clusterRole, r.client.Update(context.TODO(), clusterRole)
 }
 

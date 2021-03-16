@@ -51,7 +51,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
 	// undesirable changes
-	reconciledRole.Rules = policyRuleForRedisHa()
+	reconciledRole.Rules = policyRuleForRedisHa(a)
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledRole))
 
 	// fetch it

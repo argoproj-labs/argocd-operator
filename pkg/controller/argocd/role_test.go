@@ -29,7 +29,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledRole.Rules = policyRuleForRedisHa()
+	reconciledRole.Rules = policyRuleForRedisHa(a)
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
@@ -78,7 +78,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledClusterRole.Rules = policyRuleForRedisHa()
+	reconciledClusterRole.Rules = policyRuleForRedisHa(a)
 	assert.NilError(t, r.client.Update(context.TODO(), reconciledClusterRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller

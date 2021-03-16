@@ -12,7 +12,7 @@ import (
 
 var errMsg = errors.New("this is a test error")
 
-func testDeploymentHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func testDeploymentHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	switch o := v.(type) {
 	case *appsv1.Deployment:
 		var replicas int32 = 3
@@ -21,7 +21,7 @@ func testDeploymentHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	return nil
 }
 
-func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	switch o := v.(type) {
 	case *v1.ClusterRole:
 		o.Rules = append(o.Rules, policyRuleForApplicationController()...)
@@ -29,7 +29,7 @@ func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	return nil
 }
 
-func testRoleBindingHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func testRoleBindingHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	switch o := v.(type) {
 	case *v1.RoleBinding:
 		o.RoleRef.Name = "test-admin-role"
@@ -37,7 +37,7 @@ func testRoleBindingHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
 	return nil
 }
 
-func testErrorHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func testErrorHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	return errMsg
 }
 
@@ -49,7 +49,7 @@ func TestReconcileArgoCD_testDeploymentHook(t *testing.T) {
 
 	testDeployment := makeTestDeployment()
 
-	assert.NilError(t, applyReconcilerHook(a, testDeployment))
+	assert.NilError(t, applyReconcilerHook(a, testDeployment, ""))
 	var expectedReplicas int32 = 3
 	assert.DeepEqual(t, &expectedReplicas, testDeployment.Spec.Replicas)
 }
@@ -64,8 +64,8 @@ func TestReconcileArgoCD_testMultipleHooks(t *testing.T) {
 	Register(testDeploymentHook)
 	Register(testClusterRoleHook)
 
-	assert.NilError(t, applyReconcilerHook(a, testDeployment))
-	assert.NilError(t, applyReconcilerHook(a, testClusterRole))
+	assert.NilError(t, applyReconcilerHook(a, testDeployment, ""))
+	assert.NilError(t, applyReconcilerHook(a, testClusterRole, ""))
 
 	// Verify if testDeploymentHook is executed successfully
 	var expectedReplicas int32 = 3
@@ -83,7 +83,7 @@ func TestReconcileArgoCD_hooks_end_upon_error(t *testing.T) {
 
 	testClusterRole := makeTestClusterRole()
 
-	assert.Error(t, applyReconcilerHook(a, testClusterRole), "this is a test error")
+	assert.Error(t, applyReconcilerHook(a, testClusterRole, ""), "this is a test error")
 	assert.DeepEqual(t, makeTestPolicyRules(), testClusterRole.Rules)
 }
 

@@ -290,7 +290,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		Type: appsv1.RollingUpdateStatefulSetStrategyType,
 	}
 
-	if err := applyReconcilerHook(cr, ss); err != nil {
+	if err := applyReconcilerHook(cr, ss, ""); err != nil {
 		return err
 	}
 

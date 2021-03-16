@@ -72,7 +72,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDRedisHAComponent, policyRuleForRedisHa(), cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDRedisHAComponent, policyRuleForRedisHa(cr), cr); err != nil {
 		return err
 	}
 
