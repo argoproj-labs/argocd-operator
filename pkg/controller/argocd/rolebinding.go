@@ -71,7 +71,7 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
 
-	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(), cr); err != nil {
+	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", redisHa, err)
 	}
 
@@ -125,7 +125,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	}
 
 	if name == applicationController {
-		if err := applyReconcilerHook(cr, roleBinding); err != nil {
+		if err := applyReconcilerHook(cr, roleBinding, ""); err != nil {
 			return err
 		}
 	}

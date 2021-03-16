@@ -1,4 +1,4 @@
-HOSTNAME="$(hostname)"
+HOSTNAME="$(cat /proc/sys/kernel/hostname)"
 INDEX="${HOSTNAME##*-}"
 MASTER="$(redis-cli -h {{.ServiceName}} -p 26379 sentinel get-master-addr-by-name argocd | grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')"
 MASTER_GROUP="argocd"

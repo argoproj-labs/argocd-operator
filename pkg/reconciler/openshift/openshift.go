@@ -9,31 +9,78 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("openshift_controller_argocd")
 
 func init() {
 	argocd.Register(reconcilerHook)
 }
 
-func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
+	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
 		if o.ObjectMeta.Name == argocd.GenerateUniqueResourceName("argocd-application-controller", cr) {
 			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+				logv.Info("configuring openshift cluster config policy rules")
 				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
 			}
 		}
 	case *appsv1.Deployment:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
+			logv.Info("configuring openshift redis")
 			o.Spec.Template.Spec.Containers[0].Args = append(getArgsForRedhatRedis(), o.Spec.Template.Spec.Containers[0].Args...)
+		} else if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-haproxy" {
+			logv.Info("configuring openshift redis haproxy")
+			o.Spec.Template.Spec.Containers[0].Command = append(getCommandForRedhatRedisHaProxy(), o.Spec.Template.Spec.Containers[0].Command...)
+		}
+	case *[]rbacv1.PolicyRule:
+		if hint == "policyRuleForRedisHa" {
+			logv.Info("configuring policy rule for Redis HA")
+			*o = append(*o, getPolicyRuleForRedisHa())
 		}
 	case *rbacv1.RoleBinding:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-argocd-application-controller" {
+			logv.Info("configuring openshift cluster role for argocd application controller")
 			o.RoleRef.Kind = "ClusterRole"
 			o.RoleRef.Name = "admin"
 		}
+	case *appsv1.StatefulSet:
+		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
+			logv.Info("configuring openshift redis-ha-server stateful set")
+			for index, _ := range o.Spec.Template.Spec.Containers {
+				if o.Spec.Template.Spec.Containers[index].Name == "redis" {
+					o.Spec.Template.Spec.Containers[index].Args = getArgsForRedhatHaRedisServer()
+					o.Spec.Template.Spec.Containers[index].Command = []string{}
+				} else if o.Spec.Template.Spec.Containers[index].Name == "sentinel" {
+					o.Spec.Template.Spec.Containers[index].Args = getArgsForRedhatHaRedisSentinel()
+					o.Spec.Template.Spec.Containers[index].Command = []string{}
+				}
+			}
+			o.Spec.Template.Spec.InitContainers[0].Args = getArgsForRedhatHaRedisInitContainer()
+			o.Spec.Template.Spec.InitContainers[0].Command = []string{}
+		}
 	}
 	return nil
+}
+
+func getPolicyRuleForRedisHa() rbacv1.PolicyRule {
+	return rbacv1.PolicyRule{
+		APIGroups: []string{
+			"security.openshift.io",
+		},
+		ResourceNames: []string{
+			"nonroot",
+		},
+		Resources: []string{
+			"securitycontextconstraints",
+		},
+		Verbs: []string{
+			"use",
+		},
+	}
 }
 
 // For OpenShift, we use a custom build of Redis provided by Red Hat
@@ -43,6 +90,43 @@ func getArgsForRedhatRedis() []string {
 		"redis-server",
 		"--protected-mode",
 		"no",
+	}
+}
+
+// For OpenShift, we use a custom build of haproxy provided by Red Hat
+// which requires a command as opposed to args in stock haproxy.
+func getCommandForRedhatRedisHaProxy() []string {
+	return []string{
+		"haproxy",
+		"-f",
+		"/usr/local/etc/haproxy/haproxy.cfg",
+	}
+}
+
+// For OpenShift, we use a custom build of Redis provided by Red Hat
+// which requires additional args in comparison to stock redis.
+func getArgsForRedhatHaRedisServer() []string {
+	return []string{
+		"redis-server",
+		"/data/conf/redis.conf",
+	}
+}
+
+// For OpenShift, we use a custom build of Redis provided by Red Hat
+// which requires additional args in comparison to stock redis.
+func getArgsForRedhatHaRedisSentinel() []string {
+	return []string{
+		"redis-sentinel",
+		"/data/conf/sentinel.conf",
+	}
+}
+
+// For OpenShift, we use a custom build of Redis provided by Red Hat
+// which requires additional args in comparison to stock redis.
+func getArgsForRedhatHaRedisInitContainer() []string {
+	return []string{
+		"sh",
+		"/readonly-config/init.sh",
 	}
 }
 

@@ -1,6 +1,9 @@
 package argocd
 
-import v1 "k8s.io/api/rbac/v1"
+import (
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	v1 "k8s.io/api/rbac/v1"
+)
 
 func policyRuleForApplicationController() []v1.PolicyRule {
 
@@ -78,9 +81,9 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForRedisHa() []v1.PolicyRule {
+func policyRuleForRedisHa(cr *argoprojv1alpha1.ArgoCD) []v1.PolicyRule {
 
-	return []v1.PolicyRule{
+	rules := []v1.PolicyRule{
 		{
 			APIGroups: []string{
 				"",
@@ -93,6 +96,12 @@ func policyRuleForRedisHa() []v1.PolicyRule {
 			},
 		},
 	}
+
+	if err := applyReconcilerHook(cr, &rules, "policyRuleForRedisHa"); err != nil {
+		log.Error(err, "error from reconcile hook")
+	}
+
+	return rules
 }
 
 func policyRuleForDexServer() []v1.PolicyRule {
