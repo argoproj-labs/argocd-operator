@@ -315,7 +315,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
-			"/shared/argocd-util",
+			"/shared/argocd-dex",
 			"rundex",
 		},
 		Image:           getDexContainerImage(cr),
@@ -342,8 +342,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		Command: []string{
 			"cp",
 			"-n",
-			"/usr/local/bin/argocd-util",
-			"/shared",
+			"/usr/local/bin/argocd",
+			"/shared/argocd-dex",
 		},
 		Env:             proxyEnvVars(),
 		Image:           getArgoContainerImage(cr),

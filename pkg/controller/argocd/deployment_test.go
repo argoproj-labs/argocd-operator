@@ -345,8 +345,8 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Command: []string{
 					"cp",
 					"-n",
-					"/usr/local/bin/argocd-util",
-					"/shared",
+					"/usr/local/bin/argocd",
+					"/shared/argocd-dex",
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -362,7 +362,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Name:  "dex",
 				Image: getDexContainerImage(a),
 				Command: []string{
-					"/shared/argocd-util",
+					"/shared/argocd-dex",
 					"rundex",
 				},
 				Ports: []corev1.ContainerPort{
@@ -425,8 +425,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Command: []string{
 					"cp",
 					"-n",
-					"/usr/local/bin/argocd-util",
-					"/shared",
+					"/usr/local/bin/argocd",
+					"/shared/argocd-dex",
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -442,7 +442,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Name:  "dex",
 				Image: "testdex:v0.0.1",
 				Command: []string{
-					"/shared/argocd-util",
+					"/shared/argocd-dex",
 					"rundex",
 				},
 				Ports: []corev1.ContainerPort{
