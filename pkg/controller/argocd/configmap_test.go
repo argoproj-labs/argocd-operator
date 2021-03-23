@@ -122,6 +122,44 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCDCM_withRepoCredentials(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.RepositoryCredentials = `
+- url: https://github.com/test/gitops.git
+  passwordSecret:
+    name: test
+    key: password
+  usernameSecret:
+    name: test
+    key: username`
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		},
+		Data: map[string]string{
+			"application.instanceLabelKey": "mycompany.com/appname",
+			"admin.enabled":                "true",
+		},
+	}
+	r := makeTestReconciler(t, a, cm)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+
+	if got := cm.Data[common.ArgoCDKeyRepositoryCredentials]; got != a.Spec.RepositoryCredentials {
+		t.Fatalf("reconcileArgoConfigMap failed: got %s, want %s", got, a.Spec.RepositoryCredentials)
+	}
+}
+
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {

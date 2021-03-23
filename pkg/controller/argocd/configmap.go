@@ -460,6 +460,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 		changed = true
 	}
 
+	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
+		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
+		changed = true
+	}
+
 	if changed {
 		return r.client.Update(context.TODO(), cm) // TODO: Reload Argo CD server after ConfigMap change (which properties)?
 	}
