@@ -233,6 +233,16 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 			},
 		}, {
 			APIGroups: []string{
+				"machineconfig.openshift.io",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		}, {
+			APIGroups: []string{
 				"compliance.openshift.io",
 			},
 			Resources: []string{
@@ -247,7 +257,7 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 				"watch",
 				"list",
 			},
-		},  {
+		}, {
 			APIGroups: []string{
 				"compliance.openshift.io",
 			},
