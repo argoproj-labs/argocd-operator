@@ -78,6 +78,9 @@ type ArgoCDApplicationSet struct {
 
 	// Version is the Argo CD ApplicationSet image tag. (optional)
 	Version string `json:"version,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for ApplicationSet.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -156,6 +159,9 @@ type ArgoCDHASpec struct {
 
 	// RedisProxyVersion is the Redis HAProxy container image tag.
 	RedisProxyVersion string `json:"redisProxyVersion,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for HA.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ArgoCDImportSpec defines the desired state for the ArgoCD import/restore process.

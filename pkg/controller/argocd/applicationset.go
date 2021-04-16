@@ -81,6 +81,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		Image:           getApplicationSetContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
+		Resources:       getApplicationSetResources(cr),
 	}}
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
@@ -298,6 +299,18 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
+}
+
+// getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
+func getApplicationSetResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.ApplicationSet.Resources != nil {
+		resources = *cr.Spec.ApplicationSet.Resources
+	}
+
+	return resources
 }
 
 func setAppSetLabels(obj *metav1.ObjectMeta) {

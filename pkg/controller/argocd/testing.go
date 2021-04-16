@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -56,6 +57,27 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
+func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
+	a := &argoprojv1alpha1.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+		Spec: argoprojv1alpha1.ArgoCDSpec{
+			ApplicationSet: &argoprojv1alpha1.ArgoCDApplicationSet{
+				Resources: makeTestApplicationSetResources(),
+			},
+			HA: argoprojv1alpha1.ArgoCDHASpec{
+				Resources: makeTestHAResources(),
+			},
 		},
 	}
 	for _, o := range opts {
@@ -147,4 +169,30 @@ func stringMapKeys(m map[string]string) []string {
 	}
 	sort.Strings(r)
 	return r
+}
+
+func makeTestApplicationSetResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+		},
+	}
+}
+
+func makeTestHAResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+		},
+	}
 }

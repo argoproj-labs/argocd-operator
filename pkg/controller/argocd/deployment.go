@@ -671,6 +671,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 				Name:          "redis",
 			},
 		},
+		Resources: getRedisHAProxyResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "data",
