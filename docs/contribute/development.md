@@ -51,8 +51,6 @@ Bundle the operator for usage in OLM as a CatalogSource.
 ``` bash
 hack/bundle.sh
 ```
-[podman_link]:https://podman.io
-
 
 ### [WIP] Development Process
 
@@ -97,4 +95,25 @@ Run scorecard tests.
 
 ``` bash
 hack/scorecard.sh
+```
+
+### Default Argo CD Version
+
+There are several steps required to update the default version of Argo CD that is installed by the operator.
+
+#### CRDs
+
+The operator bundles and provides the CRDs that are used by Argo CD to ensure that they are present in the cluster.
+
+Update the [CRDs][argocd_upstream_crds] from the upstream Argo CD project in the `deploy/argo-cd` directory to ensure they match the version of Argo CD that will be used as the default.
+
+[podman_link]:https://podman.io
+[argocd_upstream_crds]:https://github.com/argoproj/argo-cd/tree/master/manifests/crds
+
+#### Container Image
+
+Update the constant that contains the hash that corresponds to the version of Argo CD that should be deployed by default. This can be found in the `pkg/common/defaults.go` file.
+
+```go
+ArgoCDDefaultArgoVersion = "sha256:abc123..."
 ```

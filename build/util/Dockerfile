@@ -1,5 +1,5 @@
-# Argo CD v1.7.7
-FROM argoproj/argocd@sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f
+# Argo CD v2.0.0
+FROM argoproj/argocd@sha256:8d1d58ef963f615da97e0b2c54dbe243801d5e7198b98393ab36b7a5768f72a4
 
 USER root
 
