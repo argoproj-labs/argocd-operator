@@ -28,6 +28,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -36,6 +37,8 @@ import (
 func TestReconcileApplicationSet_Deployments(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+
 	r := makeTestReconciler(t, a)
 
 	sa := corev1.ServiceAccount{}
@@ -67,6 +70,58 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
+	}}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
+		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
+	}
+}
+
+func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCDWithResources()
+
+	r := makeTestReconciler(t, a)
+
+	sa := corev1.ServiceAccount{}
+
+	assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NilError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
+	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
+
+	want := []corev1.Container{{
+		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a)},
+		Env: []corev1.EnvVar{{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		}},
+		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "argocd-applicationset-controller",
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+			},
+		},
 	}}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {

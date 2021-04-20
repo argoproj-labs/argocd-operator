@@ -517,6 +517,18 @@ func getRedisResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
+// getRedisHAProxyResources will return the ResourceRequirements for the Redis HA Proxy.
+func getRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.HA.Resources != nil {
+		resources = *cr.Spec.HA.Resources
+	}
+
+	return resources
+}
+
 // getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
 func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {

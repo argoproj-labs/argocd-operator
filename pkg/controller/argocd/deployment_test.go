@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -232,6 +233,43 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	assert.NilError(t, err)
 
 	assertDeploymentHasProxyVars(t, r.client, "argocd-redis-ha-haproxy")
+}
+
+func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing.T) {
+	restoreEnv(t)
+	os.Setenv("HTTP_PROXY", testHTTPProxy)
+	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	os.Setenv("no_proxy", testNoProxy)
+
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCDWithResources(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.HA.Enabled = true
+	})
+	r := makeTestReconciler(t, a)
+
+	assert.NilError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NilError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	testResources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+		},
+	}
+	assert.DeepEqual(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
+
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
