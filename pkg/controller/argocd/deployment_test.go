@@ -80,6 +80,16 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 			},
 		},
 		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
 			Name: "gpg-keyring",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -112,6 +122,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	want := []corev1.VolumeMount{
 		{Name: "ssh-known-hosts", MountPath: "/app/config/ssh"},
 		{Name: "tls-certs", MountPath: "/app/config/tls"},
+		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
 	}
 
@@ -305,12 +316,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NilError(t, err)
 
-	if l := len(deployment.Spec.Template.Spec.Volumes); l != 3 {
-		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 3", l)
+	if l := len(deployment.Spec.Template.Spec.Volumes); l != 4 {
+		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 4", l)
 	}
 
-	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 3 {
-		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 3", l)
+	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 4 {
+		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 4", l)
 	}
 }
 

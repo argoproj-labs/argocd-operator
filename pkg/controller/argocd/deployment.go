@@ -803,6 +803,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 				MountPath: "/app/config/tls",
 			},
 			{
+				Name:      "gpg-keys",
+				MountPath: "/app/config/gpg/source",
+			},
+			{
 				Name:      "gpg-keyring",
 				MountPath: "/app/config/gpg/keys",
 			},
@@ -826,6 +830,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
 					},
 				},
 			},
