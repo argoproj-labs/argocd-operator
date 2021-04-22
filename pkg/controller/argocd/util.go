@@ -889,3 +889,8 @@ func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map
 	}
 	return labels
 }
+
+// boolPtr returns a pointer to val
+func boolPtr(val bool) *bool {
+	return &val
+}

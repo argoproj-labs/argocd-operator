@@ -50,7 +50,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 
 	err := r.reconcileRepoDeployment(a)
 	assert.NilError(t, err)
-
 	deployment := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
@@ -58,46 +57,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 	}, deployment)
 	assert.NilError(t, err)
 
-	want := []corev1.Volume{
-		{
-			Name: "ssh-known-hosts",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDKnownHostsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDTLSCertsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "gpg-keys",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDGPGKeysConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "gpg-keyring",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-	}
-
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Volumes); diff != "" {
+	if diff := cmp.Diff(repoServerDefaultVolumes(), deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
 	}
 }
@@ -119,14 +79,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	}, deployment)
 	assert.NilError(t, err)
 
-	want := []corev1.VolumeMount{
-		{Name: "ssh-known-hosts", MountPath: "/app/config/ssh"},
-		{Name: "tls-certs", MountPath: "/app/config/tls"},
-		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
-		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
-	}
-
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
+	if diff := cmp.Diff(repoServerDefaultVolumeMounts(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
 		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
 	}
 }
@@ -316,12 +269,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NilError(t, err)
 
-	if l := len(deployment.Spec.Template.Spec.Volumes); l != 4 {
-		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 4", l)
+	if l := len(deployment.Spec.Template.Spec.Volumes); l != 5 {
+		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 5", l)
 	}
 
-	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 4 {
-		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 4", l)
+	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 5 {
+		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 5", l)
 	}
 }
 
@@ -521,7 +474,6 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-
 	assert.NilError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -573,38 +525,10 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "ssh-known-hosts",
-						MountPath: "/app/config/ssh",
-					}, {
-						Name:      "tls-certs",
-						MountPath: "/app/config/tls",
-					},
-				},
+				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: []corev1.Volume{
-			{
-				Name: "ssh-known-hosts",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDKnownHostsConfigMapName,
-						},
-					},
-				},
-			}, {
-				Name: "tls-certs",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
-						},
-					},
-				},
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -672,38 +596,10 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "ssh-known-hosts",
-						MountPath: "/app/config/ssh",
-					}, {
-						Name:      "tls-certs",
-						MountPath: "/app/config/tls",
-					},
-				},
+				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: []corev1.Volume{
-			{
-				Name: "ssh-known-hosts",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDKnownHostsConfigMapName,
-						},
-					},
-				},
-			}, {
-				Name: "tls-certs",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
-						},
-					},
-				},
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -774,38 +670,10 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "ssh-known-hosts",
-						MountPath: "/app/config/ssh",
-					}, {
-						Name:      "tls-certs",
-						MountPath: "/app/config/tls",
-					},
-				},
+				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: []corev1.Volume{
-			{
-				Name: "ssh-known-hosts",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDKnownHostsConfigMapName,
-						},
-					},
-				},
-			}, {
-				Name: "tls-certs",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
-						},
-					},
-				},
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -932,4 +800,117 @@ func controllerProcessors(n int32) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Controller.Processors.Status = n
 	}
+}
+
+// repoServerVolumes returns the list of expected default volumes for the repo server
+func repoServerDefaultVolumes() []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+	return volumes
+}
+
+// repoServerDefaultVolumeMounts return the default volume mounts for the repo server
+func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
+		{Name: "ssh-known-hosts", MountPath: "/app/config/ssh"},
+		{Name: "tls-certs", MountPath: "/app/config/tls"},
+		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
+		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
+		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
+	}
+	return mounts
+}
+
+func serverDefaultVolumes() []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		}, {
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		}, {
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+	return volumes
+}
+
+func serverDefaultVolumeMounts() []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		}, {
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		}, {
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/server/tls",
+		},
+	}
+	return mounts
 }

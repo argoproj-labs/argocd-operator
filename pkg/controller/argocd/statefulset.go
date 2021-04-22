@@ -338,8 +338,25 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			PeriodSeconds:       10,
 		},
 		Resources: getArgoApplicationControllerResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/controller/tls",
+			},
+		},
 	}}
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
+	podSpec.Volumes = []corev1.Volume{
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
