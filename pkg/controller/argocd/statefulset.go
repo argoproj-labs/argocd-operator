@@ -423,6 +423,15 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
 			changed = true
 		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = ss.Spec.Template.Spec.Containers[0].VolumeMounts
+			changed = true
+		}
 
 		if changed {
 			return r.client.Update(context.TODO(), existing)
