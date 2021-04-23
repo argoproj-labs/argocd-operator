@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"gotest.tools/assert"
 
@@ -18,6 +20,31 @@ var (
 	testRedisImage        = "redis"
 	testRedisImageVersion = "test"
 )
+
+func controllerDefaultVolumes() []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+	return volumes
+}
+
+func controllerDefaultVolumeMounts() []corev1.VolumeMount {
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/controller/tls",
+		},
+	}
+	return mounts
+}
 
 func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
@@ -79,6 +106,14 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
 		"--status-processors", "20"}
 	if diff := cmp.Diff(want, command); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+	wantVolumes := controllerDefaultVolumes()
+	if diff := cmp.Diff(wantVolumes, ss.Spec.Template.Spec.Volumes); diff != "" {
+		t.Fatalf("reconciliation failed:\n%s", diff)
+	}
+	wantVolumeMounts := controllerDefaultVolumeMounts()
+	if diff := cmp.Diff(wantVolumeMounts, ss.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
 }
