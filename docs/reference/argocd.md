@@ -189,9 +189,7 @@ metadata:
     example: openshift-oauth
 spec:
   dex:
-    image: quay.io/redhat-cop/dex
     openShiftOAuth: true
-    version: v2.22.0-openshift
   rbac:
     defaultPolicy: 'role:readonly'
     policy: |
