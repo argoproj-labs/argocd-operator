@@ -790,7 +790,7 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc) error {
+func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc, tlsSecretMapper handler.ToRequestsFunc) error {
 	// Watch for changes to primary resource ArgoCD
 	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -833,11 +833,20 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 		ToRequests: clusterResourceMapper,
 	}
 
+	tlsSecretHandler := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: tlsSecretMapper,
+	}
+
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler); err != nil {
 		return err
 	}
 
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler); err != nil {
+		return err
+	}
+
+	// Watch for secrets of type TLS that might be created by external processes
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler); err != nil {
 		return err
 	}
 
@@ -879,6 +888,10 @@ func watchOwnedResource(c controller.Controller, obj runtime.Object) error {
 		IsController: true,
 		OwnerType:    &argoprojv1a1.ArgoCD{},
 	})
+}
+
+func watchIndirectOwnedResource(c controller.Controller, obj runtime.Object) error {
+	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForObject{})
 }
 
 // withClusterLabels will add the given labels to the labels for the cluster and return the result.

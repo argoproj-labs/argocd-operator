@@ -262,6 +262,9 @@ type ArgoCDRepoSpec struct {
 
 	// ServiceAccount defines the ServiceAccount user that you would like the Repo server to use
 	ServiceAccount string `json:"serviceaccount,omitempty"`
+
+	// StrictTLS defines whether repo server API should be accessed using strict TLS validation
+	StrictTLS bool `json:"stricttls,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

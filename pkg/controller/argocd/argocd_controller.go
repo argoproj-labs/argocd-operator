@@ -57,7 +57,7 @@ func add(mgr manager.Manager, r *ReconcileArgoCD) error {
 	}
 
 	// Register watches for all controller resources
-	if err := watchResources(c, r.clusterResourceMapper); err != nil {
+	if err := watchResources(c, r.clusterResourceMapper, r.tlsSecretMapper); err != nil {
 		return err
 	}
 
