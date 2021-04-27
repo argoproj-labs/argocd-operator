@@ -142,6 +142,10 @@ func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
 }
 
+func isStrictTLSRequested(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Repo.StrictTLS
+}
+
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
 func getArgoServerGRPCHost(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("grpc", cr)
@@ -701,6 +705,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -906,4 +914,15 @@ func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map
 // boolPtr returns a pointer to val
 func boolPtr(val bool) *bool {
 	return &val
+}
+
+func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+	switch res := obj.(type) {
+	case *appsv1.Deployment:
+		return r.triggerDeploymentRollout(res, key)
+	case *appsv1.StatefulSet:
+		return r.triggerStatefulSetRollout(res, key)
+	default:
+		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
+	}
 }

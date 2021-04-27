@@ -413,6 +413,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr)
+		if isStrictTLSRequested(cr) {
+			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
+		}
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
 			changed = true
@@ -460,4 +463,15 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 	return nil
+}
+
+// triggerRollout will update the label with the given key to trigger a new rollout of the Deployment.
+func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
+	if !argoutil.IsObjectFound(r.client, sts.Namespace, sts.Name, sts) {
+		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
+		return nil
+	}
+
+	sts.Spec.Template.ObjectMeta.Labels[key] = nowDefault()
+	return r.client.Update(context.TODO(), sts)
 }

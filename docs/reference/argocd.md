@@ -732,6 +732,8 @@ Name | Default | Description
 Resources | [Empty] | The container compute resources.
 MountSAToken | false | Whether the ServiceAccount token should be mounted to the repo-server pod.
 ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
+StrictTLS | false | Whether to enforce strict TLS checking on all components when communicating with repo server
+AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
 
 ### Repo Example
 
@@ -749,6 +751,8 @@ spec:
     resources: {}
     mountsatoken: false
     serviceaccount: ""
+    stricttls: false
+    autotls: ""
 ```
 
 ## Resource Customizations

@@ -265,6 +265,11 @@ type ArgoCDRepoSpec struct {
 
 	// StrictTLS defines whether repo server API should be accessed using strict TLS validation
 	StrictTLS bool `json:"stricttls,omitempty"`
+
+	// AutoTLS specifies the method to use for automatic TLS configuration for the repo server
+	// The value specified here can currently be:
+	// - openshift - Use the OpenShift service CA to request TLS config
+	AutoTLS string `json:"autotls,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -486,6 +491,9 @@ type ArgoCDStatus struct {
 	// Failed: At least one of the  Argo CD server component Pods had a failure.
 	// Unknown: For some reason the state of the Argo CD server component could not be obtained.
 	Server string `json:"server,omitempty"`
+
+	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
+	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.

@@ -206,6 +206,10 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		cmd = append(cmd, "--insecure")
 	}
 
+	if isStrictTLSRequested(cr) {
+		cmd = append(cmd, "--repo-server-strict-tls")
+	}
+
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
@@ -1026,7 +1030,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 }
 
 // triggerRollout will update the label with the given key to trigger a new rollout of the Deployment.
-func (r *ReconcileArgoCD) triggerRollout(deployment *appsv1.Deployment, key string) error {
+func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
 	if !argoutil.IsObjectFound(r.client, deployment.Namespace, deployment.Name, deployment) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
 		return nil

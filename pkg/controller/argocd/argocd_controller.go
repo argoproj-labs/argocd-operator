@@ -66,7 +66,10 @@ func add(mgr manager.Manager, r *ReconcileArgoCD) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) *ReconcileArgoCD {
-	return &ReconcileArgoCD{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileArgoCD{
+		client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+	}
 }
 
 // Reconcile reads that state of the cluster for a ArgoCD object and makes changes based on the state read
