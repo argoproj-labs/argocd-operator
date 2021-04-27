@@ -68,6 +68,54 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
 
+	podSpec.Volumes = []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+
 	podSpec.Containers = []corev1.Container{{
 		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(cr)},
 		Env: []corev1.EnvVar{{
@@ -82,6 +130,28 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 		Resources:       getApplicationSetResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "ssh-known-hosts",
+				MountPath: "/app/config/ssh",
+			},
+			{
+				Name:      "tls-certs",
+				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "gpg-keys",
+				MountPath: "/app/config/gpg/source",
+			},
+			{
+				Name:      "gpg-keyring",
+				MountPath: "/app/config/gpg/keys",
+			},
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/reposerver/tls",
+			},
+		},
 	}}
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
