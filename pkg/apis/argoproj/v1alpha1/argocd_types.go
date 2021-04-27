@@ -385,6 +385,9 @@ type ArgoCDSpec struct {
 	// InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.
 	InitialSSHKnownHosts SSHHostsSpec `json:"initialSSHKnownHosts,omitempty"`
 
+	// Keycloak enables/disables OIDC for Argo CD using keycloak
+	Keycloak KeycloakSpec `json:"keycloak,omitempty"`
+
 	// KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.
 	KustomizeBuildOptions string `json:"kustomizeBuildOptions,omitempty"`
 
@@ -502,6 +505,11 @@ type SSHHostsSpec struct {
 	// Keys describes a custom set of SSH Known Hosts that you would like to
 	// have included in your ArgoCD server.
 	Keys string `json:"keys,omitempty"`
+}
+
+// KeycloakSpec defines OIDC configuration for Argo CD using keycloak.
+type KeycloakSpec struct {
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer

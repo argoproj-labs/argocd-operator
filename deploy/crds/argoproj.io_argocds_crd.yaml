@@ -432,6 +432,12 @@ spec:
                     you would like to have included in your ArgoCD server.
                   type: string
               type: object
+            keycloak:
+              description: Keycloak enables/disables OIDC for Argo CD using keycloak
+              properties:
+                enabled:
+                  type: boolean
+              type: object
             kustomizeBuildOptions:
               description: KustomizeBuildOptions is used to specify build options/parameters
                 to use with `kustomize build`.
