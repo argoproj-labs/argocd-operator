@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -33,6 +34,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 
+	oappsv1 "github.com/openshift/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
@@ -43,7 +45,9 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -810,8 +814,62 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 
 // watchResources will register Watches for each of the supported Resources.
 func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc, tlsSecretMapper handler.ToRequestsFunc) error {
+
+	deploymentConfigPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to CR status in which case metadata.Generation does not change
+			var count int32 = 1
+			newDC, ok := e.ObjectNew.(*oappsv1.DeploymentConfig)
+			if !ok {
+				return false
+			}
+			oldDC, ok := e.ObjectOld.(*oappsv1.DeploymentConfig)
+			if !ok {
+				return false
+			}
+			if newDC.Name == defaultKeycloakIdentifier {
+				if newDC.Status.AvailableReplicas == count {
+					return true
+				}
+				if newDC.Status.AvailableReplicas == int32(0) &&
+					!reflect.DeepEqual(oldDC.Status.AvailableReplicas, newDC.Status.AvailableReplicas) {
+					// Handle the deletion of keycloak pod.
+					log.Info(fmt.Sprintf("Handle the pod deletion event for keycloak deployment config %s in namespace %s",
+						newDC.Name, newDC.Namespace))
+					err := handleKeycloakPodDeletion(newDC)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to update Deployment Config %s for keycloak pod deletion in namespace %s",
+							newDC.Name, newDC.Namespace))
+					}
+				}
+			}
+			return false
+		},
+	}
+
+	deleteSSOPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoprojv1a1.ArgoCD)
+			if !ok {
+				return false
+			}
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
+				err := deleteSSOConfiguration(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+			return true
+		},
+	}
+
 	// Watch for changes to primary resource ArgoCD
-	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}, deleteSSOPred); err != nil {
 		return err
 	}
 
@@ -895,6 +953,17 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 
 		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
 		if err := watchOwnedResource(c, &monitoringv1.ServiceMonitor{}); err != nil {
+			return err
+		}
+	}
+
+	if IsTemplateAPIAvailable() {
+		// Watch for the changes to Deployment Config
+		if err := c.Watch(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &argoprojv1a1.ArgoCD{},
+		},
+			deploymentConfigPred); err != nil {
 			return err
 		}
 	}

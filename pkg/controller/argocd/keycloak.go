@@ -15,24 +15,35 @@
 package argocd
 
 import (
+	"context"
+	b64 "encoding/base64"
 	json "encoding/json"
+	"fmt"
 
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	template "github.com/openshift/api/template/v1"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/errors"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
 	privilegedMode bool  = false
 	graceTime      int64 = 75
 	portTLS        int32 = 8443
+	controllerRef  bool  = true
 )
 
 // getKeycloakContainerImage will return the container image for Keycloak.
@@ -57,6 +68,23 @@ func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
 	}
 }
 
+func getKeycloakSecretTemplate(ns string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"application": "${APPLICATION_NAME}",
+			},
+			Name:      "${APPLICATION_NAME}-secret",
+			Namespace: ns,
+		},
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		StringData: map[string]string{
+			"SSO_USERNAME": "${SSO_ADMIN_USERNAME}",
+			"SSO_PASSWORD": "${SSO_ADMIN_PASSWORD}",
+		},
+	}
+}
+
 func getKeycloakContainer() corev1.Container {
 	return corev1.Container{
 		Env: []corev1.EnvVar{
@@ -64,11 +92,9 @@ func getKeycloakContainer() corev1.Container {
 			{Name: "DB_MIN_POOL_SIZE", Value: "${DB_MIN_POOL_SIZE}"},
 			{Name: "DB_MAX_POOL_SIZE", Value: "${DB_MAX_POOL_SIZE}"},
 			{Name: "DB_TX_ISOLATION", Value: "${DB_TX_ISOLATION}"},
-			{Name: "JGROUPS_PING_PROTOCOL", Value: "openshift.DNS_PING"},
 			{Name: "OPENSHIFT_DNS_PING_SERVICE_NAME", Value: "${APPLICATION_NAME}-ping"},
 			{Name: "OPENSHIFT_DNS_PING_SERVICE_PORT", Value: "8888"},
-			{Name: "X509_CA_BUNDLE", Value: "/var/run/configmaps/service-ca/service-ca.crt /var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
-			{Name: "JGROUPS_CLUSTER_PASSWORD", Value: "${JGROUPS_CLUSTER_PASSWORD}"},
+			{Name: "X509_CA_BUNDLE", Value: "/var/run/configmaps/service-ca/service-ca.crt /var/run/secrets/kubernetes.io/serviceaccount/*.crt"},
 			{Name: "SSO_ADMIN_USERNAME", Value: "${SSO_ADMIN_USERNAME}"},
 			{Name: "SSO_ADMIN_PASSWORD", Value: "${SSO_ADMIN_PASSWORD}"},
 			{Name: "SSO_REALM", Value: "${SSO_REALM}"},
@@ -111,21 +137,19 @@ func getKeycloakContainer() corev1.Container {
 			InitialDelaySeconds: 60,
 		},
 		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			},
 			Limits: corev1.ResourceList{
-				"memory": resource.Quantity{
-					Format: "${MEMORY_LIMIT}",
-				},
+				corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/etc/x509/https",
 				Name:      "sso-x509-https-volume",
-				ReadOnly:  true,
-			},
-			{
-				MountPath: "/etc/x509/jgroups",
-				Name:      "sso-x509-jgroups-volume",
 				ReadOnly:  true,
 			},
 			{
@@ -137,16 +161,29 @@ func getKeycloakContainer() corev1.Container {
 	}
 }
 
-func getKeycloakDeploymentConfigTemplate(ns string) *appsv1.DeploymentConfig {
+func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.DeploymentConfig {
+	ns := cr.Namespace
 	keycloakContainer := getKeycloakContainer()
 	keycloakImage := common.ArgoCDKeycloakImageName
 	keycloakVersion := common.ArgoCDKeycloakVersion
 
 	return &appsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"argocd.argoproj.io/realm-created": "false",
+			},
 			Labels:    map[string]string{"application": "${APPLICATION_NAME}"},
 			Name:      "${APPLICATION_NAME}",
 			Namespace: ns,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "argoproj.io/v1alpha1",
+					UID:        cr.UID,
+					Name:       cr.Name,
+					Controller: &controllerRef,
+					Kind:       "ArgoCD",
+				},
+			},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "DeploymentConfig"},
 		Spec: appsv1.DeploymentConfigSpec{
@@ -173,15 +210,7 @@ func getKeycloakDeploymentConfigTemplate(ns string) *appsv1.DeploymentConfig {
 							Name: "sso-x509-https-volume",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "sso-x509-https-secret",
-								},
-							},
-						},
-						{
-							Name: "sso-x509-jgroups-volume",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: "sso-x509-https-secret",
+									SecretName: servingCertSecretName,
 								},
 							},
 						},
@@ -227,38 +256,13 @@ func getKeycloakServiceTemplate(ns string) *corev1.Service {
 			Namespace: ns,
 			Annotations: map[string]string{
 				"description": "The web server's https port",
-				"service.alpha.openshift.io/serving-cert-secret-name": "sso-x509-https-secret",
+				"service.alpha.openshift.io/serving-cert-secret-name": servingCertSecretName,
 			},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Service"},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{Port: portTLS, TargetPort: intstr.FromInt(int(portTLS))},
-			},
-			Selector: map[string]string{
-				"deploymentConfig": "${APPLICATION_NAME}",
-			},
-		},
-	}
-}
-
-func getKeycloakPingServiceTemplate(ns string) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:    map[string]string{"application": "${APPLICATION_NAME}"},
-			Name:      "${APPLICATION_NAME}" + "-ping",
-			Namespace: ns,
-			Annotations: map[string]string{
-				"description": "The JGroups ping port for clustering",
-				"service.alpha.kubernetes.io/tolerate-unready-endpoints": "true",
-				"service.alpha.openshift.io/serving-cert-secret-name":    "sso-x509-jgroups-secret",
-			},
-		},
-		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Service"},
-		Spec: corev1.ServiceSpec{
-			ClusterIP: "None",
-			Ports: []corev1.ServicePort{
-				{Name: "ping", Port: 8888},
 			},
 			Selector: map[string]string{
 				"deploymentConfig": "${APPLICATION_NAME}",
@@ -287,15 +291,15 @@ func getKeycloakRouteTemplate(ns string) *routev1.Route {
 	}
 }
 
-func newKeycloakTemplateInstance(ns string) (*template.TemplateInstance, error) {
-	tpl, err := newKeycloakTemplate(ns)
+func newKeycloakTemplateInstance(cr *argoprojv1a1.ArgoCD) (*template.TemplateInstance, error) {
+	tpl, err := newKeycloakTemplate(cr)
 	if err != nil {
-		return &template.TemplateInstance{}, err
+		return nil, err
 	}
 	return &template.TemplateInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rhsso",
-			Namespace: ns,
+			Name:      defaultTemplateIdentifier,
+			Namespace: cr.Namespace,
 		},
 		Spec: template.TemplateInstanceSpec{
 			Template: tpl,
@@ -303,15 +307,21 @@ func newKeycloakTemplateInstance(ns string) (*template.TemplateInstance, error) 
 	}, nil
 }
 
-func newKeycloakTemplate(ns string) (template.Template, error) {
+func newKeycloakTemplate(cr *argoprojv1a1.ArgoCD) (template.Template, error) {
+	ns := cr.Namespace
 	tmpl := template.Template{}
 	configMapTemplate := getKeycloakConfigMapTemplate(ns)
-	deploymentConfigTemplate := getKeycloakDeploymentConfigTemplate(ns)
+	secretTemplate := getKeycloakSecretTemplate(ns)
+	deploymentConfigTemplate := getKeycloakDeploymentConfigTemplate(cr)
 	serviceTemplate := getKeycloakServiceTemplate(ns)
-	pingServiceTemplate := getKeycloakPingServiceTemplate(ns)
 	routeTemplate := getKeycloakRouteTemplate(ns)
 
 	configMap, err := json.Marshal(configMapTemplate)
+	if err != nil {
+		return tmpl, err
+	}
+
+	secret, err := json.Marshal(secretTemplate)
 	if err != nil {
 		return tmpl, err
 	}
@@ -322,11 +332,6 @@ func newKeycloakTemplate(ns string) (template.Template, error) {
 	}
 
 	service, err := json.Marshal(serviceTemplate)
-	if err != nil {
-		return tmpl, err
-	}
-
-	pingService, err := json.Marshal(pingServiceTemplate)
 	if err != nil {
 		return tmpl, err
 	}
@@ -345,12 +350,15 @@ func newKeycloakTemplate(ns string) (template.Template, error) {
 				"tags":                      "keycloak",
 				"version":                   "9.0.4-SNAPSHOT",
 			},
-			Name:      "rhsso",
+			Name:      defaultTemplateIdentifier,
 			Namespace: ns,
 		},
 		Objects: []runtime.RawExtension{
 			{
 				Raw: json.RawMessage(configMap),
+			},
+			{
+				Raw: json.RawMessage(secret),
 			},
 			{
 				Raw: json.RawMessage(deploymentConfig),
@@ -359,16 +367,12 @@ func newKeycloakTemplate(ns string) (template.Template, error) {
 				Raw: json.RawMessage(service),
 			},
 			{
-				Raw: json.RawMessage(pingService),
-			},
-			{
 				Raw: json.RawMessage(route),
 			},
 		},
 		Parameters: []template.Parameter{
-			{Name: "APPLICATION_NAME", Value: "sso", Required: true},
+			{Name: "APPLICATION_NAME", Value: "keycloak", Required: true},
 			{Name: "SSO_HOSTNAME"},
-			{Name: "JGROUPS_CLUSTER_PASSWORD", Generate: "expression", From: "[a-zA-Z0-9]{32}", Required: true},
 			{Name: "DB_MIN_POOL_SIZE"},
 			{Name: "DB_MAX_POOL_SIZE"},
 			{Name: "DB_TX_ISOLATION"},
@@ -382,4 +386,304 @@ func newKeycloakTemplate(ns string) (template.Template, error) {
 		},
 	}
 	return tmpl, err
+}
+
+// prepares a keycloak config which is used in creating keycloak realm configuration.
+func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
+
+	var tlsVerification bool
+	// Get keycloak hostname from route.
+	// keycloak hostname is required to post realm configuration to keycloak when keycloak cannot be accessed using service name
+	// due to network policies or operator running outside the cluster or development purpose.
+	existingKeycloakRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      defaultKeycloakIdentifier,
+			Namespace: cr.Namespace,
+		},
+	}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakRoute.Name,
+		Namespace: existingKeycloakRoute.Namespace}, existingKeycloakRoute)
+	if err != nil {
+		return nil, err
+	}
+	kRouteURL := fmt.Sprintf("https://%s", existingKeycloakRoute.Spec.Host)
+
+	// Get ArgoCD hostname from route. ArgoCD hostname is used in the keycloak client configuration.
+	existingArgoCDRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, "server"),
+			Namespace: cr.Namespace,
+		},
+	}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDRoute.Name,
+		Namespace: existingArgoCDRoute.Namespace}, existingArgoCDRoute)
+	if err != nil {
+		return nil, err
+	}
+	aRouteURL := fmt.Sprintf("https://%s", existingArgoCDRoute.Spec.Host)
+
+	// Get keycloak Secret for credentials. credentials are required to authenticate with keycloak.
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", defaultKeycloakIdentifier, "secret"),
+			Namespace: cr.Namespace,
+		},
+	}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingSecret.Name,
+		Namespace: existingSecret.Namespace}, existingSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	userEnc := b64.URLEncoding.EncodeToString(existingSecret.Data["SSO_USERNAME"])
+	passEnc := b64.URLEncoding.EncodeToString(existingSecret.Data["SSO_PASSWORD"])
+
+	username, _ := b64.URLEncoding.DecodeString(userEnc)
+	password, _ := b64.URLEncoding.DecodeString(passEnc)
+
+	// Get Keycloak Service Cert
+	serverCert, err := r.getKCServerCert(cr)
+	if err != nil {
+		return nil, err
+	}
+
+	// By default TLS Verification should be enabled.
+	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS == true {
+		tlsVerification = true
+	}
+
+	cfg := &keycloakConfig{
+		ArgoName:           cr.Name,
+		ArgoNamespace:      cr.Namespace,
+		Username:           string(username),
+		Password:           string(password),
+		KeycloakURL:        kRouteURL,
+		ArgoCDURL:          aRouteURL,
+		KeycloakServerCert: serverCert,
+		VerifyTLS:          tlsVerification,
+	}
+
+	return cfg, nil
+}
+
+// creates a keycloak realm configuration which when posted to keycloak using http client creates a keycloak realm.
+func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
+
+	ks := &keycloakv1alpha1.KeycloakAPIRealm{
+		Realm:       keycloakRealm,
+		Enabled:     true,
+		SslRequired: "external",
+		Clients: []*keycloakv1alpha1.KeycloakAPIClient{
+			{
+				ClientID:                keycloakClient,
+				Name:                    keycloakClient,
+				RootURL:                 cfg.ArgoCDURL,
+				AdminURL:                cfg.ArgoCDURL,
+				ClientAuthenticatorType: "client-secret",
+				Secret:                  argocdClientSecret,
+				RedirectUris: []string{fmt.Sprintf("%s/%s",
+					cfg.ArgoCDURL, "auth/callback")},
+				WebOrigins: []string{cfg.ArgoCDURL},
+				DefaultClientScopes: []string{
+					"web-origins",
+					"role_list",
+					"roles",
+					"profile",
+					"groups",
+					"email",
+				},
+				StandardFlowEnabled: true,
+			},
+		},
+		ClientScopes: []keycloakv1alpha1.KeycloakClientScope{
+			{
+				Name:     "groups",
+				Protocol: "openid-connect",
+				ProtocolMappers: []keycloakv1alpha1.KeycloakProtocolMapper{
+					{
+						Name:           "groups",
+						Protocol:       "openid-connect",
+						ProtocolMapper: "oidc-group-membership-mapper",
+						Config: map[string]string{
+							"full.path":            "false",
+							"id.token.claim":       "true",
+							"access.token.claim":   "true",
+							"claim.name":           "groups",
+							"userinfo.token.claim": "true",
+						},
+					},
+				},
+			},
+			{
+				Name:     "email",
+				Protocol: "openid-connect",
+				ProtocolMappers: []keycloakv1alpha1.KeycloakProtocolMapper{
+					{
+						Name:           "email",
+						Protocol:       "openid-connect",
+						ProtocolMapper: "oidc-usermodel-property-mapper",
+						Config: map[string]string{
+							"userinfo.token.claim": "true",
+							"user.attribute":       "email",
+							"id.token.claim":       "true",
+							"access.token.claim":   "true",
+							"claim.name":           "email",
+							"jsonType.label":       "String",
+						},
+					},
+				},
+			},
+		},
+		IdentityProviders: []*keycloakv1alpha1.KeycloakIdentityProvider{
+			{
+				Alias:       "openshift-v4",
+				DisplayName: "Login with OpenShift",
+				ProviderID:  "openshift-v4",
+				Config: map[string]string{
+					"baseUrl":      fmt.Sprintf("https://%s", "kubernetes.default.svc"),
+					"clientSecret": oAuthClientSecret,
+					"clientId":     getOAuthClient(cfg.ArgoNamespace),
+					"defaultScope": "user:full",
+				},
+			},
+		},
+	}
+
+	json, err := json.Marshal(ks)
+	if err != nil {
+		return nil, err
+	}
+
+	return json, nil
+}
+
+// Gets Keycloak Server cert. This cert is used to authenticate the api calls to the Keycloak service.
+func (r *ReconcileArgoCD) getKCServerCert(cr *argoprojv1a1.ArgoCD) ([]byte, error) {
+
+	sslCertsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      servingCertSecretName,
+			Namespace: cr.Namespace,
+		},
+	}
+
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: sslCertsSecret.Name, Namespace: sslCertsSecret.Namespace}, sslCertsSecret)
+
+	switch {
+	case err == nil:
+		return sslCertsSecret.Data["tls.crt"], nil
+	case errors.IsNotFound(err):
+		return nil, nil
+	default:
+		return nil, err
+	}
+}
+
+func getOAuthClient(ns string) string {
+	return fmt.Sprintf("%s-%s", defaultKeycloakBrokerName, ns)
+}
+
+// Updates OIDC configuration for ArgoCD.
+func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRouteURL string) error {
+
+	// Update the ArgoCD client secret for OIDC in argocd-secret.
+	argoCDSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDSecretName,
+			Namespace: cr.Namespace,
+		},
+	}
+
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: argoCDSecret.Name, Namespace: argoCDSecret.Namespace}, argoCDSecret)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("ArgoCD secret not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(argocdClientSecret)
+	err = r.client.Update(context.TODO(), argoCDSecret)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// Create openshift OAuthClient
+	oAuthClient := &oauthv1.OAuthClient{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "OAuthClient",
+			APIVersion: "oauth.openshift.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getOAuthClient(cr.Namespace),
+			Namespace: cr.Namespace,
+		},
+		Secret: oAuthClientSecret,
+		RedirectURIs: []string{fmt.Sprintf("%s/auth/realms/%s/broker/openshift-v4/endpoint",
+			kRouteURL, keycloakClient)},
+		GrantMethod: "prompt",
+	}
+
+	err = controllerutil.SetOwnerReference(cr, oAuthClient, r.scheme)
+	if err != nil {
+		return err
+	}
+
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.client.Create(context.TODO(), oAuthClient)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update ArgoCD instance for OIDC Config with Keycloakrealm URL
+	o, _ := yaml.Marshal(oidcConfig{
+		Name: "Keycloak",
+		Issuer: fmt.Sprintf("%s/auth/realms/%s",
+			kRouteURL, keycloakRealm),
+		ClientID:       keycloakClient,
+		ClientSecret:   "$oidc.keycloak.clientSecret",
+		RequestedScope: []string{"openid", "profile", "email", "groups"},
+	})
+
+	argoCDCM := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("ArgoCD configmap not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+
+		return err
+	}
+
+	argoCDCM.Data[common.ArgoCDKeyOIDCConfig] = string(o)
+	err = r.client.Update(context.TODO(), argoCDCM)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// Update RBAC for ArgoCD Instance.
+	argoRBACCM := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: argoRBACCM.Name, Namespace: argoRBACCM.Namespace}, argoRBACCM)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("ArgoCD RBAC configmap not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+
+		return err
+	}
+
+	argoRBACCM.Data["scopes"] = "[groups,email]"
+	err = r.client.Update(context.TODO(), argoRBACCM)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	return nil
 }

@@ -585,6 +585,12 @@ spec:
           - clusterrolebindings
           verbs:
           - '*'
+        - apiGroups:
+          - oauth.openshift.io
+          resources:
+          - oauthclients 
+          verbs:
+          - '*'
         serviceAccountName: argocd-operator
       deployments:
       - name: argocd-operator
@@ -655,6 +661,12 @@ spec:
           - apps.openshift.io
           resources:
           - deploymentconfigs
+          verbs:
+          - '*'
+        - apiGroups:
+          - oauth.openshift.io
+          resources:
+          - oauthclients 
           verbs:
           - '*'
         - apiGroups:

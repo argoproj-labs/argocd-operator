@@ -429,9 +429,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 		changed = true
 	}
 
-	if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
-		cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
-		changed = true
+	if cr.Spec.SSO == nil {
+		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
+			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
+			changed = true
+		}
 	}
 
 	if cm.Data[common.ArgoCDKeyResourceCustomizations] != cr.Spec.ResourceCustomizations {

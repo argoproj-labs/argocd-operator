@@ -15,12 +15,15 @@
 package argocd
 
 import (
+	"context"
 	"testing"
 
+	argoappv1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -31,15 +34,7 @@ var (
 			Name: "sso-x509-https-volume",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "sso-x509-https-secret",
-				},
-			},
-		},
-		{
-			Name: "sso-x509-jgroups-volume",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "sso-x509-https-secret",
+					SecretName: servingCertSecretName,
 				},
 			},
 		},
@@ -65,23 +60,35 @@ func TestKeycloakContainerImage(t *testing.T) {
 }
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
-	tmplInstance, err := newKeycloakTemplateInstance(fakeNs)
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	tmplInstance, err := newKeycloakTemplateInstance(a)
 	assert.NilError(t, err)
 
 	assert.Equal(t, tmplInstance.Name, "rhsso")
-	assert.Equal(t, tmplInstance.Namespace, fakeNs)
+	assert.Equal(t, tmplInstance.Namespace, a.Namespace)
 }
 
 func TestNewKeycloakTemplate(t *testing.T) {
-	tmpl, err := newKeycloakTemplate(fakeNs)
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	tmpl, err := newKeycloakTemplate(a)
 	assert.NilError(t, err)
 
 	assert.Equal(t, tmpl.Name, "rhsso")
-	assert.Equal(t, tmpl.Namespace, fakeNs)
+	assert.Equal(t, tmpl.Namespace, a.Namespace)
 }
 
 func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
-	dc := getKeycloakDeploymentConfigTemplate(fakeNs)
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	dc := getKeycloakDeploymentConfigTemplate(a)
 
 	assert.Equal(t, dc.Spec.Replicas, fakeReplicas)
 	assert.DeepEqual(t, dc.Spec.Strategy, appsv1.DeploymentStrategy{Type: "Recreate"})
@@ -110,14 +117,6 @@ func TestNewKeycloakTemplate_testService(t *testing.T) {
 		"deploymentConfig": "${APPLICATION_NAME}"})
 }
 
-func TestNewKeycloakTemplate_testPingService(t *testing.T) {
-	svc := getKeycloakPingServiceTemplate(fakeNs)
-	assert.Equal(t, svc.Name, "${APPLICATION_NAME}-ping")
-	assert.Equal(t, svc.Namespace, fakeNs)
-	assert.DeepEqual(t, svc.Spec.Selector, map[string]string{
-		"deploymentConfig": "${APPLICATION_NAME}"})
-}
-
 func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 	route := getKeycloakRouteTemplate(fakeNs)
 	assert.Equal(t, route.Name, "${APPLICATION_NAME}")
@@ -126,4 +125,44 @@ func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 		routev1.RouteTargetReference{Name: "${APPLICATION_NAME}"})
 	assert.DeepEqual(t, route.Spec.TLS,
 		&routev1.TLSConfig{Termination: "reencrypt"})
+}
+
+func TestKeycloak_testRealmConfigCreation(t *testing.T) {
+	cfg := &keycloakConfig{
+		ArgoName:      "foo-argocd",
+		ArgoNamespace: "foo",
+		Username:      "test-user",
+		Password:      "test",
+		KeycloakURL:   "https://foo.keycloak.com",
+		ArgoCDURL:     "https://bar.argocd.com",
+	}
+
+	_, err := createRealmConfig(cfg)
+	assert.NilError(t, err)
+}
+
+func TestKeycloak_testServerCert(t *testing.T) {
+
+	a := makeTestArgoCDForKeycloak()
+	r := makeFakeReconciler(t, a)
+
+	sslCertsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      servingCertSecretName,
+			Namespace: a.Namespace,
+		},
+		Data: map[string][]byte{
+			"tls.crt": []byte("asdasfsff"),
+		},
+	}
+	r.client.Create(context.TODO(), sslCertsSecret)
+
+	_, err := r.getKCServerCert(a)
+	assert.NilError(t, err)
+
+	sslCertsSecret.Data["tls.crt"] = nil
+	r.client.Update(context.TODO(), sslCertsSecret)
+
+	_, err = r.getKCServerCert(a)
+	assert.NilError(t, err)
 }
