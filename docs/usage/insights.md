@@ -105,7 +105,7 @@ prometheus-example-argocd-0                             3/3     Running   1     
 prometheus-operator-7f6dfb7686-wb9h2                    1/1     Running   0          14m
 ```
 
-Grafana and Prometheus can be accessed via Ingress resources. For OpenShift clusters, Routes will be created instead.
+Grafana and Prometheus can be accessed via Ingress resources.
 
 ``` bash
 kubectl get ing -n argocd
@@ -119,6 +119,35 @@ example-argocd              <none>   example-argocd              192.168.39.68  
 example-argocd-grafana      <none>   example-argocd-grafana      192.168.39.68   80, 443   15h
 example-argocd-grpc         <none>   example-argocd-grpc         192.168.39.68   80, 443   15h
 example-argocd-prometheus   <none>   example-argocd-prometheus   192.168.39.68   80, 443   15h
+```
+
+For OpenShift clusters, Routes will be created when route is enabled as shown in the below example.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: insights
+spec:
+  grafana:
+    enabled: true
+    route:
+      enabled: true
+  prometheus:
+    enabled: true
+    route:
+      enabled: true
+  server:
+    insecure: true
+    route:
+      enabled: true
+```
+
+Initial Password for grafana is stored in the example-argocd-cluster secret. Password can be obtained from the secret by running the below command.
+```
+oc -n argocd extract secret/example-argocd-cluster --to=-
 ```
 
 Refer to the [Ingress Guide][ingress_guide] for further steps on accessing these resources.
