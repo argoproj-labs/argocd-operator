@@ -35,6 +35,7 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -156,6 +157,14 @@ func main() {
 	// Setup Scheme for OpenShift Routes if available.
 	if argocd.IsRouteAPIAvailable() {
 		if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+	}
+
+	// Setup Scheme for OpenShift templates if available.
+	if argocd.IsTemplateAPIAvailable() {
+		if err := templatev1.AddToScheme(mgr.GetScheme()); err != nil {
 			log.Error(err, "")
 			os.Exit(1)
 		}

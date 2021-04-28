@@ -22,12 +22,14 @@ nav:
     - OpenShift: install/openshift.md
     - Operator Lifecycle Manager: install/olm.md
     - Manual Installation: install/manual.md
+    - Kustomize Installation: install/kustomize.md
   - Usage: 
     - Basics: usage/basics.md
     - Export: usage/export.md
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
+    - SSO: usage/keycloak.md
     - Routes: usage/routes.md
   - Reference:
     - ArgoCD: reference/argocd.md

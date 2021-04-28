@@ -84,3 +84,17 @@ rules:
   - '*'
   verbs:
   - '*'
+- apiGroups:
+  - template.openshift.io
+  resources:
+  - templates
+  - templateinstances
+  - templateconfigs
+  verbs:
+  - '*'
+- apiGroups:
+  - apps.openshift.io
+  resources:
+  - deploymentconfigs
+  verbs:
+  - '*'
