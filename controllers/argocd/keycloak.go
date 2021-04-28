@@ -48,6 +48,7 @@ var (
 	controllerRef  bool  = true
 )
 
+<<<<<<< HEAD:controllers/argocd/keycloak.go
 // getKeycloakContainerImage will return the container image for the Keycloak.
 //
 // There are three possible options for configuring the image, and this is the
@@ -76,6 +77,11 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
+=======
+// getKeycloakContainerImage will return container image for Keycloak.
+func getKeycloakContainerImage(img string, ver string) string {
+	return argoutil.CombineImageTag(img, ver)
+>>>>>>> feat: Configure Keycloak SSO for Argo CD Instance(#312):pkg/controller/argocd/keycloak.go
 }
 
 func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
