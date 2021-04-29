@@ -1,4 +1,6 @@
 resources:
+- cluster_role.yaml
+- cluster_role_binding.yaml
 - operator.yaml
 - role_binding.yaml
 - role.yaml
