@@ -898,10 +898,6 @@ func watchOwnedResource(c controller.Controller, obj runtime.Object) error {
 	})
 }
 
-func watchIndirectOwnedResource(c controller.Controller, obj runtime.Object) error {
-	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForObject{})
-}
-
 // withClusterLabels will add the given labels to the labels for the cluster and return the result.
 func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map[string]string {
 	labels := labelsForCluster(cr)
