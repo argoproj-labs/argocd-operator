@@ -70,6 +70,11 @@ func nowDefault() string {
 	return time.Now().UTC().Format("01022006-150406-MST")
 }
 
+// nowNano returns a string with the current UTC time as epoch in nanoseconds
+func nowNano() string {
+	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+}
+
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca")

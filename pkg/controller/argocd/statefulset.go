@@ -472,6 +472,6 @@ func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key
 		return nil
 	}
 
-	sts.Spec.Template.ObjectMeta.Labels[key] = nowDefault()
+	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
 	return r.client.Update(context.TODO(), sts)
 }
