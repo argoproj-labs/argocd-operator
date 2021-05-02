@@ -3,6 +3,9 @@ package argocd
 import (
 	"context"
 	"fmt"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -159,4 +162,48 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T
 	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
 	assert.ErrorContains(t, err, "not found")
+}
+
+func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCDWithResources(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Import = &argoprojv1alpha1.ArgoCDImportSpec{
+			Name: "testimport",
+		}
+	})
+	ex := argoprojv1alpha1.ArgoCDExport{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "testimport",
+			Namespace: a.Namespace,
+		},
+		Spec: argoprojv1alpha1.ArgoCDExportSpec{
+			Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, &ex)
+
+	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NilError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	testResources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+		},
+	}
+	assert.DeepEqual(t, ss.Spec.Template.Spec.Containers[0].Resources, testResources)
+	assert.DeepEqual(t, ss.Spec.Template.Spec.InitContainers[0].Resources, testResources)
 }
