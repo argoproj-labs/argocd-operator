@@ -6,7 +6,7 @@ metadata:
     capabilities: Auto Pilot
     categories: Integration & Delivery
     certified: "false"
-    containerImage: quay.io/redhat-cop/argocd-operator:v0.0.15
+    containerImage: quay.io/argoprojlabs/argocd-operator@sha256:462f3285240d75850ae5ed93257d9c454125b23af03cafeaf088c4508489eb96
     createdAt: "2020-10-09 15:19:40"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v0.19.4
@@ -608,7 +608,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: argocd-operator
-                image: quay.io/redhat-cop/argocd-operator:v0.0.15
+                image: quay.io/argoprojlabs/argocd-operator@sha256:462f3285240d75850ae5ed93257d9c454125b23af03cafeaf088c4508489eb96
                 imagePullPolicy: Always
                 name: argocd-operator
                 resources: {}
