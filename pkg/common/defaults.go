@@ -160,6 +160,12 @@ const (
 	// ArgoCDDefaultKustomizeBuildOptions is the default kustomize build options.
 	ArgoCDDefaultKustomizeBuildOptions = ""
 
+	// ArgoCDKeycloakImageName is the default Keycloak Image used when not specified.
+	ArgoCDKeycloakImageName = "sso74-openshift-rhel8"
+
+	// ArgoCDKeycloakVersion is the default Keycloak version used when not specified.
+	ArgoCDKeycloakVersion = "7.4"
+
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""
 

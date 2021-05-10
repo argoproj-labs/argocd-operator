@@ -78,6 +78,12 @@ func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 			HA: argoprojv1alpha1.ArgoCDHASpec{
 				Resources: makeTestHAResources(),
 			},
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				Resources: makeTestDexResources(),
+			},
+			Controller: argoprojv1alpha1.ArgoCDApplicationControllerSpec{
+				Resources: makeTestControllerResources(),
+			},
 		},
 	}
 	for _, o := range opts {
@@ -171,6 +177,19 @@ func stringMapKeys(m map[string]string) []string {
 	return r
 }
 
+func makeTestControllerResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+		},
+	}
+}
+
 func makeTestApplicationSetResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -185,6 +204,19 @@ func makeTestApplicationSetResources() *corev1.ResourceRequirements {
 }
 
 func makeTestHAResources() *corev1.ResourceRequirements {
+	return &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+		},
+	}
+}
+
+func makeTestDexResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),

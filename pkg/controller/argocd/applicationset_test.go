@@ -70,10 +70,11 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
+		VolumeMounts:    repoServerDefaultVolumeMounts(),
 	}}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
-		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
+		t.Fatalf("failed to reconcile applicationset-controller deployment:\n%s", diff)
 	}
 }
 
@@ -99,7 +100,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []corev1.Container{{
+	containerWant := []corev1.Container{{
 		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a)},
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
@@ -122,9 +123,16 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 				corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
 			},
 		},
+		VolumeMounts: repoServerDefaultVolumeMounts(),
 	}}
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
+	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
+		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
+	}
+
+	volumesWant := repoServerDefaultVolumes()
+
+	if diff := cmp.Diff(volumesWant, deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 }

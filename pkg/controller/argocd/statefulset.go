@@ -393,6 +393,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.client, cr),
 			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
+			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",

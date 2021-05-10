@@ -38,6 +38,7 @@ Name | Default | Description
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
+[**SSO**](#single-sign-on-options) | [Object] | Single sign-on options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
@@ -1001,6 +1002,30 @@ metadata:
     example: status-badge-enabled
 spec:
   statusBadgeEnabled: true
+```
+
+## Single sign-on Options
+
+The following properties are available for configuring the Single sign-on component.
+
+Name | Default | Description
+--- | --- | ---
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
+
+### Single sign-on Example
+
+The following example uses keycloak as Single sign-on option for Argo CD.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: status-badge-enabled
+spec:
+  sso:
+    provider: keycloak
 ```
 
 ## TLS Options

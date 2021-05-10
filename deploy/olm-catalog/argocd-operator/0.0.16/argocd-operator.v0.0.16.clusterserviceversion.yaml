@@ -13,7 +13,7 @@ metadata:
     operators.operatorframework.io/project_layout: go
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.0.15
+  name: argocd-operator.v0.0.16
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -647,6 +647,12 @@ spec:
           verbs:
           - update
         - apiGroups:
+          - apps.openshift.io
+          resources:
+          - deploymentconfigs
+          verbs:
+          - '*'
+        - apiGroups:
           - argoproj.io
           resources:
           - argocds
@@ -688,6 +694,14 @@ spec:
           resources:
           - routes
           - routes/custom-host
+          verbs:
+          - '*'
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - templates
+          - templateinstances
+          - templateconfigs
           verbs:
           - '*'
         - apiGroups:
@@ -840,5 +854,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.0.14
-  version: 0.0.15
+  replaces: argocd-operator.v0.0.15
+  version: 0.0.16
