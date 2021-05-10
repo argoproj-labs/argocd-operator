@@ -333,6 +333,21 @@ type ArgoCDServerServiceSpec struct {
 	Type corev1.ServiceType `json:"type"`
 }
 
+// SSOProviderType string defines the type of SSO provider.
+type SSOProviderType string
+
+const (
+	// SSOProviderTypeKeycloak means keycloak will be Installed and Integrated with Argo CD. A new realm with name argocd
+	// will be created in this keycloak. This realm will have a client with name argocd that uses OpenShift v4 as Identity Provider.
+	SSOProviderTypeKeycloak SSOProviderType = "keycloak"
+)
+
+// ArgoCDSSOSpec defines SSO provider.
+type ArgoCDSSOSpec struct {
+	// Provider installs and configures the given SSO Provider with Argo CD.
+	Provider SSOProviderType `json:"provider,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -418,6 +433,9 @@ type ArgoCDSpec struct {
 
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
+
+	// SSO defines the Single Sign-on configuration for Argo CD
+	SSO *ArgoCDSSOSpec `json:"sso,omitempty"`
 
 	// StatusBadgeEnabled toggles application status badge feature.
 	StatusBadgeEnabled bool `json:"statusBadgeEnabled,omitempty"`
