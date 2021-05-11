@@ -975,6 +975,15 @@ spec:
                     - type
                     type: object
                 type: object
+              sso:
+                description: SSO defines the Single Sign-on configuration for Argo
+                  CD
+                properties:
+                  provider:
+                    description: Provider installs and configures the given SSO Provider
+                      with Argo CD.
+                    type: string
+                type: object
               statusBadgeEnabled:
                 description: StatusBadgeEnabled toggles application status badge feature.
                 type: boolean
