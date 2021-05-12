@@ -414,7 +414,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr)
-		if isStrictTLSRequested(cr) {
+		if isRepoServerTLSVerificationRequested(cr) {
 			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
 		}
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {

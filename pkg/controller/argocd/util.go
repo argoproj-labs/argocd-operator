@@ -142,8 +142,8 @@ func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
 }
 
-func isStrictTLSRequested(cr *argoprojv1a1.ArgoCD) bool {
-	return cr.Spec.Repo.StrictTLS
+func isRepoServerTLSVerificationRequested(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Repo.VerifyTLS
 }
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
