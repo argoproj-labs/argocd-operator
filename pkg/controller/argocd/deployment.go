@@ -349,7 +349,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
-		Resources: getDexResources(cr),
+		Resources:       getDexResources(cr),
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -696,7 +696,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources: getRedisHAProxyResources(cr),
+		Resources:       getRedisHAProxyResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config-volume",

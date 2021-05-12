@@ -68,12 +68,19 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	workloadIdentifier := common.ArgoCDApplicationControllerComponent
-	expectedRules := policyRuleForApplicationControllerClusterRole()
+	clusterRoleName := GenerateUniqueResourceName(workloadIdentifier, a)
+	expectedRules := []v1.PolicyRule{}
 	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, err)
 
+	// cluster role should not be created
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}), "not found")
+
+	expectedRules = testClusterRoleRules()
+	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, err)
+
 	reconciledClusterRole := &v1.ClusterRole{}
-	clusterRoleName := GenerateUniqueResourceName(workloadIdentifier, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
 
