@@ -264,7 +264,7 @@ type ArgoCDRepoSpec struct {
 	ServiceAccount string `json:"serviceaccount,omitempty"`
 
 	// StrictTLS defines whether repo server API should be accessed using strict TLS validation
-	VerifyTLS bool `json:"stricttls,omitempty"`
+	VerifyTLS bool `json:"verifytls,omitempty"`
 
 	// AutoTLS specifies the method to use for automatic TLS configuration for the repo server
 	// The value specified here can currently be:

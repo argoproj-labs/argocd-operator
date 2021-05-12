@@ -682,7 +682,7 @@ spec:
                     description: ServiceAccount defines the ServiceAccount user that
                       you would like the Repo server to use
                     type: string
-                  stricttls:
+                  verifytls:
                     description: StrictTLS defines whether repo server API should
                       be accessed using strict TLS validation
                     type: boolean
