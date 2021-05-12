@@ -93,7 +93,6 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.NilError(t, r.client.Create(context.TODO(), &clusterRole))
 
 	// objective is to verify if the right SA associations have happened.
-
 	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testClusterRoleRules(), a))
 
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
@@ -115,6 +114,12 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	// fetch it
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.Equal(t, expectedClusterRoleName, reconcileClusterRoleBinding.RoleRef.Name)
+
+	// Check if cluster role and rolebinding gets deleted
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, []v1.PolicyRule{}, a))
+
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
 }
 
 func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {

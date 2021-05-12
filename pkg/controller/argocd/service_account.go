@@ -141,11 +141,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 		return err
 	}
 
-	if role == nil {
-		// Do not reconcile ClusterRoleBinding
-		return nil
-	}
-
 	return r.reconcileClusterRoleBinding(name, role, sa, cr)
 }
 

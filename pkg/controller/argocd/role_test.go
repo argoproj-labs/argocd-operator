@@ -93,4 +93,8 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.DeepEqual(t, expectedRules, reconciledClusterRole.Rules)
+
+	// Check if the CLuster Role gets deleted
+	_, err = r.reconcileClusterRole(workloadIdentifier, []v1.PolicyRule{}, a)
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole), "not found")
 }

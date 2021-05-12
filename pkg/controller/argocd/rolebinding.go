@@ -157,6 +157,15 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 		roleBinding = newClusterRoleBindingWithname(name, cr)
 	}
 
+	if roleBindingExists && role == nil {
+		return r.client.Delete(context.TODO(), roleBinding)
+	}
+
+	if !roleBindingExists && role == nil {
+		// DO Nothing
+		return nil
+	}
+
 	roleBinding.Subjects = []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
