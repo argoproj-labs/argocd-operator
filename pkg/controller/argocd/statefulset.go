@@ -466,7 +466,7 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-// triggerRollout will update the label with the given key to trigger a new rollout of the Deployment.
+// triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
 func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
 	if !argoutil.IsObjectFound(r.client, sts.Namespace, sts.Name, sts) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
