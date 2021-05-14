@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	dexTestImage     = "testing/dex:latest"
-	argoTestImage    = "testing/argocd:latest"
-	grafanaTestImage = "testing/grafana:latest"
-	redisTestImage   = "testing/redis:latest"
-	redisHATestImage = "testing/redis:latest-ha"
+	dexTestImage          = "testing/dex:latest"
+	argoTestImage         = "testing/argocd:latest"
+	grafanaTestImage      = "testing/grafana:latest"
+	redisTestImage        = "testing/redis:latest"
+	redisHATestImage      = "testing/redis:latest-ha"
 	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
 )
 

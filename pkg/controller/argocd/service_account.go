@@ -76,11 +76,11 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, policyRuleForServerClusterRole(), cr); err != nil {
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, []v1.PolicyRule{}, cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationControllerClusterRole(), cr); err != nil {
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, cr); err != nil {
 		return err
 	}
 
@@ -132,14 +132,15 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 	var sa *corev1.ServiceAccount
 	var err error
 
-	if role, err = r.reconcileClusterRole(name, rules, cr); err != nil {
-		return err
-	}
-
 	sa, err = r.reconcileServiceAccount(name, cr)
 	if err != nil {
 		return err
 	}
+
+	if role, err = r.reconcileClusterRole(name, rules, cr); err != nil {
+		return err
+	}
+
 	return r.reconcileClusterRoleBinding(name, role, sa, cr)
 }
 

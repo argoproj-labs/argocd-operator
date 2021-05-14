@@ -73,19 +73,27 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	r := makeTestReconciler(t, a)
 
 	workloadIdentifier := "xrb"
-
-	clusterRole := v1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}, Rules: policyRuleForApplicationControllerClusterRole()}
-	assert.NilError(t, r.client.Create(context.TODO(), &clusterRole))
-
-	// objective is to verify if the right SA associations have happened.
-
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForApplicationControllerClusterRole(), a))
-
-	reconciledServiceAccount := &corev1.ServiceAccount{}
-	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
 	expectedClusterRoleBindingName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
 	expectedClusterRoleName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
 	expectedNameSA := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+
+	reconciledServiceAccount := &corev1.ServiceAccount{}
+	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
+	reconcileClusterRole := &v1.ClusterRole{}
+
+	//reconcile ServiceAccountClusterPermissions with no policy rules
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, []v1.PolicyRule{}, a))
+
+	//Service account should be created but no ClusterRole/ClusterRoleBinding should be created
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
+
+	clusterRole := v1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}, Rules: testClusterRoleRules()}
+	assert.NilError(t, r.client.Create(context.TODO(), &clusterRole))
+
+	// objective is to verify if the right SA associations have happened.
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testClusterRoleRules(), a))
 
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconciledServiceAccount))
@@ -101,11 +109,17 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.Equal(t, reconcileClusterRoleBinding.RoleRef.Name, dirtyClusterRoleBinding.RoleRef.Name)
 
 	// Have the reconciler override them
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, policyRuleForApplicationControllerClusterRole(), a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testClusterRoleRules(), a))
 
 	// fetch it
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.Equal(t, expectedClusterRoleName, reconcileClusterRoleBinding.RoleRef.Name)
+
+	// Check if cluster role and rolebinding gets deleted
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, []v1.PolicyRule{}, a))
+
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
 }
 
 func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
@@ -125,4 +139,20 @@ func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	sa, err = r.reconcileServiceAccount(dexServer, a)
 	assert.NilError(t, err)
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
+}
+
+func testClusterRoleRules() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+	}
 }

@@ -135,6 +135,28 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 	return []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+		{
+			NonResourceURLs: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+		{
+			APIGroups: []string{
 				"operators.coreos.com",
 			},
 			Resources: []string{
@@ -240,22 +262,6 @@ func policyRulesForClusterConfig() []rbacv1.PolicyRule {
 			},
 			Verbs: []string{
 				"*",
-			},
-		}, {
-			APIGroups: []string{
-				"compliance.openshift.io",
-			},
-			Resources: []string{
-				"scansettings",
-				"compliancesuites",
-				"compliancescans",
-				"compliancecheckresults",
-				"complianceremediations",
-			},
-			Verbs: []string{
-				"get",
-				"watch",
-				"list",
 			},
 		}, {
 			APIGroups: []string{
