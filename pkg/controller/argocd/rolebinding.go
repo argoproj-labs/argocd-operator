@@ -186,43 +186,6 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 	return r.client.Create(context.TODO(), roleBinding)
 }
 
-// reconcileArgoApplier ensures that a specific rolebinding is present in a managedNamespace
-func (r *ReconcileArgoCD) reconcileArgoApplier(controlPlaneServiceAccount string, cr *argoprojv1a1.ArgoCD, managedNamespace string) error {
-
-	roleBinding := newRoleBindingWithname(controlPlaneServiceAccount, cr)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding)
-	roleBindingExists := true
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		roleBindingExists = false
-		roleBinding = &v1.RoleBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.Name,
-				Namespace: managedNamespace,
-			},
-		}
-	}
-	roleBinding.Subjects = []v1.Subject{
-		{
-			Kind:      v1.ServiceAccountKind,
-			Name:      controlPlaneServiceAccount,
-			Namespace: cr.Namespace,
-		},
-	}
-	roleBinding.RoleRef = v1.RoleRef{
-		APIGroup: v1.GroupName,
-		Kind:     "ClusterRole",
-		Name:     "admin",
-	}
-
-	if !roleBindingExists {
-		return r.client.Create(context.TODO(), roleBinding)
-	}
-	return r.client.Update(context.TODO(), roleBinding)
-}
-
 func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
 	for _, clusterBinding := range clusterBindingList.Items {
 		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {

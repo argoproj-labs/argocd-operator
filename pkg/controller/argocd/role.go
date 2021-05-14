@@ -108,7 +108,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
 	clusterRole := newClusterRole(name, policyRules, cr)
-	clusterRole.Rules = policyRules
 	applyReconcilerHook(cr, clusterRole, "")
 
 	existingClusterRole := &v1.ClusterRole{}
@@ -128,8 +127,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 		return nil, r.client.Delete(context.TODO(), existingClusterRole)
 	}
 
-	existingClusterRole.Rules = policyRules
-	applyReconcilerHook(cr, existingClusterRole, "")
+	existingClusterRole.Rules = clusterRole.Rules
 	return existingClusterRole, r.client.Update(context.TODO(), existingClusterRole)
 }
 
