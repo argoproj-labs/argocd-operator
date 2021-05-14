@@ -173,12 +173,11 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	})
 	ex := argoprojv1alpha1.ArgoCDExport{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "testimport",
+			Name:      "testimport",
 			Namespace: a.Namespace,
 		},
 		Spec: argoprojv1alpha1.ArgoCDExportSpec{
-			Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{
-			},
+			Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{},
 		},
 	}
 	r := makeTestReconciler(t, a, &ex)

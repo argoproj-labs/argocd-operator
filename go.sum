@@ -256,7 +256,6 @@ github.com/docker/distribution v2.7.1+incompatible/go.mod h1:J2gT2udsDAN96Uj4Kfc
 github.com/docker/docker v0.7.3-0.20190103212154-2b7e084dc98b/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker v0.7.3-0.20190817195342-4760db040282/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
-github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce h1:KXS1Jg+ddGcWA8e1N7cupxaHHZhit5rB9tfDU+mfjyY=
 github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker-credential-helpers v0.6.3/go.mod h1:WRaJzqw3CTB9bk10avuGsjVBZsD05qeibJ1/TYlvc0Y=
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
@@ -1603,9 +1602,7 @@ k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6/go.mod h1:GRQhZsXIAJ1xR0C
 k8s.io/kube-state-metrics v1.7.2 h1:6vdtgXrrRRMSgnyDmgua+qvgCYv954JNfxXAtDkeLVQ=
 k8s.io/kube-state-metrics v1.7.2/go.mod h1:U2Y6DRi07sS85rmVPmBFlmv+2peBcL8IWGjM+IjYA/E=
 k8s.io/kubectl v0.18.0/go.mod h1:LOkWx9Z5DXMEg5KtOjHhRiC1fqJPLyCr3KtQgEolCkU=
-k8s.io/kubectl v0.18.2 h1:9jnGSOC2DDVZmMUTMi0D1aed438mfQcgqa5TAzVjA1k=
 k8s.io/kubectl v0.18.2/go.mod h1:OdgFa3AlsPKRpFFYE7ICTwulXOcMGXHTc+UKhHKvrb4=
-k8s.io/kubernetes v1.13.0 h1:qTfB+u5M92k2fCCCVP2iuhgwwSOv1EkAkvQY1tQODD8=
 k8s.io/kubernetes v1.13.0/go.mod h1:ocZa8+6APFNC2tX1DZASIbocyYT5jHzqFVsY5aoB7Jk=
 k8s.io/metrics v0.18.0/go.mod h1:8aYTW18koXqjLVKL7Ds05RPMX9ipJZI3mywYvBOxXd4=
 k8s.io/metrics v0.18.2/go.mod h1:qga8E7QfYNR9Q89cSCAjinC9pTZ7yv1XSVGUB0vJypg=
