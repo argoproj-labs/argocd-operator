@@ -24,6 +24,11 @@ spec:
       version: v1alpha1
       displayName: Application
       description: An Application is a group of Kubernetes resources as defined by a manifest.
+    - kind: ApplicationSet
+      name: applicationsets.argoproj.io
+      version: v1alpha1
+      displayName: ApplicationSet
+      description: An ApplicationSet is a group or set of Application resources.
     - kind: AppProject
       name: appprojects.argoproj.io
       version: v1alpha1
