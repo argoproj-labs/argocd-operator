@@ -317,9 +317,9 @@ func ensureAutoTLSAnnotation(cr *argoprojv1a1.ArgoCD, svc *corev1.Service) bool 
 			svc.Annotations = make(map[string]string)
 		}
 		val, ok := svc.Annotations[autoTLSAnnotationName]
-		if !ok || val != "argocd-repo-server-tls" {
+		if !ok || val != common.ArgoCDRepoServerTLSSecretName {
 			log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
-			svc.Annotations[autoTLSAnnotationName] = "argocd-repo-server-tls"
+			svc.Annotations[autoTLSAnnotationName] = common.ArgoCDRepoServerTLSSecretName
 			return true
 		}
 	}
