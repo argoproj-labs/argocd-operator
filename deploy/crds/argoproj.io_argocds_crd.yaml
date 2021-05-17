@@ -683,7 +683,7 @@ spec:
                       you would like the Repo server to use
                     type: string
                   verifytls:
-                    description: StrictTLS defines whether repo server API should
+                    description: VerifyTLS defines whether repo server API should
                       be accessed using strict TLS validation
                     type: boolean
                 type: object
