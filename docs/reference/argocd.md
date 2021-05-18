@@ -752,7 +752,7 @@ spec:
     resources: {}
     mountsatoken: false
     serviceaccount: ""
-    stricttls: false
+    verifytls: false
     autotls: ""
 ```
 
