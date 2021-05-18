@@ -27,12 +27,12 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCD":             schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref),
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExport":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDExport(ref),
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec":   schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref),
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus": schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportStatus(ref),
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDSpec":         schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref),
-		"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDStatus":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCD":             schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExport":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDExport(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec":   schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus": schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportStatus(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDSpec":         schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref),
+		"./pkg/apis/argoproj/v1alpha1.ArgoCDStatus":       schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref),
 	}
 }
 
@@ -64,19 +64,19 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCD(ref common.ReferenceCallback) comm
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDSpec"),
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDStatus"),
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -108,19 +108,19 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExport(ref common.ReferenceCallback
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec"),
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus"),
+							Ref: ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDExportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDExportStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -155,7 +155,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref common.ReferenceCall
 					"storage": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Storage defines the storage configuration options.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"),
 						},
 					},
 					"version": {
@@ -170,7 +170,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDExportSpec(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDExportStorageSpec"},
 	}
 }
 
@@ -205,7 +205,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"applicationSet": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDApplicationSet"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationSet"),
 						},
 					},
 					"applicationInstanceLabelKey": {
@@ -225,13 +225,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"controller": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Controller defines the Application Controller options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec"),
 						},
 					},
 					"dex": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Dex defines the Dex server options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec"),
 						},
 					},
 					"disableAdmin": {
@@ -258,13 +258,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"grafana": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Grafana defines the Grafana server options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec"),
 						},
 					},
 					"ha": {
 						SchemaProps: spec.SchemaProps{
 							Description: "HA options for High Availability support for the Redis component.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDHASpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec"),
 						},
 					},
 					"helpChatURL": {
@@ -291,7 +291,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"import": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Import is the import/restore options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec"),
 						},
 					},
 					"initialRepositories": {
@@ -304,7 +304,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"initialSSHKnownHosts": {
 						SchemaProps: spec.SchemaProps{
 							Description: "InitialSSHKnownHosts defines the SSH known hosts data upon creation of the cluster for connecting Git repositories via SSH.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.SSHHostsSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.SSHHostsSpec"),
 						},
 					},
 					"kustomizeBuildOptions": {
@@ -324,25 +324,25 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"prometheus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Prometheus defines the Prometheus server options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec"),
 						},
 					},
 					"rbac": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RBAC defines the RBAC configuration for Argo CD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec"),
 						},
 					},
 					"redis": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Redis defines the Redis server options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec"),
 						},
 					},
 					"repo": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Repo defines the repo server options for Argo CD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec"),
 						},
 					},
 					"repositoryCredentials": {
@@ -376,13 +376,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"server": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Server defines the options for the ArgoCD Server component.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec"),
 						},
 					},
 					"sso": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SSO defines the Single Sign-on configuration for Argo CD",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDSSOSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDSSOSpec"),
 						},
 					},
 					"statusBadgeEnabled": {
@@ -395,7 +395,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS defines the TLS options for ArgoCD.",
-							Ref:         ref("github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
+							Ref:         ref("./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec"),
 						},
 					},
 					"usersAnonymousEnabled": {
@@ -416,7 +416,7 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDSpec(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDApplicationSet", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDHASpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDSSOSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec", "github.com/argoproj/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1.SSHHostsSpec"},
+			"./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationControllerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDApplicationSet", "./pkg/apis/argoproj/v1alpha1.ArgoCDDexSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDGrafanaSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDHASpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDImportSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDPrometheusSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRBACSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRedisSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDRepoSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDSSOSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDServerSpec", "./pkg/apis/argoproj/v1alpha1.ArgoCDTLSSpec", "./pkg/apis/argoproj/v1alpha1.SSHHostsSpec"},
 	}
 }
 
@@ -465,6 +465,13 @@ func schema_pkg_apis_argoproj_v1alpha1_ArgoCDStatus(ref common.ReferenceCallback
 					"server": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle. There are five possible server values: Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created. Running: All of the required Pods for the Argo CD server component are in a Ready state. Failed: At least one of the  Argo CD server component Pods had a failure. Unknown: For some reason the state of the Argo CD server component could not be obtained.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"repoTLSChecksum": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

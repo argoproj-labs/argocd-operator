@@ -142,6 +142,10 @@ func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
 }
 
+func isRepoServerTLSVerificationRequested(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Repo.VerifyTLS
+}
+
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
 func getArgoServerGRPCHost(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("grpc", cr)
@@ -705,6 +709,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+		return err
+	}
+
 	if cr.Spec.SSO != nil {
 		log.Info("reconciling SSO")
 		if err := r.reconcileSSO(cr); err != nil {
@@ -801,7 +809,7 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc) error {
+func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc, tlsSecretMapper handler.ToRequestsFunc) error {
 	// Watch for changes to primary resource ArgoCD
 	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -844,11 +852,20 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 		ToRequests: clusterResourceMapper,
 	}
 
+	tlsSecretHandler := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: tlsSecretMapper,
+	}
+
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler); err != nil {
 		return err
 	}
 
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler); err != nil {
+		return err
+	}
+
+	// Watch for secrets of type TLS that might be created by external processes
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler); err != nil {
 		return err
 	}
 
@@ -904,4 +921,17 @@ func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map
 // boolPtr returns a pointer to val
 func boolPtr(val bool) *bool {
 	return &val
+}
+
+// triggerRollout will trigger a rollout of a Kubernetes resource specified as
+// obj. It currently supports Deployment and StatefulSet resources.
+func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+	switch res := obj.(type) {
+	case *appsv1.Deployment:
+		return r.triggerDeploymentRollout(res, key)
+	case *appsv1.StatefulSet:
+		return r.triggerStatefulSetRollout(res, key)
+	default:
+		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
+	}
 }
