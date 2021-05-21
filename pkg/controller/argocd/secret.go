@@ -267,6 +267,7 @@ func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) erro
 
 // reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error {
+	log.Info("Reconciling cluster secrets")
 	if err := r.reconcileClusterMainSecret(cr); err != nil {
 		return err
 	}
