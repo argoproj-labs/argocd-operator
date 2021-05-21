@@ -1,6 +1,9 @@
 package openshift
 
 import (
+	"bytes"
+	"encoding/gob"
+	corev1 "k8s.io/api/core/v1"
 	"os"
 	"strings"
 
@@ -41,12 +44,6 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			logv.Info("configuring policy rule for Redis HA")
 			*o = append(*o, getPolicyRuleForRedisHa())
 		}
-	case *rbacv1.RoleBinding:
-		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-argocd-application-controller" {
-			logv.Info("configuring openshift cluster role for argocd application controller")
-			o.RoleRef.Kind = "ClusterRole"
-			o.RoleRef.Name = "admin"
-		}
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
 			logv.Info("configuring openshift redis-ha-server stateful set")
@@ -61,6 +58,13 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			}
 			o.Spec.Template.Spec.InitContainers[0].Args = getArgsForRedhatHaRedisInitContainer()
 			o.Spec.Template.Spec.InitContainers[0].Command = []string{}
+		}
+	case *corev1.Secret:
+		if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+			logv.Info("configuring cluster secret with empty namespaces to allow cluster resources")
+			buf := &bytes.Buffer{}
+			gob.NewEncoder(buf).Encode([]string{})
+			o.Data["namespaces"] = buf.Bytes()
 		}
 	}
 	return nil

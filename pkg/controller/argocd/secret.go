@@ -15,11 +15,15 @@
 package argocd
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/gob"
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -275,6 +279,11 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 		return err
 	}
 
+
+	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileGrafanaSecret(cr); err != nil {
 		return err
 	}
@@ -376,6 +385,43 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
 		return err
 	}
+	return r.client.Create(context.TODO(), secret)
+}
+
+// reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
+func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
+	log.Info("Reconciling ClusterPermissionsSecret ... ")
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "namespaces")
+	secret.Labels["argocd.argoproj.io/secret-type"] = "cluster"
+	dataBytes, _ := json.Marshal(map[string]interface{}{
+		"tlsClientConfig": map[string]interface{}{
+			"insecure": false,
+		},
+	})
+	secret.Data["config"] = dataBytes
+	secret.Data["name"] = []byte("in-cluster")
+	secret.Data["server"] = []byte("https://kubernetes.default.svc")
+
+	//TODO: get a list of namespaces based on label and append all
+	buf := &bytes.Buffer{}
+	gob.NewEncoder(buf).Encode([]string{cr.Namespace})
+	secret.Data["namespaces"] = buf.Bytes()
+	applyReconcilerHook(cr, secret, "")
+
+	log.Info("Cluster Permission Secret = ", secret)
+
+	existingSecret := &corev1.Secret{}
+	if argoutil.IsObjectFound(r.client, secret.Namespace, secret.Name, existingSecret) {
+		if reflect.DeepEqual(secret.Data["namespaces"], existingSecret.Data["namespaces"]) {
+			// do nothing
+			return nil
+		}
+		existingSecret.Data["namespaces"] = secret.Data["namespaces"]
+		log.Info("Updating the Cluster Permissions Secret")
+		return r.client.Update(context.TODO(), existingSecret)
+	}
+
+	log.Info("Creating the Cluster Permissions Secret")
 	return r.client.Create(context.TODO(), secret)
 }
 

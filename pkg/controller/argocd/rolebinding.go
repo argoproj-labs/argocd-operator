@@ -124,12 +124,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		Name:     role.Name,
 	}
 
-	if name == applicationController {
-		if err := applyReconcilerHook(cr, roleBinding, ""); err != nil {
-			return err
-		}
-	}
-
 	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
 		if name == dexServer && isDexDisabled() {
