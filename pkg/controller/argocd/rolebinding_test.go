@@ -86,17 +86,3 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 }
-
-func TestReconcileArgoCD_reconcileRoleBinding_application_controller(t *testing.T) {
-	// tests reconciler hook for argocd-application-controller role
-	cr := makeTestArgoCD()
-	r := makeTestReconciler(t, cr)
-
-	defer resetHooks()()
-	Register(testRoleBindingHook)
-
-	roleBinding := newRoleBindingWithname(applicationController, cr)
-	assert.NilError(t, r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr))
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, roleBinding))
-	assert.DeepEqual(t, roleBinding.RoleRef.Name, "test-admin-role")
-}
