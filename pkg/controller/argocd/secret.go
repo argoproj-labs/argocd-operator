@@ -21,7 +21,8 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"reflect"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -387,8 +388,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
 func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "namespaces")
-	secret.Labels[common.ArgoCDClusterSecretLabel] = "cluster"
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "default-cluster-config")
+	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
 			"insecure": false,
@@ -402,16 +403,30 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 		"namespaces": []byte(cr.Namespace),
 	}
 
-	applyReconcilerHook(cr, secret, "")
+	if err := applyReconcilerHook(cr, secret, ""); err != nil {
+		return err
+	}
 
-	existingSecret := &corev1.Secret{}
-	if argoutil.IsObjectFound(r.client, secret.Namespace, secret.Name, existingSecret) {
-		if reflect.DeepEqual(secret.Data["namespaces"], existingSecret.Data["namespaces"]) {
-			// do nothing
+	clusterSecrets := &corev1.SecretList{}
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			common.ArgoCDSecretTypeLabel: "cluster",
+		}),
+		Namespace: cr.Namespace,
+	}
+
+	if err := r.client.List(context.TODO(), clusterSecrets, opts); err != nil {
+		return err
+	}
+
+	secrets := clusterSecrets.Items
+
+	for _, s := range secrets {
+		// check if cluster secret with name in-cluster exists
+		// do nothing if exists.
+		if string(s.Data["name"]) == "in-cluster" {
 			return nil
 		}
-		existingSecret.Data["namespaces"] = secret.Data["namespaces"]
-		return r.client.Update(context.TODO(), existingSecret)
 	}
 
 	return r.client.Create(context.TODO(), secret)

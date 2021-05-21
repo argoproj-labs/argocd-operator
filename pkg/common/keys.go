@@ -198,6 +198,6 @@ const (
 	// ArgoCDDefaultServer is the default server address
 	ArgoCDDefaultServer = "https://kubernetes.default.svc"
 
-	// ArgoCDClusterSecretLabel is needed for cluster secrets
-	ArgoCDClusterSecretLabel = "argocd.argoproj.io/secret-type"
+	// ArgoCDSecretTypeLabel is needed for cluster secrets
+	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
 )
