@@ -15,12 +15,10 @@
 package argocd
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -267,7 +265,6 @@ func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) erro
 
 // reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error {
-	log.Info("Reconciling cluster secrets")
 	if err := r.reconcileClusterMainSecret(cr); err != nil {
 		return err
 	}
@@ -279,7 +276,6 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 	if err := r.reconcileClusterTLSSecret(cr); err != nil {
 		return err
 	}
-
 
 	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
 		return err
@@ -391,25 +387,22 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
 func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
-	log.Info("Reconciling ClusterPermissionsSecret ... ")
 	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "namespaces")
-	secret.Labels["argocd.argoproj.io/secret-type"] = "cluster"
+	secret.Labels[common.ArgoCDClusterSecretLabel] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
 			"insecure": false,
 		},
 	})
-	secret.Data["config"] = dataBytes
-	secret.Data["name"] = []byte("in-cluster")
-	secret.Data["server"] = []byte("https://kubernetes.default.svc")
 
-	//TODO: get a list of namespaces based on label and append all
-	buf := &bytes.Buffer{}
-	gob.NewEncoder(buf).Encode([]string{cr.Namespace})
-	secret.Data["namespaces"] = buf.Bytes()
+	secret.Data = map[string][]byte{
+		"config":     dataBytes,
+		"name":       []byte("in-cluster"),
+		"server":     []byte(common.ArgoCDDefaultServer),
+		"namespaces": []byte(cr.Namespace),
+	}
+
 	applyReconcilerHook(cr, secret, "")
-
-	log.Info("Cluster Permission Secret = ", secret)
 
 	existingSecret := &corev1.Secret{}
 	if argoutil.IsObjectFound(r.client, secret.Namespace, secret.Name, existingSecret) {
@@ -418,11 +411,9 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 			return nil
 		}
 		existingSecret.Data["namespaces"] = secret.Data["namespaces"]
-		log.Info("Updating the Cluster Permissions Secret")
 		return r.client.Update(context.TODO(), existingSecret)
 	}
 
-	log.Info("Creating the Cluster Permissions Secret")
 	return r.client.Create(context.TODO(), secret)
 }
 

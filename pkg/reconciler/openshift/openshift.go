@@ -1,8 +1,6 @@
 package openshift
 
 import (
-	"bytes"
-	"encoding/gob"
 	corev1 "k8s.io/api/core/v1"
 	"os"
 	"strings"
@@ -62,9 +60,7 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 	case *corev1.Secret:
 		if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 			logv.Info("configuring cluster secret with empty namespaces to allow cluster resources")
-			buf := &bytes.Buffer{}
-			gob.NewEncoder(buf).Encode([]string{})
-			o.Data["namespaces"] = buf.Bytes()
+			delete(o.Data, "namespaces")
 		}
 	}
 	return nil
