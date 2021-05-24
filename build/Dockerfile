@@ -1,5 +1,5 @@
-# RHEL 8 Universal Base Image created 2020-09-01T19:43:18.550354Z
-FROM registry.access.redhat.com/ubi8/ubi-minimal@sha256:5cfbaf45ca96806917830c183e9f37df2e913b187aadb32e89fd83fa455ebaa6
+# RHEL 8 Universal Base Image created 2021-05-04T17:20:18.408117Z
+FROM registry.access.redhat.com/ubi8/ubi-minimal@sha256:fc75532a20c1e7eb0512a03feac46554278bce946cf454a78e11433e39a66d2d
 
 ENV OPERATOR=/usr/local/bin/argocd-operator \
     USER_UID=1001 \
