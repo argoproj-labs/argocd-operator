@@ -424,7 +424,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 	for _, s := range secrets {
 		// check if cluster secret with name in-cluster exists
 		// do nothing if exists.
-		if string(s.Data["name"]) == "in-cluster" {
+		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
 			return nil
 		}
 	}
