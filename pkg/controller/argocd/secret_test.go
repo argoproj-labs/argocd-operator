@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"gotest.tools/assert"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -213,6 +214,12 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 
 	testSecret := argoutil.NewSecretWithSuffix(a.ObjectMeta, "default-cluster-config")
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+
+	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
+	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
 
 	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
