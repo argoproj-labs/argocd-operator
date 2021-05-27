@@ -45,3 +45,78 @@ To get the password for the admin user:
 ```shell
 $ kubectl get secret argocd-cluster -n argocd -ojsonpath='{.data.admin\.password}' | base64 --decode
 ```
+
+## Setting TLS modes for routes
+
+You can parameterize the route's TLS configuration by setting appropriate values in the `.spec.server.route.tls` field of the `ArgoCD` CR.
+
+### TLS edge termination mode
+
+In `edge` termination mode, the route controller terminates the TLS connection and proxies the requests
+to Argo CD in plain text throughout the cluster.
+
+The `edge` termination mode requires the Argo CD server to run in `insecure` mode, so it will accept
+HTTP requests instead of TLS requests.
+
+To set a route to `edge` mode, you can use the following configuration:
+
+```yaml
+spec:
+  server:
+    insecure: true
+    route:
+      enabled: true
+      tls:
+        termination: edge
+        insecureEdgeTerminationPolicy: Redirect
+```
+
+Keep in mind that the connection will be unencrypted within your cluster.
+
+### TLS passthrough mode
+
+Passthrough will terminate TLS not on the route controller, but at the `argocd-server` service. This means,
+that Argo CD will need to be configured with a valid TLS certificate, otherwise clients will issue
+a warning upon trying to connect.
+
+To set a route to `passthrough` mode, you can use the following configuration:
+
+```yaml
+spec:
+  server:
+    route:
+      enabled: true
+      tls:
+        termination: passthrough
+```
+
+### TLS reencrypt mode
+
+The `reencrypt` mode works a bit like the `edge` mode, in that TLS termination of the client
+will happen at the route controller. However, unlike `edge` mode, the communication between
+the route controller and the Argo CD server will be encrypted as well, so the Argo CD server
+does not need to be set in `insecure` mode.
+
+For this to work, the route controller needs to be able to validate the Argo CD server's TLS
+certificate, otherwise the request will fail.
+
+If you enable `reencrypt` mode in an OCP cluster, the Operator will request a valid TLS
+certificate for the `argocd-server` service from OpenShift's Service CA, which is sufficient
+for satisfying the validation constraints of the route controller. The Service CA will issue
+this certificate to a secret named `argocd-server-tls` in the operand's namespace if it does
+not yet exist.
+
+When you later chose to switch back to another TLS termination policy, you should manually
+delete the `argocd-server-tls` secret from the namespace after changing the mode.
+
+To enable `reencrypt` mode, you can use the following configuration:
+
+```yaml
+spec:
+  server:
+    route:
+      enabled: true
+      tls:
+        termination: passthrough
+```
+
