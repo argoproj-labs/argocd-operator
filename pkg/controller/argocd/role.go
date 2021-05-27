@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	v1 "k8s.io/api/rbac/v1"
@@ -85,6 +86,21 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 
 // reconcileRole
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+	if name == applicationController {
+		if err := applyReconcilerHook(cr, &policyRules, "policyRulesForApplicationController"); err != nil {
+			return nil, err
+		}
+		if !reflect.DeepEqual(policyRules, policyRuleForApplicationController()) {
+			admin := &v1.ClusterRole{}
+			if err := r.client.Get(context.TODO(), types.NamespacedName{Name: "admin"}, admin); err != nil {
+				return nil, err
+			}
+			if len(admin.Rules) > 0 {
+				policyRules = append(policyRules, admin.Rules...)
+			}
+		}
+	}
+
 	role := newRole(name, policyRules, cr)
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role)
 	if err != nil {

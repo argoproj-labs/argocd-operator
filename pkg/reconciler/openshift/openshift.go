@@ -42,6 +42,10 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			logv.Info("configuring policy rule for Redis HA")
 			*o = append(*o, getPolicyRuleForRedisHa())
 		}
+		if hint == "policyRulesForApplicationController" {
+			logv.Info("configuring policy rule for Application Controller")
+			*o = getPolicyRuleForApplicationController()
+		}
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
 			logv.Info("configuring openshift redis-ha-server stateful set")
@@ -79,6 +83,24 @@ func getPolicyRuleForRedisHa() rbacv1.PolicyRule {
 		},
 		Verbs: []string{
 			"use",
+		},
+	}
+}
+
+func getPolicyRuleForApplicationController() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
 		},
 	}
 }
