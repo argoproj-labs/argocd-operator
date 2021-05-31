@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -98,7 +99,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	roleBinding := newRoleBindingWithname(name, cr)
 
 	// fetch existing rolebinding by name
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding)
+	existingRoleBinding := &v1.RoleBinding{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding)
 	roleBindingExists := true
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -130,7 +132,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			// Delete any existing RoleBinding created for Dex
 			return r.client.Delete(context.TODO(), roleBinding)
 		}
-		return r.client.Update(context.TODO(), roleBinding)
+
+		// if the RoleRef changes, delete the existing role binding and create a new one
+		if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
+			if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {
+				return err
+			}
+		} else {
+			existingRoleBinding.Subjects = roleBinding.Subjects
+			return r.client.Update(context.TODO(), existingRoleBinding)
+		}
 	}
 
 	return r.client.Create(context.TODO(), roleBinding)
