@@ -1,6 +1,7 @@
 package openshift
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -10,6 +11,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -21,13 +25,16 @@ func init() {
 
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
 	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
+	k8sClient, err := initK8sClient()
+	if err != nil {
+		logv.Error(err, "failed to initialise kube client")
+		return err
+	}
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
 		if o.ObjectMeta.Name == argocd.GenerateUniqueResourceName("argocd-application-controller", cr) {
-			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
-				logv.Info("configuring openshift cluster config policy rules")
-				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
-			}
+			logv.Info("configuring openshift cluster config policy rules")
+			o.Rules = policyRulesForClusterConfig()
 		}
 	case *appsv1.Deployment:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
@@ -41,10 +48,6 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 		if hint == "policyRuleForRedisHa" {
 			logv.Info("configuring policy rule for Redis HA")
 			*o = append(*o, getPolicyRuleForRedisHa())
-		}
-		if hint == "policyRulesForApplicationController" {
-			logv.Info("configuring policy rule for Application Controller")
-			*o = getPolicyRuleForApplicationController()
 		}
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
@@ -65,6 +68,18 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 		if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 			logv.Info("configuring cluster secret with empty namespaces to allow cluster resources")
 			delete(o.Data, "namespaces")
+		}
+	case *rbacv1.Role:
+		logv.Info("configuring policy rule for Application Controller")
+		if o.ObjectMeta.Name == cr.Name + "-" + "argocd-application-controller" {
+			clusterRole := rbacv1.ClusterRole{}
+			err := k8sClient.Get(context.TODO(), types.NamespacedName{Name: "admin"}, &clusterRole)
+			if err != nil {
+				return err
+			}
+			policyRules := getPolicyRuleForApplicationController()
+			policyRules = append(policyRules, clusterRole.Rules...)
+			o.Rules = policyRules
 		}
 	}
 	return nil
@@ -322,4 +337,13 @@ func splitList(s string) []string {
 		elems[i] = strings.TrimSpace(elems[i])
 	}
 	return elems
+}
+
+func initK8sClient() (ctrlclient.Client, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return ctrlclient.New(config, ctrlclient.Options{})
 }

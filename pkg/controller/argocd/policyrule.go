@@ -127,3 +127,32 @@ func policyRuleForServer() []v1.PolicyRule {
 		},
 	}
 }
+
+func policyRuleForServerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"delete",
+				"patch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"list",
+			},
+		},
+	}
+}
