@@ -62,31 +62,14 @@ const (
 	defaultTemplateIdentifier = "rhsso"
 	// Default name for Keycloak broker.
 	defaultKeycloakBrokerName = "keycloak-broker"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	template "github.com/openshift/api/template/v1"
 )
 
 var (
 	templateAPIFound = false
 )
-
-// KeycloakPostData defines the values required to update Keycloak Realm.
-type keycloakConfig struct {
-	ArgoName           string
-	ArgoNamespace      string
-	Username           string
-	Password           string
-	KeycloakURL        string
-	ArgoCDURL          string
-	KeycloakServerCert []byte
-	VerifyTLS          bool
-}
-
-type oidcConfig struct {
-	Name           string   `json:"name"`
-	Issuer         string   `json:"issuer"`
-	ClientID       string   `json:"clientID"`
-	ClientSecret   string   `json:"clientSecret"`
-	RequestedScope []string `json:"requestedScopes"`
-}
 
 // IsTemplateAPIAvailable returns true if the template API is present.
 func IsTemplateAPIAvailable() bool {
@@ -114,10 +97,11 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 		// TemplateAPI is available, Install keycloak using openshift templates.
 		if IsTemplateAPIAvailable() {
-			templateInstanceRef, err := newKeycloakTemplateInstance(cr)
+			err := r.reconcileKeycloakForOpenShift(cr)
 			if err != nil {
 				return err
 			}
+<<<<<<< HEAD:controllers/argocd/sso.go
 			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
 				Namespace: templateInstanceRef.Namespace}, &template.TemplateInstance{})
 			if err != nil {
@@ -221,9 +205,13 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 					}
 				}
 
-			}
+=======
 		} else {
-			return nil
+			err := r.reconcileKeycloak(cr)
+			if err != nil {
+				return err
+>>>>>>> feat: Automatically install and configure Keycloak SSO for Kubernetes platform (#312):pkg/controller/argocd/sso.go
+			}
 		}
 	}
 	return nil
@@ -233,79 +221,15 @@ func deleteSSOConfiguration(cr *argoprojv1a1.ArgoCD) error {
 
 	// If SSO is installed using OpenShift templates.
 	if IsTemplateAPIAvailable() {
-		cfg, err := config.GetConfig()
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
-		}
-
-		// Initialize template client.
-		templateclient, err := templatev1client.NewForConfig(cfg)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to create Template client for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
-		}
-
-		log.Info(fmt.Sprintf("Delete Template Instance for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		// We use the foreground propagation policy to ensure that the garbage
-		// collector removes all instantiated objects before the TemplateInstance
-		// itself disappears.
-		foreground := metav1.DeletePropagationForeground
-		deleteOptions := metav1.DeleteOptions{PropagationPolicy: &foreground}
-		err = templateclient.TemplateInstances(cr.Namespace).Delete(context.TODO(), defaultTemplateIdentifier, deleteOptions)
+		err := deleteKeycloakConfigForOpenShift(cr)
 		if err != nil {
 			return err
 		}
-
-		// Delete OAuthClient created for keycloak.
-		oauth, err := oauthclient.NewForConfig(cfg)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to create oAuth client for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
-		}
-		log.Info(fmt.Sprintf("Delete OAuthClient for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-
-		oa := getOAuthClient(cr.Namespace)
-		err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
+	} else {
+		err := deleteKeycloakConfigForK8s(cr)
 		if err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// HandleKeycloakPodDeletion resets the Realm Creation Status to false when keycloak pod is deleted.
-func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config"))
-		return err
-	}
-
-	// Initialize deployment config client.
-	dcClient, err := oappsv1client.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create apps client for Deployment config %s in namespace %s",
-			dc.Name, dc.Namespace))
-		return err
-	}
-
-	log.Info(fmt.Sprintf("Set the Realm Creation status annoation to false"))
-	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	existingDC.Annotations["argocd.argoproj.io/realm-created"] = "false"
-	_, err = dcClient.DeploymentConfigs(dc.Namespace).Update(context.TODO(), existingDC, metav1.UpdateOptions{})
-	if err != nil {
-		return err
 	}
 
 	return nil

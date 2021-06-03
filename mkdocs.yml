@@ -31,7 +31,9 @@ nav:
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
     - Dex: usage/dex.md
-    - Keycloak: usage/keycloak.md
+    - Keycloak: 
+      - Kubernetes: usage/keycloak/kubernetes.md
+      - OpenShift: usage/keycloak/openshift.md
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
   - Reference:

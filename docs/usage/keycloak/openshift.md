@@ -1,10 +1,10 @@
 # Usage
 
-Note: This feature is currently supported only in openshift.
+This feature enables Keycloak as a Single sign-on provider for Argo CD.
 
-This feature enables keycloak as a Single sign-on provider for ArgoCD. If operator is deployed in OpenShift Container Platform, Keycloak acts as an Identity broker between ArgoCD and OpenShift, Which means one can also login into ArgoCD using their OpenShift Users.
+If operator is deployed in OpenShift Container Platform, Keycloak acts as an Identity broker between Argo CD and OpenShift, Which means one can also login into Argo CD using their OpenShift Users.
 
-The following example shows the most minimal valid manifest to create a new Argo CD cluster with keycloak as a Single sign-on provider.
+The following example shows the most minimal valid manifest to create a new Argo CD cluster with Keycloak as a Single sign-on provider.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -26,22 +26,20 @@ spec:
 Create a new Argo CD Instance in the `argocd` namespace using the provided example.
 
 ```bash
-kubectl create -n argocd -f examples/argocd-keycloak.yaml
+oc create -n argocd -f examples/argocd-keycloak-openshift.yaml
 ```
 
 ## Keycloak-Instance
 
-The above configuration creates a keycloak instance and its relevant resources along with the Argo CD resources. Users can login into the keycloak console using the below commands.
+The above configuration creates a Keycloak instance and its relevant resources along with the Argo CD resources. Users can login into the Keycloak console using the below commands.
 
 Get the Keycloak Route URL for Login.
 
 ```bash
-kubectl -n argocd get route keycloak
-```
+oc -n argocd get route keycloak
 
-```bash
 NAME   HOST/PORT                                                                PATH   SERVICES   PORT    TERMINATION   WILDCARD
-keycloak    keycloak-default.apps.ci-ln-******.origin-ci-int-aws.dev.**.com          keycloak        <all>   reencrypt     None
+keycloak    keycloak-default.apps.ci-ln-******.origin-ci-***-aws.dev.**.com          keycloak        <all>   reencrypt     None
 ```
 
 Get the Keycloak Credentials which are stored as environment variables in the keycloak pod.
@@ -49,10 +47,8 @@ Get the Keycloak Credentials which are stored as environment variables in the ke
 Get the Keycloak Pod name.
 
 ```bash
-kubectl -n argocd get pods
-```
+oc -n argocd get pods
 
-```bash
 NAME                                         READY   STATUS             RESTARTS   AGE
 keycloak-1-2sjcl                                  1/1     Running            0          45m
 ```
@@ -60,20 +56,16 @@ keycloak-1-2sjcl                                  1/1     Running            0  
 Get the Keycloak Username.
 
 ```bash
-kubectl -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_USERNAME
-```
+oc -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_USERNAME
 
-```bash
 SSO_ADMIN_USERNAME=Cqid54Ih
 ```
 
 Get the Keycloak Password.
 
 ```bash
-kubectl -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_PASSWORD
-```
+oc -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_PASSWORD
 
-```bash
 SSO_ADMIN_PASSWORD=GVXxHifH
 ```
 
@@ -121,23 +113,25 @@ quit
 
 You can see an option to Log in via keycloak apart from the usual ArgoCD login.
 
-![LOGIN VIA KEYCLOAK](../assets/keycloak/login_via_keycloak.png)
+![LOGIN VIA KEYCLOAK](../../assets/keycloak/login_via_keycloak.png)
 
 Click on **LOGIN VIA KEYCLOAK**. You will see two different options for login as shown below. The one on the left will allow you to login into argo cd via keycloak username and password. The one on the right will allow you to login into argo cd using your openshift username and password.
 
-![Login with Openshift](../assets/keycloak/login_with_openshift.png)
+![Login with Openshift](../../assets/keycloak/login_with_openshift.png)
 
 You can create keycloak users by logging in to keycloak admin console using the Keycloak admin credentials.
 
 **NOTE:** Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
 
+## RBAC
+
 By default any user logged into ArgoCD will have read-only access. User level access can be managed by updating the argocd-rbac-cm configmap.
 
-The below example show how to grant user foobar with email ID `foobang@example.com` admin access to ArgoCD. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
+The below example show how to grant user `foo` with email ID `foo@example.com` admin access to ArgoCD. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
 
 ```yaml
 policy.csv: |
-  g, foobang@example.com, role:admin
+  g, foo@example.com, role:admin
 ```
 
 ## Change Keycloak Admin Password
@@ -146,13 +140,13 @@ You can change the Keycloak Admin Password that is created by the operator as sh
 
 Login to the Keycloak Admin Console using the Admin user as described in the above section. Click on the user drop-down at the top right and click on the `Manage Account`.
 
-![Manage Account](../assets/keycloak/Keycloak_Manageaccount.png)
+![Manage Account](../../assets/keycloak/Keycloak_Manageaccount.png)
 
 Click on the `Password` tab to update the Keycloak Admin Password.
 
-![Change Admin Password](../assets/keycloak/Keycloak_ChangePassword.png)
+![Change Admin Password](../../assets/keycloak/Keycloak_ChangePassword.png)
 
-## Uninstall
+### Uninstall
 
 You can delete the Keycloak resources and its relevant configuration by removing the SSO field from ArgoCD Custom Resource Spec.
 
@@ -171,4 +165,7 @@ spec:
      enabled: true
 ```
 
-Note: Keycloak application created by this feature is currently not persistent. Incase of restarts, Any additional configuration created by the users in ArgoCD Keycloak realm will be deleted.
+**Note**:
+The main purpose of Keycloak created by the operator is to allow users to login into Argo CD with their OpenShift users. It is not expected to update Keycloak for any other use-cases.
+
+Keycloak created by this feature only persists the changes that are made by the operator. In case of restarts, Any additional configuration created by the Admin in Keycloak will be deleted.
