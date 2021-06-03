@@ -126,7 +126,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		Name:     role.Name,
 	}
 
-	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	if roleBindingExists {
 		if name == dexServer && isDexDisabled() {
 			// Delete any existing RoleBinding created for Dex
@@ -144,6 +143,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 	}
 
+	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
 	return r.client.Create(context.TODO(), roleBinding)
 }
 

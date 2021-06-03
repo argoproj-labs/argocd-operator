@@ -23,7 +23,6 @@ import (
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -77,26 +76,26 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	expectedClusterRoleName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
 	expectedNameSA := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
-	reconciledServiceAccount := &corev1.ServiceAccount{}
+	reconcileServiceAccount := &corev1.ServiceAccount{}
 	reconcileClusterRoleBinding := &v1.ClusterRoleBinding{}
 	reconcileClusterRole := &v1.ClusterRole{}
 
 	//reconcile ServiceAccountClusterPermissions with no policy rules
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, []v1.PolicyRule{}, a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
 	//Service account should be created but no ClusterRole/ClusterRoleBinding should be created
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
 
-	clusterRole := v1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}, Rules: testClusterRoleRules()}
-	assert.NilError(t, r.client.Create(context.TODO(), &clusterRole))
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	// objective is to verify if the right SA associations have happened.
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testClusterRoleRules(), a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconciledServiceAccount))
 
 	// undesirable changes
 	reconcileClusterRoleBinding.RoleRef.Name = "z"
@@ -109,15 +108,15 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.Equal(t, reconcileClusterRoleBinding.RoleRef.Name, dirtyClusterRoleBinding.RoleRef.Name)
 
 	// Have the reconciler override them
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testClusterRoleRules(), a))
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
 	// fetch it
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.Equal(t, expectedClusterRoleName, reconcileClusterRoleBinding.RoleRef.Name)
 
 	// Check if cluster role and rolebinding gets deleted
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, []v1.PolicyRule{}, a))
-
+	os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
 }
@@ -141,7 +140,7 @@ func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
 }
 
-func testClusterRoleRules() []v1.PolicyRule {
+func testRules() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{

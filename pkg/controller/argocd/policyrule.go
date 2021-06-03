@@ -76,6 +76,8 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"get",
+				"patch",
+				"delete",
 			},
 		},
 		{

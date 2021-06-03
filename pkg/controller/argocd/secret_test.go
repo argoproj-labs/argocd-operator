@@ -216,21 +216,21 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 
 	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
-	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
-
-	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), a.Namespace)
 
-	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
-	r.client.Update(context.TODO(), testSecret)
 	want := "someRandomNamespace"
+	testSecret.Data["namespaces"] = []byte(want)
+	r.client.Update(context.TODO(), testSecret)
 
 	// reconcile to check nothing gets updated
 	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), want)
+
+	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+
+	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 }

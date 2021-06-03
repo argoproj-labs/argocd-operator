@@ -25,11 +25,6 @@ func init() {
 
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
 	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
-	k8sClient, err := initK8sClient()
-	if err != nil {
-		logv.Error(err, "failed to initialise kube client")
-		return err
-	}
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
 		if o.ObjectMeta.Name == argocd.GenerateUniqueResourceName("argocd-application-controller", cr) {
@@ -70,11 +65,17 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			delete(o.Data, "namespaces")
 		}
 	case *rbacv1.Role:
-		if o.ObjectMeta.Name == cr.Name + "-" + "argocd-application-controller" {
+		if o.ObjectMeta.Name == cr.Name+"-"+"argocd-application-controller" {
 			logv.Info("configuring policy rule for Application Controller")
+			// can move this to somewhere common eventually, maybe init()
+			k8sClient, err := initK8sClient()
+			if err != nil {
+				logv.Error(err, "failed to initialise kube client")
+				return err
+			}
 			clusterRole, err := k8sClient.RbacV1().ClusterRoles().Get(context.TODO(), "admin", metav1.GetOptions{})
 			if err != nil {
-				logv.Info("failed to retrieve Cluster Role admin, error:", err)
+				logv.Error(err, "failed to retrieve Cluster Role admin")
 				return err
 			}
 			policyRules := getPolicyRuleForApplicationController()

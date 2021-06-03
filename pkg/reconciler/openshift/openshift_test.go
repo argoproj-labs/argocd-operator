@@ -24,7 +24,7 @@ func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 	}
 	assert.NilError(t, reconcilerHook(a, testClusterRole, ""))
 
-	want := append(makeTestPolicyRules(), policyRulesForClusterConfig()...)
+	want := policyRulesForClusterConfig()
 	assert.DeepEqual(t, want, testClusterRole.Rules)
 }
 
@@ -57,7 +57,7 @@ func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
 	testNotApplicableClusterRole := makeTestClusterRole()
 
 	assert.NilError(t, reconcilerHook(a, testApplicableClusterRole, ""))
-	want := append(makeTestPolicyRules(), policyRulesForClusterConfig()...)
+	want := policyRulesForClusterConfig()
 	assert.DeepEqual(t, want, testApplicableClusterRole.Rules)
 
 	assert.NilError(t, reconcilerHook(a, testNotApplicableClusterRole, ""))

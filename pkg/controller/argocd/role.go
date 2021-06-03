@@ -3,13 +3,13 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
+
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -88,9 +88,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	if err := applyReconcilerHook(cr, role, ""); err != nil {
 		return nil, err
 	}
-	if name == applicationController {
-		log.Info("ROLE RULES: ", role.Rules)
-	}
 	existingRole := v1.Role{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, &existingRole)
 	if err != nil {
@@ -109,8 +106,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		return role, r.client.Delete(context.TODO(), role)
 	}
 	existingRole.Rules = role.Rules
-	controllerutil.SetControllerReference(cr, role, r.scheme)
-	return role, r.client.Update(context.TODO(), role)
+	return &existingRole, r.client.Update(context.TODO(), &existingRole)
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
