@@ -3,6 +3,7 @@ package openshift
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -23,7 +24,7 @@ func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 	}
 	assert.NilError(t, reconcilerHook(a, testClusterRole, ""))
 
-	want := append(makeTestPolicyRules(), policyRulesForClusterConfig()...)
+	want := policyRulesForClusterConfig()
 	assert.DeepEqual(t, want, testClusterRole.Rules)
 }
 
@@ -56,7 +57,7 @@ func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
 	testNotApplicableClusterRole := makeTestClusterRole()
 
 	assert.NilError(t, reconcilerHook(a, testApplicableClusterRole, ""))
-	want := append(makeTestPolicyRules(), policyRulesForClusterConfig()...)
+	want := policyRulesForClusterConfig()
 	assert.DeepEqual(t, want, testApplicableClusterRole.Rules)
 
 	assert.NilError(t, reconcilerHook(a, testNotApplicableClusterRole, ""))
@@ -195,19 +196,25 @@ func TestReconcileArgoCD_reconcilePolicyRuleForRedisHa(t *testing.T) {
 	assert.DeepEqual(t, rules[1], getPolicyRuleForRedisHa())
 }
 
-func TestReconcileArgoCD_reconcileRoleBinding_applicationController(t *testing.T) {
-	a := makeTestArgoCD()
-	testRoleBinding := makeTestRoleBinding()
+func TestReconcileArgoCD_reconcileSecrets(t *testing.T) {
+	setClusterConfigNamespaces()
+	defer unSetClusterConfigNamespaces()
 
-	testRoleBinding.ObjectMeta.Name = a.Name + "-argocd-application-controller"
-	want := "admin"
+	a := makeTestArgoCDForClusterConfig()
+	testSecret := &corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": []byte(testNamespace),
+		},
+	}
+	assert.NilError(t, reconcilerHook(a, testSecret, ""))
+	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), "")
 
-	assert.NilError(t, reconcilerHook(a, testRoleBinding, ""))
-	assert.DeepEqual(t, testRoleBinding.RoleRef.Name, want)
-
-	testRoleBinding = makeTestRoleBinding()
-	testRoleBinding.ObjectMeta.Name = a.Name + "-" + "not-argocd-application-controller"
-
-	assert.NilError(t, reconcilerHook(a, testRoleBinding, ""))
-	assert.DeepEqual(t, testRoleBinding.RoleRef.Name, "")
+	a.Namespace = "someRandomNamespace"
+	testSecret = &corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": []byte("someRandomNamespace"),
+		},
+	}
+	assert.NilError(t, reconcilerHook(a, testSecret, ""))
+	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), "someRandomNamespace")
 }

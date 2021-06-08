@@ -16,78 +16,6 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 				"*",
 			},
 			Verbs: []string{
-				"get",
-				"list",
-				"watch",
-			},
-		},
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"pods",
-				"services",
-				"services/finalizers",
-				"endpoints",
-				"events",
-				"configmaps",
-				"secrets",
-			},
-			Verbs: []string{
-				"*",
-			},
-		},
-
-		{
-			APIGroups: []string{
-				"apps",
-			},
-			Resources: []string{
-				"daemonsets",
-				"deployments",
-				"replicasets",
-			},
-			Verbs: []string{
-				"*",
-			},
-		},
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"events",
-			},
-			Verbs: []string{
-				"create",
-				"list",
-			},
-		},
-		{
-
-			APIGroups: []string{
-				"batch",
-			},
-
-			Resources: []string{
-				"cronjobs",
-				"jobs",
-			},
-			Verbs: []string{
-				"*",
-			},
-		},
-		{
-			APIGroups: []string{
-				"argoproj.io",
-			},
-
-			Resources: []string{
-				"applications",
-				"appprojects",
-			},
-			Verbs: []string{
 				"*",
 			},
 		},
@@ -148,6 +76,8 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"get",
+				"patch",
+				"delete",
 			},
 		},
 		{
@@ -194,6 +124,35 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"create",
+				"list",
+			},
+		},
+	}
+}
+
+func policyRuleForServerClusterRole() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"delete",
+				"patch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
 				"list",
 			},
 		},

@@ -194,4 +194,10 @@ const (
 
 	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
 	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"
+
+	// ArgoCDDefaultServer is the default server address
+	ArgoCDDefaultServer = "https://kubernetes.default.svc"
+
+	// ArgoCDSecretTypeLabel is needed for cluster secrets
+	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
 )

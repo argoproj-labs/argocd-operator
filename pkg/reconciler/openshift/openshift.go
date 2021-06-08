@@ -1,6 +1,8 @@
 package openshift
 
 import (
+	"context"
+	"k8s.io/client-go/kubernetes"
 	"os"
 	"strings"
 
@@ -8,7 +10,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -23,10 +28,8 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
 		if o.ObjectMeta.Name == argocd.GenerateUniqueResourceName("argocd-application-controller", cr) {
-			if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
-				logv.Info("configuring openshift cluster config policy rules")
-				o.Rules = append(o.Rules, policyRulesForClusterConfig()...)
-			}
+			logv.Info("configuring openshift cluster config policy rules")
+			o.Rules = policyRulesForClusterConfig()
 		}
 	case *appsv1.Deployment:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis" {
@@ -40,12 +43,6 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 		if hint == "policyRuleForRedisHa" {
 			logv.Info("configuring policy rule for Redis HA")
 			*o = append(*o, getPolicyRuleForRedisHa())
-		}
-	case *rbacv1.RoleBinding:
-		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-argocd-application-controller" {
-			logv.Info("configuring openshift cluster role for argocd application controller")
-			o.RoleRef.Kind = "ClusterRole"
-			o.RoleRef.Name = "admin"
 		}
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
@@ -61,6 +58,29 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			}
 			o.Spec.Template.Spec.InitContainers[0].Args = getArgsForRedhatHaRedisInitContainer()
 			o.Spec.Template.Spec.InitContainers[0].Command = []string{}
+		}
+	case *corev1.Secret:
+		if allowedNamespace(cr.ObjectMeta.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+			logv.Info("configuring cluster secret with empty namespaces to allow cluster resources")
+			delete(o.Data, "namespaces")
+		}
+	case *rbacv1.Role:
+		if o.ObjectMeta.Name == cr.Name+"-"+"argocd-application-controller" {
+			logv.Info("configuring policy rule for Application Controller")
+			// can move this to somewhere common eventually, maybe init()
+			k8sClient, err := initK8sClient()
+			if err != nil {
+				logv.Error(err, "failed to initialise kube client")
+				return err
+			}
+			clusterRole, err := k8sClient.RbacV1().ClusterRoles().Get(context.TODO(), "admin", metav1.GetOptions{})
+			if err != nil {
+				logv.Error(err, "failed to retrieve Cluster Role admin")
+				return err
+			}
+			policyRules := getPolicyRuleForApplicationController()
+			policyRules = append(policyRules, clusterRole.Rules...)
+			o.Rules = policyRules
 		}
 	}
 	return nil
@@ -79,6 +99,24 @@ func getPolicyRuleForRedisHa() rbacv1.PolicyRule {
 		},
 		Verbs: []string{
 			"use",
+		},
+	}
+}
+
+func getPolicyRuleForApplicationController() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
 		},
 	}
 }
@@ -300,4 +338,13 @@ func splitList(s string) []string {
 		elems[i] = strings.TrimSpace(elems[i])
 	}
 	return elems
+}
+
+func initK8sClient() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return kubernetes.NewForConfig(config)
 }
