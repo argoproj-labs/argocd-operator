@@ -29,10 +29,12 @@ func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) e
 	return nil
 }
 
-func testRoleBindingHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
+func testRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	switch o := v.(type) {
-	case *v1.RoleBinding:
-		o.RoleRef.Name = "test-admin-role"
+	case *v1.Role:
+		if o.Name == cr.Name+"-"+applicationController {
+			o.Rules = append(o.Rules, testRules()...)
+		}
 	}
 	return nil
 }

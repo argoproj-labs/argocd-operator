@@ -76,11 +76,11 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, []v1.PolicyRule{}, cr); err != nil {
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, policyRuleForServerClusterRole(), cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, cr); err != nil {
+	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), cr); err != nil {
 		return err
 	}
 

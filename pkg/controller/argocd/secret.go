@@ -18,7 +18,9 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -26,7 +28,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
 	argopass "github.com/argoproj/argo-cd/util/password"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -267,6 +272,10 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 		return err
 	}
 
+	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileGrafanaSecret(cr); err != nil {
 		return err
 	}
@@ -368,6 +377,59 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
 		return err
 	}
+	return r.client.Create(context.TODO(), secret)
+}
+
+// reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
+func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
+	var clusterConfigInstance bool
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "default-cluster-config")
+	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
+	dataBytes, _ := json.Marshal(map[string]interface{}{
+		"tlsClientConfig": map[string]interface{}{
+			"insecure": false,
+		},
+	})
+
+	secret.Data = map[string][]byte{
+		"config":     dataBytes,
+		"name":       []byte("in-cluster"),
+		"server":     []byte(common.ArgoCDDefaultServer),
+		"namespaces": []byte(cr.Namespace),
+	}
+
+	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+		clusterConfigInstance = true
+	}
+
+	clusterSecrets := &corev1.SecretList{}
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			common.ArgoCDSecretTypeLabel: "cluster",
+		}),
+		Namespace: cr.Namespace,
+	}
+
+	if err := r.client.List(context.TODO(), clusterSecrets, opts); err != nil {
+		return err
+	}
+	for _, s := range clusterSecrets.Items {
+		// check if cluster secret with default server address exists
+		// do nothing if exists.
+		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
+			if clusterConfigInstance {
+				r.client.Delete(context.TODO(), &s)
+			} else {
+				return nil
+			}
+		}
+	}
+
+	if clusterConfigInstance {
+		// do nothing
+		return nil
+	}
+
 	return r.client.Create(context.TODO(), secret)
 }
 

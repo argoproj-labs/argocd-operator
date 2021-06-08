@@ -877,3 +877,33 @@ func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map
 	}
 	return labels
 }
+
+// boolPtr returns a pointer to val
+func boolPtr(val bool) *bool {
+	return &val
+}
+
+func allowedNamespace(current string, namespaces string) bool {
+
+	clusterConfigNamespaces := splitList(namespaces)
+	if len(clusterConfigNamespaces) > 0 {
+		if clusterConfigNamespaces[0] == "*" {
+			return true
+		}
+
+		for _, n := range clusterConfigNamespaces {
+			if n == current {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func splitList(s string) []string {
+	elems := strings.Split(s, ",")
+	for i := range elems {
+		elems[i] = strings.TrimSpace(elems[i])
+	}
+	return elems
+}
