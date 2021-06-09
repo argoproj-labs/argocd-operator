@@ -993,6 +993,9 @@ spec:
                     description: Provider installs and configures the given SSO Provider
                       with Argo CD.
                     type: string
+                  verifyTLS:
+                    description: VerifyTLS set to false disables strict TLS validation.
+                    type: boolean
                 type: object
               statusBadgeEnabled:
                 description: StatusBadgeEnabled toggles application status badge feature.

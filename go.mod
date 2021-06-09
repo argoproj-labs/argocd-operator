@@ -7,8 +7,12 @@ require (
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-openapi/spec v0.19.7
 	github.com/google/go-cmp v0.4.0
+	github.com/json-iterator/go v1.1.9
+	github.com/keycloak/keycloak-operator v0.0.0-20210517080327-281373538a44
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
-	github.com/operator-framework/operator-sdk v0.18.0
+	github.com/openshift/client-go v0.0.0-20200325131901-f7baeb993edb
+	github.com/operator-framework/operator-sdk v0.18.2
+	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v2 v2.3.0

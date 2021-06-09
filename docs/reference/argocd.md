@@ -1011,6 +1011,7 @@ The following properties are available for configuring the Single sign-on compon
 Name | Default | Description
 --- | --- | ---
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
+VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 
 ### Single sign-on Example
 

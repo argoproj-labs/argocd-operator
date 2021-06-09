@@ -354,6 +354,8 @@ const (
 type ArgoCDSSOSpec struct {
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
+	// VerifyTLS set to false disables strict TLS validation.
+	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 }
 
 // ArgoCDSpec defines the desired state of ArgoCD

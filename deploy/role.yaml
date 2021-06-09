@@ -98,3 +98,9 @@ rules:
   - deploymentconfigs
   verbs:
   - '*'
+- apiGroups:
+  - oauth.openshift.io
+  resources:
+  - oauthclients 
+  verbs:
+  - '*'

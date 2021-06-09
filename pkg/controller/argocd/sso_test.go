@@ -18,8 +18,9 @@ import (
 	"context"
 	"testing"
 
-	argoappv1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	oappsv1 "github.com/openshift/api/apps/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +35,10 @@ func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.
 	s := scheme.Scheme
 	// Register template scheme
 	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
+	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
 	templatev1.Install(s)
+	oappsv1.Install(s)
+	routev1.Install(s)
 
 	cl := fake.NewFakeClientWithScheme(s, objs...)
 	return &ReconcileArgoCD{
@@ -45,10 +49,7 @@ func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.
 
 func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
-		Provider: "keycloak",
-	}
+	a := makeTestArgoCDForKeycloak()
 
 	templateAPIFound = true
 	r := makeFakeReconciler(t, a)
@@ -63,4 +64,12 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		templateInstance))
+}
+
+func TestReconcile_noTemplateInstance(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+	r := makeFakeReconciler(t, a)
+
+	assert.NilError(t, r.reconcileSSO(a))
 }
