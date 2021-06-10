@@ -438,6 +438,9 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 		return nil
 	}
 
+	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
+		return err
+	}
 	return r.client.Create(context.TODO(), secret)
 }
 
