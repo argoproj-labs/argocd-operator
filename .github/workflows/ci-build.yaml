@@ -1,0 +1,57 @@
+name: Ensure the operator builds
+on:
+  push:
+    branches:
+      - 'master'
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+-[0-9a-zA-Z]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9a-zA-Z]+'
+  pull_request:
+    branches:
+      - 'master'
+      - 'v[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+-[0-9a-zA-Z]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-[0-9a-zA-Z]+'
+
+jobs:
+
+  build-operator:
+    runs-on: ubuntu-latest
+
+    env:
+      ARGOCD_OPERATOR_IMAGE_BUILDER: docker
+      GO111MODULE: on
+
+    steps:
+
+      - name: Create checkout directory
+        run: mkdir -p ~/go/src/github.com/argoproj-labs
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create symlink in GOPATH
+        run: ln -s $(pwd) ~/go/src/github.com/argoproj-labs
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Install operator-sdk
+        run: |
+          sudo apt-get install git -y
+          git clone https://github.com/operator-framework/operator-sdk ~/go/src/github.com/operator-framework/operator-sdk
+          cd ~/go/src/github.com/operator-framework/operator-sdk
+          git checkout v0.19.4
+          make tidy
+          make install
+
+      - name: Add ~/go/bin to PATH
+        run: |
+          echo ~/go/bin >> $GITHUB_PATH
+
+      - name: Build operator
+        run: bash hack/build.sh
