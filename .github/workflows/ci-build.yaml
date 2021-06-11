@@ -22,7 +22,6 @@ jobs:
 
     env:
       ARGOCD_OPERATOR_IMAGE_BUILDER: docker
-      GO111MODULE: on
 
     steps:
 
