@@ -1,4 +1,5 @@
 site_name: Argo CD Operator
+site_url: ""
 repo_url: https://github.com/argoproj-labs/argocd-operator
 strict: true
 theme:
