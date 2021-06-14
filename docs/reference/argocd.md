@@ -942,6 +942,13 @@ Path | `/` | The path for the Route.
 TLS | [Object] | The TLSConfig for the Route.
 WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
 
+If the route is enabled, it will use a default termination policy of `edge`
+for handling requests. With edge termination, the `Server.Insecure` setting
+will be automatically set to `true`. This will terminate TLS at the edge of
+your cluster, but the communication between the route and Argo CD will be
+unencrypted. You can change the way TLS is handled by defining an alternate
+TLS termination policy for the server route.
+
 ### Server Example
 
 The following example shows all properties set to the default values.

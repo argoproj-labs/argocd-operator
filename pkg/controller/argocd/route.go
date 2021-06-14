@@ -215,7 +215,11 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
 	}
 
-	if cr.Spec.Server.Insecure {
+	// TLS termination defaults to edge. If edge termination is chosen, we need
+	// to access Argo CD on http port. If edge termination is configured (either
+	// implicit or explicit), the server deployment will be configured to start
+	// with the --insecure flag as well.
+	if serverRouteIsEdgeTermination(cr) {
 		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("http"),
@@ -255,4 +259,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 		return r.client.Create(context.TODO(), route)
 	}
 	return r.client.Update(context.TODO(), route)
+}
+
+// routeIsEdgeTermination returns true whether user has configured the edge
+// termination for the server route.
+func serverRouteIsEdgeTermination(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Server.Route.TLS == nil || cr.Spec.Server.Route.TLS.Termination == routev1.TLSTerminationEdge
 }

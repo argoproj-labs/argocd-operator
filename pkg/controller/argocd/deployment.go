@@ -202,7 +202,8 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
-	if getArgoServerInsecure(cr) {
+	// The --insecure flag is implicit for when using route with edge termination
+	if getArgoServerInsecure(cr) || serverRouteIsEdgeTermination(cr) {
 		cmd = append(cmd, "--insecure")
 	}
 

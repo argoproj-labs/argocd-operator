@@ -209,3 +209,45 @@ func testNamespacedName(name string) types.NamespacedName {
 		Namespace: testNamespace,
 	}
 }
+
+func TestServerRouteTermination(t *testing.T) {
+	t.Run("Route properties not set, edge is default", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{}
+		if !serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be false, but is true")
+		}
+	})
+	t.Run("Route properties set to edge termination policy", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{
+			Spec: argov1alpha1.ArgoCDSpec{
+				Server: argov1alpha1.ArgoCDServerSpec{
+					Route: argov1alpha1.ArgoCDRouteSpec{
+						TLS: &routev1.TLSConfig{
+							Termination: routev1.TLSTerminationEdge,
+						},
+					},
+				},
+			},
+		}
+		if !serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be true, but is false")
+		}
+	})
+	t.Run("Route properties set to another termination policy", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{
+			Spec: argov1alpha1.ArgoCDSpec{
+				Server: argov1alpha1.ArgoCDServerSpec{
+					Route: argov1alpha1.ArgoCDRouteSpec{
+						TLS: &routev1.TLSConfig{
+							Termination: routev1.TLSTerminationReencrypt,
+						},
+					},
+				},
+			},
+		}
+		if serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be false, but is true")
+		}
+	})
+
+}
