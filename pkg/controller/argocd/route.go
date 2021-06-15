@@ -264,5 +264,5 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 // routeIsEdgeTermination returns true whether user has configured the edge
 // termination for the server route.
 func serverRouteIsEdgeTermination(cr *argoprojv1a1.ArgoCD) bool {
-	return cr.Spec.Server.Route.TLS == nil || cr.Spec.Server.Route.TLS.Termination == routev1.TLSTerminationEdge
+	return cr.Spec.Server.Route.Enabled && (cr.Spec.Server.Route.TLS == nil || cr.Spec.Server.Route.TLS.Termination == routev1.TLSTerminationEdge)
 }

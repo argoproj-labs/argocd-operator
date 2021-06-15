@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	v1 "github.com/openshift/api/route/v1"
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -569,10 +570,12 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
+func TestReconcileArgoCD_reconcileServerDeploymentWithRouteEdge(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Server.Insecure = true
+		a.Spec.Server.Route = argoprojv1alpha1.ArgoCDRouteSpec{
+			Enabled: true,
+		}
 	})
 	r := makeTestReconciler(t, a)
 
@@ -595,6 +598,81 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 				Command: []string{
 					"argocd-server",
 					"--insecure",
+					"--staticassets",
+					"/shared/app",
+					"--dex-server",
+					"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"--repo-server",
+					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"--redis",
+					"argocd-redis.argocd.svc.cluster.local:6379",
+				},
+				Ports: []corev1.ContainerPort{
+					{ContainerPort: 8080},
+					{ContainerPort: 8083},
+				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				ReadinessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz",
+							Port: intstr.FromInt(8080),
+						},
+					},
+					InitialDelaySeconds: 3,
+					PeriodSeconds:       30,
+				},
+				VolumeMounts: serverDefaultVolumeMounts(),
+			},
+		},
+		Volumes:            serverDefaultVolumes(),
+		ServiceAccountName: "argocd-argocd-server",
+	}
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
+		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
+	}
+}
+
+func TestReconcileArgoCD_reconcileServerDeploymentWithRoutePassthrough(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Server.Route = argoprojv1alpha1.ArgoCDRouteSpec{
+			Enabled: true,
+			TLS: &v1.TLSConfig{
+				Termination: v1.TLSTerminationPassthrough,
+			},
+		}
+	})
+	r := makeTestReconciler(t, a)
+
+	assert.NilError(t, r.reconcileServerDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NilError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	want := corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:            "argocd-server",
+				Image:           getArgoContainerImage(a),
+				ImagePullPolicy: corev1.PullAlways,
+				Command: []string{
+					"argocd-server",
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
