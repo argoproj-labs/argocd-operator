@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -91,6 +92,33 @@ func (r *ReconcileArgoCD) tlsSecretMapper(o handler.MapObject) []reconcile.Reque
 			result = []reconcile.Request{
 				{NamespacedName: namespacedArgoCDObject},
 			}
+		}
+	}
+
+	return result
+}
+
+func (r *ReconcileArgoCD) namespaceResourceMapper(o handler.MapObject) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	labels := o.Meta.GetLabels()
+	if v, ok := labels[common.ArgoCDManagedNamespaceLabel]; ok {
+		argocds := &argoprojv1alpha1.ArgoCDList{}
+		if err := r.client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
 		}
 	}
 

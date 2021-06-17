@@ -106,11 +106,13 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	r := makeTestReconciler(t)
 	Register(testRoleHook)
 
-	role, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
+	roles, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
+	role := roles[0]
 	assert.NilError(t, err)
 	assert.DeepEqual(t, role.Rules, testRules())
 
-	role, err = r.reconcileRole("test", []v1.PolicyRule{}, a)
+	roles, err = r.reconcileRole("test", []v1.PolicyRule{}, a)
+	role = roles[0]
 	assert.NilError(t, err)
 	assert.DeepEqual(t, role.Rules, []v1.PolicyRule{})
 }

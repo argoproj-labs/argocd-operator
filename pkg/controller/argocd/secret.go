@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
@@ -399,11 +401,26 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 		},
 	})
 
+	namespaceList := corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedNamespaceLabel: cr.Namespace,
+	}
+	if err := r.client.List(context.TODO(), &namespaceList, listOption); err != nil {
+		return err
+	}
+
+	var namespaces []string
+	for _, namespace := range namespaceList.Items {
+		namespaces = append(namespaces, namespace.Name)
+	}
+
+	sort.Strings(namespaces)
+
 	secret.Data = map[string][]byte{
 		"config":     dataBytes,
 		"name":       []byte("in-cluster"),
 		"server":     []byte(common.ArgoCDDefaultServer),
-		"namespaces": []byte(cr.Namespace),
+		"namespaces": []byte(strings.Join(namespaces, ",")),
 	}
 
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
@@ -423,12 +440,22 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 	}
 	for _, s := range clusterSecrets.Items {
 		// check if cluster secret with default server address exists
-		// do nothing if exists.
+		// update the list of namespaces if value differs.
 		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
 			if clusterConfigInstance {
-				r.client.Delete(context.TODO(), &s)
+				if err := r.client.Delete(context.TODO(), &s); err != nil {
+					return err
+				}
 			} else {
-				return nil
+				ns := strings.Split(string(s.Data["namespaces"]), ",")
+				for _, n := range namespaces {
+					if !containsString(ns, strings.TrimSpace(n)) {
+						ns = append(ns, strings.TrimSpace(n))
+					}
+					sort.Strings(ns)
+					s.Data["namespaces"] = []byte(strings.Join(ns, ","))
+					return r.client.Update(context.TODO(), &s)
+				}
 			}
 		}
 	}
