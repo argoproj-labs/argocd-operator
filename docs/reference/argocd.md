@@ -1031,7 +1031,7 @@ spec:
 
 ## TLS Options
 
-The following properties are available for configuring the Grafana component.
+The following properties are available for configuring the TLS settings.
 
 Name | Default | Description
 --- | --- | ---
