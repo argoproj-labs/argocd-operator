@@ -1,5 +1,5 @@
 # Delete previous cluster
-apiVersion: kudo.dev/v1alpha1
+apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 delete:
 - apiVersion: argoproj.io/v1alpha1
