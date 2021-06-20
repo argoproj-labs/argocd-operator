@@ -14,4 +14,12 @@ resources:
   kind: ArgoCD
   path: github.com/argoproj-labs/argocd-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  group: argoproj.io
+  kind: ArgoCDExport
+  path: github.com/argoproj-labs/argocd-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
