@@ -34,6 +34,8 @@ const (
 	SSOProviderTypeKeycloak SSOProviderType = "keycloak"
 )
 
+// Important: Run "make" to regenerate code after modifying this file
+
 // ArgoCDSpec defines the desired state of ArgoCD
 type ArgoCDSpec struct {
 

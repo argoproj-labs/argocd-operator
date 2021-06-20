@@ -24,10 +24,10 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// Important: Run "make" to regenerate code after modifying this file
+
 // ArgoCDExportSpec defines the desired state of ArgoCDExport
 type ArgoCDExportSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
 	// Argocd is the name of the ArgoCD instance to export.
 	Argocd string `json:"argocd"`
@@ -61,6 +61,15 @@ type ArgoCDExportStorageSpec struct {
 type ArgoCDExportStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Phase is a simple, high-level summary of where the ArgoCDExport is in its lifecycle.
+	// There are five possible phase values:
+	// Pending: The ArgoCDExport has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the containers for the ArgoCDExport are still running, or in the process of starting or restarting.
+	// Succeeded: All containers for the ArgoCDExport have terminated in success, and will not be restarted.
+	// Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
+	// Unknown: For some reason the state of the ArgoCDExport could not be obtained.
+	Phase string `json:"phase"`
 }
 
 //+kubebuilder:object:root=true
