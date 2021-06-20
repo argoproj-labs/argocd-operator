@@ -20,12 +20,17 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cri-api/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argoprojiov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
+
+// blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
 // ArgoCDReconciler reconciles a ArgoCD object
 type ArgoCDReconciler struct {
@@ -47,16 +52,31 @@ type ArgoCDReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	reqLogger := log.FromContext(ctx, "namespace", req.Namespace, "name", req.Name)
 
-	// your logic here
+	reqLogger.Info("Reconciling ArgoCD")
 
-	return ctrl.Result{}, nil
+	argocd := &argoproj.ArgoCD{}
+	err := r.Client.Get(context.TODO(), req.NamespacedName, argocd)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	// Return and don't requeue
+	return reconcile.Result{}, nil
+	//return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&argoprojiov1alpha1.ArgoCD{}).
+		For(&argoproj.ArgoCD{}).
 		Complete(r)
 }
