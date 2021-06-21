@@ -20,12 +20,19 @@ import (
 	"context"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cri-api/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argoprojiov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
+
+// blank assignment to verify that ReconcileArgoCDExport implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ArgoCDExportReconciler{}
+
+var exportLogger = log.Log.WithName("controller_argocdexport")
 
 // ArgoCDExportReconciler reconciles a ArgoCDExport object
 type ArgoCDExportReconciler struct {
@@ -37,26 +44,56 @@ type ArgoCDExportReconciler struct {
 //+kubebuilder:rbac:groups=argoproj.io,resources=argocdexports/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=argoproj.io,resources=argocdexports/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the ArgoCDExport object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+// Reconcile reads that state of the cluster for a ArgoCDExport object and makes changes based on the state read
+// and what is in the ArgoCDExport.Spec
+// Note:
+// The Controller will requeue the Request to be processed again if the returned error is non-nil or
+// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ArgoCDExportReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	reqLogger := log.FromContext(ctx, "Request.Namespac", req.Namespace, "Request.Name", req.Name)
+	reqLogger.Info("Reconciling ArgoCDExport")
 
-	// your logic here
+	// Fetch the ArgoCDExport instance
+	export := &argoproj.ArgoCDExport{}
+	err := r.Client.Get(context.TODO(), req.NamespacedName, export)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
 
-	return ctrl.Result{}, nil
+	if err := r.reconcileArgoCDExportResources(export); err != nil {
+		// Error reconciling ArgoCDExport sub-resources - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	return reconcile.Result{}, nil
+}
+
+// reconcileArgoCDExportResources will reconcile all ArgoCDExport resources for the give CR.
+func (r *ArgoCDExportReconciler) reconcileArgoCDExportResources(cr *argoproj.ArgoCDExport) error {
+	if err := r.validateExport(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStorage(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileExport(cr); err != nil {
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ArgoCDExportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&argoprojiov1alpha1.ArgoCDExport{}).
+		For(&argoproj.ArgoCDExport{}).
 		Complete(r)
 }
