@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cri-api/pkg/errors"
@@ -29,6 +30,13 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
+const (
+	applicationController = "argocd-application-controller"
+	server                = "argocd-server"
+	redisHa               = "argocd-redis-ha"
+	dexServer             = "argocd-dex-server"
+)
+
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
@@ -37,6 +45,8 @@ type ArgoCDReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
+
+var logr = log.Log.WithName("controller_argocd")
 
 //+kubebuilder:rbac:groups=argoproj.io,resources=argocds,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=argoproj.io,resources=argocds/status,verbs=get;update;patch
@@ -53,7 +63,6 @@ type ArgoCDReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx, "namespace", req.Namespace, "name", req.Name)
-
 	reqLogger.Info("Reconciling ArgoCD")
 
 	argocd := &argoproj.ArgoCD{}
@@ -66,6 +75,35 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	if argocd.GetDeletionTimestamp() != nil {
+		if argocd.IsDeletionFinalizerPresent() {
+			if err := r.deleteClusterResources(argocd); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
+			}
+
+			if err := r.removeDeletionFinalizer(argocd); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	}
+
+	if !argocd.IsDeletionFinalizerPresent() {
+		if err := r.addDeletionFinalizer(argocd); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	// get the latest version of argocd instance before reconciling
+	if err = r.Client.Get(context.TODO(), req.NamespacedName, argocd); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err := r.reconcileResources(argocd); err != nil {
+		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
 
