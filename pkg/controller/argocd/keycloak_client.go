@@ -162,7 +162,7 @@ func createTLSConfig(serverCert []byte, verifyTLS bool) (*tls.Config, error) {
 // Get Keycloak URL.
 func (h *httpclient) getKeycloakURL(ns string) string {
 
-	svc := fmt.Sprintf("https://%s.%s.svc:%s", defaultKeycloakIdentifier, ns, "8443")
+	svc := fmt.Sprintf("https://%s.%s.svc.cluster.local:%s", defaultKeycloakIdentifier, ns, "8443")
 	// At normal conditions, Keycloak should be accessible via the service name. However, there are some corner cases (like
 	// operator running locally during development or services being inaccessible due to network policies) which requires
 	// use of externalURL.

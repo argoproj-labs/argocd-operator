@@ -176,6 +176,10 @@ const (
 	// to used for the argocd container.
 	ArgoCDImageEnvName = "ARGOCD_IMAGE"
 
+	// ArgoCDKeycloakImageEnvName is the environment variable used to get the image
+	// to used for the Keycloak container.
+	ArgoCDKeycloakImageEnvName = "ARGOCD_KEYCLOAK_IMAGE"
+
 	// ArgoCDRedisHAProxyImageEnvName is the environment variable used to get the image
 	// to used for the Redis HA Proxy container.
 	ArgoCDRedisHAProxyImageEnvName = "ARGOCD_REDIS_HA_PROXY_IMAGE"

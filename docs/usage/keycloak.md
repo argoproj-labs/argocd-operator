@@ -77,6 +77,46 @@ kubectl -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_PASSWORD
 SSO_ADMIN_PASSWORD=GVXxHifH
 ```
 
+## Additional Steps for Disconnected OpenShift Clusters
+
+In a [disconnected](https://access.redhat.com/documentation/en-us/red_hat_openshift_container_storage/4.7/html/planning_your_deployment/disconnected-environment_rhocs) cluster, Keycloak communicates with OpenShift Oauth Server through proxy. Below are some additional steps that needs to followed to get Keycloak integrated with OpenShift Oauth Login.
+
+### Login to the Keycloak Pod
+
+```bash
+oc exec -it dc/keycloak -n argocd -- /bin/bash
+```
+
+### Run JBoss Cli command
+
+```bash
+/opt/eap/bin/jboss-cli.sh
+```
+
+### Start an Embedded Standalone Server
+
+```bash
+embed-server --server-config=standalone-openshift.xml
+```
+
+### Run the below command to setup proxy mappings for OpenShift OAuth Server host
+
+```bash
+/subsystem=keycloak-server/spi=connectionsHttpClient/provider=default:write-attribute(name=properties.proxy-mappings,value=["<oauth-server-hostname>;http://<proxy-server-host>:<proxy-server-port>"])
+```
+
+### Stop the Embedded Server
+
+```bash
+quit
+```
+
+### Reload JBoss
+
+```bash
+/opt/eap/bin/jboss-cli.sh --connect --command=:reload
+```
+
 ## Login
 
 You can see an option to Log in via keycloak apart from the usual ArgoCD login.
@@ -131,4 +171,4 @@ spec:
      enabled: true
 ```
 
-Note: Keycloak application created by this feature is currently not persistant. Incase of restarts, Any additional configuration created by the users in ArgoCD Keycloak realm will be deleted.
+Note: Keycloak application created by this feature is currently not persistent. Incase of restarts, Any additional configuration created by the users in ArgoCD Keycloak realm will be deleted.

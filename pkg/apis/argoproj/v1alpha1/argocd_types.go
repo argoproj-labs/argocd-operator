@@ -352,10 +352,14 @@ const (
 
 // ArgoCDSSOSpec defines SSO provider.
 type ArgoCDSSOSpec struct {
+	// Image is the SSO container image.
+	Image string `json:"image,omitempty"`
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
 	// VerifyTLS set to false disables strict TLS validation.
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
+	// Version is the SSO container image tag.
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDSpec defines the desired state of ArgoCD
