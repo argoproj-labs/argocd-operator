@@ -66,3 +66,141 @@ func nameWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) string {
 func NewConfigMapWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 	return NewConfigMapWithName(fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix), cr)
 }
+
+// GetDexConfig returns default dex config
+func GetDexConfig(cr *argoprojv1a1.ArgoCD) string {
+	config := common.ArgoCDDefaultDexConfig
+	if len(cr.Spec.Dex.Config) > 0 {
+		config = cr.Spec.Dex.Config
+	}
+	return config
+}
+
+// GetApplicationInstanceLabelKey will return the application instance label key  for the given ArgoCD.
+func GetApplicationInstanceLabelKey(cr *argoprojv1a1.ArgoCD) string {
+	key := common.ArgoCDDefaultApplicationInstanceLabelKey
+	if len(cr.Spec.ApplicationInstanceLabelKey) > 0 {
+		key = cr.Spec.ApplicationInstanceLabelKey
+	}
+	return key
+}
+
+// GetConfigManagementPlugins will return the config management plugins for the given ArgoCD.
+func GetConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
+	plugins := common.ArgoCDDefaultConfigManagementPlugins
+	if len(cr.Spec.ConfigManagementPlugins) > 0 {
+		plugins = cr.Spec.ConfigManagementPlugins
+	}
+	return plugins
+}
+
+// GetGATrackingID will return the google analytics tracking ID for the given Argo CD.
+func GetGATrackingID(cr *argoprojv1a1.ArgoCD) string {
+	id := common.ArgoCDDefaultGATrackingID
+	if len(cr.Spec.GATrackingID) > 0 {
+		id = cr.Spec.GATrackingID
+	}
+	return id
+}
+
+// GetHelpChatURL will return the help chat URL for the given Argo CD.
+func GetHelpChatURL(cr *argoprojv1a1.ArgoCD) string {
+	url := common.ArgoCDDefaultHelpChatURL
+	if len(cr.Spec.HelpChatURL) > 0 {
+		url = cr.Spec.HelpChatURL
+	}
+	return url
+}
+
+// GetHelpChatText will return the help chat text for the given Argo CD.
+func GetHelpChatText(cr *argoprojv1a1.ArgoCD) string {
+	text := common.ArgoCDDefaultHelpChatText
+	if len(cr.Spec.HelpChatText) > 0 {
+		text = cr.Spec.HelpChatText
+	}
+	return text
+}
+
+// GetKustomizeBuildOptions will return the kuztomize build options for the given ArgoCD.
+func GetKustomizeBuildOptions(cr *argoprojv1a1.ArgoCD) string {
+	kbo := common.ArgoCDDefaultKustomizeBuildOptions
+	if len(cr.Spec.KustomizeBuildOptions) > 0 {
+		kbo = cr.Spec.KustomizeBuildOptions
+	}
+	return kbo
+}
+
+// GetOIDCConfig will return the OIDC configuration for the given ArgoCD.
+func GetOIDCConfig(cr *argoprojv1a1.ArgoCD) string {
+	config := common.ArgoCDDefaultOIDCConfig
+	if len(cr.Spec.OIDCConfig) > 0 {
+		config = cr.Spec.OIDCConfig
+	}
+	return config
+}
+
+// GetResourceCustomizations will return the resource customizations for the given ArgoCD.
+func GetResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
+	rc := common.ArgoCDDefaultResourceCustomizations
+	if cr.Spec.ResourceCustomizations != "" {
+		rc = cr.Spec.ResourceCustomizations
+	}
+	return rc
+}
+
+// GetResourceExclusions will return the resource exclusions for the given ArgoCD.
+func GetResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
+	re := common.ArgoCDDefaultResourceExclusions
+	if cr.Spec.ResourceExclusions != "" {
+		re = cr.Spec.ResourceExclusions
+	}
+	return re
+}
+
+// GetResourceInclusions will return the resource inclusions for the given ArgoCD.
+func GetResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
+	re := common.ArgoCDDefaultResourceInclusions
+	if cr.Spec.ResourceInclusions != "" {
+		re = cr.Spec.ResourceInclusions
+	}
+	return re
+}
+
+// GetInitialRepositories will return the initial repositories for the given ArgoCD.
+func GetInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
+	repos := common.ArgoCDDefaultRepositories
+	if len(cr.Spec.InitialRepositories) > 0 {
+		repos = cr.Spec.InitialRepositories
+	}
+	return repos
+}
+
+// GetRepositoryCredentials will return the repository credentials for the given ArgoCD.
+func GetRepositoryCredentials(cr *argoprojv1a1.ArgoCD) string {
+	repos := common.ArgoCDDefaultRepositoryCredentials
+	if len(cr.Spec.RepositoryCredentials) > 0 {
+		repos = cr.Spec.RepositoryCredentials
+	}
+	return repos
+}
+
+// GetInitialSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
+func GetInitialSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
+	skh := common.ArgoCDDefaultSSHKnownHosts
+	if cr.Spec.InitialSSHKnownHosts.ExcludeDefaultHosts {
+		skh = ""
+	}
+	if len(cr.Spec.InitialSSHKnownHosts.Keys) > 0 {
+		skh += cr.Spec.InitialSSHKnownHosts.Keys
+	}
+	return skh
+}
+
+// GetInitialTLSCerts will return the TLS certs for the given ArgoCD.
+func GetInitialTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
+	certs := make(map[string]string)
+	if len(cr.Spec.TLS.InitialCerts) > 0 {
+		certs = cr.Spec.TLS.InitialCerts
+	}
+	return certs
+}

@@ -3,12 +3,13 @@ module github.com/argoproj-labs/argocd-operator
 go 1.16
 
 require (
-	cloud.google.com/go v0.56.0 // indirect
 	github.com/argoproj/argo-cd v1.8.7
+	github.com/coreos/prometheus-operator v0.40.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
 	github.com/sethvargo/go-password v0.2.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/client-go v12.0.0+incompatible

@@ -33,6 +33,14 @@ import (
 
 var logr = logf.Log.WithName("controller_argocd")
 
+// DexConnector represents an authentication connector for Dex.
+type DexConnector struct {
+	Config map[string]interface{} `yaml:"config,omitempty"`
+	ID     string                 `yaml:"id"`
+	Name   string                 `yaml:"name"`
+	Type   string                 `yaml:"type"`
+}
+
 // ArgocdInstanceSelector creates a label selector with "managed-by" requirement
 func ArgocdInstanceSelector(name string) (labels.Selector, error) {
 	selector := labels.NewSelector()
@@ -121,4 +129,9 @@ func GenerateArgoServerSessionKey() ([]byte, error) {
 		false, false)
 
 	return []byte(pass), err
+}
+
+// GetDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
+func GetDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
 }

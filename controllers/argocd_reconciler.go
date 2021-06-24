@@ -17,9 +17,12 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -27,12 +30,14 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	argopass "github.com/argoproj/argo-cd/util/password"
 
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cri-api/pkg/errors"
+	crierrors "k8s.io/cri-api/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -149,7 +154,7 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	if IsPrometheusAPIAvailable() {
+	if argocd.IsPrometheusAPIAvailable() {
 		logr.Info("reconciling prometheus")
 		if err := r.reconcilePrometheus(cr); err != nil {
 			return err
@@ -236,28 +241,28 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error
 		cm.Data = make(map[string]string)
 	}
 
-	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
-	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
+	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = argocd.GetApplicationInstanceLabelKey(cr)
+	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = argocd.GetConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
-	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
+	cm.Data[common.ArgoCDKeyGATrackingID] = argocd.GetGATrackingID(cr)
 	cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
-	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
-	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
-	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
-	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
-	if c := getResourceCustomizations(cr); c != "" {
+	cm.Data[common.ArgoCDKeyHelpChatURL] = argocd.GetHelpChatURL(cr)
+	cm.Data[common.ArgoCDKeyHelpChatText] = argocd.GetHelpChatText(cr)
+	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = argocd.GetKustomizeBuildOptions(cr)
+	cm.Data[common.ArgoCDKeyOIDCConfig] = argocd.GetOIDCConfig(cr)
+	if c := argocd.GetResourceCustomizations(cr); c != "" {
 		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
 	}
-	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
-	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
-	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
-	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
+	cm.Data[common.ArgoCDKeyResourceExclusions] = argocd.GetResourceExclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceInclusions] = argocd.GetResourceInclusions(cr)
+	cm.Data[common.ArgoCDKeyRepositories] = argocd.GetInitialRepositories(cr)
+	cm.Data[common.ArgoCDKeyRepositoryCredentials] = argocd.GetRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if !isDexDisabled() {
-		dexConfig := getDexConfig(cr)
+	if !argocd.IsDexDisabled() {
+		dexConfig := argocd.GetDexConfig(cr)
 		if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
@@ -268,10 +273,102 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error
 		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
-	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileDexConfiguration will ensure that Dex is configured properly.
+func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	actual := cm.Data[common.ArgoCDKeyDexConfig]
+	desired := argocd.GetDexConfig(cr)
+	if len(desired) <= 0 && cr.Spec.Dex.OpenShiftOAuth {
+		cfg, err := r.getOpenShiftDexConfig(cr)
+		if err != nil {
+			return err
+		}
+		desired = cfg
+	}
+
+	if actual != desired {
+		// Update ConfigMap with desired configuration.
+		cm.Data[common.ArgoCDKeyDexConfig] = desired
+		if err := r.Client.Update(context.TODO(), cm); err != nil {
+			return err
+		}
+
+		// Trigger rollout of Dex Deployment to pick up changes.
+		deploy := argocd.NewDeploymentWithSuffix("dex-server", "dex-server", cr)
+		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+			logr.Info("unable to locate dex deployment")
+			return nil
+		}
+
+		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		return r.Client.Update(context.TODO(), deploy)
+	}
+	return nil
+}
+
+// getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
+func (r *ArgoCDReconciler) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
+	clientSecret, err := r.getDexOAuthClientSecret(cr)
+	if err != nil {
+		return "", err
+	}
+
+	connector := argocd.DexConnector{
+		Type: "openshift",
+		ID:   "openshift",
+		Name: "OpenShift",
+		Config: map[string]interface{}{
+			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
+			"clientID":     argocd.GetDexOAuthClientID(cr),
+			"clientSecret": *clientSecret,
+			"redirectURI":  r.getDexOAuthRedirectURI(cr),
+			"insecureCA":   true, // TODO: Configure for openshift CA
+		},
+	}
+
+	connectors := make([]argocd.DexConnector, 0)
+	connectors = append(connectors, connector)
+
+	dex := make(map[string]interface{})
+	dex["connectors"] = connectors
+
+	bytes, err := yaml.Marshal(dex)
+	return string(bytes), err
+}
+
+// getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
+func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
+	sa := argocd.NewServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+		return nil, err
+	}
+
+	// Find the token secret
+	var tokenSecret *corev1.ObjectReference
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "token") {
+			tokenSecret = &saSecret
+			break
+		}
+	}
+
+	if tokenSecret == nil {
+		return nil, errors.New("unable to locate ServiceAccount token for OAuth client secret")
+	}
+
+	// Fetch the secret to obtain the token
+	secret := argoutil.NewSecretWithName(cr.ObjectMeta, tokenSecret.Name)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
+		return nil, err
+	}
+
+	token := string(secret.Data["token"])
+	return &token, nil
 }
 
 func (r *ArgoCDReconciler) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
@@ -718,7 +815,7 @@ func (r *ArgoCDReconciler) reconcileClusterRoleBinding(name string, role *v1.Clu
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
 	roleBindingExists := true
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !crierrors.IsNotFound(err) {
 			return err
 		}
 		roleBindingExists = false
@@ -798,7 +895,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding)
 	roleBindingExists := true
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !crierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 		}
 		if name == dexServer && argocd.IsDexDisabled() {
@@ -847,7 +944,7 @@ func (r *ArgoCDReconciler) reconcileServiceAccount(name string, cr *argoprojv1a1
 
 	exists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		if !errors.IsNotFound(err) {
+		if !crierrors.IsNotFound(err) {
 			return nil, err
 		}
 		if name == dexServer && argocd.IsDexDisabled() {
@@ -986,7 +1083,7 @@ func (r *ArgoCDReconciler) reconcileClusterRole(name string, policyRules []v1.Po
 	existingClusterRole := &v1.ClusterRole{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !crierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
 		}
 		if !allowed {
@@ -1014,7 +1111,7 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 	existingRole := v1.Role{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, &existingRole)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !crierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 		}
 		if name == dexServer && argocd.IsDexDisabled() {
