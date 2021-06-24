@@ -231,7 +231,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 
 	assert.NilError(t, createNamespace(r, "xyz", a.Namespace))
 	want = "argocd,someRandomNamespace,xyz"
-	// reconcile to check namespace with the label gets added
+
 	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), want)
