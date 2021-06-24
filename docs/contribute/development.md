@@ -84,11 +84,16 @@ Run unit tests. Remember that you can modify `deploy/operator.yaml` to use the v
 hack/test-unit.sh
 ```
 
-Run e2e tests and clean the cluster after complete.
+Run e2e tests.
 
 ``` bash
+# In a separate terminal, run the operator locally
+kubectl apply -f deploy/crds    
+kubectl apply -f deploy/argo-cd
+ARGOCD_CLUSTER_CONFIG_NAMESPACES=argocd-e2e-cluster-config operator-sdk run local --watch-namespace ""
+
+# In a separate terminal, run the tests
 hack/test.sh
-hack/cluster-clean.sh
 ```
 
 Run scorecard tests.

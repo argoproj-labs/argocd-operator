@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        k3s-version: [ v1.19.2 ]
+        k3s-version: [ v1.20.2 ]
         # k3s-version: [v1.20.2, v1.19.2, v1.18.9, v1.17.11, v1.16.15]
     steps:
       - name: Download kuttl plugin
@@ -75,18 +75,46 @@ jobs:
           set -o pipefail
           kubectl apply -f deploy/crds
           kubectl apply -f deploy/argo-cd
-          operator-sdk run local --watch-namespace "" 2>&1 > /tmp/e2e-operator-run.log &
+          # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
+          operator-sdk run local --watch-namespace "" 2>&1 | tee /tmp/e2e-operator-run.log &
       - name: Run tests
         run: |
-          set -o pipefail
           bash hack/test.sh 2>&1 > /tmp/e2e-test.log
       - name: Upload operator logs
         uses: actions/upload-artifact@v2
         with:
           name: e2e-operator-run-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-operator-run.log
+        if: ${{ failure() }}
       - name: Upload test logs
         uses: actions/upload-artifact@v2
         with:
           name: e2e-test-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-test.log
+        if: ${{ failure() }}
+      - name: Save application controller and server logs
+        if: ${{ failure() }}
+        run: |
+          # Since the tests stop on the first failure, only one of the namespaces will exist
+          set -x
+          if [ $(kubectl get namespaces -o=name | grep '^namespace/argocd-e2e$') ]; then
+            kubectl get po -n argocd-e2e
+            kubectl logs -n argocd-e2e $(kubectl get po -n argocd-e2e -o=name | grep example-argocd-application-controller) > /tmp/e2e-application-controller.log
+            kubectl logs -n argocd-e2e $(kubectl get po -n argocd-e2e -o=name | grep example-argocd-server) > /tmp/e2e-server.log
+          elif [ $(kubectl get namespaces -o=name | grep '^namespace/argocd-e2e-cluster-config$') ]; then
+            kubectl get po -n argocd-e2e-cluster-config
+            kubectl logs -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-application-controller) > /tmp/e2e-application-controller.log
+            kubectl logs -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-server) > /tmp/e2e-server.log
+          fi
+      - name: Upload application controller logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: e2e-application-controller-${{ matrix.k3s-version }}.log
+          path: /tmp/e2e-application-controller.log
+        if: ${{ failure() }}
+      - name: Upload server logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: e2e-server-${{ matrix.k3s-version }}.log
+          path: /tmp/e2e-server.log
+        if: ${{ failure() }}
