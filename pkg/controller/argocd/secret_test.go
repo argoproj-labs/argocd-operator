@@ -211,6 +211,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, true)
 
 	testSecret := argoutil.NewSecretWithSuffix(a.ObjectMeta, "default-cluster-config")
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
@@ -219,11 +220,11 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), a.Namespace)
 
-	want := "someRandomNamespace"
-	testSecret.Data["namespaces"] = []byte(want)
+	want := "argocd,someRandomNamespace"
+	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
 	r.client.Update(context.TODO(), testSecret)
 
-	// reconcile to check nothing gets updated
+	// reconcile to check namespace with the label gets added
 	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), want)

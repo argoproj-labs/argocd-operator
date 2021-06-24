@@ -47,6 +47,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, false)
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -74,6 +75,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	a := makeTestArgoCD()
 
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, false)
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -111,6 +113,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	resources := []runtime.Object{a}
 	resources = append(resources, clusterResources(a)...)
 	r := makeTestReconciler(t, resources...)
+	createNamespace(r, a.Namespace, false)
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{

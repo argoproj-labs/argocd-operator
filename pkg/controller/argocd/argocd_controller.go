@@ -102,6 +102,9 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	if val, ok := namespace.Labels[common.ArgoCDManagedNamespaceLabel]; !ok || val != argocd.Namespace {
+		if namespace.Labels == nil {
+			namespace.Labels = make(map[string]string)
+		}
 		namespace.Labels[common.ArgoCDManagedNamespaceLabel] = argocd.Namespace
 		if err = r.client.Update(context.TODO(), namespace); err != nil {
 			return reconcile.Result{}, err

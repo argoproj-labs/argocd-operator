@@ -20,6 +20,8 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	p := policyRuleForApplicationController()
 
+	createNamespace(r, a.Namespace, true)
+
 	workloadIdentifier := "xrb"
 
 	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
@@ -44,6 +46,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, true)
 
 	rules := policyRuleForDexServer()
 	rb := newRoleBindingWithname(dexServer, a)

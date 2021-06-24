@@ -31,6 +31,7 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, true)
 
 	// objective is to verify if the right rule associations have happened.
 
@@ -125,6 +126,7 @@ func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	createNamespace(r, a.Namespace, true)
 
 	// Dex is enabled, creates a new Service Account for it
 	sa, err := r.reconcileServiceAccount(dexServer, a)

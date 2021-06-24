@@ -123,6 +123,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			if err := r.client.Delete(context.TODO(), role); err != nil {
 				return nil, err
 			}
+			roles = append(roles, role)
+			continue
 		}
 		existingRole.Rules = role.Rules
 		if err := r.client.Update(context.TODO(), &existingRole); err != nil {

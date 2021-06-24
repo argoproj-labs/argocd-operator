@@ -15,6 +15,8 @@
 package argocd
 
 import (
+	"context"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"sort"
 	"testing"
 
@@ -250,4 +252,13 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
 		},
 	}
+}
+
+func createNamespace(r *ReconcileArgoCD, n string, withLabel bool) error {
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
+	if withLabel {
+		ns.Labels = map[string]string{common.ArgoCDManagedNamespaceLabel: n}
+	}
+
+	return r.client.Create(context.TODO(), ns)
 }
