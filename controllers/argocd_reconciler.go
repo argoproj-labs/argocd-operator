@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -37,6 +39,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	crierrors "k8s.io/cri-api/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -194,6 +197,91 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
+// reconcileServices will ensure that all Services are present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
+	err := r.reconcileDexService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileGrafanaService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileMetricsService(cr)
+	if err != nil {
+		return err
+	}
+
+	if cr.Spec.HA.Enabled {
+		err = r.reconcileRedisHAServices(cr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = r.reconcileRedisService(cr)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = r.reconcileRepoService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerMetricsService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerService(cr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileDexService will ensure that the Service for Dex is present.
+func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("dex-server", "dex-server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if isDexDisabled() {
+			// Service exists but enabled flag has been set to false, delete the Service
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		return nil
+	}
+
+	if isDexDisabled() {
+		return nil // Dex is disabled, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "http",
+			Port:       common.ArgoCDDefaultDexHTTPPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexHTTPPort),
+		}, {
+			Name:       "grpc",
+			Port:       common.ArgoCDDefaultDexGRPCPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexGRPCPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+		return err
+	}
+	return r.client.Create(context.TODO(), svc)
+}
+
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
 func (r *ArgoCDReconciler) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
@@ -225,6 +313,219 @@ func (r *ArgoCDReconciler) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	return r.reconcileGPGKeysConfigMap(cr)
+}
+
+// reconcileGPGKeysConfigMap creates a gpg-keys config map
+func (r *ArgoCDReconciler) reconcileGPGKeysConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	cm := argocd.NewConfigMapWithName(common.ArgoCDGPGKeysConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return nil
+	}
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
+func (r *ArgoCDReconciler) reconcileGrafanaDashboards(cr *argoprojv1a1.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
+	cm := argocd.NewConfigMapWithSuffix(common.ArgoCDGrafanaDashboardConfigMapSuffix, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return nil // ConfigMap found, do nothing
+	}
+
+	pattern := filepath.Join(argocd.GetGrafanaConfigPath(), "dashboards/*.json")
+	dashboards, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+
+	data := make(map[string]string)
+	for _, f := range dashboards {
+		dashboard, err := ioutil.ReadFile(f)
+		if err != nil {
+			return err
+		}
+
+		parts := strings.Split(f, "/")
+		filename := parts[len(parts)-1]
+		data[filename] = string(dashboard)
+	}
+	cm.Data = data
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
+func (r *ArgoCDReconciler) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
+	cm := argocd.NewConfigMapWithSuffix(common.ArgoCDGrafanaConfigMapSuffix, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return nil // ConfigMap found, do nothing
+	}
+
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
+	secret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, secret.Name)
+	if err != nil {
+		return err
+	}
+
+	grafanaConfig := argocd.GrafanaConfig{
+		Security: argocd.GrafanaSecurityConfig{
+			AdminUser:     string(secret.Data[common.ArgoCDKeyGrafanaAdminUsername]),
+			AdminPassword: string(secret.Data[common.ArgoCDKeyGrafanaAdminPassword]),
+			SecretKey:     string(secret.Data[common.ArgoCDKeyGrafanaSecretKey]),
+		},
+	}
+
+	data, err := loadGrafanaConfigs()
+	if err != nil {
+		return err
+	}
+
+	tmpls, err := loadGrafanaTemplates(&grafanaConfig)
+	if err != nil {
+		return err
+	}
+
+	for key, val := range tmpls {
+		data[key] = val
+	}
+	cm.Data = data
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
+func (r *ArgoCDReconciler) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
+	cm := argocd.NewConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
+	cm.Data = argocd.GetInitialTLSCerts(cr)
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return r.Client.Update(context.TODO(), cm)
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
+func (r *ArgoCDReconciler) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error {
+	cm := argocd.NewConfigMapWithName(common.ArgoCDKnownHostsConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return nil // ConfigMap found, move along...
+	}
+
+	cm.Data = map[string]string{
+		common.ArgoCDKeySSHKnownHosts: argocd.GetInitialSSHKnownHosts(cr),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
+func (r *ArgoCDReconciler) reconcileRBAC(cr *argoprojv1a1.ArgoCD) error {
+	cm := argocd.NewConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return r.reconcileRBACConfigMap(cm, cr)
+	}
+	return r.createRBACConfigMap(cm, cr)
+}
+
+// createRBACConfigMap will create the Argo CD RBAC ConfigMap resource.
+func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	data := make(map[string]string)
+	data[common.ArgoCDKeyRBACPolicyCSV] = argocd.GetRBACPolicy(cr)
+	data[common.ArgoCDKeyRBACPolicyDefault] = argocd.GetRBACDefaultPolicy(cr)
+	data[common.ArgoCDKeyRBACScopes] = getRBACScopes(cr)
+	cm.Data = data
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
+}
+
+// reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	changed := false
+	// Policy CSV
+	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
+		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
+		changed = true
+	}
+
+	// Default Policy
+	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
+		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
+		changed = true
+	}
+
+	// Scopes
+	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
+		cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
+		changed = true
+	}
+
+	if changed {
+		// TODO: Reload server (and dex?) if RBAC settings change?
+		return r.Client.Update(context.TODO(), cm)
+	}
+	return nil // ConfigMap exists and nothing to do, move along...
+}
+
+// reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	cm := argocd.NewConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.Client.Delete(context.TODO(), cm)
+		}
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	cm.Data = map[string]string{
+		"haproxy.cfg":     argocd.GetRedisHAProxyConfig(cr),
+		"haproxy_init.sh": argocd.GetRedisHAProxyScript(cr),
+		"init.sh":         argocd.GetRedisInitScript(cr),
+		"redis.conf":      argocd.GetRedisConf(cr),
+		"sentinel.conf":   argocd.GetRedisSentinelConf(cr),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
@@ -277,6 +578,94 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
+}
+
+func (r *ArgoCDReconciler) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+	changed := false
+
+	if cm.Data[common.ArgoCDKeyAdminEnabled] == fmt.Sprintf("%t", cr.Spec.DisableAdmin) {
+		cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] != cr.Spec.ApplicationInstanceLabelKey {
+		cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = cr.Spec.ApplicationInstanceLabelKey
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyConfigManagementPlugins] != cr.Spec.ConfigManagementPlugins {
+		cm.Data[common.ArgoCDKeyConfigManagementPlugins] = cr.Spec.ConfigManagementPlugins
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyGATrackingID] != cr.Spec.GATrackingID {
+		cm.Data[common.ArgoCDKeyGATrackingID] = cr.Spec.GATrackingID
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyGAAnonymizeUsers] != fmt.Sprint(cr.Spec.GAAnonymizeUsers) {
+		cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyHelpChatURL] != cr.Spec.HelpChatURL {
+		cm.Data[common.ArgoCDKeyHelpChatURL] = cr.Spec.HelpChatURL
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyHelpChatText] != cr.Spec.HelpChatText {
+		cm.Data[common.ArgoCDKeyHelpChatText] = cr.Spec.HelpChatText
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyKustomizeBuildOptions] != cr.Spec.KustomizeBuildOptions {
+		cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = cr.Spec.KustomizeBuildOptions
+		changed = true
+	}
+
+	if cr.Spec.SSO == nil {
+		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
+			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
+			changed = true
+		}
+	}
+
+	if cm.Data[common.ArgoCDKeyResourceCustomizations] != cr.Spec.ResourceCustomizations {
+		cm.Data[common.ArgoCDKeyResourceCustomizations] = cr.Spec.ResourceCustomizations
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyResourceExclusions] != cr.Spec.ResourceExclusions {
+		cm.Data[common.ArgoCDKeyResourceExclusions] = cr.Spec.ResourceExclusions
+		changed = true
+	}
+
+	uri := r.getArgoServerURI(cr)
+	if cm.Data[common.ArgoCDKeyServerURL] != uri {
+		cm.Data[common.ArgoCDKeyServerURL] = uri
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyStatusBadgeEnabled] != fmt.Sprint(cr.Spec.StatusBadgeEnabled) {
+		cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] != fmt.Sprint(cr.Spec.UsersAnonymousEnabled) {
+		cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
+		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
+		changed = true
+	}
+
+	if changed {
+		return r.Client.Update(context.TODO(), cm) // TODO: Reload Argo CD server after ConfigMap change (which properties)?
+	}
+
+	return nil // Nothing changed, no update needed...
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.

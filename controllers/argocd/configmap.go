@@ -204,3 +204,30 @@ func GetInitialTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
 	}
 	return certs
 }
+
+// GetRBACPolicy will return the RBAC policy for the given ArgoCD.
+func GetRBACPolicy(cr *argoprojv1a1.ArgoCD) string {
+	policy := common.ArgoCDDefaultRBACPolicy
+	if cr.Spec.RBAC.Policy != nil {
+		policy = *cr.Spec.RBAC.Policy
+	}
+	return policy
+}
+
+// GetRBACDefaultPolicy will retun the RBAC default policy for the given ArgoCD.
+func GetRBACDefaultPolicy(cr *argoprojv1a1.ArgoCD) string {
+	dp := common.ArgoCDDefaultRBACDefaultPolicy
+	if cr.Spec.RBAC.DefaultPolicy != nil {
+		dp = *cr.Spec.RBAC.DefaultPolicy
+	}
+	return dp
+}
+
+// GetRBACScopes will return the RBAC scopes for the given ArgoCD.
+func GetRBACScopes(cr *argoprojv1a1.ArgoCD) string {
+	scopes := common.ArgoCDDefaultRBACScopes
+	if cr.Spec.RBAC.Scopes != nil {
+		scopes = *cr.Spec.RBAC.Scopes
+	}
+	return scopes
+}

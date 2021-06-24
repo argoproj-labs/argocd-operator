@@ -15,15 +15,19 @@
 package argocd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
+	"text/template"
 
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/google/martian/log"
 	"github.com/sethvargo/go-password/password"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -134,4 +138,102 @@ func GenerateArgoServerSessionKey() ([]byte, error) {
 // GetDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
 func GetDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
+}
+
+// GetRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func GetRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
+	if err != nil {
+		logr.Error(err, "unable to load redis init-script")
+		return ""
+	}
+	return script
+}
+
+// loadTemplateFile will parse a template with the given path and execute it with the given params.
+func loadTemplateFile(path string, params map[string]string) (string, error) {
+	tmpl, err := template.ParseFiles(path)
+	if err != nil {
+		logr.Error(err, "unable to parse template")
+		return "", err
+	}
+
+	buf := new(bytes.Buffer)
+	err = tmpl.Execute(buf, params)
+	if err != nil {
+		logr.Error(err, "unable to execute template")
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// getRedisConfigPath will return the path for the Redis configuration templates.
+func getRedisConfigPath() string {
+	path := os.Getenv("REDIS_CONFIG_PATH")
+	if len(path) > 0 {
+		return path
+	}
+	return common.ArgoCDDefaultRedisConfigPath
+}
+
+// GetRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func GetRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
+	if err != nil {
+		log.Error(err, "unable to load redis haproxy configuration")
+		return ""
+	}
+	return script
+}
+
+// GetRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func GetRedisHAProxyScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
+	vars := map[string]string{
+		"ServiceName": nameWithSuffix("redis-ha", cr),
+	}
+
+	script, err := loadTemplateFile(path, vars)
+	if err != nil {
+		log.Error(err, "unable to load redis haproxy init script")
+		return ""
+	}
+	return script
+}
+
+// GetRedisConf will load the redis configuration from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func GetRedisConf(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis configuration")
+		return ""
+	}
+	return conf
+}
+
+// GetRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func GetRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis sentinel configuration")
+		return ""
+	}
+	return conf
 }
