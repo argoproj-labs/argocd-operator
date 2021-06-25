@@ -2,7 +2,6 @@ package openshift
 
 import (
 	"context"
-	"k8s.io/client-go/kubernetes"
 	"os"
 	"strings"
 
@@ -13,7 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -24,6 +24,7 @@ func init() {
 }
 
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
+
 	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
 	switch o := v.(type) {
 	case *rbacv1.ClusterRole:
@@ -67,12 +68,14 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 	case *rbacv1.Role:
 		if o.ObjectMeta.Name == cr.Name+"-"+"argocd-application-controller" {
 			logv.Info("configuring policy rule for Application Controller")
+
 			// can move this to somewhere common eventually, maybe init()
 			k8sClient, err := initK8sClient()
 			if err != nil {
-				logv.Error(err, "failed to initialise kube client")
+				logv.Error(err, "failed to initialize kube client")
 				return err
 			}
+
 			clusterRole, err := k8sClient.RbacV1().ClusterRoles().Get(context.TODO(), "admin", metav1.GetOptions{})
 			if err != nil {
 				logv.Error(err, "failed to retrieve Cluster Role admin")
@@ -341,10 +344,15 @@ func splitList(s string) []string {
 }
 
 func initK8sClient() (*kubernetes.Clientset, error) {
-	config, err := rest.InClusterConfig()
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return kubernetes.NewForConfig(config)
+	kClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return kClient, nil
 }
