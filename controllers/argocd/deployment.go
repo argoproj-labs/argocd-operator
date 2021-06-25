@@ -77,3 +77,80 @@ func IsDexDisabled() bool {
 	}
 	return false
 }
+
+// ProxyEnvVars creates proxy arariables
+func ProxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
+	result := []corev1.EnvVar{}
+	for _, v := range vars {
+		result = append(result, v)
+	}
+	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
+	for _, p := range proxyKeys {
+		if k, v := caseInsensitiveGetenv(p); k != "" {
+			result = append(result, corev1.EnvVar{Name: k, Value: v})
+		}
+	}
+	return result
+}
+
+func caseInsensitiveGetenv(s string) (string, string) {
+	if v := os.Getenv(s); v != "" {
+		return s, v
+	}
+	ls := strings.ToLower(s)
+	if v := os.Getenv(ls); v != "" {
+		return ls, v
+	}
+	return "", ""
+}
+
+// GetArgoRepoCommand will return the command for the ArgoCD Repo component.
+func GetArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+
+	cmd = append(cmd, "uid_entrypoint.sh")
+	cmd = append(cmd, "argocd-repo-server")
+
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
+
+	return cmd
+}
+
+// GetArgoServerCommand will return the command for the ArgoCD server component.
+func GetArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-server")
+
+	if getArgoServerInsecure(cr) {
+		cmd = append(cmd, "--insecure")
+	}
+
+	if isRepoServerTLSVerificationRequested(cr) {
+		cmd = append(cmd, "--repo-server-strict-tls")
+	}
+
+	cmd = append(cmd, "--staticassets")
+	cmd = append(cmd, "/shared/app")
+
+	cmd = append(cmd, "--dex-server")
+	cmd = append(cmd, getDexServerAddress(cr))
+
+	cmd = append(cmd, "--repo-server")
+	cmd = append(cmd, getRepoServerAddress(cr))
+
+	cmd = append(cmd, "--redis")
+	cmd = append(cmd, getRedisServerAddress(cr))
+
+	return cmd
+}
+
+// getDexServerAddress will return the Dex server address.
+func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("http://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+}
+
+// getRepoServerAddress will return the Argo CD repo server address.
+func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
+}

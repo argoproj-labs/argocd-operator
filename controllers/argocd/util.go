@@ -22,15 +22,16 @@ import (
 	"strings"
 	"text/template"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"github.com/google/martian/log"
 	"github.com/sethvargo/go-password/password"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -104,6 +105,11 @@ func splitList(s string) []string {
 		elems[i] = strings.TrimSpace(elems[i])
 	}
 	return elems
+}
+
+// BoolPtr returns a pointer to val
+func BoolPtr(val bool) *bool {
+	return &val
 }
 
 // NameWithSuffix will return a name based on the given ArgoCD. The given suffix is appended to the generated name.
@@ -192,7 +198,7 @@ func GetRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD) string {
 
 	script, err := loadTemplateFile(path, vars)
 	if err != nil {
-		log.Error(err, "unable to load redis haproxy configuration")
+		logr.Error(err, "unable to load redis haproxy configuration")
 		return ""
 	}
 	return script
@@ -208,7 +214,7 @@ func GetRedisHAProxyScript(cr *argoprojv1a1.ArgoCD) string {
 
 	script, err := loadTemplateFile(path, vars)
 	if err != nil {
-		log.Error(err, "unable to load redis haproxy init script")
+		logr.Error(err, "unable to load redis haproxy init script")
 		return ""
 	}
 	return script
@@ -220,7 +226,7 @@ func GetRedisConf(cr *argoprojv1a1.ArgoCD) string {
 	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
-		log.Error(err, "unable to load redis configuration")
+		logr.Error(err, "unable to load redis configuration")
 		return ""
 	}
 	return conf
@@ -232,8 +238,233 @@ func GetRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
 	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
-		log.Error(err, "unable to load redis sentinel configuration")
+		logr.Error(err, "unable to load redis sentinel configuration")
 		return ""
 	}
 	return conf
+}
+
+// GetDexContainerImage will return the container image for the Dex server.
+//
+// There are three possible options for configuring the image, and this is the
+// order of preference.
+//
+// 1. from the Spec, the spec.dex field has an image and version to use for
+// generating an image reference.
+// 2. from the Environment, this looks for the `ARGOCD_DEX_IMAGE` field and uses
+// that if the spec is not configured.
+// 3. the default is configured in common.ArgoCDDefaultDexVersion and
+// common.ArgoCDDefaultDexImage.
+func GetDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.Dex.Image
+	if img == "" {
+		img = common.ArgoCDDefaultDexImage
+		defaultImg = true
+	}
+
+	tag := cr.Spec.Dex.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultDexVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetDexResources will return the ResourceRequirements for the Dex container.
+func GetDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Dex.Resources != nil {
+		resources = *cr.Spec.Dex.Resources
+	}
+
+	return resources
+}
+
+// GetArgoContainerImage will return the container image for ArgoCD.
+func GetArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultTag, defaultImg := false, false
+	img := cr.Spec.Image
+	if img == "" {
+		img = common.ArgoCDDefaultArgoImage
+		defaultImg = true
+	}
+
+	tag := cr.Spec.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultArgoVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetRedisContainerImage will return the container image for the Redis server.
+func GetRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.Redis.Image
+	if img == "" {
+		img = common.ArgoCDDefaultRedisImage
+		defaultImg = true
+	}
+	tag := cr.Spec.Redis.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultRedisVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetRedisResources will return the ResourceRequirements for the Redis container.
+func GetRedisResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Redis.Resources != nil {
+		resources = *cr.Spec.Redis.Resources
+	}
+
+	return resources
+}
+
+// GetRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
+func GetRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.HA.RedisProxyImage
+	if len(img) <= 0 {
+		img = common.ArgoCDDefaultRedisHAProxyImage
+		defaultImg = true
+	}
+
+	tag := cr.Spec.HA.RedisProxyVersion
+	if len(tag) <= 0 {
+		tag = common.ArgoCDDefaultRedisHAProxyVersion
+		defaultTag = true
+	}
+
+	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetRedisHAProxyResources will return the ResourceRequirements for the Redis HA Proxy.
+func GetRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.HA.Resources != nil {
+		resources = *cr.Spec.HA.Resources
+	}
+
+	return resources
+}
+
+// getRedisServerAddress will return the Redis service address for the given ArgoCD.
+func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
+	if cr.Spec.HA.Enabled {
+		return getRedisHAProxyAddress(cr)
+	}
+	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
+}
+
+// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
+func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
+	return fqdnServiceRef("redis-ha-haproxy", common.ArgoCDDefaultRedisPort, cr)
+}
+
+// fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func fqdnServiceRef(service string, port int, cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
+}
+
+// GetArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
+func GetArgoRepoResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Repo.Resources != nil {
+		resources = *cr.Spec.Repo.Resources
+	}
+
+	return resources
+}
+
+// getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
+func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Server.Insecure
+}
+
+func isRepoServerTLSVerificationRequested(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Repo.VerifyTLS
+}
+
+// GetArgoServerResources will return the ResourceRequirements for the Argo CD server container.
+func GetArgoServerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	if cr.Spec.Server.Autoscale.Enabled {
+		resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceLimitCPU),
+				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceLimitMemory),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceRequestCPU),
+				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceRequestMemory),
+			},
+		}
+	}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Server.Resources != nil {
+		resources = *cr.Spec.Server.Resources
+	}
+
+	return resources
+}
+
+// GetGrafanaContainerImage will return the container image for the Grafana server.
+func GetGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultTag, defaultImg := false, false
+	img := cr.Spec.Grafana.Image
+	if img == "" {
+		img = common.ArgoCDDefaultGrafanaImage
+		defaultImg = true
+	}
+
+	tag := cr.Spec.Grafana.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultGrafanaVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetGrafanaResources will return the ResourceRequirements for the Grafana container.
+func GetGrafanaResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Grafana.Resources != nil {
+		resources = *cr.Spec.Grafana.Resources
+	}
+
+	return resources
 }

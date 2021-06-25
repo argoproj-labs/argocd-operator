@@ -15,6 +15,8 @@
 package argocd
 
 import (
+	"fmt"
+
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -81,6 +83,35 @@ func verifyPrometheusAPI() error {
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.
 func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labelsForCluster(cr),
+		},
+	}
+}
+
+// NewServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
+func NewServiceMonitorWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+}
+
+// newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
+func newServiceMonitorWithName(name string, cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+	svcmon := newServiceMonitor(cr)
+	svcmon.ObjectMeta.Name = name
+
+	lbls := svcmon.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
+	svcmon.ObjectMeta.Labels = lbls
+
+	return svcmon
+}
+
+// newServiceMonitor returns a new ServiceMonitor instance.
+func newServiceMonitor(cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,

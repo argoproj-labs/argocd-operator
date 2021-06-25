@@ -15,14 +15,18 @@
 package argocd
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/sethvargo/go-password/password"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 // GrafanaConfig represents the Grafana configuration options.
@@ -94,4 +98,70 @@ func GetGrafanaConfigPath() string {
 		return path
 	}
 	return common.ArgoCDDefaultGrafanaConfigPath
+}
+
+// LoadGrafanaTemplates will scan the template directory and parse/execute any files ending with '.tmpl'
+func LoadGrafanaTemplates(c *GrafanaConfig) (map[string]string, error) {
+	data := make(map[string]string)
+
+	templateDir := filepath.Join(GetGrafanaConfigPath(), "templates")
+	entries, err := ioutil.ReadDir(templateDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tmpl") {
+			continue // Ignore directories and anything that doesn't end with '.tmpl'
+		}
+
+		filename := entry.Name()
+		path := filepath.Join(templateDir, filename)
+		tmpl, err := template.ParseFiles(path)
+		if err != nil {
+			return nil, err
+		}
+
+		buf := new(bytes.Buffer)
+		err = tmpl.Execute(buf, c)
+		if err != nil {
+			return nil, err
+		}
+
+		parts := strings.Split(filename, ".tmpl")
+		if len(parts) <= 1 {
+			return nil, fmt.Errorf("invalid template name: %s", filename)
+		}
+
+		key := parts[0]
+		data[key] = buf.String()
+	}
+
+	return data, nil
+}
+
+// GetGrafanaReplicas will return the size value for the Grafana replica count.
+func GetGrafanaReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	replicas := common.ArgoCDDefaultGrafanaReplicas
+	if cr.Spec.Grafana.Size != nil {
+		if *cr.Spec.Grafana.Size >= 0 && *cr.Spec.Grafana.Size != replicas {
+			replicas = *cr.Spec.Grafana.Size
+		}
+	}
+	return &replicas
+}
+
+// HasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
+func HasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoprojv1a1.ArgoCD) bool {
+	// Replica count
+	if desired.Spec.Grafana.Size != nil { // Replica count specified in desired state
+		if *desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != *desired.Spec.Grafana.Size {
+			return true
+		}
+	} else { // Replica count NOT specified in desired state
+		if *actual.Spec.Replicas != common.ArgoCDDefaultGrafanaReplicas {
+			return true
+		}
+	}
+	return false
 }

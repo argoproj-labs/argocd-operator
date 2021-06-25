@@ -52,3 +52,32 @@ func newService(cr *argoprojv1a1.ArgoCD) *corev1.Service {
 func NewServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.ArgoCD) *corev1.Service {
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
+
+// EnsureAutoTLSAnnotation applies TLS annotations
+func EnsureAutoTLSAnnotation(cr *argoprojv1a1.ArgoCD, svc *corev1.Service) bool {
+	autoTLSAnnotationName := ""
+	if cr.Spec.Repo.AutoTLS == "openshift" {
+		autoTLSAnnotationName = "service.beta.openshift.io/serving-cert-secret-name"
+	}
+	if autoTLSAnnotationName != "" {
+		if svc.Annotations == nil {
+			svc.Annotations = make(map[string]string)
+		}
+		val, ok := svc.Annotations[autoTLSAnnotationName]
+		if !ok || val != common.ArgoCDRepoServerTLSSecretName {
+			logr.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
+			svc.Annotations[autoTLSAnnotationName] = common.ArgoCDRepoServerTLSSecretName
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetArgoServerServiceType will return the server Service type for the ArgoCD.
+func GetArgoServerServiceType(cr *argoprojv1a1.ArgoCD) corev1.ServiceType {
+	if len(cr.Spec.Server.Service.Type) > 0 {
+		return cr.Spec.Server.Service.Type
+	}
+	return corev1.ServiceTypeClusterIP
+}

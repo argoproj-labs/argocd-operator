@@ -31,12 +31,15 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	argopass "github.com/argoproj/argo-cd/util/password"
+	"helm.sh/helm/log"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -197,6 +200,758 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
+// reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
+	err := r.reconcileDexDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisHAProxyDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRepoDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileGrafanaDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
+func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("grafana", "grafana", cr)
+	deploy.Spec.Replicas = argocd.GetGrafanaReplicas(cr)
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Image:           argocd.GetGrafanaContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "grafana",
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 3000,
+			},
+		},
+		Env:       argocd.ProxyEnvVars(),
+		Resources: argocd.GetGrafanaResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "grafana-config",
+				MountPath: "/etc/grafana",
+			}, {
+				Name:      "grafana-datasources-config",
+				MountPath: "/etc/grafana/provisioning/datasources",
+			}, {
+				Name:      "grafana-dashboards-config",
+				MountPath: "/etc/grafana/provisioning/dashboards",
+			}, {
+				Name:      "grafana-dashboard-templates",
+				MountPath: "/var/lib/grafana/dashboards",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "grafana-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argocd.NameWithSuffix("grafana-config", cr),
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "grafana.ini",
+						Path: "grafana.ini",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-datasources-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argocd.NameWithSuffix("grafana-config", cr),
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "datasource.yaml",
+						Path: "datasource.yaml",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-dashboards-config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argocd.NameWithSuffix("grafana-config", cr),
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "provider.yaml",
+						Path: "provider.yaml",
+					}},
+				},
+			},
+		}, {
+			Name: "grafana-dashboard-templates",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: argocd.NameWithSuffix("grafana-dashboards", cr),
+					},
+				},
+			},
+		},
+	}
+
+	existing := argocd.NewDeploymentWithSuffix("grafana", "grafana", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Grafana.Enabled {
+			// Deployment exists but enabled flag has been set to false, delete the Deployment
+			return r.Client.Delete(context.TODO(), existing)
+		}
+		changed := false
+		if argocd.HasGrafanaSpecChanged(existing, cr) {
+			existing.Spec.Replicas = cr.Spec.Grafana.Size
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
+func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("server", "server", cr)
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Command:         argocd.GetArgoServerCommand(cr),
+		Image:           argocd.GetArgoContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Env:             argocd.ProxyEnvVars(),
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8080),
+				},
+			},
+			InitialDelaySeconds: 3,
+			PeriodSeconds:       30,
+		},
+		Name: "argocd-server",
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 8080,
+			}, {
+				ContainerPort: 8083,
+			},
+		},
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8080),
+				},
+			},
+			InitialDelaySeconds: 3,
+			PeriodSeconds:       30,
+		},
+		Resources: argocd.GetArgoServerResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "ssh-known-hosts",
+				MountPath: "/app/config/ssh",
+			}, {
+				Name:      "tls-certs",
+				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/server/tls",
+			},
+		},
+	}}
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		}, {
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		}, {
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   argocd.BoolPtr(true),
+				},
+			},
+		},
+	}
+
+	existing := argocd.NewDeploymentWithSuffix("server", "server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetArgoContainerImage(cr)
+		changed := false
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
+			deploy.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			changed = true
+		}
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
+func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("repo-server", "repo-server", cr)
+	automountToken := false
+	if cr.Spec.Repo.MountSAToken {
+		automountToken = cr.Spec.Repo.MountSAToken
+	}
+
+	deploy.Spec.Template.Spec.AutomountServiceAccountToken = &automountToken
+
+	if cr.Spec.Repo.ServiceAccount != "" {
+		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
+	}
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Command:         argocd.GetArgoRepoCommand(cr),
+		Image:           argocd.GetArgoContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       10,
+		},
+		Env:  argocd.ProxyEnvVars(),
+		Name: "argocd-repo-server",
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRepoServerPort,
+				Name:          "server",
+			}, {
+				ContainerPort: common.ArgoCDDefaultRepoMetricsPort,
+				Name:          "metrics",
+			},
+		},
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				TCPSocket: &corev1.TCPSocketAction{
+					Port: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       10,
+		},
+		Resources: argocd.GetArgoRepoResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "ssh-known-hosts",
+				MountPath: "/app/config/ssh",
+			},
+			{
+				Name:      "tls-certs",
+				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "gpg-keys",
+				MountPath: "/app/config/gpg/source",
+			},
+			{
+				Name:      "gpg-keyring",
+				MountPath: "/app/config/gpg/keys",
+			},
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/reposerver/tls",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   argocd.BoolPtr(true),
+				},
+			},
+		},
+	}
+
+	existing := argocd.NewDeploymentWithSuffix("repo-server", "repo-server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
+			existing.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
+func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
+			return r.Client.Delete(context.TODO(), deploy)
+		}
+
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetRedisHAProxyContainerImage(cr)
+
+		if actualImage != desiredImage {
+			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
+			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.Client.Update(context.TODO(), deploy)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha-haproxy", cr),
+							},
+						},
+						TopologyKey: common.ArgoCDKeyFailureDomainZone,
+					},
+					Weight: int32(100),
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha-haproxy", cr),
+						},
+					},
+					TopologyKey: common.ArgoCDKeyHostname,
+				},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Image:           argocd.GetRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "haproxy",
+		Env:             argocd.ProxyEnvVars(),
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8888),
+				},
+			},
+			InitialDelaySeconds: int32(5),
+			PeriodSeconds:       int32(3),
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+				Name:          "redis",
+			},
+		},
+		Resources: argocd.GetRedisHAProxyResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "data",
+				MountPath: "/usr/local/etc/haproxy",
+			},
+			{
+				Name:      "shared-socket",
+				MountPath: "/run/haproxy",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Args: []string{
+			"/readonly/haproxy_init.sh",
+		},
+		Command: []string{
+			"sh",
+		},
+		Image:           argocd.GetRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "config-init",
+		Env:             argocd.ProxyEnvVars(),
+		Resources:       argocd.GetRedisHAProxyResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config-volume",
+				MountPath: "/readonly",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "data",
+				MountPath: "/data",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDRedisHAConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "shared-socket",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
+
+	if err := argocd.ApplyReconcilerHook(cr, deploy, ""); err != nil {
+		return err
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
+func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("redis", "redis", cr)
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args: []string{
+			"--save",
+			"",
+			"--appendonly",
+			"no",
+		},
+		Image:           argocd.GetRedisContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "redis",
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+			},
+		},
+		Resources: argocd.GetRedisResources(cr),
+		Env:       argocd.ProxyEnvVars(),
+	}}
+
+	if err := argocd.ApplyReconcilerHook(cr, deploy, ""); err != nil {
+		return err
+	}
+
+	existing := argocd.NewDeploymentWithSuffix("redis", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			return r.Client.Delete(context.TODO(), deploy)
+		}
+		changed := false
+		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetRedisContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil // HA enabled, do nothing.
+	}
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
+func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
+	deploy := argocd.NewDeploymentWithSuffix("dex-server", "dex-server", cr)
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Command: []string{
+			"/shared/argocd-dex",
+			"rundex",
+		},
+		Image:           argocd.GetDexContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "dex",
+		Env:             argocd.ProxyEnvVars(),
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
+				Name:          "http",
+			}, {
+				ContainerPort: common.ArgoCDDefaultDexGRPCPort,
+				Name:          "grpc",
+			},
+		},
+		Resources: argocd.GetDexResources(cr),
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "static-files",
+			MountPath: "/shared",
+		}},
+	}}
+
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Command: []string{
+			"cp",
+			"-n",
+			"/usr/local/bin/argocd",
+			"/shared/argocd-dex",
+		},
+		Env:             argocd.ProxyEnvVars(),
+		Image:           argocd.GetArgoContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "copyutil",
+		Resources:       argocd.GetDexResources(cr),
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "static-files",
+			MountPath: "/shared",
+		}},
+	}}
+
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
+		Name: "static-files",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}}
+	dexDisabled := argocd.IsDexDisabled()
+	if dexDisabled {
+		log.Info("reconciling for dex, but dex is disabled")
+	}
+
+	existing := argocd.NewDeploymentWithSuffix("dex-server", "dex-server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if dexDisabled {
+			log.Info("deleting the existing dex deployment because dex is disabled")
+			// Deployment exists but enabled flag has been set to false, delete the Deployment
+			return r.Client.Delete(context.TODO(), existing)
+		}
+		changed := false
+
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetDexContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+
+		actualImage = existing.Spec.Template.Spec.InitContainers[0].Image
+		desiredImage = argocd.GetArgoContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].Env,
+			deploy.Spec.Template.Spec.InitContainers[0].Env) {
+			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if dexDisabled {
+		return nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
 // reconcileServices will ensure that all Services are present for the given ArgoCD.
 func (r *ArgoCDReconciler) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 	err := r.reconcileDexService(cr)
@@ -243,23 +998,354 @@ func (r *ArgoCDReconciler) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
+// reconcileServerService will ensure that the Service is present for the Argo CD server component.
+func (r *ArgoCDReconciler) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("server", "server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "http",
+			Port:       80,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(8080),
+		}, {
+			Name:       "https",
+			Port:       443,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(8080),
+		},
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("server", cr),
+	}
+
+	svc.Spec.Type = argocd.GetArgoServerServiceType(cr)
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
+func (r *ArgoCDReconciler) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("server-metrics", "server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("server", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "metrics",
+			Port:       8083,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(8083),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
+func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+	sm := argocd.NewServiceMonitorWithSuffix("server-metrics", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: argocd.NameWithSuffix("server-metrics", cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
+}
+
+// reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
+func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("repo-server", "repo-server", cr)
+
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if argocd.EnsureAutoTLSAnnotation(cr, svc) {
+			return r.Client.Update(context.TODO(), svc)
+		}
+		return nil // Service found, do nothing
+	}
+
+	argocd.EnsureAutoTLSAnnotation(cr, svc)
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("repo-server", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "server",
+			Port:       common.ArgoCDDefaultRepoServerPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
+		}, {
+			Name:       "metrics",
+			Port:       common.ArgoCDDefaultRepoMetricsPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisService will ensure that the Service for Redis is present.
+func (r *ArgoCDReconciler) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("redis", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("redis", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "tcp-redis",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRedisPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
+func (r *ArgoCDReconciler) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileRedisHAAnnounceServices(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAMasterService(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAProxyService(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ArgoCDReconciler) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha-haproxy", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "haproxy",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAMasterService will ensure that the "master" Service is present for Redis when running in HA mode.
+func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("redis-ha", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "server",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		}, {
+			Name:       "sentinel",
+			Port:       common.ArgoCDDefaultRedisSentinelPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("sentinel"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
+func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
+	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
+		svc := argocd.NewServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			return nil // Service found, do nothing
+		}
+
+		svc.ObjectMeta.Annotations = map[string]string{
+			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
+		}
+
+		svc.Spec.PublishNotReadyAddresses = true
+
+		svc.Spec.Selector = map[string]string{
+			common.ArgoCDKeyName:               argocd.NameWithSuffix("redis-ha", cr),
+			common.ArgoCDKeyStatefulSetPodName: argocd.NameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+		}
+
+		svc.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:       "server",
+				Port:       common.ArgoCDDefaultRedisPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("redis"),
+			}, {
+				Name:       "sentinel",
+				Port:       common.ArgoCDDefaultRedisSentinelPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("sentinel"),
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+			return err
+		}
+
+		if err := r.Client.Create(context.TODO(), svc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.
+func (r *ArgoCDReconciler) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("metrics", "metrics", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		// Service found, do nothing
+		return nil
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("application-controller", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "metrics",
+			Port:       8082,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(8082),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileGrafanaService will ensure that the Service for Grafana is present.
+func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
+	svc := argocd.NewServiceWithSuffix("grafana", "grafana", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.Grafana.Enabled {
+			// Service exists but enabled flag has been set to false, delete the Service
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		return nil // Service found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: argocd.NameWithSuffix("grafana", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "http",
+			Port:       80,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(3000),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
 // reconcileDexService will ensure that the Service for Dex is present.
 func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc := argocd.NewServiceWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if isDexDisabled() {
+		if argocd.IsDexDisabled() {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
 		}
 		return nil
 	}
 
-	if isDexDisabled() {
+	if argocd.IsDexDisabled() {
 		return nil // Dex is disabled, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
+		common.ArgoCDKeyName: argocd.NameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -276,10 +1362,10 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
-	return r.client.Create(context.TODO(), svc)
+	return r.Client.Create(context.TODO(), svc)
 }
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
@@ -388,12 +1474,12 @@ func (r *ArgoCDReconciler) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD
 		},
 	}
 
-	data, err := loadGrafanaConfigs()
+	data, err := argocd.LoadGrafanaConfigs()
 	if err != nil {
 		return err
 	}
 
-	tmpls, err := loadGrafanaTemplates(&grafanaConfig)
+	tmpls, err := argocd.LoadGrafanaTemplates(&grafanaConfig)
 	if err != nil {
 		return err
 	}
@@ -403,7 +1489,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD
 	}
 	cm.Data = data
 
-	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
@@ -454,7 +1540,7 @@ func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argopro
 	data := make(map[string]string)
 	data[common.ArgoCDKeyRBACPolicyCSV] = argocd.GetRBACPolicy(cr)
 	data[common.ArgoCDKeyRBACPolicyDefault] = argocd.GetRBACDefaultPolicy(cr)
-	data[common.ArgoCDKeyRBACScopes] = getRBACScopes(cr)
+	data[common.ArgoCDKeyRBACScopes] = argocd.GetRBACScopes(cr)
 	cm.Data = data
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
