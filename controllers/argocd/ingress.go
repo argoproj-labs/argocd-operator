@@ -50,3 +50,19 @@ func newIngress(cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
 		},
 	}
 }
+
+// GetArgoServerPath will return the Ingress Path for the Argo CD component.
+func GetPathOrDefault(path string) string {
+	result := common.ArgoCDDefaultIngressPath
+	if len(path) > 0 {
+		result = path
+	}
+	return result
+}
+
+// GetDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
+func GetDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
+	annotations := make(map[string]string)
+	annotations[common.ArgoCDKeyIngressClass] = "nginx"
+	return annotations
+}

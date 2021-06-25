@@ -15,7 +15,10 @@
 package controllers
 
 import (
+	b64 "encoding/base64"
+
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,8 +34,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	argopass "github.com/argoproj/argo-cd/util/password"
-	"helm.sh/helm/log"
+	oauthv1 "github.com/openshift/api/oauth/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 
+	oappsv1 "github.com/openshift/api/apps/v1"
+	template "github.com/openshift/api/template/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +47,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -197,6 +205,1680 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	return nil
+}
+
+func (r *ArgoCDReconciler) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
+	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		// TemplateAPI is available, Install keycloack using openshift templates.
+		if argocd.IsTemplateAPIAvailable() {
+			templateInstanceRef, err := argocd.NewKeycloakTemplateInstance(cr)
+			if err != nil {
+				return err
+			}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
+				Namespace: templateInstanceRef.Namespace}, &template.TemplateInstance{})
+			if err != nil {
+				if crierrors.IsNotFound(err) {
+					logr.Info(fmt.Sprintf("Template API found, Installing keycloak using openshift templates for ArgoCD %s in namespace %s",
+						cr.Name, cr.Namespace))
+
+					if err := controllerutil.SetControllerReference(cr, templateInstanceRef, r.scheme); err != nil {
+						return err
+					}
+
+					err = r.Client.Create(context.TODO(), templateInstanceRef)
+					if err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+
+			existingDC := &oappsv1.DeploymentConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      argocd.DefaultKeycloakIdentifier,
+					Namespace: cr.Namespace,
+				},
+			}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+			if err != nil {
+				logr.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
+					cr.Name, cr.Namespace))
+			}
+
+			// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
+			if existingDC.Status.AvailableReplicas == argocd.ExpectedReplicas &&
+				existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+
+				cfg, err := r.prepareKeycloakConfig(cr)
+				if err != nil {
+					return err
+				}
+
+				// keycloakRouteURL is used to update the OIDC configuraton for ArgoCD.
+				keycloakRouteURL := cfg.KeycloakURL
+
+				// Create a keycloak realm and publish.
+				response, err := argocd.CreateRealm(cfg)
+				if err != nil {
+					logr.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
+						cr.Name, cr.Namespace))
+					return err
+				}
+
+				if response == argocd.SuccessResponse {
+					logr.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
+						cr.Name, cr.Namespace))
+
+					// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+					existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
+					r.Client.Update(context.TODO(), existingDC)
+
+					err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
+					if err != nil {
+						logr.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
+							cr.Name, cr.Namespace))
+						return err
+					}
+				}
+			}
+		} else {
+			return nil
+		}
+	}
+	return nil
+}
+
+// Updates OIDC configuration for ArgoCD.
+func (r *ArgoCDReconciler) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRouteURL string) error {
+
+	// Update the ArgoCD client secret for OIDC in argocd-secret.
+	argoCDSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDSecretName,
+			Namespace: cr.Namespace,
+		},
+	}
+
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDSecret.Name, Namespace: argoCDSecret.Namespace}, argoCDSecret)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("ArgoCD secret not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(argocd.ArgocdClientSecret)
+	err = r.Client.Update(context.TODO(), argoCDSecret)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// Create openshift OAuthClient
+	oAuthClient := &oauthv1.OAuthClient{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "OAuthClient",
+			APIVersion: "oauth.openshift.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argocd.GetOAuthClient(cr.Namespace),
+			Namespace: cr.Namespace,
+		},
+		Secret: argocd.OAuthClientSecret,
+		RedirectURIs: []string{fmt.Sprintf("%s/auth/realms/%s/broker/openshift-v4/endpoint",
+			kRouteURL, argocd.KeycloakClient)},
+		GrantMethod: "prompt",
+	}
+
+	err = controllerutil.SetOwnerReference(cr, oAuthClient, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
+	if err != nil {
+		if crierrors.IsNotFound(err) {
+			err = r.Client.Create(context.TODO(), oAuthClient)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update ArgoCD instance for OIDC Config with Keycloakrealm URL
+	o, _ := yaml.Marshal(argocd.OidcConfig{
+		Name: "Keycloak",
+		Issuer: fmt.Sprintf("%s/auth/realms/%s",
+			kRouteURL, argocd.KeycloakRealm),
+		ClientID:       argocd.KeycloakClient,
+		ClientSecret:   "$oidc.keycloak.clientSecret",
+		RequestedScope: []string{"openid", "profile", "email", "groups"},
+	})
+
+	argoCDCM := argocd.NewConfigMapWithName(common.ArgoCDConfigMapName, cr)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("ArgoCD configmap not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+
+		return err
+	}
+
+	argoCDCM.Data[common.ArgoCDKeyOIDCConfig] = string(o)
+	err = r.Client.Update(context.TODO(), argoCDCM)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// Update RBAC for ArgoCD Instance.
+	argoRBACCM := argocd.NewConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoRBACCM.Name, Namespace: argoRBACCM.Namespace}, argoRBACCM)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("ArgoCD RBAC configmap not found for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+
+		return err
+	}
+
+	argoRBACCM.Data["scopes"] = "[groups,email]"
+	err = r.Client.Update(context.TODO(), argoRBACCM)
+	if err != nil {
+		logr.Error(err, fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	return nil
+}
+
+// prepares a keycloak config which is used in creating keycloak realm configuration.
+func (r *ArgoCDReconciler) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*argocd.KeycloakConfig, error) {
+
+	var tlsVerification bool
+	// Get keycloak hostname from route.
+	// keycloak hostname is required to post realm configuration to keycloak when keycloak cannot be accessed using service name
+	// due to network policies or operator running outside the cluster or development purpose.
+	existingKeycloakRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argocd.DefaultKeycloakIdentifier,
+			Namespace: cr.Namespace,
+		},
+	}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakRoute.Name,
+		Namespace: existingKeycloakRoute.Namespace}, existingKeycloakRoute)
+	if err != nil {
+		return nil, err
+	}
+	kRouteURL := fmt.Sprintf("https://%s", existingKeycloakRoute.Spec.Host)
+
+	// Get ArgoCD hostname from route. ArgoCD hostname is used in the keycloak client configuration.
+	existingArgoCDRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", cr.Name, "server"),
+			Namespace: cr.Namespace,
+		},
+	}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDRoute.Name,
+		Namespace: existingArgoCDRoute.Namespace}, existingArgoCDRoute)
+	if err != nil {
+		return nil, err
+	}
+	aRouteURL := fmt.Sprintf("https://%s", existingArgoCDRoute.Spec.Host)
+
+	// Get keycloak Secret for credentials. credentials are required to authenticate with keycloak.
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", argocd.DefaultKeycloakIdentifier, "secret"),
+			Namespace: cr.Namespace,
+		},
+	}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingSecret.Name,
+		Namespace: existingSecret.Namespace}, existingSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	userEnc := b64.URLEncoding.EncodeToString(existingSecret.Data["SSO_USERNAME"])
+	passEnc := b64.URLEncoding.EncodeToString(existingSecret.Data["SSO_PASSWORD"])
+
+	username, _ := b64.URLEncoding.DecodeString(userEnc)
+	password, _ := b64.URLEncoding.DecodeString(passEnc)
+
+	// Get Keycloak Service Cert
+	serverCert, err := r.getKCServerCert(cr)
+	if err != nil {
+		return nil, err
+	}
+
+	// By default TLS Verification should be enabled.
+	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS == true {
+		tlsVerification = true
+	}
+
+	cfg := &argocd.KeycloakConfig{
+		ArgoName:           cr.Name,
+		ArgoNamespace:      cr.Namespace,
+		Username:           string(username),
+		Password:           string(password),
+		KeycloakURL:        kRouteURL,
+		ArgoCDURL:          aRouteURL,
+		KeycloakServerCert: serverCert,
+		VerifyTLS:          tlsVerification,
+	}
+
+	return cfg, nil
+}
+
+// Gets Keycloak Server cert. This cert is used to authenticate the api calls to the Keycloak service.
+func (r *ArgoCDReconciler) getKCServerCert(cr *argoprojv1a1.ArgoCD) ([]byte, error) {
+
+	sslCertsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argocd.ServingCertSecretName,
+			Namespace: cr.Namespace,
+		},
+	}
+
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sslCertsSecret.Name, Namespace: sslCertsSecret.Namespace}, sslCertsSecret)
+
+	switch {
+	case err == nil:
+		return sslCertsSecret.Data["tls.crt"], nil
+	case crierrors.IsNotFound(err):
+		return nil, nil
+	default:
+		return nil, err
+	}
+}
+
+// reconcileRepoServerTLSSecret checks whether the argocd-repo-server-tls secret
+// has changed since our last reconciliation loop. It does so by comparing the
+// checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
+// values calculated from the live state in the cluster.
+func (r *ArgoCDReconciler) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) error {
+	var tlsSecretObj corev1.Secret
+	var sha256sum string
+
+	logr.Info("reconciling repo-server TLS secret")
+
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRepoServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !crierrors.IsNotFound(err) {
+			return err
+		}
+	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
+		// We only process secrets of type kubernetes.io/tls
+		return nil
+	} else {
+		// We do the checksum over a concatenated byte stream of cert + key
+		crt, crtOk := tlsSecretObj.Data[corev1.TLSCertKey]
+		key, keyOk := tlsSecretObj.Data[corev1.TLSPrivateKeyKey]
+		if crtOk && keyOk {
+			var sumBytes []byte
+			sumBytes = append(sumBytes, crt...)
+			sumBytes = append(sumBytes, key...)
+			sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+		}
+	}
+
+	// The content of the TLS secret has changed since we last looked if the
+	// calculated checksum doesn't match the one stored in the status.
+	if cr.Status.RepoTLSChecksum != sha256sum {
+		// We store the value early to prevent a possible restart loop, for the
+		// cost of a possibly missed restart when we cannot update the status
+		// field of the resource.
+		cr.Status.RepoTLSChecksum = sha256sum
+		err = r.Client.Status().Update(context.TODO(), cr)
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of API server
+		apiDepl := argocd.NewDeploymentWithSuffix("server", "server", cr)
+		err = r.triggerRollout(apiDepl, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of repository server
+		repoDepl := argocd.NewDeploymentWithSuffix("repo-server", "repo-server", cr)
+		err = r.triggerRollout(repoDepl, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of application controller
+		controllerSts := argocd.NewStatefulSetWithSuffix("application-controller", "application-controller", cr)
+		err = r.triggerRollout(controllerSts, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+	logr.Info("reconciling applicationset serviceaccounts")
+	sa, err := r.reconcileApplicationSetServiceAccount(cr)
+	if err != nil {
+		return err
+	}
+
+	logr.Info("reconciling applicationset roles")
+	role, err := r.reconcileApplicationSetRole(cr)
+	if err != nil {
+		return err
+	}
+
+	logr.Info("reconciling applicationset role bindings")
+	if err := r.reconcileApplicationSetRoleBinding(cr, role, sa); err != nil {
+		return err
+	}
+
+	logr.Info("reconciling applicationset deployments")
+	if err := r.reconcileApplicationSetDeployment(cr, sa); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
+func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+	deploy := argocd.NewDeploymentWithSuffix("applicationset-controller", "controller", cr)
+
+	argocd.SetAppSetLabels(&deploy.ObjectMeta)
+
+	podSpec := &deploy.Spec.Template.Spec
+
+	podSpec.ServiceAccountName = sa.ObjectMeta.Name
+
+	podSpec.Volumes = []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   argocd.BoolPtr(true),
+				},
+			},
+		},
+	}
+
+	podSpec.Containers = []corev1.Container{{
+		Command: []string{"applicationset-controller", "--argocd-repo-server", argocd.GetRepoServerAddress(cr)},
+		Env: []corev1.EnvVar{{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		}},
+		Image:           argocd.GetApplicationSetContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "argocd-applicationset-controller",
+		Resources:       argocd.GetApplicationSetResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "ssh-known-hosts",
+				MountPath: "/app/config/ssh",
+			},
+			{
+				Name:      "tls-certs",
+				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "gpg-keys",
+				MountPath: "/app/config/gpg/source",
+			},
+			{
+				Name:      "gpg-keyring",
+				MountPath: "/app/config/gpg/keys",
+			},
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/reposerver/tls",
+			},
+		},
+	}}
+
+	if existing := argocd.NewDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+
+		// If the Deployment already exists, make sure the containers are up-to-date
+		actualContainers := existing.Spec.Template.Spec.Containers[0]
+		if !reflect.DeepEqual(actualContainers, podSpec.Containers) {
+			existing.Spec.Template.Spec.Containers = podSpec.Containers
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
+
+func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+	policyRules := []v1.PolicyRule{
+
+		// ApplicationSet
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applications",
+				"applicationsets",
+				"appprojects",
+				"applicationsets/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		// ApplicationSet Status
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applicationsets/status",
+			},
+			Verbs: []string{
+				"get",
+				"patch",
+				"update",
+			},
+		},
+
+		// Events
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+
+		// Read Secrets/ConfigMaps
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"secrets",
+				"configmaps",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+
+		// Read Deployments
+		{
+			APIGroups: []string{"apps", "extensions"},
+			Resources: []string{
+				"deployments",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+	}
+
+	role := argocd.NewRole("applicationset-controller", policyRules, cr)
+	argocd.SetAppSetLabels(&role.ObjectMeta)
+
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role)
+	if err != nil {
+		if !crierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
+		}
+		controllerutil.SetControllerReference(cr, role, r.Scheme)
+		return role, r.Client.Create(context.TODO(), role)
+	}
+
+	role.Rules = policyRules
+	controllerutil.SetControllerReference(cr, role, r.Scheme)
+	return role, r.Client.Update(context.TODO(), role)
+}
+
+func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+	name := "applicationset-controller"
+
+	// get expected name
+	roleBinding := argocd.NewRoleBindingWithname(name, cr)
+
+	// fetch existing rolebinding by name
+	roleBindingExists := true
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding); err != nil {
+		if !crierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
+		}
+		roleBindingExists = false
+	}
+
+	argocd.SetAppSetLabels(&roleBinding.ObjectMeta)
+
+	roleBinding.RoleRef = v1.RoleRef{
+		APIGroup: v1.GroupName,
+		Kind:     "Role",
+		Name:     role.Name,
+	}
+
+	roleBinding.Subjects = []v1.Subject{
+		{
+			Kind:      v1.ServiceAccountKind,
+			Name:      sa.Name,
+			Namespace: sa.Namespace,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+		return err
+	}
+
+	if roleBindingExists {
+		return r.Client.Update(context.TODO(), roleBinding)
+	}
+
+	return r.Client.Create(context.TODO(), roleBinding)
+}
+
+func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+	sa := argocd.NewServiceAccountWithName("applicationset-controller", cr)
+	argocd.SetAppSetLabels(&sa.ObjectMeta)
+
+	exists := true
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+		if !crierrors.IsNotFound(err) {
+			return nil, err
+		}
+		exists = false
+	}
+
+	if exists {
+		return sa, nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	err := r.Client.Create(context.TODO(), sa)
+	if err != nil {
+		return nil, err
+	}
+
+	return sa, err
+}
+
+// reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
+func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+	sm := argocd.NewServiceMonitorWithSuffix("repo-server-metrics", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: argocd.NameWithSuffix("repo-server", cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
+}
+
+// reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
+func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+	sm := argocd.NewServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: argocd.NameWithSuffix(common.ArgoCDKeyMetrics, cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
+}
+
+// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
+func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoprojv1a1.ArgoCD) error {
+	prometheus := argocd.NewPrometheus(cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
+		if !cr.Spec.Prometheus.Enabled {
+			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
+			return r.Client.Delete(context.TODO(), prometheus)
+		}
+		if argocd.HasPrometheusSpecChanged(prometheus, cr) {
+			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
+			return r.Client.Update(context.TODO(), prometheus)
+		}
+		return nil // Prometheus found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	prometheus.Spec.Replicas = argocd.GetPrometheusReplicas(cr)
+	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
+	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
+
+	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), prometheus)
+}
+
+// reconcileRoutes will ensure that all ArgoCD Routes are present.
+func (r *ArgoCDReconciler) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileGrafanaRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheusRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServerRoute(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileServerRoute will ensure that the ArgoCD Server Route is present.
+func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
+
+	route := argocd.NewRouteWithSuffix("server", cr)
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if found {
+		if !cr.Spec.Server.Route.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
+		}
+	}
+
+	if !cr.Spec.Server.Route.Enabled {
+		return nil // Route not enabled, move along...
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Server.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Server.Route.Annotations
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Server.Host) > 0 {
+		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
+	}
+
+	if cr.Spec.Server.Insecure {
+		// Disable TLS and rely on the cluster certificate.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("http"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationEdge,
+		}
+	} else {
+		// Server is using TLS configure passthrough.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("https"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationPassthrough,
+		}
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Server.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Server.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = argocd.NameWithSuffix("server", cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	if !found {
+		return r.Client.Create(context.TODO(), route)
+	}
+	return r.Client.Update(context.TODO(), route)
+}
+
+// reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
+func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
+	route := argocd.NewRouteWithSuffix("prometheus", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
+		}
+		return nil // Route found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
+		return nil // Prometheus itself or Route not enabled, do nothing.
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Prometheus.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Prometheus.Route.Annotations
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		route.Spec.Host = cr.Spec.Prometheus.Host // TODO: What additional role needed for this?
+	}
+
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("web"),
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Prometheus.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Prometheus.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "prometheus-operated"
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Prometheus.Route.WildcardPolicy != nil && len(*cr.Spec.Prometheus.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Prometheus.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), route)
+}
+
+// reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
+func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
+	route := argocd.NewRouteWithSuffix("grafana", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
+		}
+		return nil // Route found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
+		return nil // Grafana itself or Route not enabled, do nothing.
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Grafana.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Grafana.Route.Annotations
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Grafana.Host) > 0 {
+		route.Spec.Host = cr.Spec.Grafana.Host // TODO: What additional role needed for this?
+	}
+
+	// Allow override of the Path for the Route
+	if len(cr.Spec.Grafana.Route.Path) > 0 {
+		route.Spec.Path = cr.Spec.Grafana.Route.Path
+	}
+
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("http"),
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Grafana.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Grafana.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = argocd.NameWithSuffix("grafana", cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Grafana.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), route)
+}
+
+// reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
+func (r *ArgoCDReconciler) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileArgoServerIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoServerGRPCIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileGrafanaIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheusIngress(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
+func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) error {
+	ingress := argocd.NewIngressWithSuffix("prometheus", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
+		return nil // Prometheus itself or Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := argocd.GetDefaultIngressAnnotations(cr)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Prometheus.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: argocd.GetPrometheusHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: argocd.GetPathOrDefault(cr.Spec.Prometheus.Ingress.Path),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: "prometheus-operated",
+								ServicePort: intstr.FromString("web"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: common.ArgoCDSecretName,
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Prometheus.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Prometheus.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}
+
+// reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
+func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error {
+	ingress := argocd.NewIngressWithSuffix("grafana", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
+		return nil // Grafana itself or Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := argocd.GetDefaultIngressAnnotations(cr)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Grafana.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Grafana.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: argocd.GetGrafanaHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: argocd.GetPathOrDefault(cr.Spec.Grafana.Ingress.Path),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: argocd.NameWithSuffix("grafana", cr),
+								ServicePort: intstr.FromString("http"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts: []string{
+				cr.Name,
+				argocd.GetGrafanaHost(cr),
+			},
+			SecretName: common.ArgoCDSecretName,
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Grafana.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Grafana.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}
+
+// reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
+func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD) error {
+	ingress := argocd.NewIngressWithSuffix("grpc", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Server.GRPC.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Server.GRPC.Ingress.Enabled {
+		return nil // Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := argocd.GetDefaultIngressAnnotations(cr)
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Server.GRPC.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Server.GRPC.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: argocd.GetArgoServerGRPCHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: argocd.GetPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: argocd.NameWithSuffix("server", cr),
+								ServicePort: intstr.FromString("https"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts: []string{
+				argocd.GetArgoServerGRPCHost(cr),
+			},
+			SecretName: common.ArgoCDSecretName,
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Server.GRPC.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Server.GRPC.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}
+
+// reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
+func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
+	ingress := argocd.NewIngressWithSuffix("server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Server.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if !cr.Spec.Server.Ingress.Enabled {
+		return nil // Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := argocd.GetDefaultIngressAnnotations(cr)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Server.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Server.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	// Add rules
+	ingress.Spec.Rules = []extv1beta1.IngressRule{
+		{
+			Host: argocd.GetArgoServerHost(cr),
+			IngressRuleValue: extv1beta1.IngressRuleValue{
+				HTTP: &extv1beta1.HTTPIngressRuleValue{
+					Paths: []extv1beta1.HTTPIngressPath{
+						{
+							Path: argocd.GetPathOrDefault(cr.Spec.Server.Ingress.Path),
+							Backend: extv1beta1.IngressBackend{
+								ServiceName: argocd.NameWithSuffix("server", cr),
+								ServicePort: intstr.FromString("http"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add default TLS options
+	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+		{
+			Hosts: []string{
+				argocd.GetArgoServerHost(cr),
+			},
+			SecretName: common.ArgoCDSecretName,
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Server.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Server.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}
+
+// reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileAutoscalers(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileServerHPA(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component.
+func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoprojv1a1.ArgoCD) error {
+	hpa := argocd.NewHorizontalPodAutoscalerWithSuffix("server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, hpa.Name, hpa) {
+		if !cr.Spec.Server.Autoscale.Enabled {
+			return r.Client.Delete(context.TODO(), hpa) // HorizontalPodAutoscaler found but globally disabled, delete it.
+		}
+		return nil // HorizontalPodAutoscaler found and configured, nothing do to, move along...
+	}
+
+	if !cr.Spec.Server.Autoscale.Enabled {
+		return nil // AutoScale not enabled, move along...
+	}
+
+	if cr.Spec.Server.Autoscale.HPA != nil {
+		hpa.Spec = *cr.Spec.Server.Autoscale.HPA
+	} else {
+		hpa.Spec.MaxReplicas = 3
+
+		var minrReplicas int32 = 1
+		hpa.Spec.MinReplicas = &minrReplicas
+
+		var tcup int32 = 50
+		hpa.Spec.TargetCPUUtilizationPercentage = &tcup
+
+		hpa.Spec.ScaleTargetRef = autoscaling.CrossVersionObjectReference{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
+			Name:       argocd.NameWithSuffix("server", cr),
+		}
+	}
+
+	return r.Client.Create(context.TODO(), hpa)
+}
+
+// reconcileStatefulSets will ensure that all StatefulSets are present for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileStatefulSets(cr *argoprojv1a1.ArgoCD) error {
+	if err := r.reconcileApplicationControllerStatefulSet(cr); err != nil {
+		return err
+	}
+	if err := r.reconcileRedisStatefulSet(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
+	ss := argocd.NewStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+		if !cr.Spec.HA.Enabled {
+			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
+			return r.Client.Delete(context.TODO(), ss)
+		}
+
+		desiredImage := argocd.GetRedisHAContainerImage(cr)
+		changed := false
+
+		for i, container := range ss.Spec.Template.Spec.Containers {
+			if container.Image != desiredImage {
+				ss.Spec.Template.Spec.Containers[i].Image = argocd.GetRedisHAContainerImage(cr)
+				changed = true
+			}
+		}
+
+		if changed {
+			ss.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			return r.Client.Update(context.TODO(), ss)
+		}
+
+		return nil // StatefulSet found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+	ss.Spec.Replicas = argocd.GetRedisHAReplicas(cr)
+	ss.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha", cr),
+		},
+	}
+
+	ss.Spec.ServiceName = argocd.NameWithSuffix("redis-ha", cr)
+
+	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Annotations: map[string]string{
+			"checksum/init-config": "552ee3bec8fe5d9d865e371f7b615c6d472253649eb65d53ed4ae874f782647c", // TODO: Should this be hard-coded?
+		},
+		Labels: map[string]string{
+			common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha", cr),
+		},
+	}
+
+	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		PodAffinity: &corev1.PodAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha", cr),
+						},
+					},
+					TopologyKey: common.ArgoCDKeyFailureDomainZone,
+				},
+				Weight: int32(100),
+			}},
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
+				LabelSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						common.ArgoCDKeyName: argocd.NameWithSuffix("redis-ha", cr),
+					},
+				},
+				TopologyKey: common.ArgoCDKeyHostname,
+			}},
+		},
+	}
+
+	ss.Spec.Template.Spec.Containers = []corev1.Container{
+		{
+			Args: []string{
+				"/data/conf/redis.conf",
+			},
+			Command: []string{
+				"redis-server",
+			},
+			Image:           argocd.GetRedisHAContainerImage(cr),
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			LivenessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisPort),
+					},
+				},
+				InitialDelaySeconds: int32(15),
+			},
+			Name: "redis",
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+				Name:          "redis",
+			}},
+			Resources: argocd.GetRedisResources(cr),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					MountPath: "/data",
+					Name:      "data",
+				},
+			},
+		},
+		{
+			Args: []string{
+				"/data/conf/sentinel.conf",
+			},
+			Command: []string{
+				"redis-sentinel",
+			},
+			Image:           argocd.GetRedisHAContainerImage(cr),
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			LivenessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.FromInt(common.ArgoCDDefaultRedisSentinelPort),
+					},
+				},
+				InitialDelaySeconds: int32(15),
+			},
+			Name: "sentinel",
+			Ports: []corev1.ContainerPort{{
+				ContainerPort: common.ArgoCDDefaultRedisSentinelPort,
+				Name:          "sentinel",
+			}},
+			Resources: argocd.GetRedisResources(cr),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					MountPath: "/data",
+					Name:      "data",
+				},
+			},
+		},
+	}
+
+	ss.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Args: []string{
+			"/readonly-config/init.sh",
+		},
+		Command: []string{
+			"sh",
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name:  "SENTINEL_ID_0",
+				Value: "25b71bd9d0e4a51945d8422cab53f27027397c12", // TODO: Should this be hard-coded?
+			},
+			{
+				Name:  "SENTINEL_ID_1",
+				Value: "896627000a81c7bdad8dbdcffd39728c9c17b309", // TODO: Should this be hard-coded?
+			},
+			{
+				Name:  "SENTINEL_ID_2",
+				Value: "3acbca861108bc47379b71b1d87d1c137dce591f", // TODO: Should this be hard-coded?
+			},
+		},
+		Image:           argocd.GetRedisHAContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "config-init",
+		Resources:       argocd.GetRedisResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				MountPath: "/readonly-config",
+				Name:      "config",
+				ReadOnly:  true,
+			},
+			{
+				MountPath: "/data",
+				Name:      "data",
+			},
+		},
+	}}
+
+	var fsGroup int64 = 1000
+	var runAsNonRoot bool = true
+	var runAsUser int64 = 1000
+
+	ss.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+		FSGroup:      &fsGroup,
+		RunAsNonRoot: &runAsNonRoot,
+		RunAsUser:    &runAsUser,
+	}
+
+	ss.Spec.Template.Spec.ServiceAccountName = argocd.NameWithSuffix("argocd-redis-ha", cr)
+
+	ss.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDRedisHAConfigMapName,
+					},
+				},
+			},
+		}, {
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	ss.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+		Type: appsv1.RollingUpdateStatefulSetStrategyType,
+	}
+
+	if err := argocd.ApplyReconcilerHook(cr, ss, ""); err != nil {
+		return err
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ss)
+}
+
+func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD) error {
+	var replicas int32 = 1 // TODO: allow override using CR ?
+	ss := argocd.NewStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	ss.Spec.Replicas = &replicas
+
+	podSpec := &ss.Spec.Template.Spec
+	podSpec.Containers = []corev1.Container{{
+		Command:         argocd.GetArgoApplicationControllerCommand(cr),
+		Image:           argocd.GetArgoContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "argocd-application-controller",
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8082),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       10,
+		},
+		Env: argocd.ProxyEnvVars(),
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 8082,
+			},
+		},
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8082),
+				},
+			},
+			InitialDelaySeconds: 5,
+			PeriodSeconds:       10,
+		},
+		Resources: argocd.GetArgoApplicationControllerResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "argocd-repo-server-tls",
+				MountPath: "/app/config/controller/tls",
+			},
+		},
+	}}
+	podSpec.ServiceAccountName = argocd.NameWithSuffix("argocd-application-controller", cr)
+	podSpec.Volumes = []corev1.Volume{
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   argocd.BoolPtr(true),
+				},
+			},
+		},
+	}
+
+	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
+				PodAffinityTerm: corev1.PodAffinityTerm{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argocd.NameWithSuffix("argocd-application-controller", cr),
+						},
+					},
+					TopologyKey: common.ArgoCDKeyHostname,
+				},
+				Weight: int32(100),
+			},
+				{
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								common.ArgoCDKeyPartOf: common.ArgoCDAppName,
+							},
+						},
+						TopologyKey: common.ArgoCDKeyHostname,
+					},
+					Weight: int32(5),
+				}},
+		},
+	}
+
+	// Handle import/restore from ArgoCDExport
+	export := r.getArgoCDExport(cr)
+	if export == nil {
+		logr.Info("existing argocd export not found, skipping import")
+	} else {
+		podSpec.InitContainers = []corev1.Container{{
+			Command:         argocd.GetArgoImportCommand(r.Client, cr),
+			Env:             argocd.ProxyEnvVars(argocd.GetArgoImportContainerEnv(export)...),
+			Resources:       argocd.GetArgoApplicationControllerResources(cr),
+			Image:           argocd.GetArgoImportContainerImage(export),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            "argocd-import",
+			VolumeMounts:    argocd.GetArgoImportVolumeMounts(export),
+		}}
+
+		podSpec.Volumes = argocd.GetArgoImportVolumes(export)
+	}
+
+	existing := argocd.NewStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := argocd.GetArgoContainerImage(cr)
+		changed := false
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		desiredCommand := argocd.GetArgoApplicationControllerCommand(cr)
+		if argocd.IsRepoServerTLSVerificationRequested(cr) {
+			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
+		}
+		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			ss.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
+			changed = true
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].VolumeMounts,
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.Containers[0].VolumeMounts = ss.Spec.Template.Spec.Containers[0].VolumeMounts
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // StatefulSet found with nothing to do, move along...
+	}
+
+	// Delete existing deployment for Application Controller, if any ..
+	deploy := argocd.NewDeploymentWithSuffix("application-controller", "application-controller", cr)
+	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+		r.Client.Delete(context.TODO(), deploy)
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ss)
+}
+
+func (r *ArgoCDReconciler) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
+	if cr.Spec.Import == nil {
+		return nil
+	}
+
+	namespace := cr.ObjectMeta.Namespace
+	if cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
+		namespace = *cr.Spec.Import.Namespace
+	}
+
+	export := &argoprojv1a1.ArgoCDExport{}
+	if argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
+		return export
+	}
 	return nil
 }
 
@@ -896,13 +2578,13 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error
 	}}
 	dexDisabled := argocd.IsDexDisabled()
 	if dexDisabled {
-		log.Info("reconciling for dex, but dex is disabled")
+		logr.Info("reconciling for dex, but dex is disabled")
 	}
 
 	existing := argocd.NewDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if dexDisabled {
-			log.Info("deleting the existing dex deployment because dex is disabled")
+			logr.Info("deleting the existing dex deployment because dex is disabled")
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)
 		}

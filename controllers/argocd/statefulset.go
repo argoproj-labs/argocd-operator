@@ -69,3 +69,10 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 		},
 	}
 }
+
+// GetRedisHAReplicas returns redis ha replicas
+func GetRedisHAReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	replicas := common.ArgoCDDefaultRedisHAReplicas
+	// TODO: Allow override of this value through CR?
+	return &replicas
+}

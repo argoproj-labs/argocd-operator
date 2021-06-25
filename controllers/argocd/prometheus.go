@@ -35,8 +35,8 @@ func GetPrometheusHost(cr *argoprojv1a1.ArgoCD) string {
 	return host
 }
 
-// getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+// GetPrometheusSize will return the size value for the Prometheus replica count.
+func GetPrometheusReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 	replicas := common.ArgoCDDefaultPrometheusReplicas
 	if cr.Spec.Prometheus.Size != nil {
 		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
@@ -51,8 +51,8 @@ func IsPrometheusAPIAvailable() bool {
 	return prometheusAPIFound
 }
 
-// hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoprojv1a1.ArgoCD) bool {
+// HasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
+func HasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoprojv1a1.ArgoCD) bool {
 	// Replica count
 	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
 		if actual.Spec.Replicas != nil { // Actual replicas value is set
@@ -80,8 +80,8 @@ func verifyPrometheusAPI() error {
 	return nil
 }
 
-// newPrometheus returns a new Prometheus instance for the given ArgoCD.
-func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
+// NewPrometheus returns a new Prometheus instance for the given ArgoCD.
+func NewPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,

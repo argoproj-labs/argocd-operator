@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -372,8 +373,8 @@ func GetRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequiremen
 	return resources
 }
 
-// getRedisServerAddress will return the Redis service address for the given ArgoCD.
-func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
+// GtRedisServerAddress will return the Redis service address for the given ArgoCD.
+func GetRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
@@ -467,4 +468,91 @@ func GetGrafanaResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	}
 
 	return resources
+}
+
+// GetArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
+func GetArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := []string{
+		"argocd-application-controller",
+		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
+		"--redis", GetRedisServerAddress(cr),
+		"--repo-server", getRepoServerAddress(cr),
+		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
+	}
+	if cr.Spec.Controller.AppSync != nil {
+		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
+	}
+	return cmd
+}
+
+// getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
+func getArgoServerOperationProcessors(cr *argoprojv1a1.ArgoCD) int32 {
+	op := common.ArgoCDDefaultServerOperationProcessors
+	if cr.Spec.Controller.Processors.Operation > op {
+		op = cr.Spec.Controller.Processors.Operation
+	}
+	return op
+}
+
+// getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
+func getArgoServerStatusProcessors(cr *argoprojv1a1.ArgoCD) int32 {
+	sp := common.ArgoCDDefaultServerStatusProcessors
+	if cr.Spec.Controller.Processors.Status > sp {
+		sp = cr.Spec.Controller.Processors.Status
+	}
+	return sp
+}
+
+// GetArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
+func GetArgoApplicationControllerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.Controller.Resources != nil {
+		resources = *cr.Spec.Controller.Resources
+	}
+
+	return resources
+}
+
+// IsRepoServerTLSVerificationRequested returns true if tls verify is enabled
+func IsRepoServerTLSVerificationRequested(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Repo.VerifyTLS
+}
+
+// GetRedisHAContainerImage will return the container image for the Redis server in HA mode.
+func GetRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.Redis.Image
+	if img == "" {
+		img = common.ArgoCDDefaultRedisImage
+		defaultImg = true
+	}
+	tag := cr.Spec.Redis.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultRedisVersionHA
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// GetArgoServerHost will return the host for the given ArgoCD.
+func GetArgoServerHost(cr *argoprojv1a1.ArgoCD) string {
+	host := cr.Name
+	if len(cr.Spec.Server.Host) > 0 {
+		host = cr.Spec.Server.Host
+	}
+	return host
+}
+
+// GetArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
+func GetArgoServerGRPCHost(cr *argoprojv1a1.ArgoCD) string {
+	host := nameWithSuffix("grpc", cr)
+	if len(cr.Spec.Server.GRPC.Host) > 0 {
+		host = cr.Spec.Server.GRPC.Host
+	}
+	return host
 }
