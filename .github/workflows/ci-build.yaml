@@ -1,4 +1,4 @@
-name: Ensure the operator builds
+name: Build and test the operator
 on:
   push:
     branches:
