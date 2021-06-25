@@ -5,9 +5,11 @@ go 1.16
 require (
 	github.com/argoproj/argo-cd v1.8.7
 	github.com/coreos/prometheus-operator v0.40.0
+	github.com/keycloak/keycloak-operator v0.0.0-20210617191508-fd5aeeb3a8db
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
+	github.com/openshift/client-go v3.9.0+incompatible
 	github.com/sethvargo/go-password v0.2.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.1
