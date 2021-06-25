@@ -3,6 +3,6 @@ kind: TestSuite
 crdDir: ./deploy/crds/
 testDirs:
 - ./tests/e2e/
-timeout: 120
+timeout: 180
 startKIND: false
 namespace: argocd-e2e
