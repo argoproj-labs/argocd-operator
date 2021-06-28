@@ -154,13 +154,15 @@ jobs:
           # Since the tests stop on the first failure, only one of the namespaces will exist
           set -x
           if [ $(kubectl get namespaces -o=name | grep '^namespace/argocd-e2e$') ]; then
-            kubectl get po -n argocd-e2e
+            hack/pods.sh argocd-e2e > /tmp/pods.log
             kubectl logs -n argocd-e2e $(kubectl get po -n argocd-e2e -o=name | grep example-argocd-application-controller) > /tmp/e2e-application-controller.log
             kubectl logs -n argocd-e2e $(kubectl get po -n argocd-e2e -o=name | grep example-argocd-server) > /tmp/e2e-server.log
+            kubectl describe -n argocd-e2e $(kubectl get po -n argocd-e2e -o=name | grep example-argocd-server) >> /tmp/e2e-server.log
           elif [ $(kubectl get namespaces -o=name | grep '^namespace/argocd-e2e-cluster-config$') ]; then
-            kubectl get po -n argocd-e2e-cluster-config
+            hack/pods.sh argocd-e2e-cluster-config > /tmp/pods.log
             kubectl logs -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-application-controller) > /tmp/e2e-application-controller.log
             kubectl logs -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-server) > /tmp/e2e-server.log
+            kubectl describe -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-server) >> /tmp/e2e-server.log
           fi
       - name: Upload application controller logs
         uses: actions/upload-artifact@v2
@@ -173,4 +175,10 @@ jobs:
         with:
           name: e2e-server-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-server.log
+        if: ${{ failure() }}
+      - name: Upload pod descriptions
+        uses: actions/upload-artifact@v2
+        with:
+          name: e2e-pods-${{ matrix.k3s-version }}.log
+          path: /tmp/pods.log
         if: ${{ failure() }}
