@@ -27,8 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -54,7 +54,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res, err := r.Reconcile(req)
+	res, err := r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
@@ -82,7 +82,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 		},
 	}
 
-	res, err := r.Reconcile(req)
+	res, err := r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
@@ -118,7 +118,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res, err := r.Reconcile(req)
+	res, err := r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")

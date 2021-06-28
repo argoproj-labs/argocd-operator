@@ -13,8 +13,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/google/go-cmp/cmp"
@@ -40,7 +40,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(req)
+	_, err := r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 
 	loaded := &routev1.Route{}
@@ -69,7 +69,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	err = r.client.Update(ctx, argoCD)
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
-	_, err = r.Reconcile(req)
+	_, err = r.Reconcile(context.Background(), req)
 	fatalIfError(t, err, "reconcile: (%v): %s", req, err)
 
 	loaded = &routev1.Route{}
@@ -111,7 +111,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		},
 	}
 
-	_, err := r.Reconcile(req)
+	_, err := r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 
 	loaded := &routev1.Route{}
@@ -140,7 +140,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	err = r.client.Update(ctx, argoCD)
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
-	_, err = r.Reconcile(req)
+	_, err = r.Reconcile(context.Background(), req)
 	assert.NilError(t, err)
 
 	loaded = &routev1.Route{}

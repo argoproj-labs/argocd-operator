@@ -24,7 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -84,7 +83,7 @@ func DefaultAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
 // The result will be stored in the given object.
-func FetchObject(client client.Client, namespace string, name string, obj runtime.Object) error {
+func FetchObject(client client.Client, namespace string, name string, obj client.Object) error {
 	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
 }
 
@@ -99,7 +98,7 @@ func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
 
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
-func IsObjectFound(client client.Client, namespace string, name string, obj runtime.Object) bool {
+func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
 	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
 }
 
