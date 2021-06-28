@@ -41,7 +41,6 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -754,7 +753,7 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
-func filterObjectsBySelector(c client.Client, objectList runtime.Object, selector labels.Selector) error {
+func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
 	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }
 
@@ -813,7 +812,7 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc, tlsSecretMapper handler.ToRequestsFunc) error {
+func watchResources(c controller.Controller, clusterResourceMapper handler.MapFunc, tlsSecretMapper handler.MapFunc) error {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -906,13 +905,9 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 		return err
 	}
 
-	clusterResourceHandler := &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: clusterResourceMapper,
-	}
+	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
-	tlsSecretHandler := &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: tlsSecretMapper,
-	}
+	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
 	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler); err != nil {
 		return err
@@ -971,7 +966,7 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 	return nil
 }
 
-func watchOwnedResource(c controller.Controller, obj runtime.Object) error {
+func watchOwnedResource(c controller.Controller, obj client.Object) error {
 	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &argoprojv1a1.ArgoCD{},

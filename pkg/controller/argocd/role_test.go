@@ -10,7 +10,7 @@ import (
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func TestReconcileArgoCD_reconcileRole(t *testing.T) {
