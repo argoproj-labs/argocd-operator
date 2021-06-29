@@ -9,4 +9,5 @@ for pod in $pods; do
     kubectl describe -n $1 $pod
 done
 echo "===================="
+echo "Secrets:"
 kubectl get secrets -n $1

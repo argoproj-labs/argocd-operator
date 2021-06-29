@@ -5,6 +5,9 @@ delete:
 - apiVersion: argoproj.io/v1alpha1
   kind: ArgoCD
   name: example-argocd
+commands:
+  # Sleep to allow resources to be completely deleted
+  - command: sleep 30s
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
