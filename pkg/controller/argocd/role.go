@@ -92,6 +92,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: cr.Namespace,
 	}
+
+	// get the list of namespaces managed by the ArgoCD instance
 	if err := r.client.List(context.TODO(), &namespaces, listOption); err != nil {
 		return nil, err
 	}
@@ -117,7 +119,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			if err := r.client.Create(context.TODO(), role); err != nil {
 				return nil, err
 			}
-			roles = append(roles, role)
 			continue
 		}
 
