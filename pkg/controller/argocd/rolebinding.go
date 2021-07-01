@@ -82,6 +82,8 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
+// reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
+// This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
 func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var roles []*v1.Role
 	var sa *corev1.ServiceAccount

@@ -403,7 +403,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 
 	namespaceList := corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDManagedNamespaceLabel: cr.Namespace,
+		common.ArgoCDManagedByLabel: cr.Namespace,
 	}
 	if err := r.client.List(context.TODO(), &namespaceList, listOption); err != nil {
 		return err

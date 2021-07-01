@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"reflect"
 	"strconv"
@@ -754,6 +755,19 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
+func (r *ReconcileArgoCD) removeManagedByLabelFromNamespace(namespace string) error {
+	ns := &corev1.Namespace{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: namespace}, ns); err != nil {
+		return err
+	}
+
+	if ns.Labels == nil {
+		return nil
+	}
+	delete(ns.Labels, common.ArgoCDManagedByLabel)
+	return r.client.Update(context.TODO(), ns)
+}
+
 func filterObjectsBySelector(c client.Client, objectList runtime.Object, selector labels.Selector) error {
 	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }
@@ -1050,7 +1064,7 @@ func containsString(arr []string, s string) bool {
 func namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if _, ok := e.MetaNew.GetLabels()[common.ArgoCDManagedNamespaceLabel]; ok {
+			if _, ok := e.MetaNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
 				return true
 			}
 			return false

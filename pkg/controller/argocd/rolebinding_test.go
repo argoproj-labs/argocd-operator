@@ -59,6 +59,8 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
+	_, err := r.reconcileRole(dexServer, rules, a)
+	assert.NilError(t, err)
 	assert.NilError(t, r.reconcileRoleBinding(dexServer, rules, a))
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
 }
