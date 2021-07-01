@@ -452,10 +452,10 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 					if !containsString(ns, strings.TrimSpace(n)) {
 						ns = append(ns, strings.TrimSpace(n))
 					}
-					sort.Strings(ns)
-					s.Data["namespaces"] = []byte(strings.Join(ns, ","))
-					return r.client.Update(context.TODO(), &s)
 				}
+				sort.Strings(ns)
+				s.Data["namespaces"] = []byte(strings.Join(ns, ","))
+				return r.client.Update(context.TODO(), &s)
 			}
 		}
 	}

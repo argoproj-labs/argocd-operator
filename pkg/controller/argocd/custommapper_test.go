@@ -1,6 +1,8 @@
 package argocd
 
 import (
+	"context"
+	"gotest.tools/assert"
 	"reflect"
 	"testing"
 
@@ -341,4 +343,76 @@ func TestReconcileArgoCD_tlsSecretMapper(t *testing.T) {
 		}
 	})
 
+}
+
+func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	a.Namespace = "newTestNamespace"
+
+	assert.NilError(t, r.client.Create(context.TODO(), a))
+
+	type test struct {
+		name string
+		o    handler.MapObject
+		want []reconcile.Request
+	}
+
+	tests := []test{
+		{
+			name: "test when namespace is labelled",
+			o: handler.MapObject{
+				Meta: &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testNamespace",
+						Labels: map[string]string{
+							common.ArgoCDManagedByLabel: a.Namespace,
+						},
+					},
+				},
+				Object: &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testNamespace",
+						Labels: map[string]string{
+							common.ArgoCDManagedByLabel: a.Namespace,
+						},
+					},
+				},
+			},
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      a.Name,
+						Namespace: a.Namespace,
+					},
+				},
+			},
+		},
+		{
+			name: "test when namespace is not labelled",
+			o: handler.MapObject{
+				Meta: &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "testNamespace",
+						Labels: make(map[string]string),
+					},
+				},
+				Object: &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "testNamespace",
+						Labels: make(map[string]string),
+					},
+				},
+			},
+			want: []reconcile.Request{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := r.namespaceResourceMapper(tt.o); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ReconcileArgoCD.namespaceResourceMapper(), got = %v, want = %v", got, tt.want)
+			}
+		})
+	}
 }

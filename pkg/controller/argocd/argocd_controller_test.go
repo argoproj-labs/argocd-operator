@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
 	r := makeTestReconciler(t, a)
-	createNamespace(r, a.Namespace, false)
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -75,7 +76,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	a := makeTestArgoCD()
 
 	r := makeTestReconciler(t, a)
-	createNamespace(r, a.Namespace, false)
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -88,6 +89,13 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	assert.NilError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
+	}
+
+	// check if namespace label was added
+	ns := &corev1.Namespace{}
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
+	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; !ok {
+		t.Errorf("Expected the namespace[%v] to be labelled with[%v]", a.Namespace, common.ArgoCDManagedByLabel)
 	}
 
 	deployment := &appsv1.Deployment{}
@@ -113,7 +121,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	resources := []runtime.Object{a}
 	resources = append(resources, clusterResources(a)...)
 	r := makeTestReconciler(t, resources...)
-	createNamespace(r, a.Namespace, false)
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -156,6 +164,13 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 				t.Errorf("Expected %s to be deleted", test.name)
 			}
 		})
+	}
+
+	// check if namespace label was removed
+	ns := &corev1.Namespace{}
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
+	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
+		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDManagedByLabel, a.Namespace)
 	}
 }
 

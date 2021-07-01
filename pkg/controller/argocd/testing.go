@@ -254,10 +254,10 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 	}
 }
 
-func createNamespace(r *ReconcileArgoCD, n string, withLabel bool) error {
+func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
-	if withLabel {
-		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: n}
+	if managedBy != "" {
+		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: managedBy}
 	}
 
 	return r.client.Create(context.TODO(), ns)
