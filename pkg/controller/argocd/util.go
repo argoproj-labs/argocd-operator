@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"reflect"
 	"strconv"
@@ -754,6 +755,19 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
+func (r *ReconcileArgoCD) removeManagedByLabelFromNamespace(namespace string) error {
+	ns := &corev1.Namespace{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: namespace}, ns); err != nil {
+		return err
+	}
+
+	if ns.Labels == nil {
+		return nil
+	}
+	delete(ns.Labels, common.ArgoCDManagedByLabel)
+	return r.client.Update(context.TODO(), ns)
+}
+
 func filterObjectsBySelector(c client.Client, objectList runtime.Object, selector labels.Selector) error {
 	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }
@@ -813,7 +827,7 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterResourceMapper handler.ToRequestsFunc, tlsSecretMapper handler.ToRequestsFunc) error {
+func watchResources(c controller.Controller, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.ToRequestsFunc) error {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -968,6 +982,14 @@ func watchResources(c controller.Controller, clusterResourceMapper handler.ToReq
 		}
 	}
 
+	namespaceHandler := &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: namespaceResourceMapper,
+	}
+
+	if err := c.Watch(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, namespaceFilterPredicate()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1028,4 +1050,24 @@ func splitList(s string) []string {
 		elems[i] = strings.TrimSpace(elems[i])
 	}
 	return elems
+}
+
+func containsString(arr []string, s string) bool {
+	for _, val := range arr {
+		if strings.TrimSpace(val) == s {
+			return true
+		}
+	}
+	return false
+}
+
+func namespaceFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if _, ok := e.MetaNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
+				return true
+			}
+			return false
+		},
+	}
 }

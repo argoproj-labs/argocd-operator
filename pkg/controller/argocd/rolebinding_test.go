@@ -20,6 +20,9 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	p := policyRuleForApplicationController()
 
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, "newTestNamespace", a.Namespace))
+
 	workloadIdentifier := "xrb"
 
 	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
@@ -27,6 +30,7 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	roleBinding := &rbacv1.RoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// update role reference and subject of the rolebinding
 	roleBinding.RoleRef.Name = "not-xrb"
@@ -44,6 +48,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
 
 	rules := policyRuleForDexServer()
 	rb := newRoleBindingWithname(dexServer, a)
@@ -56,6 +61,8 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
+	_, err := r.reconcileRole(dexServer, rules, a)
+	assert.NilError(t, err)
 	assert.NilError(t, r.reconcileRoleBinding(dexServer, rules, a))
 	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
 }

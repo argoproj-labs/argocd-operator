@@ -32,6 +32,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 		argoCD,
 	}
 	r := makeReconciler(t, argoCD, objs...)
+	assert.NilError(t, createNamespace(r, argoCD.Namespace, argoCD.Namespace))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -103,6 +104,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		argoCD,
 	}
 	r := makeReconciler(t, argoCD, objs...)
+	assert.NilError(t, createNamespace(r, argoCD.Namespace, argoCD.Namespace))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{

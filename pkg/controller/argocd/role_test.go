@@ -17,6 +17,8 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
 	workloadIdentifier := "x"
 	expectedRules := policyRuleForApplicationController()
@@ -26,6 +28,10 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+
+	// check if roles are created for the new namespace as well
+	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newNamespaceTest"}, reconciledRole))
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
@@ -43,6 +49,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
 
 	rules := policyRuleForDexServer()
 	role := newRole(dexServer, rules, a)
@@ -104,13 +111,16 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t)
+	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
 	Register(testRoleHook)
 
-	role, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
+	roles, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
+	role := roles[0]
 	assert.NilError(t, err)
 	assert.DeepEqual(t, role.Rules, testRules())
 
-	role, err = r.reconcileRole("test", []v1.PolicyRule{}, a)
+	roles, err = r.reconcileRole("test", []v1.PolicyRule{}, a)
+	role = roles[0]
 	assert.NilError(t, err)
 	assert.DeepEqual(t, role.Rules, []v1.PolicyRule{})
 }

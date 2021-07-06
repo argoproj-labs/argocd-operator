@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
+
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 func (r *ReconcileArgoCD) clusterResourceMapper(o handler.MapObject) []reconcile.Request {
@@ -91,6 +92,35 @@ func (r *ReconcileArgoCD) tlsSecretMapper(o handler.MapObject) []reconcile.Reque
 			result = []reconcile.Request{
 				{NamespacedName: namespacedArgoCDObject},
 			}
+		}
+	}
+
+	return result
+}
+
+// namespaceResourceMapper maps a watch event on a namespace, back to the
+// ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) namespaceResourceMapper(o handler.MapObject) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	labels := o.Meta.GetLabels()
+	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
+		argocds := &argoprojv1alpha1.ArgoCDList{}
+		if err := r.client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
 		}
 	}
 

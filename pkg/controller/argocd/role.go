@@ -6,6 +6,8 @@ import (
 	"os"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,19 +57,19 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role, err error) {
-	if role, err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
+	if _, err := r.reconcileRole(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return role, err
 	}
 
-	if role, err := r.reconcileRole(dexServer, policyRuleForDexServer(), cr); err != nil {
+	if _, err := r.reconcileRole(dexServer, policyRuleForDexServer(), cr); err != nil {
 		return role, err
 	}
 
-	if role, err := r.reconcileRole(server, policyRuleForServer(), cr); err != nil {
+	if _, err := r.reconcileRole(server, policyRuleForServer(), cr); err != nil {
 		return role, err
 	}
 
-	if role, err := r.reconcileRole(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
+	if _, err := r.reconcileRole(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
 		return role, err
 	}
 
@@ -82,31 +84,58 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 	return nil, nil
 }
 
-// reconcileRole
-func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
-	role := newRole(name, policyRules, cr)
-	if err := applyReconcilerHook(cr, role, ""); err != nil {
-		return nil, err
-	}
-	existingRole := v1.Role{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, &existingRole)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
-		}
-		if name == dexServer && isDexDisabled() {
-			return role, nil // Dex is disabled, do nothing
-		}
-		controllerutil.SetControllerReference(cr, role, r.scheme)
-		return role, r.client.Create(context.TODO(), role)
+// reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
+// Managed by a single instance of ArgoCD.
+func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+	var roles []*v1.Role
+	namespaces := corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedByLabel: cr.Namespace,
 	}
 
-	if name == dexServer && isDexDisabled() {
-		// Delete any existing Role created for Dex
-		return role, r.client.Delete(context.TODO(), role)
+	// get the list of namespaces managed by the ArgoCD instance
+	if err := r.client.List(context.TODO(), &namespaces, listOption); err != nil {
+		return nil, err
 	}
-	existingRole.Rules = role.Rules
-	return &existingRole, r.client.Update(context.TODO(), &existingRole)
+
+	// create policy rules for each namespace
+	for _, namespace := range namespaces.Items {
+		role := newRole(name, policyRules, cr)
+		if err := applyReconcilerHook(cr, role, ""); err != nil {
+			return nil, err
+		}
+		role.Namespace = namespace.Name
+		existingRole := v1.Role{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+			}
+			roles = append(roles, role)
+			if name == dexServer && isDexDisabled() {
+				continue // Dex is disabled, do nothing
+			}
+			controllerutil.SetControllerReference(cr, role, r.scheme)
+			if err := r.client.Create(context.TODO(), role); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		if name == dexServer && isDexDisabled() {
+			// Delete any existing Role created for Dex
+			if err := r.client.Delete(context.TODO(), &existingRole); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		existingRole.Rules = role.Rules
+		if err := r.client.Update(context.TODO(), &existingRole); err != nil {
+			return nil, err
+		}
+		roles = append(roles, &existingRole)
+	}
+	return roles, nil
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {

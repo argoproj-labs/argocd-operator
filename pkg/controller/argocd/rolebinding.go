@@ -82,69 +82,82 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
+// reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
+// This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
 func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
-	var role *v1.Role
+	var roles []*v1.Role
 	var sa *corev1.ServiceAccount
 	var error error
-
-	if role, error = r.reconcileRole(name, rules, cr); error != nil {
-		return error
-	}
 
 	if sa, error = r.reconcileServiceAccount(name, cr); error != nil {
 		return error
 	}
 
-	// get expected name
-	roleBinding := newRoleBindingWithname(name, cr)
-
-	// fetch existing rolebinding by name
-	existingRoleBinding := &v1.RoleBinding{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding)
-	roleBindingExists := true
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
-		}
-		if name == dexServer && isDexDisabled() {
-			return nil // Dex is disabled, do nothing
-		}
-		roleBindingExists = false
-		roleBinding = newRoleBindingWithname(name, cr)
+	if roles, error = r.reconcileRole(name, rules, cr); error != nil {
+		return error
 	}
 
-	roleBinding.Subjects = []v1.Subject{
-		{
-			Kind:      v1.ServiceAccountKind,
-			Name:      sa.Name,
-			Namespace: sa.Namespace,
-		},
-	}
-	roleBinding.RoleRef = v1.RoleRef{
-		APIGroup: v1.GroupName,
-		Kind:     "Role",
-		Name:     role.Name,
-	}
+	for _, role := range roles {
+		// get expected name
+		roleBinding := newRoleBindingWithname(name, cr)
+		roleBinding.Namespace = role.Namespace
 
-	if roleBindingExists {
-		if name == dexServer && isDexDisabled() {
-			// Delete any existing RoleBinding created for Dex
-			return r.client.Delete(context.TODO(), roleBinding)
-		}
-
-		// if the RoleRef changes, delete the existing role binding and create a new one
-		if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
-			if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {
-				return err
+		// fetch existing rolebinding by name
+		existingRoleBinding := &v1.RoleBinding{}
+		err := r.client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+		roleBindingExists := true
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-		} else {
-			existingRoleBinding.Subjects = roleBinding.Subjects
-			return r.client.Update(context.TODO(), existingRoleBinding)
+			if name == dexServer && isDexDisabled() {
+				continue // Dex is disabled, do nothing
+			}
+			roleBindingExists = false
+		}
+
+		roleBinding.Subjects = []v1.Subject{
+			{
+				Kind:      v1.ServiceAccountKind,
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+			},
+		}
+		roleBinding.RoleRef = v1.RoleRef{
+			APIGroup: v1.GroupName,
+			Kind:     "Role",
+			Name:     role.Name,
+		}
+
+		if roleBindingExists {
+			if name == dexServer && isDexDisabled() {
+				// Delete any existing RoleBinding created for Dex
+				if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {
+					return err
+				}
+				continue
+			}
+
+			// if the RoleRef changes, delete the existing role binding and create a new one
+			if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
+				if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {
+					return err
+				}
+			} else {
+				existingRoleBinding.Subjects = roleBinding.Subjects
+				if err = r.client.Update(context.TODO(), existingRoleBinding); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
+		if err = r.client.Create(context.TODO(), roleBinding); err != nil {
+			return err
 		}
 	}
-
-	controllerutil.SetControllerReference(cr, roleBinding, r.scheme)
-	return r.client.Create(context.TODO(), roleBinding)
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {

@@ -200,4 +200,7 @@ const (
 
 	// ArgoCDSecretTypeLabel is needed for cluster secrets
 	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
+
+	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
+	ArgoCDManagedByLabel = "argocd.argoproj.io/managed-by"
 )

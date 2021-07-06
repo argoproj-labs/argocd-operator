@@ -18,15 +18,18 @@ import (
 	"context"
 	"fmt"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
+
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
-	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 )
 
 // blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
@@ -57,7 +60,7 @@ func add(mgr manager.Manager, r *ReconcileArgoCD) error {
 	}
 
 	// Register watches for all controller resources
-	if err := watchResources(c, r.clusterResourceMapper, r.tlsSecretMapper); err != nil {
+	if err := watchResources(c, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper); err != nil {
 		return err
 	}
 
@@ -100,6 +103,10 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
+			if err := r.removeManagedByLabelFromNamespace(argocd.Namespace); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
+			}
+
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
 				return reconcile.Result{}, err
 			}
@@ -109,6 +116,21 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 
 	if !argocd.IsDeletionFinalizerPresent() {
 		if err := r.addDeletionFinalizer(argocd); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	namespace := &corev1.Namespace{}
+	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: request.Namespace}, namespace); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if val, ok := namespace.Labels[common.ArgoCDManagedByLabel]; !ok || val != argocd.Namespace {
+		if namespace.Labels == nil {
+			namespace.Labels = make(map[string]string)
+		}
+		namespace.Labels[common.ArgoCDManagedByLabel] = argocd.Namespace
+		if err = r.client.Update(context.TODO(), namespace); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
