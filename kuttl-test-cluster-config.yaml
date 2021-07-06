@@ -2,7 +2,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestSuite
 crdDir: ./deploy/crds/
 testDirs:
-- ./tests/e2e/
+- ./tests/e2e-cluster-config/
 timeout: 180
 startKIND: false
-namespace: argocd-e2e
+namespace: argocd-e2e-cluster-config

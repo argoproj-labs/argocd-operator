@@ -19,4 +19,12 @@
 HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source ${HACK_DIR}/env.sh
 
+set -e
+
+kubectl create namespace argocd-e2e
 kubectl kuttl test
+kubectl delete namespace argocd-e2e
+
+kubectl create namespace argocd-e2e-cluster-config
+kubectl kuttl test --config kuttl-test-cluster-config.yaml
+kubectl delete namespace argocd-e2e-cluster-config
