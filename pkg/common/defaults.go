@@ -161,10 +161,10 @@ const (
 	ArgoCDDefaultKustomizeBuildOptions = ""
 
 	// ArgoCDKeycloakImageName is the default Keycloak Image used when not specified.
-	ArgoCDKeycloakImageName = "sso74-openshift-rhel8"
+	ArgoCDKeycloakImageName = "quay.io/keycloak/keycloak"
 
 	// ArgoCDKeycloakVersion is the default Keycloak version used when not specified.
-	ArgoCDKeycloakVersion = "7.4"
+	ArgoCDKeycloakVersion = "sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf"
 
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""

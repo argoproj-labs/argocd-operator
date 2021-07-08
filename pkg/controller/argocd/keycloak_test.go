@@ -16,9 +16,11 @@ package argocd
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	argoappv1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	appsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"gotest.tools/assert"
@@ -52,11 +54,30 @@ var (
 )
 
 func TestKeycloakContainerImage(t *testing.T) {
-	testImage := getKeycloakContainerImage("sso-74-image", "7.4")
-	assert.Equal(t, testImage, "sso-74-image:7.4")
+	cr := makeTestArgoCD()
+	cr.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
 
-	testImage = getKeycloakContainerImage("sso-74-image", "SHA256:cbb1222787986dfs999")
-	assert.Equal(t, testImage, "sso-74-image@SHA256:cbb1222787986dfs999")
+	// When both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are not set.
+	testImage := getKeycloakContainerImage(cr)
+	assert.Equal(t, testImage,
+		"quay.io/keycloak/keycloak@sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf")
+
+	// When ENV variable is set.
+	err := os.Setenv(common.ArgoCDKeycloakImageEnvName, "envImage:latest")
+	defer os.Unsetenv(common.ArgoCDKeycloakImageEnvName)
+	assert.NilError(t, err)
+
+	testImage = getKeycloakContainerImage(cr)
+	assert.Equal(t, testImage, "envImage:latest")
+
+	// when both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are set.
+	cr.Spec.SSO.Image = "crImage"
+	cr.Spec.SSO.Version = "crVersion"
+
+	testImage = getKeycloakContainerImage(cr)
+	assert.Equal(t, testImage, "crImage:crVersion")
 }
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
@@ -97,8 +118,13 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
-	kc := getKeycloakContainer()
-	assert.Equal(t, kc.Image, "")
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	kc := getKeycloakContainer(a)
+	assert.Equal(t, kc.Image,
+		"quay.io/keycloak/keycloak@sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf")
 	assert.Equal(t, kc.ImagePullPolicy, corev1.PullAlways)
 	assert.Equal(t, kc.Name, "${APPLICATION_NAME}")
 }

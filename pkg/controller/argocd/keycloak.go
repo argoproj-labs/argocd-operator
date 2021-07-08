@@ -19,6 +19,7 @@ import (
 	b64 "encoding/base64"
 	json "encoding/json"
 	"fmt"
+	"os"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -46,9 +47,34 @@ var (
 	controllerRef  bool  = true
 )
 
-// getKeycloakContainerImage will return the container image for Keycloak.
-func getKeycloakContainerImage(img string, ver string) string {
-	return argoutil.CombineImageTag(img, ver)
+// getKeycloakContainerImage will return the container image for the Keycloak.
+//
+// There are three possible options for configuring the image, and this is the
+// order of preference.
+//
+// 1. from the Spec, the spec.sso field has an image and version to use for
+// generating an image reference.
+// 2. From the Environment, this looks for the `ARGOCD_KEYCLOAK_IMAGE` field and uses
+// that if the spec is not configured.
+// 3. the default is configured in common.ArgoCDKeycloakVersion and
+// common.ArgoCDKeycloakImageName.
+func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.SSO.Image
+	if img == "" {
+		img = common.ArgoCDKeycloakImageName
+		defaultImg = true
+	}
+
+	tag := cr.Spec.SSO.Version
+	if tag == "" {
+		tag = common.ArgoCDKeycloakVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDKeycloakImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
+	return argoutil.CombineImageTag(img, tag)
 }
 
 func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
@@ -85,7 +111,7 @@ func getKeycloakSecretTemplate(ns string) *corev1.Secret {
 	}
 }
 
-func getKeycloakContainer() corev1.Container {
+func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	return corev1.Container{
 		Env: []corev1.EnvVar{
 			{Name: "SSO_HOSTNAME", Value: "${SSO_HOSTNAME}"},
@@ -101,7 +127,7 @@ func getKeycloakContainer() corev1.Container {
 			{Name: "SSO_SERVICE_USERNAME", Value: "${SSO_SERVICE_USERNAME}"},
 			{Name: "SSO_SERVICE_PASSWORD", Value: "${SSO_SERVICE_PASSWORD}"},
 		},
-		Image:           "",
+		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
 			FailureThreshold: 3,
@@ -163,9 +189,7 @@ func getKeycloakContainer() corev1.Container {
 
 func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.DeploymentConfig {
 	ns := cr.Namespace
-	keycloakContainer := getKeycloakContainer()
-	keycloakImage := common.ArgoCDKeycloakImageName
-	keycloakVersion := common.ArgoCDKeycloakVersion
+	keycloakContainer := getKeycloakContainer(cr)
 
 	return &appsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -228,18 +252,6 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 				},
 			},
 			Triggers: appsv1.DeploymentTriggerPolicies{
-				appsv1.DeploymentTriggerPolicy{
-					Type: "ImageChange",
-					ImageChangeParams: &appsv1.DeploymentTriggerImageChangeParams{
-						Automatic:      true,
-						ContainerNames: []string{"${APPLICATION_NAME}"},
-						From: corev1.ObjectReference{
-							Kind:      "ImageStreamTag",
-							Name:      getKeycloakContainerImage(keycloakImage, keycloakVersion),
-							Namespace: "${IMAGE_STREAM_NAMESPACE}",
-						},
-					},
-				},
 				appsv1.DeploymentTriggerPolicy{
 					Type: "ConfigChange",
 				},
@@ -540,7 +552,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				DisplayName: "Login with OpenShift",
 				ProviderID:  "openshift-v4",
 				Config: map[string]string{
-					"baseUrl":      fmt.Sprintf("https://%s", "kubernetes.default.svc"),
+					"baseUrl":      fmt.Sprintf("https://kubernetes.default.svc.cluster.local"),
 					"clientSecret": oAuthClientSecret,
 					"clientId":     getOAuthClient(cfg.ArgoNamespace),
 					"defaultScope": "user:full",
