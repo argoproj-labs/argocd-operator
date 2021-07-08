@@ -1091,13 +1091,13 @@ func deleteRBACsForNamespace(ownerNS, sourceNS string) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config"))
+		log.Error(err, "unable to get k8s config")
 		return err
 	}
 
 	k8sClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create k8s client"))
+		log.Error(err, "unable to create k8s client")
 		return err
 	}
 
@@ -1140,6 +1140,9 @@ func deleteRBACsForNamespace(ownerNS, sourceNS string) error {
 		return err
 	}
 	for _, secret := range secrets.Items {
+		if string(secret.Data["server"]) != common.ArgoCDDefaultServer {
+			continue
+		}
 		if namespaces, ok := secret.Data["namespaces"]; ok {
 			namespaceList := strings.Split(string(namespaces), ",")
 			var result []string
