@@ -16,5 +16,5 @@ jobs:
         with:
           version: v1.38.0
           args: --timeout 5m --exclude SA5011
-          only_new_issues: true
+          only-new-issues: true
 
