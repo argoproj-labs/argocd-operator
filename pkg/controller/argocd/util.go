@@ -1075,7 +1075,11 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.MetaOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				if err := deleteRBACsForNamespace(ns, e.MetaOld.GetName()); err != nil {
+				k8sClient, err := initK8sClient()
+				if err != nil {
+					return false
+				}
+				if err := deleteRBACsForNamespace(ns, e.MetaOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.MetaOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.MetaOld.GetName()))
@@ -1087,19 +1091,8 @@ func namespaceFilterPredicate() predicate.Predicate {
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
-func deleteRBACsForNamespace(ownerNS, sourceNS string) error {
+func deleteRBACsForNamespace(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return err
-	}
 
 	// List all the roles created for ArgoCD using the label selector
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
@@ -1164,4 +1157,20 @@ func deleteRBACsForNamespace(ownerNS, sourceNS string) error {
 		}
 	}
 	return nil
+}
+
+func initK8sClient() (*kubernetes.Clientset, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "unable to get k8s config")
+		return nil, err
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "unable to create k8s client")
+		return nil, err
+	}
+
+	return k8sClient, nil
 }
