@@ -686,6 +686,12 @@ spec:
                     description: VerifyTLS defines whether repo server API should
                       be accessed using strict TLS validation
                     type: boolean
+                  image:
+                    description: Image is the ArgoCD Repo Server container image.
+                    type: string
+                  version:
+                    description: Version is the ArgoCD Repo Server container image tag.
+                    type: string
                 type: object
               repositoryCredentials:
                 description: RepositoryCredentials are the Git pull credentials to
