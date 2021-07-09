@@ -131,6 +131,10 @@ const (
 	// ArgoCDKeyResourceInclusions is the configuration key for resource inclusions.
 	ArgoCDKeyResourceInclusions = "resource.inclusions"
 
+	// ArgoCDRepoImageEnvName is the environment variable used to get the image
+	// to used for the Dex container.
+	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
+
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
 

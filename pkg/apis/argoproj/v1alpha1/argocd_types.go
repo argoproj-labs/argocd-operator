@@ -270,6 +270,12 @@ type ArgoCDRepoSpec struct {
 	// The value specified here can currently be:
 	// - openshift - Use the OpenShift service CA to request TLS config
 	AutoTLS string `json:"autotls,omitempty"`
+
+	// Image is the ArgoCD Repo Server container image.
+	Image string `json:"image,omitempty"`
+
+	// Version is the ArgoCD Repo Server container image tag.
+	Version string `json:"version,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

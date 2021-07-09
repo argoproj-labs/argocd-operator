@@ -19,12 +19,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -127,6 +128,36 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 
+	return argoutil.CombineImageTag(img, tag)
+}
+
+// getRepoServerContainerImage will return the container image for the Repo server.
+//
+// There are three possible options for configuring the image, and this is the
+// order of preference.
+//
+// 1. from the Spec, the spec.repo field has an image and version to use for
+// generating an image reference.
+// 2. from the Environment, this looks for the `ARGOCD_REPOSERVER_IMAGE` field and uses
+// that if the spec is not configured.
+// 3. the default is configured in common.ArgoCDDefaultRepoServerVersion and
+// common.ArgoCDDefaultRepoServerImage.
+func getRepoServerContainerImage(cr *argoprojv1a1.ArgoCD) string {
+	defaultImg, defaultTag := false, false
+	img := cr.Spec.Repo.Image
+	if img == "" {
+		img = common.ArgoCDDefaultRepoImage
+		defaultImg = true
+	}
+
+	tag := cr.Spec.Repo.Version
+	if tag == "" {
+		tag = common.ArgoCDDefaultRepoVersion
+		defaultTag = true
+	}
+	if e := os.Getenv(common.ArgoCDRepoImageEnvName); e != "" && (defaultTag && defaultImg) {
+		return e
+	}
 	return argoutil.CombineImageTag(img, tag)
 }
 
