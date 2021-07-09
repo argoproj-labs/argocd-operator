@@ -1,15 +1,21 @@
 package argocd
 
 import (
+	"context"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
+
+	"gotest.tools/assert"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
-	"gotest.tools/assert"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
 const (
@@ -376,4 +382,73 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
 		}
 	}
+}
+
+func TestDeleteRBACsForNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	testClient := testclient.NewSimpleClientset()
+	testNameSpace := "testNameSpace"
+
+	role := newRole("xyz", policyRuleForApplicationController(), a)
+	role.Namespace = testNameSpace
+
+	// create role with label
+	_, err := testClient.RbacV1().Roles(testNameSpace).Create(context.TODO(), role, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	role2 := newRole("abc", policyRuleForApplicationController(), a)
+	role2.Namespace = testNameSpace
+	role2.Labels = map[string]string{}
+
+	// create role without label
+	_, err = testClient.RbacV1().Roles(testNameSpace).Create(context.TODO(), role2, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	roleBinding := newRoleBindingWithname("xyz", a)
+	roleBinding.Namespace = testNameSpace
+
+	// create roleBinding with label
+	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	roleBinding2 := newRoleBindingWithname("abc", a)
+	roleBinding2.Namespace = testNameSpace
+	roleBinding2.Labels = map[string]string{}
+
+	// create RoleBinding without label
+	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding2, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	secret := argoutil.NewSecretWithSuffix(a.ObjectMeta, "xyz")
+	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+	secret.Data = map[string][]byte{
+		"server":     []byte(common.ArgoCDDefaultServer),
+		"namespaces": []byte(strings.Join([]string{testNameSpace, "testNamespace2"}, ",")),
+	}
+
+	// create secret with the label
+	_, err = testClient.CoreV1().Secrets(a.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	// run deleteRBACsForNamespace
+	assert.NilError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
+
+	// role with the label should be deleted
+	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role.Name, metav1.GetOptions{})
+	assert.ErrorContains(t, err, "not found")
+	// role without the label should still exists, no error
+	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role2.Name, metav1.GetOptions{})
+	assert.NilError(t, err)
+
+	// roleBinding with the label should be deleted
+	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding.Name, metav1.GetOptions{})
+	assert.ErrorContains(t, err, "not found")
+	// roleBinding without the label should still exists, no error
+	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding2.Name, metav1.GetOptions{})
+	assert.NilError(t, err)
+
+	// secret should still exists with updated list of namespaces
+	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, string(s.Data["namespaces"]), "testNamespace2")
 }
