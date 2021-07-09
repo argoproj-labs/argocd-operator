@@ -647,6 +647,9 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
+                  image:
+                    description: Image is the ArgoCD Repo Server container image.
+                    type: string
                   mountsatoken:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
@@ -686,6 +689,10 @@ spec:
                     description: VerifyTLS defines whether repo server API should
                       be accessed using strict TLS validation
                     type: boolean
+                  version:
+                    description: Version is the ArgoCD Repo Server container image
+                      tag.
+                    type: string
                 type: object
               repositoryCredentials:
                 description: RepositoryCredentials are the Git pull credentials to

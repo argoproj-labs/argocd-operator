@@ -735,6 +735,8 @@ MountSAToken | false | Whether the ServiceAccount token should be mounted to the
 ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
 VerifyTLS | false | Whether to enforce strict TLS checking on all components when communicating with repo server
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
+Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
+Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
 
 ### Repo Example
 

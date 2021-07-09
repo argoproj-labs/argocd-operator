@@ -217,6 +217,12 @@ const (
 	// ArgoCDDefaultRepoServerPort is the default listen port for the Argo CD repo server.
 	ArgoCDDefaultRepoServerPort = 8081
 
+	// ArgoCDDefaultRepoImage is the ArgoCD Repo Server container image to use when not specified.
+	ArgoCDDefaultRepoImage = "argoproj/argocd"
+
+	// ArgoCDDefaultRepoVersion is the Argo CD Repo Server container image digest to use when version not specified.
+	ArgoCDDefaultRepoVersion = "sha256:8d1d58ef963f615da97e0b2c54dbe243801d5e7198b98393ab36b7a5768f72a4" // v2.0.0
+
 	// ArgoCDDefaultRepositories is the default repositories.
 	ArgoCDDefaultRepositories = ""
 

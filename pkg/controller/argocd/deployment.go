@@ -767,7 +767,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr),
-		Image:           getArgoContainerImage(cr),
+		Image:           getRepoServerContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -875,7 +875,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
 		changed := false
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
+		desiredImage := getRepoServerContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
