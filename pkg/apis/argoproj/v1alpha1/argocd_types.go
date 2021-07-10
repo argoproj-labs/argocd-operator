@@ -283,6 +283,9 @@ type ArgoCDRouteSpec struct {
 	// Annotations is the map of annotations to use for the Route resource.
 	Annotations map[string]string `json:"annotations,omitempty"`
 
+	// Labels is the map of labels to use for the Route resource
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// Enabled will toggle the creation of the OpenShift Route.
 	Enabled bool `json:"enabled"`
 

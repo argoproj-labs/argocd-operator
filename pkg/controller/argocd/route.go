@@ -108,6 +108,15 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 		route.Annotations = cr.Spec.Grafana.Route.Annotations
 	}
 
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.Grafana.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Grafana.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
+	}
+
 	// Allow override of the Host for the Route.
 	if len(cr.Spec.Grafana.Host) > 0 {
 		route.Spec.Host = cr.Spec.Grafana.Host // TODO: What additional role needed for this?
@@ -161,6 +170,15 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) erro
 		route.Annotations = cr.Spec.Prometheus.Route.Annotations
 	}
 
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.Prometheus.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Prometheus.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
+	}
+
 	// Allow override of the Host for the Route.
 	if len(cr.Spec.Prometheus.Host) > 0 {
 		route.Spec.Host = cr.Spec.Prometheus.Host // TODO: What additional role needed for this?
@@ -208,6 +226,15 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	// Allow override of the Annotations for the Route.
 	if len(cr.Spec.Server.Route.Annotations) > 0 {
 		route.Annotations = cr.Spec.Server.Route.Annotations
+	}
+
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.Server.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Server.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
 	}
 
 	// Allow override of the Host for the Route.
