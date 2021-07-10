@@ -290,6 +290,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+Labels | [Empty] | The map of labels to add to the Route.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -642,6 +643,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to add to the Route.
 Enabled | `false` | Toggles the creation of a Route for the Prometheus component.
+Labels | [Empty] | The map of labels to add to the Route.
 Path | `/` | The path for the Route.
 TLS | [Object] | The TLSConfig for the Route.
 WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
@@ -940,6 +942,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to add to the Route.
 Enabled | `false` | Toggles the creation of a Route for the Argo CD Server component.
+Labels | [Empty] | The map of labels to add to the Route.
 Path | `/` | The path for the Route.
 TLS | [Object] | The TLSConfig for the Route.
 WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
