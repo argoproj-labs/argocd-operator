@@ -368,6 +368,14 @@ type ArgoCDSSOSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
+type KustomizeVersionSpec struct {
+	// Version is a configured kustomize version in the format of vX.Y.Z
+	Version string `json:"version,omitempty"`
+	// Path is the path to a configured kustomize version on the filesystem of your repo server.
+	Path string `json:"path,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -423,14 +431,8 @@ type ArgoCDSpec struct {
 	// KustomizeBuildOptions is used to specify build options/parameters to use with `kustomize build`.
 	KustomizeBuildOptions string `json:"kustomizeBuildOptions,omitempty"`
 
-	// KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
-	type KustomizeVersionSpec struct {
-		Version string `json:"version,omitempty"`
-		Path string `json:"path,omitempty"`
-	}
-
 	// KustomizeVersions is a listing of configured versions of Kustomize to be made available within ArgoCD.
-	KustomizeVersions []KustomizeVersionSpec `json:"kustomizeVersions`
+	KustomizeVersions []KustomizeVersionSpec `json:"kustomizeVersions,omitempty"`
 
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	OIDCConfig string `json:"oidcConfig,omitempty"`

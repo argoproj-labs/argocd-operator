@@ -441,6 +441,23 @@ spec:
                 description: KustomizeBuildOptions is used to specify build options/parameters
                   to use with `kustomize build`.
                 type: string
+              kustomizeVersions:
+                description: KustomizeVersions is a listing of configured versions
+                  of Kustomize to be made available within ArgoCD.
+                items:
+                  description: KustomizeVersionSpec is used to specify information
+                    about a kustomize version to be used within ArgoCD.
+                  properties:
+                    path:
+                      description: Path is the path to a configured kustomize version
+                        on the filesystem of your repo server.
+                      type: string
+                    version:
+                      description: Version is a configured kustomize version in the
+                        format of vX.Y.Z
+                      type: string
+                  type: object
+                type: array
               oidcConfig:
                 description: OIDCConfig is the OIDC configuration as an alternative
                   to dex.
