@@ -327,7 +327,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	if len(cr.Spec.KustomizeVersions) > 0 {
 		for _, kv := range cr.Spec.KustomizeVersions {
-			cm.Data["kustomize.version."+kv.name] = kv.path
+			cm.Data["kustomize.version."+kv.Name] = kv.Path
 		}
 	}
 
