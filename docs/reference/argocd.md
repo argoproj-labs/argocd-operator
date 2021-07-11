@@ -590,7 +590,7 @@ OIDC configuration as an alternative to dex (optional). This property maps direc
 
 ### OIDC Config Example
 
-The following example sets a value in the `argocd-cm` ConfigMap using the `KustomizeBuildOptions` property on the `ArgoCD` resource.
+The following example sets a value in the `argocd-cm` ConfigMap using the `oidcConfig` property on the `ArgoCD` resource.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
