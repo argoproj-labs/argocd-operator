@@ -436,6 +436,15 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 		changed = true
 	}
 
+        if len(cr.Spec.KustomizeVersions) > 0 {
+		for _, kv := range cr.Spec.KustomizeVersions {
+			if cm.Data["kustomize.version"+kv.Version] != kv.Path {
+				cm.Data["kustomize.version."+kv.Version] = kv.Path
+				changed = true
+			}
+                }
+	}
+
 	if cr.Spec.SSO == nil {
 		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
 			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
