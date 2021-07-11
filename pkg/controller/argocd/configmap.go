@@ -325,8 +325,8 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
 
-	if len(cr.KustomizeVersions) > 0 {
-		for _, kv := range cr.KustomizeVersions {
+	if len(cr.Spec.KustomizeVersions) > 0 {
+		for _, kv := range cr.Spec.KustomizeVersions {
 			cm.Data["kustomize.version."+kv.name] = kv.path
 		}
 	}
