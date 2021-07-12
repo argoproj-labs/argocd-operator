@@ -30,7 +30,7 @@ nav:
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
-    - SSO: usage/keycloak.md
+    - Keycloak: usage/keycloak.md
     - Routes: usage/routes.md
   - Reference:
     - ArgoCD: reference/argocd.md
