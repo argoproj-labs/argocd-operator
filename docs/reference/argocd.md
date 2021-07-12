@@ -584,6 +584,36 @@ spec:
   kustomizeBuildOptions: --load_restrictor none
 ```
 
+## KustomizeVersions Options
+
+A list of configured Kustomize versions within your ArgoCD Repo Server Container Image. For each version, this generates the `kustomize.version.vX.Y.Z` field in the `argocd-cm` ConfigMap.
+
+The following properties are available for each item in the KustomizeVersions list.
+
+Name | Default | Description
+--- | --- | ---
+Version | "" | The Kustomize version in the format vX.Y.Z that is configured in your ArgoCD Repo Server container image.
+Path | "" | The path to the specified kustomize version on the file system within your ArgoCD Repo Server container image.
+
+## KustomizeVersions Example
+
+The following example configures additional Kustomize versions that are available within the ArgoCD Repo Server container image. These versions already need to be made available via a custom image. Only setting these properties in your ConfigMap does not automatically make them available if they are already not there.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: kustomize-versions
+spec:
+  kustomizeVersions:
+    - version: v4.1.0
+      path: /path/to/kustomize-4.1
+    - version: v3.5.4
+      path: /path/to/kustomize-3.5.4
+```
+
 ## OIDC Config
 
 OIDC configuration as an alternative to dex (optional). This property maps directly to the `oidc.config` field in the `argocd-cm` ConfigMap.
