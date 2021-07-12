@@ -21,6 +21,41 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 )
 
+func TestReconcileRouteSetLabels(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(logf.ZapLogger(true))
+	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
+		a.Spec.Server.Route.Enabled = true
+		labels := make(map[string]string)
+		labels["my-key"] = "my-value"
+		a.Spec.Server.Route.Labels = labels
+	})
+	objs := []runtime.Object{
+		argoCD,
+	}
+	r := makeReconciler(t, argoCD, objs...)
+	assert.NilError(t, createNamespace(r, argoCD.Namespace, argoCD.Namespace))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(req)
+	assert.NilError(t, err)
+
+	loaded := &routev1.Route{}
+	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+	if diff := cmp.Diff("my-value", loaded.Labels["my-key"]); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+}
 func TestReconcileRouteSetsInsecure(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()

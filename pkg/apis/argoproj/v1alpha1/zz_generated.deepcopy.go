@@ -551,6 +551,13 @@ func (in *ArgoCDRouteSpec) DeepCopyInto(out *ArgoCDRouteSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(routev1.TLSConfig)

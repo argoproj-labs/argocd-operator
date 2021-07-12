@@ -288,6 +288,12 @@ spec:
                         description: Enabled will toggle the creation of the OpenShift
                           Route.
                         type: boolean
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels is the map of labels to use for the Route
+                          resource
+                        type: object
                       path:
                         description: Path the router watches for, to route traffic
                           for to the service.
@@ -520,6 +526,12 @@ spec:
                         description: Enabled will toggle the creation of the OpenShift
                           Route.
                         type: boolean
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels is the map of labels to use for the Route
+                          resource
+                        type: object
                       path:
                         description: Path the router watches for, to route traffic
                           for to the service.
@@ -928,6 +940,12 @@ spec:
                         description: Enabled will toggle the creation of the OpenShift
                           Route.
                         type: boolean
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Labels is the map of labels to use for the Route
+                          resource
+                        type: object
                       path:
                         description: Path the router watches for, to route traffic
                           for to the service.
