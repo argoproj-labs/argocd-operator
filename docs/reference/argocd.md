@@ -1012,8 +1012,10 @@ The following properties are available for configuring the Single sign-on compon
 
 Name | Default | Description
 --- | --- | ---
+Image | `registry.redhat.io/rh-sso-7/sso74-openshift-rhel8` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
+Version | `sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc` | The tag to use with the keycloak container image.
 
 ### Single sign-on Example
 
@@ -1030,6 +1032,8 @@ spec:
   sso:
     provider: keycloak
 ```
+
+Please refer to the keycloak user guide to learn more about configuring keycloak as a Single sign-on provider.
 
 ## TLS Options
 
