@@ -365,6 +365,8 @@ type ArgoCDSSOSpec struct {
 	Image string `json:"image,omitempty"`
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
+	// Resources defines the Compute Resources required by the container for SSO.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 	// VerifyTLS set to false disables strict TLS validation.
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 	// Version is the SSO container image tag.

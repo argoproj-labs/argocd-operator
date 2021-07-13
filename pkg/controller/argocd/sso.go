@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
@@ -101,7 +102,7 @@ func verifyTemplateAPI() error {
 
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
-		// TemplateAPI is available, Install keycloack using openshift templates.
+		// TemplateAPI is available, Install keycloak using openshift templates.
 		if IsTemplateAPIAvailable() {
 			templateInstanceRef, err := newKeycloakTemplateInstance(cr)
 			if err != nil {
@@ -133,47 +134,73 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 					Namespace: cr.Namespace,
 				},
 			}
-			err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
-					cr.Name, cr.Namespace))
-			}
 
-			// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
-			if existingDC.Status.AvailableReplicas == expectedReplicas &&
-				existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+			if argoutil.IsObjectFound(r.client, existingDC.Namespace, existingDC.Name, existingDC) {
+				changed := false
 
-				cfg, err := r.prepareKeycloakConfig(cr)
-				if err != nil {
-					return err
+				// Check if the resource requirements are updated by the user.
+				existingResources := existingDC.Spec.Template.Spec.Containers[0].Resources
+				desiredResources := getKeycloakResources(cr)
+				if !reflect.DeepEqual(existingResources, desiredResources) {
+					existingDC.Spec.Template.Spec.Containers[0].Resources = desiredResources
+					changed = true
 				}
 
-				// keycloakRouteURL is used to update the OIDC configuraton for ArgoCD.
-				keycloakRouteURL := cfg.KeycloakURL
-
-				// Create a keycloak realm and publish.
-				response, err := createRealm(cfg)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
-						cr.Name, cr.Namespace))
-					return err
+				// Check if the Image is updated by the user.
+				existingImage := existingDC.Spec.Template.Spec.Containers[0].Image
+				desiredImage := getKeycloakContainerImage(cr)
+				if existingImage != desiredImage {
+					existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+					changed = true
 				}
 
-				if response == successResponse {
-					log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
-						cr.Name, cr.Namespace))
-
-					// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
-					existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-					r.client.Update(context.TODO(), existingDC)
-
-					err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
+				if changed {
+					err = r.client.Update(context.TODO(), existingDC)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
-							cr.Name, cr.Namespace))
 						return err
 					}
 				}
+
+				// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
+				if existingDC.Status.AvailableReplicas == expectedReplicas &&
+					existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+
+					cfg, err := r.prepareKeycloakConfig(cr)
+					if err != nil {
+						return err
+					}
+
+					// keycloakRouteURL is used to update the OIDC configuraton for ArgoCD.
+					keycloakRouteURL := cfg.KeycloakURL
+
+					// Create a keycloak realm and publish.
+					response, err := createRealm(cfg)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
+							cr.Name, cr.Namespace))
+						return err
+					}
+
+					if response == successResponse {
+						log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
+							cr.Name, cr.Namespace))
+
+						// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+						existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
+						err = r.client.Update(context.TODO(), existingDC)
+						if err != nil {
+							return err
+						}
+
+						err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
+						if err != nil {
+							log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
+								cr.Name, cr.Namespace))
+							return err
+						}
+					}
+				}
+
 			}
 		} else {
 			return nil

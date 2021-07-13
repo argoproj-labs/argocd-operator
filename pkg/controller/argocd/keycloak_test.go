@@ -25,6 +25,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
+	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -52,6 +53,19 @@ var (
 		},
 	}
 )
+
+func getFakeKeycloakResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("128m"),
+		},
+	}
+}
 
 func TestKeycloakContainerImage(t *testing.T) {
 	cr := makeTestArgoCD()
@@ -127,6 +141,24 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
 	assert.Equal(t, kc.ImagePullPolicy, corev1.PullAlways)
 	assert.Equal(t, kc.Name, "${APPLICATION_NAME}")
+}
+
+func TestKeycloakResources(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	kc := getKeycloakContainer(a)
+
+	// Verify resource requirements are set to default.
+	assert.DeepEqual(t, kc.Resources, defaultKeycloakResources())
+
+	// Verify resource requirements are overridden by ArgoCD CR(.spec.SSO.Resources)
+	fR := getFakeKeycloakResources()
+	a.Spec.SSO.Resources = &fR
+
+	kc = getKeycloakContainer(a)
+	assert.DeepEqual(t, kc.Resources, getFakeKeycloakResources())
 }
 
 func TestNewKeycloakTemplate_testConfigmap(t *testing.T) {

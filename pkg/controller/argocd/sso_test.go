@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/apis"
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -36,6 +37,7 @@ func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.
 	// Register template scheme
 	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
 	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
+	assert.NilError(t, apis.AddToScheme(s))
 	templatev1.Install(s)
 	oappsv1.Install(s)
 	routev1.Install(s)
