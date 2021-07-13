@@ -248,6 +248,34 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		kv := argoprojv1alpha1.KustomizeVersionSpec{
+			Version: "v4.1.0",
+			Path:    "/path/to/kustomize-4.1",
+		}
+		var kvs []argoprojv1alpha1.KustomizeVersionSpec
+		kvs = append(kvs, kv)
+		a.Spec.KustomizeVersions = kvs
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+
+	if diff := cmp.Diff(cm.Data["kustomize.version.v4.1.0"], "/path/to/kustomize-4.1"); diff != "" {
+		t.Fatalf("failed to reconcile configmap:\n%s", diff)
+	}
+}
+
 func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
