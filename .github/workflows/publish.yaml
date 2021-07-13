@@ -11,6 +11,7 @@ jobs:
 
     env:
       ARGOCD_OPERATOR_IMAGE_BUILDER: docker
+      ARGOCD_OPERATOR_IMAGE: ${{ secrets.REGISTRY_URL }}/argocd-operator:latest
 
     steps:
 
@@ -38,9 +39,7 @@ jobs:
           make install
 
       - name: Build operator and Tag Latest
-        run: | 
-          bash hack/build.sh
-          bash hack/tag.sh
+        run: bash hack/build.sh
 
       - name: Login to Registry
         uses: docker/login-action@v1
@@ -50,7 +49,4 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Push latest operator
-        env:
-          ARGOCD_OPERATOR_IMAGE=${{ secrets.REGISTRY_URL }}/argocd-operator:latest
-        run: |
-          bash hack/push.sh
+        run: bash hack/push.sh
