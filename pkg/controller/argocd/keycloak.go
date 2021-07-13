@@ -111,6 +111,35 @@ func getKeycloakSecretTemplate(ns string) *corev1.Secret {
 	}
 }
 
+// defaultKeycloakResources for Keycloak container.
+func defaultKeycloakResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		},
+	}
+}
+
+// getKeycloakResources will return the ResourceRequirements for the Keycloak container.
+func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+
+	// Default values for Keycloak resources requirements.
+	resources := defaultKeycloakResources()
+
+	// Allow override of resource requirements from CR
+	if cr.Spec.SSO.Resources != nil {
+		resources = *cr.Spec.SSO.Resources
+		return resources
+	}
+
+	return resources
+}
+
 func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	return corev1.Container{
 		Env: []corev1.EnvVar{
@@ -162,16 +191,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			},
 			InitialDelaySeconds: 60,
 		},
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
-				corev1.ResourceCPU:    resourcev1.MustParse("500m"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
-				corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
-			},
-		},
+		Resources: getKeycloakResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/etc/x509/https",
