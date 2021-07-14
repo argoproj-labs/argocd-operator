@@ -194,6 +194,10 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, getRedisServerAddress(cr))
 
+	cmd = append(cmd, "--loglevel")
+
+	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
+
 	return cmd
 }
 
@@ -221,6 +225,8 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, getRedisServerAddress(cr))
+
+	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
 
 	return cmd
 }

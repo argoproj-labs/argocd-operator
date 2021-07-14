@@ -123,6 +123,7 @@ Name | Default | Description
 Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCd Application Controller component.
 
 ### Controller Example
 
@@ -769,6 +770,7 @@ VerifyTLS | false | Whether to enforce strict TLS checking on all components whe
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
 Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
+LogLevel | info | The log level to be used by the ArgoCD Repo Server.
 
 ### Repo Example
 
@@ -923,6 +925,7 @@ Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
+LogLevel | info | The log level to be used by the ArgoCD Server component.
 
 ### Server Autoscale Options
 

@@ -18,6 +18,9 @@ const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller  control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 
+	// ArgoCDDefaultLogLevel is the default log level to be used by all ArgoCD components.
+	ArgoCDDefaultLogLevel = "info"
+
 	// ArgoCDServerComponent is the name of the Dex server control plane component
 	ArgoCDServerComponent = "argocd-server"
 
