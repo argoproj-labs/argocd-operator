@@ -1215,6 +1215,7 @@ func getLogLevel(logField string) string {
 		return common.ArgoCDDefaultLogLevel
 	} else {
 		switch(logField) {
+	        case
 			"info",
 			"warn",
 			"error":

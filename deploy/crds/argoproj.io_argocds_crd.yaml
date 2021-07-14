@@ -88,6 +88,11 @@ spec:
                       \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
+                  logLevel:
+                    description: LogLevel refers to the log level used by the Application
+                      Controller component. Defaults to ArgoCDDefaultLogLevel if not
+                      configured.
+                    type: string
                   processors:
                     description: Processors contains the options for the Application
                       Controller processors.
@@ -679,6 +684,11 @@ spec:
                   image:
                     description: Image is the ArgoCD Repo Server container image.
                     type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not
+                      set.
+                    type: string
                   mountsatoken:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
@@ -916,6 +926,11 @@ spec:
                   insecure:
                     description: Insecure toggles the insecure flag.
                     type: boolean
+                  logLevel:
+                    description: LogLevel refers to the log level to be used by the
+                      ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
+                      not set.
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for the Argo CD server component.
