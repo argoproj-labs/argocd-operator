@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
@@ -151,14 +152,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				desiredImage := getKeycloakContainerImage(cr)
 				if existingImage != desiredImage {
 					existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+					existingDC.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 					changed = true
-				}
-
-				if changed {
-					err = r.client.Update(context.TODO(), existingDC)
-					if err != nil {
-						return err
-					}
 				}
 
 				// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
@@ -187,10 +182,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 						// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 						existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-						err = r.client.Update(context.TODO(), existingDC)
-						if err != nil {
-							return err
-						}
+						changed = true
 
 						err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
 						if err != nil {
@@ -198,6 +190,13 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 								cr.Name, cr.Namespace))
 							return err
 						}
+					}
+				}
+
+				if changed {
+					err = r.client.Update(context.TODO(), existingDC)
+					if err != nil {
+						return err
 					}
 				}
 
