@@ -107,7 +107,8 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 		"--operation-processors", "10",
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "20"}
+		"--status-processors", "20",
+		"--loglevel info"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
@@ -145,7 +146,8 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 		"--operation-processors", "10",
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "30"}
+		"--status-processors", "30",
+		"--loglevel info"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
