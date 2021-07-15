@@ -196,8 +196,6 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd = append(cmd, "--loglevel "+getLogLevel(cr.Spec.Repo.LogLevel))
 
-	//cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
-
 	return cmd
 }
 
