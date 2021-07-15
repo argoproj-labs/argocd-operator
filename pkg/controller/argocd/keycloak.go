@@ -673,7 +673,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 	}
 
 	// Update ArgoCD instance for OIDC Config with Keycloakrealm URL
-	o, _ := yaml.Marshal(oidcConfig{
+	o, err := yaml.Marshal(oidcConfig{
 		Name: "Keycloak",
 		Issuer: fmt.Sprintf("%s/auth/realms/%s",
 			kRouteURL, keycloakRealm),
@@ -681,6 +681,10 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 		ClientSecret:   "$oidc.keycloak.clientSecret",
 		RequestedScope: []string{"openid", "profile", "email", "groups"},
 	})
+
+	if err != nil {
+		return err
+	}
 
 	argoCDCM := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
