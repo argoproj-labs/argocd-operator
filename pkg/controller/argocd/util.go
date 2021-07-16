@@ -1097,9 +1097,23 @@ func containsString(arr []string, s string) bool {
 func namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// If ArgoCDManagedByLabel exists, return true.
-			// Event is then handled by the reconciler.
-			if _, ok := e.MetaNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
+			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
+			// 1. Check if oldMeta had the label or not? if no, return true
+			// 2. if yes, check if the old and new values are different, if yes,
+			// first deleteRBACs for the old value & return true.
+			// Event is then handled by the reconciler, which would create appropriate RBACs.
+			if valNew, ok := e.MetaNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
+				if valOld, ok := e.MetaOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
+					k8sClient, err := initK8sClient()
+					if err != nil {
+						return false
+					}
+					if err := deleteRBACsForNamespace(valOld, e.MetaOld.GetName(), k8sClient); err != nil {
+						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.MetaOld.GetName()))
+					} else {
+						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.MetaOld.GetName()))
+					}
+				}
 				return true
 			}
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
