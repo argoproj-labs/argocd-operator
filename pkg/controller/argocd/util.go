@@ -148,16 +148,16 @@ func getRepoServerContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Repo.Image
 	if img == "" {
-		img = common.ArgoCDDefaultRepoImage
+		img = common.ArgoCDDefaultArgoImage
 		defaultImg = true
 	}
 
 	tag := cr.Spec.Repo.Version
 	if tag == "" {
-		tag = common.ArgoCDDefaultRepoVersion
+		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDRepoImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
