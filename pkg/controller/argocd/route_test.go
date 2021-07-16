@@ -84,14 +84,14 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
+		Termination:                   routev1.TLSTerminationEdge,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
 	}
 	wantPort := &routev1.RoutePort{
-		TargetPort: intstr.FromString("https"),
+		TargetPort: intstr.FromString("http"),
 	}
 	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
@@ -183,16 +183,15 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	loaded = &routev1.Route{}
 	err = r.client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
-
 	wantTLSConfig = &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
+		Termination:                   routev1.TLSTerminationEdge,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
 	}
 	wantPort = &routev1.RoutePort{
-		TargetPort: intstr.FromString("https"),
+		TargetPort: intstr.FromString("http"),
 	}
 	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
@@ -245,4 +244,62 @@ func testNamespacedName(name string) types.NamespacedName {
 		Name:      name,
 		Namespace: testNamespace,
 	}
+}
+
+func TestServerRouteTermination(t *testing.T) {
+	t.Run("Route not enabled", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{}
+		if serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be false, but is true")
+		}
+	})
+	t.Run("Route enabled, test for edge being default", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{
+			Spec: argov1alpha1.ArgoCDSpec{
+				Server: argov1alpha1.ArgoCDServerSpec{
+					Route: argov1alpha1.ArgoCDRouteSpec{
+						Enabled: true,
+					},
+				},
+			},
+		}
+		if !serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be false, but is true")
+		}
+	})
+	t.Run("Route properties set to edge termination policy", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{
+			Spec: argov1alpha1.ArgoCDSpec{
+				Server: argov1alpha1.ArgoCDServerSpec{
+					Route: argov1alpha1.ArgoCDRouteSpec{
+						Enabled: true,
+						TLS: &routev1.TLSConfig{
+							Termination: routev1.TLSTerminationEdge,
+						},
+					},
+				},
+			},
+		}
+		if !serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be true, but is false")
+		}
+	})
+	t.Run("Route properties set to another termination policy", func(t *testing.T) {
+		cr := &argov1alpha1.ArgoCD{
+			Spec: argov1alpha1.ArgoCDSpec{
+				Server: argov1alpha1.ArgoCDServerSpec{
+					Route: argov1alpha1.ArgoCDRouteSpec{
+						Enabled: true,
+						TLS: &routev1.TLSConfig{
+							Termination: routev1.TLSTerminationReencrypt,
+						},
+					},
+				},
+			},
+		}
+		if serverRouteIsEdgeTermination(cr) {
+			t.Fatalf("edge termination should be false, but is true")
+		}
+	})
+
 }
