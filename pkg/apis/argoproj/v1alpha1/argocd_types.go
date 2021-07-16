@@ -84,6 +84,9 @@ type ArgoCDApplicationSet struct {
 
 	// Resources defines the Compute Resources required by the container for ApplicationSet.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

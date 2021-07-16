@@ -110,7 +110,8 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
 
-	cmd = append(cmd, "--loglevel "+getLogLevel(cr.Spec.Controller.LogLevel))
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
 
 	return cmd
 }

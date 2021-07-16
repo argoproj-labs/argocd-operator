@@ -31,6 +31,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+
+// getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
+func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+
+	cmd = append(cmd, "applicationset-controller")
+
+	cmd = append(cmd, "--argocd-repo-server")
+	cmd = append(cmd, getRepoServerAddress(cr))
+
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
+
+	return cmd
+}
+
+
 func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
 
 	log.Info("reconciling applicationset serviceaccounts")
@@ -117,7 +134,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	}
 
 	podSpec.Containers = []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(cr)},
+		Command: getArgoApplicationSetCommand(cr),
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
