@@ -396,6 +396,10 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
 	changed := false
 
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
+	}
+
 	if cm.Data[common.ArgoCDKeyAdminEnabled] == fmt.Sprintf("%t", cr.Spec.DisableAdmin) {
 		cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 		changed = true
