@@ -73,9 +73,9 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 
 		for _, con := range deployment.Spec.Template.Spec.Containers {
 			if con.Name == "argocd-repo-server" {
-				for _, cmd := range con.Command {
-					if strings.HasPrefix(cmd, "--loglevel") {
-						if diff := cmp.Diff(ll, strings.Split(cmd, " ")[1]); diff != "" {
+				for cmdKey, cmd := range con.Command {
+					if cmd == "--loglevel" {
+						if diff := cmp.Diff(ll, con.Command[cmdKey+1]); diff != "" {
 							t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
 						}
 					}
@@ -579,7 +579,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
-					"--loglevel info",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -651,7 +652,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
-					"--loglevel info",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -726,7 +728,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
-					"--loglevel info",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
