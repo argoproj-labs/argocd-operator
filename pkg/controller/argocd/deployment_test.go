@@ -38,6 +38,53 @@ var (
 		"argocd-server"}
 )
 
+func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+
+	repoDeps := []*argoprojv1alpha1.ArgoCD{
+		makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Repo.LogLevel = "warn"
+		}),
+		makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Repo.LogLevel = "error"
+		}),
+		makeTestArgoCD(),
+	}
+
+	for _, lglv := range repoDeps {
+
+		var ll string
+		if lglv.Spec.Repo.LogLevel == "" {
+			ll = "info"
+		} else {
+			ll = lglv.Spec.Repo.LogLevel
+		}
+
+		r := makeTestReconciler(t, lglv)
+
+		err := r.reconcileRepoDeployment(lglv)
+		assert.NilError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NilError(t, err)
+
+		for _, con := range deployment.Spec.Template.Spec.Containers {
+			if con.Name == "argocd-repo-server" {
+				for cmdKey, cmd := range con.Command {
+					if cmd == "--loglevel" {
+						if diff := cmp.Diff(ll, con.Command[cmdKey+1]); diff != "" {
+							t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 // TODO: This needs more testing for the rest of the RepoDeployment container
 // fields.
 
@@ -532,6 +579,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -603,6 +652,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -677,6 +728,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"argocd-repo-server.argocd.svc.cluster.local:8081",
 					"--redis",
 					"argocd-redis.argocd.svc.cluster.local:6379",
+					"--loglevel",
+					"info",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},

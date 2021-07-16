@@ -323,6 +323,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"argocd-repo-server.argocd.svc.cluster.local:8081",
 				"--status-processors",
 				"20",
+				"--loglevel",
+				"info",
 			},
 		},
 		{
@@ -338,6 +340,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"argocd-repo-server.argocd.svc.cluster.local:8081",
 				"--status-processors",
 				"30",
+				"--loglevel",
+				"info",
 			},
 		},
 		{
@@ -353,6 +357,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"argocd-repo-server.argocd.svc.cluster.local:8081",
 				"--status-processors",
 				"20",
+				"--loglevel",
+				"info",
 			},
 		},
 		{
@@ -370,6 +376,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"20",
 				"--app-resync",
 				"600",
+				"--loglevel",
+				"info",
 			},
 		},
 	}
