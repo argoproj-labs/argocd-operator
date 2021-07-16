@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
 func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
@@ -46,7 +45,6 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	return cmd
 }
-
 
 func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
 
