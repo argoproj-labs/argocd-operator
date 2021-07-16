@@ -1217,6 +1217,7 @@ func getLogLevel(logField string) string {
 	} else {
 		switch logField {
 		case
+			"debug",
 			"info",
 			"warn",
 			"error":
