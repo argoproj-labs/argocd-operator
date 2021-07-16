@@ -122,6 +122,33 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	// An empty Argo CD Configmap
+	emptyArgoConfigmap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: a.Namespace,
+		},
+	}
+
+	err := r.client.Create(context.TODO(), emptyArgoConfigmap)
+	assert.NilError(t, err)
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+}
+
 func TestReconcileArgoCDCM_withRepoCredentials(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
