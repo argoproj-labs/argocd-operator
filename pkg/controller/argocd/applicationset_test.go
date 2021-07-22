@@ -30,11 +30,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func TestReconcileApplicationSet_Deployments(t *testing.T) {
+func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
@@ -54,6 +55,11 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 		},
 		deployment))
 
+	// Ensure the created Deployment has the expected properties
+	checkExpectedDeploymentValues(t, deployment, &sa, a)
+}
+
+func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *v1alpha1.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
@@ -74,8 +80,115 @@ func TestReconcileApplicationSet_Deployments(t *testing.T) {
 	}}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
-		t.Fatalf("failed to reconcile applicationset-controller deployment:\n%s", diff)
+		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
 	}
+
+	volumes := []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+
+	if diff := cmp.Diff(volumes, deployment.Spec.Template.Spec.Volumes); diff != "" {
+		t.Fatalf("failed to reconcile applicationset-controller deployment volumes:\n%s", diff)
+	}
+
+	expectedSelector := &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: deployment.Name,
+		},
+	}
+
+	if diff := cmp.Diff(expectedSelector, deployment.Spec.Selector); diff != "" {
+		t.Fatalf("failed to reconcile applicationset-controller label selector:\n%s", diff)
+	}
+}
+
+func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	a := makeTestArgoCD()
+
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+
+	existingDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      a.Name + "-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "fake-container",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	runtimeObjs := []runtime.Object{a, existingDeployment}
+	r := makeTestReconciler(t, runtimeObjs...)
+
+	sa := corev1.ServiceAccount{}
+
+	assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NilError(t, r.client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Ensure the updated Deployment has the expected properties
+	checkExpectedDeploymentValues(t, deployment, &sa, a)
+
 }
 
 func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) {
