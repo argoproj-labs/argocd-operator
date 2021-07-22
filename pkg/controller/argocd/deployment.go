@@ -1037,6 +1037,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
+			existing.Spec.Template.Spec.Containers[0].Resources) {
+			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
 		if changed {
 			return r.client.Update(context.TODO(), existing)
 		}
