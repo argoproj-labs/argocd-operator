@@ -156,10 +156,23 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
 
-		// If the Deployment already exists, make sure the containers are up-to-date
-		actualContainers := existing.Spec.Template.Spec.Containers[0]
-		if !reflect.DeepEqual(actualContainers, podSpec.Containers) {
+		existingSpec := existing.Spec.Template.Spec
+
+		deploymentsDifferent := !reflect.DeepEqual(existingSpec.Containers[0], podSpec.Containers) ||
+			!reflect.DeepEqual(existingSpec.Volumes, podSpec.Volumes) ||
+			existingSpec.ServiceAccountName != podSpec.ServiceAccountName ||
+			!reflect.DeepEqual(existing.Labels, deploy.Labels) ||
+			!reflect.DeepEqual(existing.Spec.Template.Labels, deploy.Spec.Template.Labels) ||
+			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector)
+
+		// If the Deployment already exists, make sure the values we care about are up-to-date
+		if deploymentsDifferent {
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
+			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
+			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
+			existing.Labels = deploy.Labels
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			existing.Spec.Selector = deploy.Spec.Selector
 			return r.client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
