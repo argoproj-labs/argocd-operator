@@ -58,7 +58,7 @@ type ArgoCDApplicationControllerSpec struct {
 	// Processors contains the options for the Application Controller processors.
 	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors,omitempty"`
 
-	// LogLevel refers to the log level used by the Application Controller component. Defaults to ArgoCDDefaultLogLevel if not configured. Valid options are debug,info, error, and warn.
+	// LogLevel refers to the log level used by the Application Controller component. Defaults to ArgoCDDefaultLogLevel if not configured. Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the Application Controller.
