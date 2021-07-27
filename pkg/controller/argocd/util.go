@@ -1212,17 +1212,12 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
 func getLogLevel(logField string) string {
 
-	if logField == "" {
-		return common.ArgoCDDefaultLogLevel
-	} else {
-		switch logField {
-		case
-			"debug",
-			"info",
-			"warn",
-			"error":
-			return logField
-		}
-		return common.ArgoCDDefaultLogLevel
+        switch strings.ToLower(logField) {
+	case "debug",
+		"info",
+		"warn",
+		"error":
+		return logField
 	}
+	return common.ArgoCDDefaultLogLevel
 }
