@@ -925,7 +925,7 @@ Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
-LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are info, error, and warn.
+LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 
 ### Server Autoscale Options
 
