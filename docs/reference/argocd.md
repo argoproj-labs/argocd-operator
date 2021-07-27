@@ -770,7 +770,7 @@ VerifyTLS | false | Whether to enforce strict TLS checking on all components whe
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
 Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
-LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are info, error, and warn.
+LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
 
 ### Repo Example
 
