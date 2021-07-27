@@ -123,7 +123,7 @@ Name | Default | Description
 Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
-LogLevel | info | The log level to be used by the ArgoCd Application Controller component. Valid options are info, error, and warn.
+LogLevel | info | The log level to be used by the ArgoCd Application Controller component. Valid options are debug, info, error, and warn.
 
 ### Controller Example
 
