@@ -1212,7 +1212,7 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
 func getLogLevel(logField string) string {
 
-        switch strings.ToLower(logField) {
+	switch strings.ToLower(logField) {
 	case "debug",
 		"info",
 		"warn",
