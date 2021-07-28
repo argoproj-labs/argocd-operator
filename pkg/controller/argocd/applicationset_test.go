@@ -64,7 +64,7 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
 	want := []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a)},
+		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a), "--loglevel", "info"},
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{
@@ -214,7 +214,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
 	containerWant := []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a)},
+		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a), "--loglevel", "info"},
 		Env: []corev1.EnvVar{{
 			Name: "NAMESPACE",
 			ValueFrom: &corev1.EnvVarSource{

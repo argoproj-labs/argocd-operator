@@ -58,6 +58,9 @@ type ArgoCDApplicationControllerSpec struct {
 	// Processors contains the options for the Application Controller processors.
 	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors,omitempty"`
 
+	// LogLevel refers to the log level used by the Application Controller component. Defaults to ArgoCDDefaultLogLevel if not configured. Valid options are debug, info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for the Application Controller.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
@@ -81,6 +84,9 @@ type ArgoCDApplicationSet struct {
 
 	// Resources defines the Compute Resources required by the container for ApplicationSet.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -254,6 +260,10 @@ type ArgoCDRedisSpec struct {
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
+
+	// LogLevel describes the log level that should be used by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
 	// MountSAToken describes whether you would like to have the Repo server mount the service account token
 	MountSAToken bool `json:"mountsatoken,omitempty"`
 
@@ -333,6 +343,9 @@ type ArgoCDServerSpec struct {
 
 	// Insecure toggles the insecure flag.
 	Insecure bool `json:"insecure,omitempty"`
+
+	// LogLevel refers to the log level to be used by the ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the Argo CD server component.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`

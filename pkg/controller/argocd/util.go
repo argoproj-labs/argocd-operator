@@ -109,6 +109,10 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
+
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
+
 	return cmd
 }
 
@@ -1217,4 +1221,17 @@ func initK8sClient() (*kubernetes.Clientset, error) {
 	}
 
 	return k8sClient, nil
+}
+
+// getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
+func getLogLevel(logField string) string {
+
+	switch strings.ToLower(logField) {
+	case "debug",
+		"info",
+		"warn",
+		"error":
+		return logField
+	}
+	return common.ArgoCDDefaultLogLevel
 }
