@@ -96,7 +96,7 @@ spec:
                   logLevel:
                     description: LogLevel refers to the log level used by the Application
                       Controller component. Defaults to ArgoCDDefaultLogLevel if not
-                      configured. Valid options are debug,info, error, and warn.
+                      configured. Valid options are debug, info, error, and warn.
                     type: string
                   processors:
                     description: Processors contains the options for the Application
