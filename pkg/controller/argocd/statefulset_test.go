@@ -3,10 +3,11 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/google/go-cmp/cmp"
@@ -207,4 +208,75 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	}
 	assert.DeepEqual(t, ss.Spec.Template.Spec.Containers[0].Resources, testResources)
 	assert.DeepEqual(t, ss.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+}
+
+func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+
+	tests := []struct {
+		sharding argoprojv1alpha1.ArgoCDApplicationControllerShardSpec
+		replicas int32
+		vars     []corev1.EnvVar
+	}{
+		{
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:  false,
+				Replicas: 3,
+			},
+			replicas: 1,
+			vars:     nil,
+		},
+		{
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:  true,
+				Replicas: 1,
+			},
+			replicas: 1,
+			vars: []corev1.EnvVar{
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
+			},
+		},
+		{
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:  true,
+				Replicas: 3,
+			},
+			replicas: 3,
+			vars: []corev1.EnvVar{
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
+			},
+		},
+	}
+
+	for _, st := range tests {
+		a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Controller.Sharding = st.sharding
+		})
+		r := makeTestReconciler(t, a)
+
+		assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+
+		ss := &appsv1.StatefulSet{}
+		assert.NilError(t, r.client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      "argocd-application-controller",
+				Namespace: a.Namespace,
+			},
+			ss))
+
+		env := ss.Spec.Template.Spec.Containers[0].Env
+		rep := ss.Spec.Replicas
+
+		diffEnv := cmp.Diff(env, st.vars)
+		diffRep := cmp.Diff(rep, &st.replicas)
+
+		if diffEnv != "" {
+			t.Fatalf("Reconciliation of EnvVars failed:\n%s", diffEnv)
+		}
+
+		if diffRep != "" {
+			t.Fatalf("Reconciliation of Replicas failed:\n%s", diffRep)
+		}
+	}
 }
