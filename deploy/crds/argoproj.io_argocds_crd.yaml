@@ -139,6 +139,20 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                         type: object
                     type: object
+                  sharding:
+                    description: Sharding contains the options for the Application
+                      Controller sharding configuration.
+                    properties:
+                      enabled:
+                        description: Enabled defines whether sharding should be enabled
+                          on the Application Controller component.
+                        type: boolean
+                      replicas:
+                        description: Replicas defines the number of replicas to run
+                          in the Application controller shard.
+                        format: int32
+                        type: integer
+                    type: object
                 type: object
               dex:
                 description: Dex defines the Dex server options for ArgoCD.

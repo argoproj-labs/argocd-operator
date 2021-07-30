@@ -124,6 +124,8 @@ Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCd Application Controller component. Valid options are debug, info, error, and warn.
+Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
+Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
 
 ### Controller Example
 

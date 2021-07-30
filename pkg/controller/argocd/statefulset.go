@@ -300,8 +300,26 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 	return r.client.Create(context.TODO(), ss)
 }
 
+func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
+	env := make([]corev1.EnvVar, 0)
+
+	if cr.Spec.Controller.Sharding.Enabled {
+		env = append(env, corev1.EnvVar{
+			Name:  "ARGOCD_CONTROLLER_REPLICAS",
+			Value: fmt.Sprint(cr.Spec.Controller.Sharding.Replicas),
+		})
+	}
+
+	return env
+}
+
 func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD) error {
-	var replicas int32 = 1 // TODO: allow override using CR ?
+	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
+
+	if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
+		replicas = cr.Spec.Controller.Sharding.Replicas
+	}
+
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
 
@@ -321,7 +339,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Env: proxyEnvVars(),
+		Env: proxyEnvVars(getArgoControllerContainerEnv(cr)...),
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8082,
@@ -440,6 +458,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Spec.Containers[0].Resources = ss.Spec.Template.Spec.Containers[0].Resources
 			changed = true
 		}
+		if !reflect.DeepEqual(ss.Spec.Replicas, existing.Spec.Replicas) {
+			existing.Spec.Replicas = ss.Spec.Replicas
+			changed = true
+		}
+
 		if changed {
 			return r.client.Update(context.TODO(), existing)
 		}
