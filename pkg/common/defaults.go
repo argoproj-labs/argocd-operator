@@ -18,6 +18,9 @@ const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller  control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 
+	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
+	ArgocdApplicationControllerDefaultReplicas = 1
+
 	// ArgoCDDefaultLogLevel is the default log level to be used by all ArgoCD components.
 	ArgoCDDefaultLogLevel = "info"
 
