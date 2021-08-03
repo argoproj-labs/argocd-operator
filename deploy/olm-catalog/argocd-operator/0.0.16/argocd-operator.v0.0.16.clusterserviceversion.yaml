@@ -638,6 +638,7 @@ spec:
           - serviceaccounts
           - services
           - services/finalizers
+          - namespaces
           verbs:
           - '*'
         - apiGroups:
