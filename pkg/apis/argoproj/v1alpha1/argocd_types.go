@@ -71,6 +71,19 @@ type ArgoCDApplicationControllerSpec struct {
 	// frequency.
 	// +optional
 	AppSync *metav1.Duration `json:"appSync,omitempty"`
+
+	// Sharding contains the options for the Application Controller sharding configuration.
+	Sharding ArgoCDApplicationControllerShardSpec `json:"sharding,omitempty"`
+}
+
+// ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
+type ArgoCDApplicationControllerShardSpec struct {
+
+	// Enabled defines whether sharding should be enabled on the Application Controller component.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Replicas defines the number of replicas to run in the Application controller shard.
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
