@@ -15,7 +15,6 @@
 package common
 
 import (
-	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -154,7 +153,7 @@ const (
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
 
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
-	ArgoCDKeyTLSCACert = tlsutil.TLSCACertKey
+	ArgoCDKeyTLSCACert = "ca.crt"
 
 	// ArgoCDKeyTLSCert is the key for TLS certificates.
 	ArgoCDKeyTLSCert = corev1.TLSCertKey
