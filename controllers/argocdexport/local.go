@@ -46,7 +46,7 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) erro
 	}
 
 	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, pvc.Name, pvc) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
 		return nil // PVC exists, move along...
 	}
 
@@ -58,17 +58,17 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) erro
 		pvc.Spec.Resources = argoutil.DefaultPVCResources()
 	}
 
-	if err := controllerutil.SetControllerReference(cr, pvc, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, pvc, r.Scheme); err != nil {
 		return err
 	}
 
 	// Create PVC
 	log.Info(fmt.Sprintf("creating new pvc: %s", pvc.Name))
-	if err := r.client.Create(context.TODO(), pvc); err != nil {
+	if err := r.Client.Create(context.TODO(), pvc); err != nil {
 		return err
 	}
 
 	// Create event
 	log.Info("creating new event")
-	return argoutil.CreateEvent(r.client, "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta)
+	return argoutil.CreateEvent(r.Client, "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta)
 }

@@ -27,7 +27,7 @@ func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoprojv1a1.ArgoCDExport) 
 		cr.Spec.Storage = &argoprojv1a1.ArgoCDExportStorageSpec{
 			Backend: common.ArgoCDExportStorageBackendLocal,
 		}
-		return r.client.Update(context.TODO(), cr)
+		return r.Client.Update(context.TODO(), cr)
 	}
 
 	// Local storage

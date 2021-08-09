@@ -20,7 +20,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -43,7 +43,7 @@ func (r *ReconcileArgoCDExport) reconcileArgoCDExportResources(cr *argoprojv1a1.
 }
 
 // watchArgoCDExportOwnedResource will register a Watch for a reource owned by an ArgoCDExport.
-func watchArgoCDExportOwnedResource(c controller.Controller, obj runtime.Object) error {
+func watchArgoCDExportOwnedResource(c controller.Controller, obj client.Object) error {
 	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &argoproj.ArgoCDExport{},

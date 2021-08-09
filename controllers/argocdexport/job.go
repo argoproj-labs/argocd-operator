@@ -201,10 +201,10 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) 
 	}
 
 	cj := newCronJob(cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, cj.Name, cj) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
-			return r.client.Update(context.TODO(), cj)
+			return r.Client.Update(context.TODO(), cj)
 		}
 		return nil
 	}
@@ -216,10 +216,10 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) 
 
 	cj.Spec.JobTemplate.Spec = job.Spec
 
-	if err := controllerutil.SetControllerReference(cr, cj, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, cj, r.Scheme); err != nil {
 		return err
 	}
-	return r.client.Create(context.TODO(), cj)
+	return r.Client.Create(context.TODO(), cj)
 }
 
 // reconcileJob will ensure that the Job for the ArgoCDExport is present.
@@ -229,19 +229,19 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) erro
 	}
 
 	job := newJob(cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, job.Name, job) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted
-			return r.client.Status().Update(context.TODO(), cr)
+			return r.Client.Status().Update(context.TODO(), cr)
 		}
 		return nil // Job not complete, move along...
 	}
 
 	job.Spec.Template = newPodTemplateSpec(cr)
 
-	if err := controllerutil.SetControllerReference(cr, job, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, job, r.Scheme); err != nil {
 		return err
 	}
-	return r.client.Create(context.TODO(), job)
+	return r.Client.Create(context.TODO(), job)
 }

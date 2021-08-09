@@ -62,7 +62,7 @@ func (r *ReconcileArgoCDExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) e
 func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
 	name := argoutil.FetchStorageSecretName(cr)
 	secret := argoutil.NewSecretWithName(cr.ObjectMeta, name)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, name, secret) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret) {
 		backupKey := secret.Data[common.ArgoCDKeyBackupKey]
 		if len(backupKey) <= 0 {
 			backupKey, err := generateBackupKey()
@@ -70,7 +70,7 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 				return err
 			}
 			secret.Data[common.ArgoCDKeyBackupKey] = backupKey
-			return r.client.Update(context.TODO(), secret)
+			return r.Client.Update(context.TODO(), secret)
 		}
 
 		return nil // TODO: Handle case where backup key changes, should trigger a new export?
@@ -85,17 +85,17 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExp
 		common.ArgoCDKeyBackupKey: backupKey,
 	}
 
-	if err := controllerutil.SetControllerReference(cr, secret, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	return r.client.Create(context.TODO(), secret)
+	return r.Client.Create(context.TODO(), secret)
 }
 
 // validateExport will ensure that the given ArgoCDExport is valid.
 func (r *ReconcileArgoCDExport) validateExport(cr *argoprojv1alpha1.ArgoCDExport) error {
 	if len(cr.Status.Phase) <= 0 {
 		cr.Status.Phase = "Pending"
-		return r.client.Status().Update(context.TODO(), cr)
+		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
 }
