@@ -45,30 +45,6 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
 
-func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
-
-	rules := policyRuleForDexServer()
-	role := newRole(dexServer, rules, a)
-
-	// Dex is enabled
-	_, err := r.reconcileRole(dexServer, rules, a)
-	assert.NilError(t, err)
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
-	assert.DeepEqual(t, rules, role.Rules)
-
-	// Disable Dex
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
-
-	_, err = r.reconcileRole(dexServer, rules, a)
-	assert.NilError(t, err)
-	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
-}
-
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 	a := makeTestArgoCD()

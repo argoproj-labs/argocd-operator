@@ -373,18 +373,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}}
-	dexDisabled := isDexDisabled()
-	if dexDisabled {
-		log.Info("reconciling for dex, but dex is disabled")
-	}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.client, cr.Namespace, existing.Name, existing) {
-		if dexDisabled {
-			log.Info("deleting the existing dex deployment because dex is disabled")
-			// Deployment exists but enabled flag has been set to false, delete the Deployment
-			return r.client.Delete(context.TODO(), existing)
-		}
 		changed := false
 
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
@@ -424,10 +415,6 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			return r.client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
-	}
-
-	if dexDisabled {
-		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.scheme); err != nil {
@@ -1094,11 +1081,4 @@ func caseInsensitiveGetenv(s string) (string, string) {
 		return ls, v
 	}
 	return "", ""
-}
-
-func isDexDisabled() bool {
-	if v := os.Getenv("DISABLE_DEX"); v != "" {
-		return strings.ToLower(v) == "true"
-	}
-	return false
 }

@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
@@ -251,28 +250,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
 	config := dexConnector["config"]
 	assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
-}
-
-func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	os.Setenv("DISABLE_DEX", "true")
-	err := r.reconcileArgoConfigMap(a)
-	assert.NilError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NilError(t, err)
-
-	if c, ok := cm.Data["dex.config"]; ok {
-		t.Fatalf("reconcileArgoConfigMap failed, dex.config = %q", c)
-	}
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {

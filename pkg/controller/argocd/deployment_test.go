@@ -131,48 +131,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	os.Setenv("DISABLE_DEX", "true")
-	assert.NilError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assertNotFound(t, r.client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-}
-
-// When Dex is disabled, the Dex Deployment should be removed.
-func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	os.Setenv("DISABLE_DEX", "true")
-
-	assert.NilError(t, r.reconcileDexDeployment(a))
-
-	a = makeTestArgoCD()
-	assert.NilError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assertNotFound(t, r.client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-}
-
 func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	restoreEnv(t)
 

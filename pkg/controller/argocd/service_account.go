@@ -156,16 +156,9 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		if name == dexServer && isDexDisabled() {
-			return sa, nil // Dex is disabled, do nothing
-		}
 		exists = false
 	}
 	if exists {
-		if name == dexServer && isDexDisabled() {
-			// Delete any existing Service Account created for Dex
-			return sa, r.client.Delete(context.TODO(), sa)
-		}
 		return sa, nil
 	}
 

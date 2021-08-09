@@ -343,17 +343,15 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if !isDexDisabled() {
-		dexConfig := getDexConfig(cr)
-		if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
-			cfg, err := r.getOpenShiftDexConfig(cr)
-			if err != nil {
-				return err
-			}
-			dexConfig = cfg
+	dexConfig := getDexConfig(cr)
+	if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
+		cfg, err := r.getOpenShiftDexConfig(cr)
+		if err != nil {
+			return err
 		}
-		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+		dexConfig = cfg
 	}
+	cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.scheme); err != nil {
 		return err

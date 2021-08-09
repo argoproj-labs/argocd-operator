@@ -110,9 +110,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == dexServer && isDexDisabled() {
-				continue // Dex is disabled, do nothing
-			}
 			roleBindingExists = false
 		}
 
@@ -130,14 +127,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == dexServer && isDexDisabled() {
-				// Delete any existing RoleBinding created for Dex
-				if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {
-					return err
-				}
-				continue
-			}
-
 			// if the RoleRef changes, delete the existing role binding and create a new one
 			if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
 				if err = r.client.Delete(context.TODO(), existingRoleBinding); err != nil {

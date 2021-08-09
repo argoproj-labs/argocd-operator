@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"gotest.tools/assert"
@@ -19,29 +18,4 @@ func TestReconcileArgoCD_reconcileDexService_Dex_Enabled(t *testing.T) {
 
 	assert.NilError(t, r.reconcileDexService(a))
 	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
-}
-
-func TestReconcileArgoCD_reconcileDexService_Dex_Disabled(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	s := newServiceWithSuffix("dex-server", "dex-server", a)
-
-	// Create Service for Dex
-	assert.NilError(t, r.reconcileDexService(a))
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
-
-	// Disable Dex, existing service should be deleted
-	os.Setenv("DISABLE_DEX", "true")
-	t.Cleanup(func() {
-		os.Unsetenv("DISABLE_DEX")
-	})
-
-	assert.NilError(t, r.reconcileDexService(a))
-	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s), "not found")
-
-	// Service for Dex should not be created on reconciliation when disabled
-	assert.NilError(t, r.reconcileDexService(a))
-	assert.ErrorContains(t, r.client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s), "not found")
 }

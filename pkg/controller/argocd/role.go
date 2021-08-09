@@ -112,19 +112,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
 			roles = append(roles, role)
-			if name == dexServer && isDexDisabled() {
-				continue // Dex is disabled, do nothing
-			}
 			controllerutil.SetControllerReference(cr, role, r.scheme)
 			if err := r.client.Create(context.TODO(), role); err != nil {
-				return nil, err
-			}
-			continue
-		}
-
-		if name == dexServer && isDexDisabled() {
-			// Delete any existing Role created for Dex
-			if err := r.client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}
 			continue
