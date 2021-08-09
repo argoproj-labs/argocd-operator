@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

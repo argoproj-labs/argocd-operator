@@ -2,12 +2,12 @@ package openshift
 
 import (
 	"fmt"
-	"github.com/argoproj-labs/argocd-operator/pkg/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
