@@ -20,10 +20,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 )
 
 // reconcileArgoCDExportResources will reconcile all ArgoCDExport resources for the give CR.
@@ -42,40 +39,22 @@ func (r *ReconcileArgoCDExport) reconcileArgoCDExportResources(cr *argoprojv1a1.
 	return nil
 }
 
-// watchArgoCDExportOwnedResource will register a Watch for a reource owned by an ArgoCDExport.
-func watchArgoCDExportOwnedResource(c controller.Controller, obj client.Object) error {
-	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoproj.ArgoCDExport{},
-	})
-}
-
-// watchArgoCDExportResources will register Watches for each of the supported Resources.
-func watchArgoCDExportResources(c controller.Controller) error {
+// setResourceWatches will register Watches for each of the supported Resources.
+func setResourceWatches(bld *builder.Builder) *builder.Builder {
 	// Watch for changes to primary resource ArgoCDExport
-	if err := c.Watch(&source.Kind{Type: &argoproj.ArgoCDExport{}}, &handler.EnqueueRequestForObject{}); err != nil {
-		return err
-	}
+	bld.For(&argoproj.ArgoCDExport{})
 
 	// Watch for changes to CronJob sub-resources owned by ArgoCDExport instances.
-	if err := watchArgoCDExportOwnedResource(c, &batchv1b1.CronJob{}); err != nil {
-		return err
-	}
+	bld.Owns(&batchv1b1.CronJob{})
 
 	// Watch for changes to Job sub-resources owned by ArgoCD instances.
-	if err := watchArgoCDExportOwnedResource(c, &batchv1.Job{}); err != nil {
-		return err
-	}
+	bld.Owns(&batchv1.Job{})
 
 	// Watch for changes to PersistentVolumeClaim sub-resources owned by ArgoCD instances.
-	if err := watchArgoCDExportOwnedResource(c, &corev1.PersistentVolumeClaim{}); err != nil {
-		return err
-	}
+	bld.Owns(&corev1.PersistentVolumeClaim{})
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	if err := watchArgoCDExportOwnedResource(c, &corev1.Secret{}); err != nil {
-		return err
-	}
+	bld.Owns(&corev1.Secret{})
 
-	return nil
+	return bld
 }

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,7 +48,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -862,8 +862,8 @@ func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return annotations
 }
 
-// watchResources will register Watches for each of the supported Resources.
-func watchResources(c controller.Controller, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) error {
+// setResourceWatches will register Watches for each of the supported Resources.
+func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -919,64 +919,40 @@ func watchResources(c controller.Controller, clusterResourceMapper, tlsSecretMap
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	if err := c.Watch(&source.Kind{Type: &argoprojv1a1.ArgoCD{}}, &handler.EnqueueRequestForObject{}, deleteSSOPred); err != nil {
-		return err
-	}
+	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &corev1.ConfigMap{}); err != nil {
-		return err
-	}
+	bldr.Owns(&corev1.ConfigMap{})
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &corev1.Secret{}); err != nil {
-		return err
-	}
+	bldr.Owns(&corev1.Secret{})
 
 	// Watch for changes to Service sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &corev1.Service{}); err != nil {
-		return err
-	}
+	bldr.Owns(&corev1.Service{})
 
 	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &appsv1.Deployment{}); err != nil {
-		return err
-	}
+	bldr.Owns(&appsv1.Deployment{})
 
 	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &extv1beta1.Ingress{}); err != nil {
-		return err
-	}
+	bldr.Owns(&extv1beta1.Ingress{})
 
-	if err := watchOwnedResource(c, &v1.Role{}); err != nil {
-		return err
-	}
+	bldr.Owns(&v1.Role{})
 
-	if err := watchOwnedResource(c, &v1.RoleBinding{}); err != nil {
-		return err
-	}
+	bldr.Owns(&v1.RoleBinding{})
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
-	if err := c.Watch(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler); err != nil {
-		return err
-	}
+	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
 
-	if err := c.Watch(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler); err != nil {
-		return err
-	}
+	bldr.Watches(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler)
 
 	// Watch for secrets of type TLS that might be created by external processes
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler); err != nil {
-		return err
-	}
+	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
-	if err := watchOwnedResource(c, &appsv1.StatefulSet{}); err != nil {
-		return err
-	}
+	bldr.Owns(&appsv1.StatefulSet{})
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
@@ -986,48 +962,31 @@ func watchResources(c controller.Controller, clusterResourceMapper, tlsSecretMap
 
 	if IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
-		if err := watchOwnedResource(c, &routev1.Route{}); err != nil {
-			return err
-		}
+		bldr.Owns(&routev1.Route{})
 	}
 
 	if IsPrometheusAPIAvailable() {
 		// Watch Prometheus sub-resources owned by ArgoCD instances.
-		if err := watchOwnedResource(c, &monitoringv1.Prometheus{}); err != nil {
-			return err
-		}
+		bldr.Owns(&monitoringv1.Prometheus{})
 
 		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
-		if err := watchOwnedResource(c, &monitoringv1.ServiceMonitor{}); err != nil {
-			return err
-		}
+		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
 	if IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		if err := c.Watch(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
+		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &argoprojv1a1.ArgoCD{},
 		},
-			deploymentConfigPred); err != nil {
-			return err
-		}
+			builder.WithPredicates(deploymentConfigPred))
 	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	if err := c.Watch(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, namespaceFilterPredicate()); err != nil {
-		return err
-	}
+	bldr.Watches(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
-	return nil
-}
-
-func watchOwnedResource(c controller.Controller, obj client.Object) error {
-	return c.Watch(&source.Kind{Type: obj}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &argoprojv1a1.ArgoCD{},
-	})
+	return bldr
 }
 
 // withClusterLabels will add the given labels to the labels for the cluster and return the result.

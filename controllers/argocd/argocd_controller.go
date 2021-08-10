@@ -19,7 +19,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	argoprojiov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -30,9 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -131,25 +128,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&argoprojiov1alpha1.ArgoCD{}).
-		Complete(r)
-}
-
-// TODO(upgrade) below: set resource watches in SetupWithManager
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r *ReconcileArgoCD) error {
-	// Create a new controller
-	c, err := controller.New("argocd-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Register watches for all controller resources
-	if err := watchResources(c, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper); err != nil {
-		return err
-	}
-
-	return nil
+	bldr := ctrl.NewControllerManagedBy(mgr)
+	setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper)
+	return bldr.Complete(r)
 }

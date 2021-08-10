@@ -24,30 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var log = logr.Log.WithName("controller_argocdexport")
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-// TODO(upgrade) set resource watches in SetupWithManager
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New("argocdexport-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Register watches for all controller resources
-	if err := watchArgoCDExportResources(c); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // blank assignment to verify that ReconcileArgoCDExport implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileArgoCDExport{}
@@ -98,7 +79,7 @@ func (r *ReconcileArgoCDExport) Reconcile(ctx context.Context, request ctrl.Requ
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCDExport) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&argoproj.ArgoCDExport{}).
-		Complete(r)
+	bld := ctrl.NewControllerManagedBy(mgr)
+	setResourceWatches(bld)
+	return bld.Complete(r)
 }
