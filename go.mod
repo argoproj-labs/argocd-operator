@@ -6,13 +6,14 @@ require (
 	github.com/argoproj/argo-cd v1.8.7
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v0.4.0
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.6
 	github.com/json-iterator/go v1.1.11
 	github.com/keycloak/keycloak-operator v0.0.0-20210715145423-0101e3d78d93
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
 	github.com/openshift/client-go v0.0.0-20200325131901-f7baeb993edb
+	github.com/operator-framework/operator-lib v0.6.0
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
