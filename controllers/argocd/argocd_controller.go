@@ -45,9 +45,19 @@ type ReconcileArgoCD struct {
 
 var log = logr.Log.WithName("controller_argocd")
 
-//+kubebuilder:rbac:groups=argoproj.io,resources=argocds,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=argoproj.io,resources=argocds/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=argoproj.io,resources=argocds/finalizers,verbs=update
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
+//+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;secrets;serviceaccounts;services;services/finalizers,verbs=*
+//+kubebuilder:rbac:groups=apps,resources=deployments;replicasets;daemonsets;statefulsets,verbs=*
+//+kubebuilder:rbac:groups=apps,resourceNames=argocd-operator,resources=deployments/finalizers,verbs=update
+//+kubebuilder:rbac:groups=argoproj.io,resources=argocds;argocds/finalizers;argocds/status,verbs=*
+//+kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=*
+//+kubebuilder:rbac:groups=batch,resources=cronjobs;jobs,verbs=*
+//+kubebuilder:rbac:groups=extensions,resources=ingresses,verbs=*
+//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheuses;servicemonitors,verbs=*
+//+kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=*
+//+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects,verbs=*
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
+//+kubebuilder:rbac:groups="",resources=pods;pods/log,verbs=get
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
