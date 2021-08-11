@@ -28,8 +28,8 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-lib/leader"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"os"
 	goruntime "runtime"
@@ -108,7 +108,7 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:          namespace,
+		Namespace:              namespace,
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,

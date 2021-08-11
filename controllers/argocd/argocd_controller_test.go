@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"testing"
 	"time"
 
@@ -138,7 +139,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	// check if cluster resources are deleted
 	tt := []struct {
 		name     string
-		resource runtime.Object
+		resource client.Object
 	}{
 		{
 			fmt.Sprintf("ClusterRole %s", common.ArgoCDApplicationControllerComponent),
