@@ -13,10 +13,10 @@ require (
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
 	github.com/openshift/client-go v0.0.0-20200325131901-f7baeb993edb
-	github.com/operator-framework/operator-lib v0.6.0
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
+	golang.org/x/tools v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.21.3
