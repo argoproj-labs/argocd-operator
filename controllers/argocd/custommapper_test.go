@@ -324,6 +324,8 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	a.Namespace = "newTestNamespace"
 
+	// Fake client returns an error if ResourceVersion is not nil
+	a.ResourceVersion = ""
 	assert.NilError(t, r.Client.Create(context.TODO(), a))
 
 	type test struct {

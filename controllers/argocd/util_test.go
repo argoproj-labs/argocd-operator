@@ -299,7 +299,7 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 	t.Run("Selector for an Invalid name", func(t *testing.T) {
 		invalidName := "argocd-*/"
 		selector, err := argocdInstanceSelector(invalidName)
-		assert.ErrorContains(t, err, `failed to create a requirement for invalid label value: "argocd-*/`)
+		assert.ErrorContains(t, err, `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
 		assert.Equal(t, selector, nil)
 	})
 }
