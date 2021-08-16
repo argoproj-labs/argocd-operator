@@ -4,6 +4,10 @@
 resources:
 - bases/argoproj.io_argocds.yaml
 - bases/argoproj.io_argocdexports.yaml
+- bases/argoproj.io_applications.yaml
+- bases/argoproj.io_applicationsets.yaml
+- bases/argoproj.io_appprojects.yaml
+
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
