@@ -120,6 +120,7 @@ The following properties are available for configuring the Argo CD Application C
 
 Name | Default | Description
 --- | --- | ---
+AppSync | 3m | Control the sync frequency. Set this to a duration, e.g. 10m or 600s
 Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
@@ -140,6 +141,7 @@ metadata:
     example: controller
 spec:
   controller:
+    appSync: 3m
     processors:
       operation: 10
       status: 20
