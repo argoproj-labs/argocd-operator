@@ -30,6 +30,22 @@ import (
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=argocdexports,scope=Namespaced
+//+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCD,v1alpha1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCDExport,v1alpha1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1beta1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1beta1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{PersistentVolumeClaim,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Pod,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Prometheus,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{ReplicaSet,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Route,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Secret,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Service,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{ServiceMonitor,v1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{StatefulSet,v1,""}}
 type ArgoCDExport struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -51,15 +67,18 @@ type ArgoCDExportList struct {
 // +k8s:openapi-gen=true
 type ArgoCDExportSpec struct {
 	// Argocd is the name of the ArgoCD instance to export.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ArgoCD",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Argocd string `json:"argocd"`
 
 	// Image is the container image to use for the export Job.
 	Image string `json:"image,omitempty"`
 
 	// Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Schedule",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Schedule *string `json:"schedule,omitempty"`
 
 	// Storage defines the storage configuration options.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Storage"
 	Storage *ArgoCDExportStorageSpec `json:"storage,omitempty"`
 
 	// Version is the tag/digest to use for the export Job container image.
@@ -76,6 +95,7 @@ type ArgoCDExportStatus struct {
 	// Succeeded: All containers for the ArgoCDExport have terminated in success, and will not be restarted.
 	// Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
 	// Unknown: For some reason the state of the ArgoCDExport could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Phase",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Phase string `json:"phase"`
 }
 
