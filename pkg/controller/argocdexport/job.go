@@ -31,7 +31,7 @@ import (
 // getArgoExportCommand will return the command for the ArgoCD export process.
 func getArgoExportCommand(cr *argoprojv1a1.ArgoCDExport) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "uid_entrypoint.sh")
+	cmd = append(cmd, "entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
 	cmd = append(cmd, "export")
 	cmd = append(cmd, cr.Spec.Storage.Backend)
