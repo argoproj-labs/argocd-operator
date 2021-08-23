@@ -78,7 +78,7 @@ func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string 
 // getArgoImportCommand will return the command for the ArgoCD import process.
 func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
-	cmd = append(cmd, "entrypoint.sh")
+    cmd = append(cmd,"entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
 	cmd = append(cmd, "import")
 	cmd = append(cmd, getArgoImportBackend(client, cr))
@@ -188,7 +188,11 @@ func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
 func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, "entrypoint.sh")
+	if cr.Spec.Version < "2.1.0" { 
+		cmd = append(cmd,"uid_entrypoint.sh") 
+	} else {
+	  cmd = append(cmd,"entrypoint.sh")
+	}
 	cmd = append(cmd, "argocd-repo-server")
 
 	cmd = append(cmd, "--redis")
