@@ -88,6 +88,11 @@ spec:
                       \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
+                  parallelismLimit:
+                    description: ParallelismLimit defines the limit for parallel kubectl
+                      operations
+                    format: int32
+                    type: integer
                   processors:
                     description: Processors contains the options for the Application
                       Controller processors.
