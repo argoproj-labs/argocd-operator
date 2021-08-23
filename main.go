@@ -98,9 +98,11 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
 	}
+	setupLog.Info(fmt.Sprintf("Watching namespace \"%s\"", namespace))
 
 	// Set default manager options
 	options := manager.Options{
+		Namespace:              namespace,
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,

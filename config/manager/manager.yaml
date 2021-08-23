@@ -45,5 +45,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['olm.targetNamespaces']
       serviceAccountName: argocd-operator
       terminationGracePeriodSeconds: 10
