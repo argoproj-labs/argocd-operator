@@ -23,6 +23,10 @@ func init() {
 	argocd.Register(reconcilerHook)
 }
 
+const (
+	certAnnotationKey = "service.beta.openshift.io/serving-cert-secret-name"
+)
+
 func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
 
 	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
@@ -84,6 +88,13 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			policyRules := getPolicyRuleForApplicationController()
 			policyRules = append(policyRules, clusterRole.Rules...)
 			o.Rules = policyRules
+		}
+	case *corev1.Service:
+		if o.Name == cr.Name+"-server" {
+			if o.Annotations == nil {
+				o.Annotations = map[string]string{}
+			}
+			o.Annotations[certAnnotationKey] = o.Name
 		}
 	}
 	return nil

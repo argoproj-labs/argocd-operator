@@ -218,3 +218,28 @@ func TestReconcileArgoCD_reconcileSecrets(t *testing.T) {
 	assert.NilError(t, reconcilerHook(a, testSecret, ""))
 	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), "someRandomNamespace")
 }
+
+func TestReconcileArgoCD_reconcileService(t *testing.T) {
+	argocd := makeTestArgoCD()
+	t.Run("add cert annotation to the right service", func(t *testing.T) {
+		service := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      argocd.Name + "-server",
+			Namespace: argocd.Namespace,
+		}}
+		assert.NilError(t, reconcilerHook(argocd, service, ""))
+		assert.DeepEqual(t, service.Annotations, map[string]string{
+			certAnnotationKey: service.Name,
+		})
+	})
+
+	t.Run("don't add cert annotation to unknown service", func(t *testing.T) {
+		service := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
+			Name:      "random",
+			Namespace: argocd.Namespace,
+		}}
+		assert.NilError(t, reconcilerHook(argocd, service, ""))
+		value, found := service.Annotations[certAnnotationKey]
+		assert.Equal(t, found, false)
+		assert.Equal(t, value, "")
+	})
+}

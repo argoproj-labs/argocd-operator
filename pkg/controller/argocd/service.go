@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
@@ -393,7 +394,17 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD)
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, svc) {
+
+	if err := applyReconcilerHook(cr, svc, ""); err != nil {
+		return err
+	}
+
+	existingSvc := &corev1.Service{}
+	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, existingSvc) {
+		if !reflect.DeepEqual(existingSvc.Annotations, svc.Annotations) {
+			existingSvc.Annotations = mergeAnnotations(svc.Annotations, existingSvc.Annotations)
+			return r.client.Update(context.TODO(), existingSvc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -467,4 +478,15 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 	return nil
+}
+
+func mergeAnnotations(from, to map[string]string) map[string]string {
+	merged := map[string]string{}
+	for k, v := range to {
+		merged[k] = v
+	}
+	for k, v := range from {
+		merged[k] = v
+	}
+	return merged
 }
