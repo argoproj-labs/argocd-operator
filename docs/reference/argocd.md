@@ -73,6 +73,8 @@ Name | Default | Description
 --- | --- | ---
 Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
+Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 
 ### ApplicationSet Controller Example
 
@@ -123,7 +125,8 @@ Name | Default | Description
 Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
-LogLevel | info | The log level to be used by the ArgoCd Application Controller component. Valid options are debug, info, error, and warn.
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications
 Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
 Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
 
