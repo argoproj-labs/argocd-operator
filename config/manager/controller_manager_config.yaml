@@ -8,4 +8,4 @@ webhook:
   port: 9443
 leaderElection:
   leaderElect: true
-  resourceName: b674928d.
+  resourceName: b674928d.argoproj.io

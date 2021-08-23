@@ -12,6 +12,7 @@ rules:
   - configmaps
   - endpoints
   - events
+  - namespaces
   - persistentvolumeclaims
   - pods
   - secrets
@@ -44,6 +45,12 @@ rules:
   - deployments/finalizers
   verbs:
   - update
+- apiGroups:
+  - apps.openshift.io
+  resources:
+  - deploymentconfigs
+  verbs:
+  - '*'
 - apiGroups:
   - argoproj.io
   resources:

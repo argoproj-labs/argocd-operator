@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -29,7 +28,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	"github.com/operator-framework/operator-sdk/pkg/leader"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"os"
 	goruntime "runtime"
@@ -98,25 +96,17 @@ func main() {
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
-		setupLog.Error(err, "Failed to get watch namespace")
-		os.Exit(1)
-	}
-
-	ctx := context.TODO()
-	// Become the leader before proceeding
-	err = leader.Become(ctx, "argocd-operator-lock")
-	if err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
+		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
 	}
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:              namespace,
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "b674928d.argoproj.io",
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
