@@ -34,7 +34,7 @@ func getArgoExportCommand(cr *argoprojv1a1.ArgoCDExport) []string {
 	if cr.Spec.Version < "2.1.0" { 
 		cmd = append(cmd,"uid_entrypoint.sh") 
 	} else {
-	  cmd = append(cmd,"entrypoint.sh")
+		cmd = append(cmd,"entrypoint.sh")
 	}
 	cmd = append(cmd, "argocd-operator-util")
 	cmd = append(cmd, "export")
