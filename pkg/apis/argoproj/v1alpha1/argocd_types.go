@@ -61,6 +61,9 @@ type ArgoCDApplicationControllerSpec struct {
 	// Resources defines the Compute Resources required by the container for the Application Controller.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// ParallelismLimit defines the limit for parallel kubectl operations
+	ParallelismLimit int32 `json:"parallelismLimit,omitempty"`
+
 	// AppSync is used to control the sync frequency, by default the ArgoCD
 	// controller polls Git every 3m by default.
 	//

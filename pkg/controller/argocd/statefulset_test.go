@@ -3,10 +3,11 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/google/go-cmp/cmp"
@@ -107,7 +108,8 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 		"--operation-processors", "10",
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "20"}
+		"--status-processors", "20",
+		"--kubectl-parallelism-limit", "10"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}
@@ -145,7 +147,8 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 		"--operation-processors", "10",
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--status-processors", "30"}
+		"--status-processors", "30",
+		"--kubectl-parallelism-limit", "10"}
 	if diff := cmp.Diff(want, command); diff != "" {
 		t.Fatalf("reconciliation failed:\n%s", diff)
 	}

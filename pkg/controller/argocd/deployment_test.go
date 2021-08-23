@@ -767,6 +767,12 @@ func appSync(d time.Duration) argoCDOpt {
 	}
 }
 
+func parallelismLimit(n int32) argoCDOpt {
+	return func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Controller.ParallelismLimit = n
+	}
+}
+
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	t.Helper()
 	deployment := &appsv1.Deployment{}
