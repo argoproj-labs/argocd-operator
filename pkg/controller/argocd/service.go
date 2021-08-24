@@ -401,7 +401,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error 
 	existingSvc := &corev1.Service{}
 	if argoutil.IsObjectFound(r.client, cr.Namespace, svc.Name, existingSvc) {
 		// merge the default annotations with the existing annotations found
-		if mergeAnnotations(existingSvc.Annotations, svc.Annotations) {
+		if mergeAnnotations(&existingSvc.ObjectMeta, &svc.ObjectMeta) {
 			return r.client.Update(context.TODO(), existingSvc)
 		}
 		return nil // Service found, do nothing
@@ -479,16 +479,16 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func mergeAnnotations(existing, def map[string]string) bool {
+func mergeAnnotations(existing, svc *metav1.ObjectMeta) bool {
 	changed := false
 	if existing == nil {
-		existing = def
+		existing.Annotations = svc.Annotations
 		return true
 	}
-	for k, v := range def {
-		value, found := existing[k]
+	for k, v := range svc.Annotations {
+		value, found := existing.Annotations[k]
 		if !found || value != v {
-			existing[k] = v
+			existing.Annotations[k] = v
 			changed = true
 		}
 	}
