@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ARGOCD_OPERATOR_IMAGE_BUILDER: docker
-      ARGOCD_OPERATOR_IMAGE: ${{ secrets.REGISTRY_URL }}/argocd-operator:latest
+      IMG: ${{ secrets.REGISTRY_URL }}/argocd-operator:latest
 
     steps:
 
@@ -29,17 +28,8 @@ jobs:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
 
-      - name: Install operator-sdk
-        run: |
-          sudo apt-get install git -y
-          git clone https://github.com/operator-framework/operator-sdk ~/go/src/github.com/operator-framework/operator-sdk
-          cd ~/go/src/github.com/operator-framework/operator-sdk
-          git checkout v0.19.4
-          make tidy
-          make install
-
       - name: Build operator and Tag Latest
-        run: bash hack/build.sh
+        run: make docker-build
 
       - name: Login to Registry
         uses: docker/login-action@v1
@@ -49,4 +39,4 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Push latest operator
-        run: bash hack/push.sh
+        run: make docker-push
