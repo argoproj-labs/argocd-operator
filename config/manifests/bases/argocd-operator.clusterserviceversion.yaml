@@ -7,7 +7,6 @@ metadata:
     capabilities: Auto Pilot
     categories: Integration & Delivery
     certified: "false"
-    containerImage: quay.io/argoprojlabs/argocd-operator@sha256:38254c8d53172993cb51c0b4c72645757ba36e7e8e3b1251683b00cede47fa7c
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
@@ -626,8 +625,12 @@ spec:
   - gitops
   - kubernetes
   links:
-  - name: Argocd Operator
-    url: https://argocd-operator.domain
+  - name: Argo CD Project
+    url: https://argoproj.github.io/argo-cd/
+  - name: Operator Documentation
+    url: https://argocd-operator.readthedocs.io
+  - name: Operator Source Code
+    url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
   - email: jfischer@redhat.com
     name: Jann Fischer
