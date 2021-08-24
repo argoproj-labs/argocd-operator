@@ -481,7 +481,7 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 
 func mergeAnnotations(existing, svc *metav1.ObjectMeta) bool {
 	changed := false
-	if existing == nil {
+	if existing.Annotations == nil {
 		existing.Annotations = svc.Annotations
 		return true
 	}
