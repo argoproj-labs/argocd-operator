@@ -25,3 +25,17 @@ resources:
 #    # Update the indices in this path if adding or removing volumes in the manager's Deployment.
 #    - op: remove
 #      path: /spec/template/spec/volumes/0
+
+patches:
+  - target:
+      group: operators.coreos.com
+      version: v1alpha1
+      kind: ClusterServiceVersion
+      name: argocd-operator\.v.*
+    path: patches/icon.yaml
+  - target:
+      group: operators.coreos.com
+      version: v1alpha1
+      kind: ClusterServiceVersion
+      name: argocd-operator\.v.*
+    path: patches/description.yaml
