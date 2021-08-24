@@ -216,6 +216,11 @@ spec:
                       Controller component. Defaults to ArgoCDDefaultLogLevel if not
                       configured. Valid options are debug, info, error, and warn.
                     type: string
+                  parallelismLimit:
+                    description: ParallelismLimit defines the limit for parallel kubectl
+                      operations
+                    format: int32
+                    type: integer
                   processors:
                     description: Processors contains the options for the Application
                       Controller processors.

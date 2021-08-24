@@ -89,6 +89,9 @@ type ArgoCDApplicationControllerSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// ParallelismLimit defines the limit for parallel kubectl operations
+	ParallelismLimit int32 `json:"parallelismLimit,omitempty"`
+
 	// AppSync is used to control the sync frequency, by default the ArgoCD
 	// controller polls Git every 3m by default.
 	//
