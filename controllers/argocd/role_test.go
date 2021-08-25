@@ -6,11 +6,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileArgoCD_reconcileRole(t *testing.T) {

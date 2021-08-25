@@ -15,12 +15,13 @@
 package argocdexport
 
 import (
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 // reconcileArgoCDExportResources will reconcile all ArgoCDExport resources for the give CR.

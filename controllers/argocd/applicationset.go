@@ -20,15 +20,16 @@ import (
 	"os"
 	"reflect"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
@@ -318,12 +319,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
 		}
-		controllerutil.SetControllerReference(cr, role, r.Scheme)
+		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
+			return nil, err
+		}
 		return role, r.Client.Create(context.TODO(), role)
 	}
 
 	role.Rules = policyRules
-	controllerutil.SetControllerReference(cr, role, r.Scheme)
+	if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
+		return nil, err
+	}
 	return role, r.Client.Update(context.TODO(), role)
 }
 

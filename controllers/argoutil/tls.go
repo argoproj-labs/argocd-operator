@@ -25,8 +25,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // NewPrivateKey returns randomly generated RSA private key.

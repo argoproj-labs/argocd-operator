@@ -21,16 +21,18 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+
+	"gopkg.in/yaml.v2"
+
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"gopkg.in/yaml.v2"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,6 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
@@ -152,7 +153,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 		}
 
-		controllerutil.SetControllerReference(cr, roleBinding, r.Scheme)
+		if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+			return err
+		}
 		if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
 			return err
 		}
@@ -197,7 +200,9 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 		Name:     GenerateUniqueResourceName(name, cr),
 	}
 
-	controllerutil.SetControllerReference(cr, roleBinding, r.Scheme)
+	if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+		return err
+	}
 	if roleBindingExists {
 		return r.Client.Update(context.TODO(), roleBinding)
 	}

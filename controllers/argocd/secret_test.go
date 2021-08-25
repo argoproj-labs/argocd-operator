@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"gotest.tools/assert"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
+
+	"gotest.tools/assert"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"

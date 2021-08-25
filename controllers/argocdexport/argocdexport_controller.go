@@ -18,14 +18,16 @@ package argocdexport
 
 import (
 	"context"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 var log = logr.Log.WithName("controller_argocdexport")

@@ -20,14 +20,15 @@ import (
 	"reflect"
 	"time"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func getRedisHAReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
@@ -472,7 +473,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
-		r.Client.Delete(context.TODO(), deploy)
+		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
+			return err
+		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {

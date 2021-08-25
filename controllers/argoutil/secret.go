@@ -17,10 +17,11 @@ package argoutil
 import (
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // FetchSecret will retrieve the object with the given Name using the provided client.

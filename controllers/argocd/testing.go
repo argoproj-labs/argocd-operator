@@ -16,12 +16,13 @@ package argocd
 
 import (
 	"context"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/go-logr/logr"
 	"sort"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/go-logr/logr"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+
 	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,6 +33,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )

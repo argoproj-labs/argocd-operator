@@ -18,7 +18,6 @@ import (
 	"context"
 	"testing"
 
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
@@ -28,6 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {

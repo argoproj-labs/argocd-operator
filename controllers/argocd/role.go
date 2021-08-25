@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,6 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 const (
@@ -115,7 +116,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			if name == dexServer && isDexDisabled() {
 				continue // Dex is disabled, do nothing
 			}
-			controllerutil.SetControllerReference(cr, role, r.Scheme)
+			if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
+				return nil, err
+			}
 			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return nil, err
 			}
@@ -158,7 +161,9 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 			// Do Nothing
 			return nil, nil
 		}
-		controllerutil.SetControllerReference(cr, clusterRole, r.Scheme)
+		if err = controllerutil.SetControllerReference(cr, clusterRole, r.Scheme); err != nil {
+			return nil, err
+		}
 		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
 	}
 

@@ -16,9 +16,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/google/go-cmp/cmp"
 	routev1 "github.com/openshift/api/route/v1"
+
+	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {

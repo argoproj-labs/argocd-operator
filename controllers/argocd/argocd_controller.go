@@ -19,6 +19,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"

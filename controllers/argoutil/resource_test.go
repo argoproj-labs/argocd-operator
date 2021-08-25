@@ -18,8 +18,9 @@ import (
 	"reflect"
 	"testing"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func TestDefaultAnnotations(t *testing.T) {

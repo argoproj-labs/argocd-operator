@@ -26,11 +26,12 @@ import (
 	"strings"
 	"time"
 
+	argopass "github.com/argoproj/argo-cd/util/password"
+	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	argopass "github.com/argoproj/argo-cd/util/password"
-	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
