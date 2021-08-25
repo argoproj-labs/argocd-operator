@@ -21,9 +21,8 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argoutil"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -44,8 +43,8 @@ func getPathOrDefault(path string) string {
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.
-func newIngress(cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
-	return &extv1beta1.Ingress{
+func newIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
+	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
@@ -55,7 +54,7 @@ func newIngress(cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
 }
 
 // newIngressWithName returns a new Ingress with the given name and ArgoCD.
-func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
+func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 	ingress := newIngress(cr)
 	ingress.ObjectMeta.Name = name
 
@@ -67,7 +66,7 @@ func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingres
 }
 
 // newIngressWithSuffix returns a new Ingress with the given name suffix for the ArgoCD.
-func newIngressWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
+func newIngressWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 	return newIngressWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
@@ -119,17 +118,21 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
-	ingress.Spec.Rules = []extv1beta1.IngressRule{
+	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
 			Host: getArgoServerHost(cr),
-			IngressRuleValue: extv1beta1.IngressRuleValue{
-				HTTP: &extv1beta1.HTTPIngressRuleValue{
-					Paths: []extv1beta1.HTTPIngressPath{
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
 						{
 							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
-							Backend: extv1beta1.IngressBackend{
-								ServiceName: nameWithSuffix("server", cr),
-								ServicePort: intstr.FromString("http"),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix("server", cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "http",
+									},
+								},
 							},
 						},
 					},
@@ -139,7 +142,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	// Add default TLS options
-	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts: []string{
 				getArgoServerHost(cr),
@@ -186,17 +189,21 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
-	ingress.Spec.Rules = []extv1beta1.IngressRule{
+	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
 			Host: getArgoServerGRPCHost(cr),
-			IngressRuleValue: extv1beta1.IngressRuleValue{
-				HTTP: &extv1beta1.HTTPIngressRuleValue{
-					Paths: []extv1beta1.HTTPIngressPath{
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
 						{
 							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
-							Backend: extv1beta1.IngressBackend{
-								ServiceName: nameWithSuffix("server", cr),
-								ServicePort: intstr.FromString("https"),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix("server", cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "https",
+									},
+								},
 							},
 						},
 					},
@@ -206,7 +213,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	}
 
 	// Add TLS options
-	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts: []string{
 				getArgoServerGRPCHost(cr),
@@ -254,17 +261,21 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
-	ingress.Spec.Rules = []extv1beta1.IngressRule{
+	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
 			Host: getGrafanaHost(cr),
-			IngressRuleValue: extv1beta1.IngressRuleValue{
-				HTTP: &extv1beta1.HTTPIngressRuleValue{
-					Paths: []extv1beta1.HTTPIngressPath{
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
 						{
 							Path: getPathOrDefault(cr.Spec.Grafana.Ingress.Path),
-							Backend: extv1beta1.IngressBackend{
-								ServiceName: nameWithSuffix("grafana", cr),
-								ServicePort: intstr.FromString("http"),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix("grafana", cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "http",
+									},
+								},
 							},
 						},
 					},
@@ -274,7 +285,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	// Add TLS options
-	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts: []string{
 				cr.Name,
@@ -323,17 +334,21 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	ingress.ObjectMeta.Annotations = atns
 
 	// Add rules
-	ingress.Spec.Rules = []extv1beta1.IngressRule{
+	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
 			Host: getPrometheusHost(cr),
-			IngressRuleValue: extv1beta1.IngressRuleValue{
-				HTTP: &extv1beta1.HTTPIngressRuleValue{
-					Paths: []extv1beta1.HTTPIngressPath{
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
 						{
 							Path: getPathOrDefault(cr.Spec.Prometheus.Ingress.Path),
-							Backend: extv1beta1.IngressBackend{
-								ServiceName: "prometheus-operated",
-								ServicePort: intstr.FromString("web"),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: "prometheus-operated",
+									Port: networkingv1.ServiceBackendPort{
+										Name: "web",
+									},
+								},
 							},
 						},
 					},
@@ -343,7 +358,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	// Add TLS options
-	ingress.Spec.TLS = []extv1beta1.IngressTLS{
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
 			SecretName: common.ArgoCDSecretName,
