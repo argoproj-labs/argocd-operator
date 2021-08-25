@@ -798,7 +798,7 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
-func (r *ReconcileArgoCD) removeManagedByLabelFromNamespace(namespace string) error {
+func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) error {
 	nsList := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: namespace,

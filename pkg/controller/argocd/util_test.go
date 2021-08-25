@@ -479,7 +479,7 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	assert.DeepEqual(t, string(s.Data["namespaces"]), "testNamespace2")
 }
 
-func TestRemoveManagedByLabelFromNamespace(t *testing.T) {
+func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t)
 
@@ -513,7 +513,7 @@ func TestRemoveManagedByLabelFromNamespace(t *testing.T) {
 	err = r.client.Create(context.TODO(), ns3)
 	assert.NilError(t, err)
 
-	err = r.removeManagedByLabelFromNamespace(a.Namespace)
+	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
 	assert.NilError(t, err)
 
 	nsList := &v1.NamespaceList{}
