@@ -117,7 +117,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				continue // Dex is disabled, do nothing
 			}
 			if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
-				return nil, err
+				// TODO handle this error properly
+				// return nil, fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, role.Name, err)
+				log.Error(err, fmt.Sprintf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\"", cr.Name, role.Name))
 			}
 			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return nil, err
@@ -162,7 +164,9 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 			return nil, nil
 		}
 		if err = controllerutil.SetControllerReference(cr, clusterRole, r.Scheme); err != nil {
-			return nil, err
+			// TODO handle this error properly
+			// return nil, fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, clusterRole.Name, err)
+			log.Error(err, fmt.Sprintf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\"", cr.Name, clusterRole.Name))
 		}
 		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
 	}
