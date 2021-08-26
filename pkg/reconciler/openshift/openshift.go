@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/controller/argocd"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -94,7 +95,7 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			if o.Annotations == nil {
 				o.Annotations = map[string]string{}
 			}
-			o.Annotations[certAnnotationKey] = o.Name
+			o.Annotations[certAnnotationKey] = common.ArgoCDServerTLSSecretName
 		}
 	}
 	return nil

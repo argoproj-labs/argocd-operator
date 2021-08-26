@@ -76,4 +76,7 @@ const (
 
 	// ArgoCDRepoServerTLSSecretName is the name of the TLS secret for the repo-server
 	ArgoCDRepoServerTLSSecretName = "argocd-repo-server-tls"
+
+	// ArgoCDServerTLSSecretName is the name of the TLS secret for the Argo CD server
+	ArgoCDServerTLSSecretName = "argocd-server-tls"
 )

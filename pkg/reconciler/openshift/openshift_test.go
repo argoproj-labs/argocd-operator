@@ -3,6 +3,7 @@ package openshift
 import (
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -228,7 +229,7 @@ func TestReconcileArgoCD_reconcileService(t *testing.T) {
 		}}
 		assert.NilError(t, reconcilerHook(argocd, service, ""))
 		assert.DeepEqual(t, service.Annotations, map[string]string{
-			certAnnotationKey: service.Name,
+			certAnnotationKey: common.ArgoCDServerTLSSecretName,
 		})
 	})
 
