@@ -35,7 +35,7 @@ func IsRouteAPIAvailable() bool {
 	return routeAPIFound
 }
 
-// verifyRouteAPI will verify that the Prometheus API is present.
+// verifyRouteAPI will verify that the Route API is present.
 func verifyRouteAPI() error {
 	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
 	if err != nil {
