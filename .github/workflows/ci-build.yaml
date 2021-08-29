@@ -20,9 +20,6 @@ jobs:
   build-operator:
     runs-on: ubuntu-latest
 
-    env:
-      ARGOCD_OPERATOR_IMAGE_BUILDER: docker
-
     steps:
 
       - name: Create checkout directory
@@ -45,21 +42,8 @@ jobs:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
 
-      - name: Install operator-sdk
-        run: |
-          sudo apt-get install git -y
-          git clone https://github.com/operator-framework/operator-sdk ~/go/src/github.com/operator-framework/operator-sdk
-          cd ~/go/src/github.com/operator-framework/operator-sdk
-          git checkout v0.19.4
-          make tidy
-          make install
-
-      - name: Add ~/go/bin to PATH
-        run: |
-          echo ~/go/bin >> $GITHUB_PATH
-
-      - name: Build operator
-        run: bash hack/build.sh
+      - name: Build operator container image
+        run: make docker-build IMG=quay.io/argoprojlabs/argocd-operator:latest
 
   test-e2e:
     name: Run end-to-end tests
@@ -107,17 +91,6 @@ jobs:
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-v1-${{ github.run_id }}
-      - name: Install operator-sdk
-        run: |
-          sudo apt-get install git -y
-          git clone https://github.com/operator-framework/operator-sdk ~/go/src/github.com/operator-framework/operator-sdk
-          cd ~/go/src/github.com/operator-framework/operator-sdk
-          git checkout v0.19.4
-          make tidy
-          make install
-      - name: Add ~/go/bin to PATH
-        run: |
-          echo "/home/runner/go/bin" >> $GITHUB_PATH
       - name: Add /usr/local/bin to PATH
         run: |
           echo "/usr/local/bin" >> $GITHUB_PATH
@@ -129,10 +102,9 @@ jobs:
           ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config
         run: |
           set -o pipefail
-          kubectl apply -f deploy/crds
-          kubectl apply -f deploy/argo-cd
+          make install generate fmt vet
           # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          operator-sdk run local --watch-namespace "" 2>&1 | tee /tmp/e2e-operator-run.log &
+          go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
       - name: Run tests
         run: |
           bash hack/test.sh 2>&1 > /tmp/e2e-test.log

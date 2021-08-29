@@ -16,9 +16,6 @@
 #
 # Script to run the operator tests.
 
-HACK_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source ${HACK_DIR}/env.sh
-
 set -e
 
 kubectl create namespace argocd-e2e
