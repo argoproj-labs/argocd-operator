@@ -31,6 +31,7 @@ nav:
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
     - Keycloak: usage/keycloak.md
+    - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
   - Reference:
     - ArgoCD: reference/argocd.md
