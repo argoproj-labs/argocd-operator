@@ -2,7 +2,7 @@
 
 This page covers the steps to create, update and delete resource requests and limits for Argo CD workloads.
 
-The Argo CD Custom Resource allows you to create the workloads with desired resource requests and limits. This is required when a user/admin wish to deploy his Argo CD instance in a namespace that is set with [Resource Quota](https://kubernetes.io/docs/concepts/policy/resource-quotas/).
+The Argo CD Custom Resource allows you to create the workloads with desired resource requests and limits. This is required when a user/admin wishes to deploy his Argo CD instance in a namespace that is set with [Resource Quota](https://kubernetes.io/docs/concepts/policy/resource-quotas/).
 
 For example, the below Argo CD instance deploys the Argo CD workloads such as Application Controller, ApplicationSet Controller, Dex, Redis, Repo Server and Server with resource requests and limits. Similarly you can also create the other workloads with resource requirements.
 
