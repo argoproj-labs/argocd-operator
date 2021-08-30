@@ -85,7 +85,7 @@ func nowNano() string {
 
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca")
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "ca", cr.ApplicationInstanceLabelKey())
 
 	key, err := argoutil.NewPrivateKey()
 	if err != nil {
@@ -109,7 +109,7 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 
 // newCertificateSecret creates a new secret using the given name suffix for the given TLS certificate.
 func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewTLSSecret(cr.ObjectMeta, suffix)
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, suffix, cr.ApplicationInstanceLabelKey())
 
 	key, err := argoutil.NewPrivateKey()
 	if err != nil {
@@ -151,15 +151,15 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 // reconcileArgoSecret will ensure that the Argo CD Secret is present.
 func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
-	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
-	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName)
+	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster", cr.ApplicationInstanceLabelKey())
+	secret := argoutil.NewSecretWithName(cr.ObjectMeta, common.ArgoCDSecretName, cr.ApplicationInstanceLabelKey())
 
 	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile argo secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
-	tlsSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "tls")
+	tlsSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "tls", cr.ApplicationInstanceLabelKey())
 	if !argoutil.IsObjectFound(r.Client, cr.Namespace, tlsSecret.Name, tlsSecret) {
 		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to reconcile argo secret [%s]", tlsSecret.Name, secret.Name))
 		return nil
@@ -196,7 +196,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
 func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster", cr.ApplicationInstanceLabelKey())
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
@@ -218,12 +218,12 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) er
 
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "tls")
+	secret := argoutil.NewTLSSecret(cr.ObjectMeta, "tls", cr.ApplicationInstanceLabelKey())
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
-	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "ca")
+	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "ca", cr.ApplicationInstanceLabelKey())
 	caSecret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
 	if err != nil {
 		return err
@@ -253,7 +253,7 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) err
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
 func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "ca")
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "ca", cr.ApplicationInstanceLabelKey())
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
@@ -335,8 +335,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster")
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana")
+	clusterSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "cluster", cr.ApplicationInstanceLabelKey())
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana", cr.ApplicationInstanceLabelKey())
 
 	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile grafana secret [%s]", clusterSecret.Name, secret.Name))
@@ -394,7 +394,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 // reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
 func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
 	var clusterConfigInstance bool
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "default-cluster-config")
+	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "default-cluster-config", cr.ApplicationInstanceLabelKey())
 	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{

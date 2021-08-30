@@ -27,13 +27,13 @@ import (
 // FetchSecret will retrieve the object with the given Name using the provided client.
 // The result will be returned.
 func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*corev1.Secret, error) {
-	secret := NewSecretWithName(meta, name)
+	secret := NewSecretWithName(meta, name, "")
 	return secret, FetchObject(client, meta.Namespace, name, secret)
 }
 
 // NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
-func NewTLSSecret(meta metav1.ObjectMeta, suffix string) *corev1.Secret {
-	secret := NewSecretWithSuffix(meta, suffix)
+func NewTLSSecret(meta metav1.ObjectMeta, suffix string, instanceLabelKey string) *corev1.Secret {
+	secret := NewSecretWithSuffix(meta, suffix, instanceLabelKey)
 	secret.Type = corev1.SecretTypeTLS
 	return secret
 }
@@ -51,16 +51,20 @@ func NewSecret(meta metav1.ObjectMeta) *corev1.Secret {
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
-func NewSecretWithName(meta metav1.ObjectMeta, name string) *corev1.Secret {
+func NewSecretWithName(meta metav1.ObjectMeta, name string, instanceLabelKey string) *corev1.Secret {
 	secret := NewSecret(meta)
 
 	secret.ObjectMeta.Name = name
 	secret.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	// Make sure our instance label is not on the created resource, to prevent Argo CD from believing it manages this secret
+	if instanceLabelKey != "" {
+		delete(secret.ObjectMeta.Labels, instanceLabelKey)
+	}
 
 	return secret
 }
 
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
-func NewSecretWithSuffix(meta metav1.ObjectMeta, suffix string) *corev1.Secret {
-	return NewSecretWithName(meta, fmt.Sprintf("%s-%s", meta.Name, suffix))
+func NewSecretWithSuffix(meta metav1.ObjectMeta, suffix string, instanceLabelKey string) *corev1.Secret {
+	return NewSecretWithName(meta, fmt.Sprintf("%s-%s", meta.Name, suffix), instanceLabelKey)
 }

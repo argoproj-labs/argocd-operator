@@ -49,7 +49,7 @@ const (
 	ArgoCDDefaultApplicationSetVersion = "v0.1.0"
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
-	ArgoCDDefaultApplicationInstanceLabelKey = "mycompany.com/appname"
+	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
 
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "argoproj/argocd"

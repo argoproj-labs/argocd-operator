@@ -335,7 +335,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	// Fetch the secret to obtain the token
-	secret := argoutil.NewSecretWithName(cr.ObjectMeta, tokenSecret.Name)
+	secret := argoutil.NewSecretWithName(cr.ObjectMeta, tokenSecret.Name, cr.ApplicationInstanceLabelKey())
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}

@@ -672,3 +672,13 @@ func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	}
 	return false
 }
+
+// ApplicationInstanceLabelKey returns either the custom application instance
+// label key if set, or the default value.
+func (a *ArgoCD) ApplicationInstanceLabelKey() string {
+	if a.Spec.ApplicationInstanceLabelKey != "" {
+		return a.Spec.ApplicationInstanceLabelKey
+	} else {
+		return common.ArgoCDDefaultApplicationInstanceLabelKey
+	}
+}

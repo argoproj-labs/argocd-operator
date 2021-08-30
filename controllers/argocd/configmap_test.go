@@ -224,7 +224,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 		}},
 	}
 
-	secret := argoutil.NewSecretWithName(metav1.ObjectMeta{Name: "token", Namespace: "argocd"}, "token")
+	secret := argoutil.NewSecretWithName(metav1.ObjectMeta{Name: "token", Namespace: "argocd"}, "token", "")
 	r := makeTestReconciler(t, a, sa, secret)
 	err := r.reconcileArgoConfigMap(a)
 	assert.NilError(t, err)
