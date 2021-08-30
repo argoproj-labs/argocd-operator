@@ -397,6 +397,56 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileRepoDeployment_nodePlacement(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD((func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.NodePlacement = &argoprojv1alpha1.ArgoCDNodePlacementSpec{
+			NodeSelector: repoServerDefaultNodeSelector(),
+			Tolerations:  repoServerDefaultTolerations(),
+		}
+	}))
+	r := makeTestReconciler(t, a)
+	err := r.reconcileRepoDeployment(a)
+	assert.NilError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NilError(t, err)
+
+	if diff := cmp.Diff(repoServerDefaultNodeSelector(), deployment.Spec.Template.Spec.NodeSelector); diff != "" {
+		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
+	}
+	if diff := cmp.Diff(repoServerDefaultTolerations(), deployment.Spec.Template.Spec.Tolerations); diff != "" {
+		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
+	}
+}
+
+func repoServerDefaultNodeSelector() map[string]string {
+	nodeSelector := map[string]string{
+		"test_key1": "test_value1",
+		"test_key2": "test_value2",
+	}
+	return nodeSelector
+}
+func repoServerDefaultTolerations() []corev1.Toleration {
+	toleration := []corev1.Toleration{
+		{
+			Key:    "test_key1",
+			Value:  "test_value1",
+			Effect: corev1.TaintEffectNoSchedule,
+		},
+		{
+			Key:      "test_key2",
+			Value:    "test_value2",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+	}
+	return toleration
+}
+
 func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()

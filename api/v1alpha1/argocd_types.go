@@ -462,6 +462,14 @@ type KustomizeVersionSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
+//ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
+type ArgoCDNodePlacementSpec struct {
+	// NodeSelector is a field of PodSpec, it is a map of key value pairs used for node selection
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Tolerations allow the pods to schedule onto nodes with matching taints
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -532,6 +540,9 @@ type ArgoCDSpec struct {
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OIDC Config'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	OIDCConfig string `json:"oidcConfig,omitempty"`
+
+	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
+	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`
 
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
