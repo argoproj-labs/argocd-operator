@@ -111,6 +111,59 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
+	t.Run("ExecTimeout set", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		timeout := 600
+		a.Spec.Repo.ExecTimeout = &timeout
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NilError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NilError(t, err)
+
+		found := false
+		for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
+			if e.Name == "ARGOCD_EXEC_TIMEOUT" && e.Value == "600" {
+				found = true
+				break
+			}
+		}
+
+		assert.Equal(t, found, true)
+	})
+	t.Run("ExecTimeout not set", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NilError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NilError(t, err)
+
+		found := false
+		for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
+			if e.Name == "ARGOCD_EXEC_TIMEOUT" && e.Value == "600" {
+				found = true
+				break
+			}
+		}
+
+		assert.Equal(t, found, false)
+	})
+}
+
 // reconcileRepoDeployment creates a Deployment with the correct mounts for the
 // repo-server.
 func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {

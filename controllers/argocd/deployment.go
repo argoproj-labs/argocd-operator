@@ -785,6 +785,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
 	}
 
+	repoEnv := proxyEnvVars()
+	if cr.Spec.Repo.ExecTimeout != nil {
+		repoEnv = append(repoEnv, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)})
+	}
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr),
 		Image:           getRepoServerContainerImage(cr),
@@ -798,7 +803,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Env:  proxyEnvVars(),
+		Env:  repoEnv,
 		Name: "argocd-repo-server",
 		Ports: []corev1.ContainerPort{
 			{

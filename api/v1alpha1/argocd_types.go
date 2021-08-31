@@ -346,6 +346,9 @@ type ArgoCDRepoSpec struct {
 
 	// Version is the ArgoCD Repo Server container image tag.
 	Version string `json:"version,omitempty"`
+
+	// ExecTimeout specifies the timeout in seconds for tool execution
+	ExecTimeout *int `json:"execTimeout,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
