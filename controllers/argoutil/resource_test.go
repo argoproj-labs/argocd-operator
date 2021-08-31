@@ -21,6 +21,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestDefaultAnnotations(t *testing.T) {
@@ -50,7 +51,7 @@ func TestDefaultAnnotations(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DefaultAnnotations(tt.args.cr); !reflect.DeepEqual(got, tt.want) {
+			if got := common.DefaultAnnotations(tt.args.cr.Name, tt.args.cr.Namespace); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DefaultAnnotations() = %v, want %v", got, tt.want)
 			}
 		})

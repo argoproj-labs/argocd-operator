@@ -427,7 +427,7 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding2, metav1.CreateOptions{})
 	assert.NilError(t, err)
 
-	secret := argoutil.NewSecretWithSuffix(a.ObjectMeta, "xyz", a.ApplicationInstanceLabelKey())
+	secret := argoutil.NewSecretWithSuffix(a, "xyz")
 	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),

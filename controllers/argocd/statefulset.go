@@ -43,7 +43,7 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }

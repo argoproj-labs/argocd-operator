@@ -30,7 +30,7 @@ func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.Horizontal
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }

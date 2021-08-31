@@ -59,7 +59,7 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      meta.Name,
 			Namespace: meta.Namespace,
-			Labels:    DefaultLabels(meta.Name),
+			Labels:    common.DefaultLabels(meta.Name),
 		},
 	}
 }

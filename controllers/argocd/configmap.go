@@ -223,7 +223,7 @@ func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -287,7 +287,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 		return nil // ConfigMap found, do nothing
 	}
 
-	caSecret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, common.ArgoCDCASuffix, cr.ApplicationInstanceLabelKey())
+	caSecret := argoutil.NewSecretWithSuffix(cr, common.ArgoCDCASuffix)
 	if !argoutil.IsObjectFound(r.Client, cr.Namespace, caSecret.Name, caSecret) {
 		log.Info(fmt.Sprintf("ca secret [%s] not found, waiting to reconcile ca configmap [%s]", caSecret.Name, cm.Name))
 		return nil
@@ -506,7 +506,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoprojv1a1.ArgoCD)
 		return nil // ConfigMap found, do nothing
 	}
 
-	secret := argoutil.NewSecretWithSuffix(cr.ObjectMeta, "grafana", cr.ApplicationInstanceLabelKey())
+	secret := argoutil.NewSecretWithSuffix(cr, "grafana")
 	secret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, secret.Name)
 	if err != nil {
 		return err
