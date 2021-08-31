@@ -3,5 +3,4 @@ kind: ArgoCDExport
 metadata:
   name: argocdexport-sample
 spec:
-  # Add fields here
-  foo: bar
+  argocd: argocd-sample
