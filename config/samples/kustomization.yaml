@@ -2,4 +2,7 @@
 resources:
 - argoproj.io_v1alpha1_argocd.yaml
 - argoproj.io_v1alpha1_argocdexport.yaml
+- argoproj.io_v1alpha1_application.yaml
+- argoproj.io_v1alpha1_applicationset.yaml
+- argoproj.io_v1alpha1_appproject.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
