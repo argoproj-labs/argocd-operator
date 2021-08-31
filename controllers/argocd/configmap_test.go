@@ -99,7 +99,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	assert.NilError(t, err)
 
 	want := map[string]string{
-		"application.instanceLabelKey": "mycompany.com/appname",
+		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"admin.enabled":                "true",
 		"configManagementPlugins":      "",
 		"dex.config":                   "",
@@ -224,7 +224,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 		}},
 	}
 
-	secret := argoutil.NewSecretWithName(metav1.ObjectMeta{Name: "token", Namespace: "argocd"}, "token")
+	secret := argoutil.NewSecretWithName(a, "token")
 	r := makeTestReconciler(t, a, sa, secret)
 	err := r.reconcileArgoConfigMap(a)
 	assert.NilError(t, err)

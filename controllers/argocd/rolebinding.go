@@ -15,6 +15,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
@@ -22,8 +23,8 @@ func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      labelsForCluster(cr),
-			Annotations: annotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
 		},
 	}
 }
@@ -45,8 +46,8 @@ func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      labelsForCluster(cr),
-			Annotations: annotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
 			Namespace:   cr.Namespace,
 		},
 	}

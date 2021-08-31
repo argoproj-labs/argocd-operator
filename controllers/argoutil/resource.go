@@ -65,23 +65,6 @@ func CreateEvent(client client.Client, action string, message string, reason str
 	return client.Create(context.TODO(), event)
 }
 
-// DefaultLabels returns the default set of labels for controllers.
-func DefaultLabels(name string) map[string]string {
-	return map[string]string{
-		common.ArgoCDKeyName:      name,
-		common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-		common.ArgoCDKeyManagedBy: name,
-	}
-}
-
-// DefaultAnnotations returns the default set of annotations for child resources of ArgoCD
-func DefaultAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
-	return map[string]string{
-		common.AnnotationName:      cr.Name,
-		common.AnnotationNamespace: cr.Namespace,
-	}
-}
-
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
 // The result will be stored in the given object.
 func FetchObject(client client.Client, namespace string, name string, obj client.Object) error {
@@ -115,4 +98,19 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 	event.ObjectMeta.Labels = meta.Labels
 	event.ObjectMeta.Namespace = meta.Namespace
 	return event
+}
+
+// LabelsForCluster returns the labels for all cluster resources.
+func LabelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
+	labels := common.DefaultLabels(cr.Name)
+	return labels
+}
+
+// annotationsForCluster returns the annotations for all cluster resources.
+func AnnotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
+	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
+	for key, val := range cr.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	return annotations
 }

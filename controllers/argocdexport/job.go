@@ -146,7 +146,7 @@ func newJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.Job {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -157,7 +157,7 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1b1.CronJob {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -189,7 +189,7 @@ func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodTemplateSpec {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 		Spec: newExportPodSpec(cr),
 	}

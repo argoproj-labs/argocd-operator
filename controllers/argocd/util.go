@@ -335,7 +335,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	// Fetch the secret to obtain the token
-	secret := argoutil.NewSecretWithName(cr.ObjectMeta, tokenSecret.Name)
+	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}
@@ -846,24 +846,6 @@ func removeString(slice []string, s string) []string {
 	return result
 }
 
-// labelsForCluster returns the labels for all cluster resources.
-func labelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
-	labels := argoutil.DefaultLabels(cr.Name)
-	for key, val := range cr.ObjectMeta.Labels {
-		labels[key] = val
-	}
-	return labels
-}
-
-// annotationsForCluster returns the annotations for all cluster resources.
-func annotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
-	annotations := argoutil.DefaultAnnotations(cr)
-	for key, val := range cr.ObjectMeta.Annotations {
-		annotations[key] = val
-	}
-	return annotations
-}
-
 // setResourceWatches will register Watches for each of the supported Resources.
 func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
 
@@ -993,7 +975,7 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 
 // withClusterLabels will add the given labels to the labels for the cluster and return the result.
 func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map[string]string {
-	labels := labelsForCluster(cr)
+	labels := argoutil.LabelsForCluster(cr)
 	for key, val := range addLabels {
 		labels[key] = val
 	}

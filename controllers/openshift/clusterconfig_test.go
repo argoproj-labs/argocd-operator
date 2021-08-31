@@ -133,7 +133,7 @@ func newStatefulSet(cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    labelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 
@@ -239,12 +239,4 @@ func newStatefulSet(cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
 	}}
 
 	return &ss
-}
-
-func labelsForCluster(cr *argoprojv1alpha1.ArgoCD) map[string]string {
-	labels := argoutil.DefaultLabels(cr.Name)
-	for key, val := range cr.ObjectMeta.Labels {
-		labels[key] = val
-	}
-	return labels
 }

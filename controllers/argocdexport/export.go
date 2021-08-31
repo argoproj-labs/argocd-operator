@@ -62,7 +62,10 @@ func (r *ReconcileArgoCDExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) e
 // reconcileExportSecret will ensure that the Secret used for the export process is present.
 func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
 	name := argoutil.FetchStorageSecretName(cr)
-	secret := argoutil.NewSecretWithName(cr.ObjectMeta, name)
+	// Dummy CR to retrieve secret
+	a := &argoprojv1a1.ArgoCD{}
+	a.ObjectMeta = cr.ObjectMeta
+	secret := argoutil.NewSecretWithName(a, name)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret) {
 		backupKey := secret.Data[common.ArgoCDKeyBackupKey]
 		if len(backupKey) <= 0 {

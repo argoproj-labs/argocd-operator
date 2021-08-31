@@ -21,46 +21,48 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // FetchSecret will retrieve the object with the given Name using the provided client.
 // The result will be returned.
 func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*corev1.Secret, error) {
-	secret := NewSecretWithName(meta, name)
+	a := &argoprojv1a1.ArgoCD{}
+	a.ObjectMeta = meta
+	secret := NewSecretWithName(a, name)
 	return secret, FetchObject(client, meta.Namespace, name, secret)
 }
 
 // NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
-func NewTLSSecret(meta metav1.ObjectMeta, suffix string) *corev1.Secret {
-	secret := NewSecretWithSuffix(meta, suffix)
+func NewTLSSecret(cr *argoprojv1a1.ArgoCD, suffix string) *corev1.Secret {
+	secret := NewSecretWithSuffix(cr, suffix)
 	secret.Type = corev1.SecretTypeTLS
 	return secret
 }
 
 // NewSecret returns a new Secret based on the given metadata.
-func NewSecret(meta metav1.ObjectMeta) *corev1.Secret {
+func NewSecret(cr *argoprojv1a1.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      meta.Name,
-			Namespace: meta.Namespace,
-			Labels:    AppendStringMap(DefaultLabels(meta.Name), meta.Labels),
+			Labels: LabelsForCluster(cr),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.
-func NewSecretWithName(meta metav1.ObjectMeta, name string) *corev1.Secret {
-	secret := NewSecret(meta)
+func NewSecretWithName(cr *argoprojv1a1.ArgoCD, name string) *corev1.Secret {
+	secret := NewSecret(cr)
 
 	secret.ObjectMeta.Name = name
+	secret.ObjectMeta.Namespace = cr.Namespace
 	secret.ObjectMeta.Labels[common.ArgoCDKeyName] = name
 
 	return secret
 }
 
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
-func NewSecretWithSuffix(meta metav1.ObjectMeta, suffix string) *corev1.Secret {
-	return NewSecretWithName(meta, fmt.Sprintf("%s-%s", meta.Name, suffix))
+func NewSecretWithSuffix(cr *argoprojv1a1.ArgoCD, suffix string) *corev1.Secret {
+	return NewSecretWithName(cr, fmt.Sprintf("%s-%s", cr.Name, suffix))
 }
