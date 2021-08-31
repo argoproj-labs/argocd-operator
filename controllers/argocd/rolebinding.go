@@ -153,10 +153,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 		}
 
-		if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
-			// TODO handle this error properly
-			// return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
-			log.Error(err, fmt.Sprintf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\"", cr.Name, roleBinding.Name))
+		// Only set ownerReferences for role bindings in same namespaces as Argo CD CR
+		if cr.Namespace == roleBinding.Namespace {
+			if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
+			}
 		}
 		if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
 			return err
