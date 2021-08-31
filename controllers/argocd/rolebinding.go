@@ -203,11 +203,12 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 		Name:     GenerateUniqueResourceName(name, cr),
 	}
 
-	if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
-		// TODO handle this error properly
-		// return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
-		log.Error(err, fmt.Sprintf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\"", cr.Name, roleBinding.Name))
+	if cr.Namespace == roleBinding.Namespace {
+		if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
+		}
 	}
+
 	if roleBindingExists {
 		return r.Client.Update(context.TODO(), roleBinding)
 	}
