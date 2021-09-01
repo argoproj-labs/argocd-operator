@@ -30,6 +30,7 @@ nav:
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
+    - Dex: usage/dex.md
     - Keycloak: usage/keycloak.md
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
