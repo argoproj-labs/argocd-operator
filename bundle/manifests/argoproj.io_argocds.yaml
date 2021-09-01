@@ -703,6 +703,10 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
+                  execTimeout:
+                    description: ExecTimeout specifies the timeout in seconds for
+                      tool execution
+                    type: integer
                   image:
                     description: Image is the ArgoCD Repo Server container image.
                     type: string
