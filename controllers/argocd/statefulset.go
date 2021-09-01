@@ -85,30 +85,31 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	nodePlacementSs := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+
 	if cr.Spec.NodePlacement != nil {
-		nodePlacementSs.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		nodePlacementSs.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
-			return r.Client.Delete(context.TODO(), ss)
+			return r.Client.Delete(context.TODO(), existing)
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
 		changed := false
-		updateNodePlacementStateful(ss, nodePlacementSs, &changed)
-		for i, container := range ss.Spec.Template.Spec.Containers {
+		updateNodePlacementStateful(existing, ss, &changed)
+		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
-				ss.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				changed = true
 			}
 		}
 
 		if changed {
-			ss.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.Client.Update(context.TODO(), ss)
+			return r.Client.Update(context.TODO(), existing)
 		}
 
 		return nil // StatefulSet found, do nothing
