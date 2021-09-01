@@ -320,10 +320,6 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 		if err := r.Client.Update(context.TODO(), secret); err != nil {
 			return err
 		}
-
-		// Trigger rollout of Argo Server Deployment
-		deploy := newDeploymentWithSuffix("server", "server", cr)
-		return r.triggerRollout(deploy, "secret.changed")
 	}
 
 	return nil
