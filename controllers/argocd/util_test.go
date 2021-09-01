@@ -14,6 +14,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
@@ -459,4 +460,55 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NilError(t, err)
 	assert.DeepEqual(t, string(s.Data["namespaces"]), "testNamespace2")
+}
+
+func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t)
+
+	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: "testNamespace",
+		Labels: map[string]string{
+			common.ArgoCDManagedByLabel: a.Namespace,
+		}},
+	}
+
+	err := r.Client.Create(context.TODO(), ns)
+	assert.NilError(t, err)
+
+	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: "testNamespace2",
+		Labels: map[string]string{
+			common.ArgoCDManagedByLabel: a.Namespace,
+		}},
+	}
+
+	err = r.Client.Create(context.TODO(), ns2)
+	assert.NilError(t, err)
+
+	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: "testNamespace3",
+		Labels: map[string]string{
+			common.ArgoCDManagedByLabel: "newNamespace",
+		}},
+	}
+
+	err = r.Client.Create(context.TODO(), ns3)
+	assert.NilError(t, err)
+
+	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
+	assert.NilError(t, err)
+
+	nsList := &v1.NamespaceList{}
+	err = r.Client.List(context.TODO(), nsList)
+	assert.NilError(t, err)
+	for _, n := range nsList.Items {
+		if n.Name == ns3.Name {
+			_, ok := n.Labels[common.ArgoCDManagedByLabel]
+			assert.Equal(t, ok, true)
+			continue
+		}
+		_, ok := n.Labels[common.ArgoCDManagedByLabel]
+		assert.Equal(t, ok, false)
+	}
 }

@@ -793,17 +793,34 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
-func (r *ReconcileArgoCD) removeManagedByLabelFromNamespace(namespace string) error {
-	ns := &corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace}, ns); err != nil {
+func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) error {
+	nsList := &corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedByLabel: namespace,
+	}
+	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
 		return err
 	}
 
-	if ns.Labels == nil {
-		return nil
+	for _, n := range nsList.Items {
+		ns := &corev1.Namespace{}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
+			return err
+		}
+
+		if ns.Labels == nil {
+			continue
+		}
+
+		if n, ok := ns.Labels[common.ArgoCDManagedByLabel]; !ok || n != namespace {
+			continue
+		}
+		delete(ns.Labels, common.ArgoCDManagedByLabel)
+		if err := r.Client.Update(context.TODO(), ns); err != nil {
+			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
+		}
 	}
-	delete(ns.Labels, common.ArgoCDManagedByLabel)
-	return r.Client.Update(context.TODO(), ns)
+	return nil
 }
 
 func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
