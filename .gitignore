@@ -25,4 +25,7 @@ vendor/
 *.swo
 *~
 
+# transient build artifacts
+build/_output
+
 kubeconfig
