@@ -40,7 +40,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -935,7 +935,7 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 	bldr.Owns(&appsv1.Deployment{})
 
 	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
-	bldr.Owns(&extv1beta1.Ingress{})
+	bldr.Owns(&networkingv1.Ingress{})
 
 	bldr.Owns(&v1.Role{})
 

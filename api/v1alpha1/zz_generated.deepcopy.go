@@ -24,7 +24,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -396,7 +396,7 @@ func (in *ArgoCDIngressSpec) DeepCopyInto(out *ArgoCDIngressSpec) {
 	}
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
-		*out = make([]v1beta1.IngressTLS, len(*in))
+		*out = make([]networkingv1.IngressTLS, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

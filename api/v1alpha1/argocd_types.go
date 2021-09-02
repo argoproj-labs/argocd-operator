@@ -23,7 +23,7 @@ import (
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +44,7 @@ func init() {
 //+operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1beta1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1beta1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{PersistentVolumeClaim,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Pod,v1,""}}
@@ -246,7 +246,7 @@ type ArgoCDIngressSpec struct {
 	// through the SNI TLS extension, if the ingress controller fulfilling the
 	// ingress supports SNI.
 	// +optional
-	TLS []extv1beta1.IngressTLS `json:"tls,omitempty"`
+	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
 }
 
 //+kubebuilder:object:root=true
