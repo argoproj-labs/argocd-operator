@@ -806,6 +806,7 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 		return err
 	}
 
+	nsList.Items = append(nsList.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
 	for _, n := range nsList.Items {
 		ns := &corev1.Namespace{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {

@@ -414,6 +414,9 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 		namespaces = append(namespaces, namespace.Name)
 	}
 
+	if !containsString(namespaces, cr.Namespace) {
+		namespaces = append(namespaces, cr.Namespace)
+	}
 	sort.Strings(namespaces)
 
 	secret.Data = map[string][]byte{

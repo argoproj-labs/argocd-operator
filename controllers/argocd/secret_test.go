@@ -212,7 +212,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
 	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
