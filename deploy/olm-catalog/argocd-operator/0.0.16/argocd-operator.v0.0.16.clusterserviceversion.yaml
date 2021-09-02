@@ -741,6 +741,12 @@ spec:
           - pods/log
           verbs:
           - get
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - update
         serviceAccountName: argocd-operator
       - rules:
         - apiGroups:

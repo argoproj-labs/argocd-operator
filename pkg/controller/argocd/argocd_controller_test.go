@@ -91,13 +91,6 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 		t.Fatal("reconcile requeued request")
 	}
 
-	// check if namespace label was added
-	ns := &corev1.Namespace{}
-	assert.NilError(t, r.client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
-	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; !ok {
-		t.Errorf("Expected the namespace[%v] to be labelled with[%v]", a.Namespace, common.ArgoCDManagedByLabel)
-	}
-
 	deployment := &appsv1.Deployment{}
 	if err = r.client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-redis",
@@ -121,7 +114,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	resources := []runtime.Object{a}
 	resources = append(resources, clusterResources(a)...)
 	r := makeTestReconciler(t, resources...)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{

@@ -19,12 +19,8 @@ import (
 	"fmt"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/pkg/apis/argoproj/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/pkg/common"
-
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -116,21 +112,6 @@ func (r *ReconcileArgoCD) Reconcile(request reconcile.Request) (reconcile.Result
 
 	if !argocd.IsDeletionFinalizerPresent() {
 		if err := r.addDeletionFinalizer(argocd); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	namespace := &corev1.Namespace{}
-	if err := r.client.Get(context.TODO(), types.NamespacedName{Name: request.Namespace}, namespace); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if val, ok := namespace.Labels[common.ArgoCDManagedByLabel]; !ok || val != argocd.Namespace {
-		if namespace.Labels == nil {
-			namespace.Labels = make(map[string]string)
-		}
-		namespace.Labels[common.ArgoCDManagedByLabel] = argocd.Namespace
-		if err = r.client.Update(context.TODO(), namespace); err != nil {
 			return reconcile.Result{}, err
 		}
 	}

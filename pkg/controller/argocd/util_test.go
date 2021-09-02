@@ -482,6 +482,11 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t)
+	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: a.Namespace,
+	}}
+	err := r.client.Create(context.TODO(), nsArgocd)
+	assert.NilError(t, err)
 
 	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
@@ -490,7 +495,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 		}},
 	}
 
-	err := r.client.Create(context.TODO(), ns)
+	err = r.client.Create(context.TODO(), ns)
 	assert.NilError(t, err)
 
 	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
