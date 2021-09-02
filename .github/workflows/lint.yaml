@@ -1,8 +1,10 @@
 name: Integration tests
-on: 
+on:
   pull_request:
     branches:
       - 'master'
+      - 'release-*'
+      - 'rhos-*'
 
 jobs:
   lint_code:
