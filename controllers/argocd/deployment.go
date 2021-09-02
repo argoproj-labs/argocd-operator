@@ -277,6 +277,10 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 		},
 	}
 
+	if cr.Spec.NodePlacement != nil {
+		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
 	return deploy
 }
 
@@ -377,10 +381,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	if dexDisabled {
 		log.Info("reconciling for dex, but dex is disabled")
 	}
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
+
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if dexDisabled {
@@ -522,10 +523,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 			},
 		},
 	}
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
+
 	existing := newDeploymentWithSuffix("grafana", "grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Grafana.Enabled {
@@ -587,10 +585,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
 	}
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
+
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if cr.Spec.HA.Enabled {
@@ -636,10 +631,6 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
 	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
@@ -802,11 +793,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 
 	if cr.Spec.Repo.ServiceAccount != "" {
 		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
-	}
-
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -1038,10 +1024,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			},
 		},
 	}
-	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
+
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image

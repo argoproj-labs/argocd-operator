@@ -72,7 +72,10 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 			},
 		},
 	}
-
+	if cr.Spec.NodePlacement != nil {
+		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
 	ss.Spec.ServiceName = name
 
 	return ss
@@ -86,10 +89,6 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
-	if cr.Spec.NodePlacement != nil {
-		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
@@ -330,10 +329,6 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
 
-	if cr.Spec.NodePlacement != nil {
-		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
-		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
-	}
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
