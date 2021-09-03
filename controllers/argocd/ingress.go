@@ -27,6 +27,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+var PathTypeImplementationSpecific = networkingv1.PathTypeImplementationSpecific
+
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
 func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	annotations := make(map[string]string)
@@ -135,6 +137,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 									},
 								},
 							},
+							PathType: &PathTypeImplementationSpecific,
 						},
 					},
 				},
@@ -206,6 +209,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 									},
 								},
 							},
+							PathType: &PathTypeImplementationSpecific,
 						},
 					},
 				},
@@ -278,6 +282,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 									},
 								},
 							},
+							PathType: &PathTypeImplementationSpecific,
 						},
 					},
 				},
@@ -351,6 +356,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 									},
 								},
 							},
+							PathType: &PathTypeImplementationSpecific,
 						},
 					},
 				},
