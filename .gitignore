@@ -24,6 +24,7 @@ vendor/
 *.swp
 *.swo
 *~
+.vscode
 
 # transient build artifacts
 build/_output
