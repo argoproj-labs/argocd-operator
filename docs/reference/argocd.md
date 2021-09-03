@@ -73,6 +73,8 @@ Name | Default | Description
 --- | --- | ---
 Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
+Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 
 ### ApplicationSet Controller Example
 
@@ -123,6 +125,10 @@ Name | Default | Description
 Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications
+Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
+Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
 
 ### Controller Example
 
@@ -769,6 +775,7 @@ VerifyTLS | false | Whether to enforce strict TLS checking on all components whe
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
 Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
+LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
 
 ### Repo Example
 
@@ -923,6 +930,7 @@ Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
+LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 
 ### Server Autoscale Options
 
