@@ -46,7 +46,7 @@ const (
 	ArgoCDDefaultApplicationSetImage = "quay.io/argocdapplicationset/argocd-applicationset"
 
 	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
-	ArgoCDDefaultApplicationSetVersion = "v0.1.0"
+	ArgoCDDefaultApplicationSetVersion = "v0.2.0"
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
@@ -55,7 +55,7 @@ const (
 	ArgoCDDefaultArgoImage = "argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:8d1d58ef963f615da97e0b2c54dbe243801d5e7198b98393ab36b7a5768f72a4" // v2.0.0
+	ArgoCDDefaultArgoVersion = "sha256:2e0e725c9282bfb7b08bea7dbbfd8dbce6410d670e3f8addd9b6540d818ad520" // v2.1.2
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
