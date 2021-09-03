@@ -98,6 +98,11 @@ spec:
                       \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the Application
+                      Controller component. Defaults to ArgoCDDefaultLogFormat if
+                      not configured. Valid options are text or json.
+                    type: string
                   logLevel:
                     description: LogLevel refers to the log level used by the Application
                       Controller component. Defaults to ArgoCDDefaultLogLevel if not
@@ -712,6 +717,11 @@ spec:
                   image:
                     description: Image is the ArgoCD Repo Server container image.
                     type: string
+                  logFormat:
+                    description: LogFormat describes the log format that should be
+                      used by the Repo Server. Defaults to ArgoCDDefaultLogFormat
+                      if not configured. Valid options are text or json.
+                    type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
                       by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not
@@ -954,6 +964,11 @@ spec:
                   insecure:
                     description: Insecure toggles the insecure flag.
                     type: boolean
+                  logFormat:
+                    description: LogFormat refers to the log level to be used by the
+                      ArgoCD Server component. Defaults to ArgoCDDefaultLogFormat
+                      if not configured. Valid options are text or json.
+                    type: string
                   logLevel:
                     description: LogLevel refers to the log level to be used by the
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
