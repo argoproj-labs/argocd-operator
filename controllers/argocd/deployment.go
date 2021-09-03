@@ -197,6 +197,9 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
 
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
+
 	return cmd
 }
 
@@ -227,6 +230,9 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
 
 	return cmd
 }

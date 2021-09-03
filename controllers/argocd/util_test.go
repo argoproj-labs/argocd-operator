@@ -326,6 +326,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"20",
 				"--loglevel",
 				"info",
+				"--logformat",
+				"text",
 			},
 		},
 		{
@@ -343,6 +345,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"30",
 				"--loglevel",
 				"info",
+				"--logformat",
+				"text",
 			},
 		},
 		{
@@ -360,6 +364,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"20",
 				"--loglevel",
 				"info",
+				"--logformat",
+				"text",
 			},
 		},
 		{
@@ -379,6 +385,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"600",
 				"--loglevel",
 				"info",
+				"--logformat",
+				"text",
 			},
 		},
 	}
