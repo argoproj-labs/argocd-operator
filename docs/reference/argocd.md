@@ -31,6 +31,7 @@ Name | Default | Description
 [**InitialSSHKnownHosts**](#initial-ssh-known-hosts) | [Default Argo CD Known Hosts] | Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
 [**KustomizeBuildOptions**](#kustomize-build-options) | [Empty] | The build options/parameters to use with `kustomize build`.
 [**OIDCConfig**](#oidc-config) | [Empty] | The OIDC configuration as an alternative to Dex.
+[**NodePlacement**](#nodeplacement-option) | [Empty] | The NodePlacement configuration can be used to add nodeSelector and tolerations.
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
@@ -646,6 +647,41 @@ spec:
     requestedScopes: ["openid", "profile", "email"]
     # Optional set of OIDC claims to request on the ID token.
     requestedIDTokenClaims: {"groups": {"essential": true}}
+```
+
+## NodePlacement Option
+
+The following properties are available for configuring the NodePlacement component.
+
+Name | Default | Description
+--- | --- | ---
+NodeSelector | [Empty] | A map of key value pairs for node selection.
+Tolerations | [Empty] | Tolerations allow pods to schedule on nodes with matching taints.
+
+### NodePlacement Example
+
+The following example sets a NodeSelector and tolerations using NodePlacement property in the ArgoCD CR
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: nodeplacement-example
+spec:
+  nodePlacement: 
+    nodeSelector: 
+      key1: value1
+    tolerations: 
+    - key: key1
+      operator: Equal
+      value: value1
+      effect: NoSchedule
+    - key: key1
+      operator: Equal
+      value: value1
+      effect: NoExecute   
 ```
 
 ## Prometheus Options
