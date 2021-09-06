@@ -299,14 +299,17 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 	changed := false
 
 	if hasArgoAdminPasswordChanged(secret, clusterSecret) {
-		hashedPassword, err := argopass.HashPassword(string(clusterSecret.Data[common.ArgoCDKeyAdminPassword]))
-		if err != nil {
-			return err
-		}
+		pwBytes, ok := clusterSecret.Data[common.ArgoCDKeyAdminPassword]
+		if ok {
+			hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
+			if err != nil {
+				return err
+			}
 
-		secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
-		secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-		changed = true
+			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
+			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
+			changed = true
+		}
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
