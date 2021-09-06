@@ -636,6 +636,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"argocd-redis.argocd.svc.cluster.local:6379",
 					"--loglevel",
 					"info",
+					"--logformat",
+					"text",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -709,6 +711,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"argocd-redis.argocd.svc.cluster.local:6379",
 					"--loglevel",
 					"info",
+					"--logformat",
+					"text",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -785,6 +789,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"argocd-redis.argocd.svc.cluster.local:6379",
 					"--loglevel",
 					"info",
+					"--logformat",
+					"text",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},

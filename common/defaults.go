@@ -24,6 +24,9 @@ const (
 	// ArgoCDDefaultLogLevel is the default log level to be used by all ArgoCD components.
 	ArgoCDDefaultLogLevel = "info"
 
+	// ArgoCDDefaultLogFormat is the default log format to be used by all ArgoCD components.
+	ArgoCDDefaultLogFormat = "text"
+
 	// ArgoCDServerComponent is the name of the Dex server control plane component
 	ArgoCDServerComponent = "argocd-server"
 

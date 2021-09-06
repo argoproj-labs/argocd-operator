@@ -75,6 +75,7 @@ Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container ima
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 
 ### ApplicationSet Controller Example
 
@@ -776,6 +777,7 @@ AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS cer
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
 Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
 LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 
 ### Repo Example
 
@@ -931,6 +933,7 @@ Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
 
 ### Server Autoscale Options
 
