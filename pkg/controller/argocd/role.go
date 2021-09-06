@@ -98,6 +98,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		return nil, err
 	}
 
+	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
+
 	// create policy rules for each namespace
 	for _, namespace := range namespaces.Items {
 		role := newRole(name, policyRules, cr)
