@@ -148,6 +148,9 @@ type ArgoCDDexSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Configuration",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Config string `json:"config,omitempty"`
 
+	// Optional list of required groups a user must be a member of
+	Groups []string `json:"groups,omitempty"`
+
 	// Image is the Dex container image.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Image string `json:"image,omitempty"`

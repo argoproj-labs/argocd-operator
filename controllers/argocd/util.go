@@ -407,7 +407,8 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 			"clientID":     getDexOAuthClientID(cr),
 			"clientSecret": *clientSecret,
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
-			"insecureCA":   true, // TODO: Configure for openshift CA
+			"insecureCA":   true, // TODO: Configure for openshift CA,
+			"groups":       cr.Spec.Dex.Groups,
 		},
 	}
 
