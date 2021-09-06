@@ -27,8 +27,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-var PathTypeImplementationSpecific = networkingv1.PathTypeImplementationSpecific
-
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
 func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
 	annotations := make(map[string]string)
@@ -120,6 +118,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 
 	ingress.ObjectMeta.Annotations = atns
 
+	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
@@ -137,7 +136,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 									},
 								},
 							},
-							PathType: &PathTypeImplementationSpecific,
+							PathType: &pathType,
 						},
 					},
 				},
@@ -192,6 +191,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 
 	ingress.ObjectMeta.Annotations = atns
 
+	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
@@ -209,7 +209,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 									},
 								},
 							},
-							PathType: &PathTypeImplementationSpecific,
+							PathType: &pathType,
 						},
 					},
 				},
@@ -265,6 +265,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 
 	ingress.ObjectMeta.Annotations = atns
 
+	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
@@ -282,7 +283,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 									},
 								},
 							},
-							PathType: &PathTypeImplementationSpecific,
+							PathType: &pathType,
 						},
 					},
 				},
@@ -339,6 +340,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 
 	ingress.ObjectMeta.Annotations = atns
 
+	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
@@ -356,7 +358,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 									},
 								},
 							},
-							PathType: &PathTypeImplementationSpecific,
+							PathType: &pathType,
 						},
 					},
 				},
