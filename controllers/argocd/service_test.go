@@ -54,14 +54,14 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		svc := newService(a)
 
 		// Annotation is inserted, update is required
-		needUpdate := ensureAutoTLSAnnotation(a, svc, "some-secret", true)
+		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, true)
 		atls, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, true)
 		assert.Equal(t, atls, "some-secret")
 
 		// Annotation already set, doesn't need update
-		needUpdate = ensureAutoTLSAnnotation(a, svc, "some-secret", true)
+		needUpdate = ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will be unset for OpenShift", func(t *testing.T) {
@@ -71,19 +71,19 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		svc.Annotations[common.AnnotationOpenShiftServiceCA] = "some-secret"
 
 		// Annotation getting removed, update required
-		needUpdate := ensureAutoTLSAnnotation(a, svc, "some-secret", false)
+		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", false)
 		assert.Equal(t, needUpdate, true)
 		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, false)
 
 		// Annotation does not exist, no update required
-		needUpdate = ensureAutoTLSAnnotation(a, svc, "some-secret", false)
+		needUpdate = ensureAutoTLSAnnotation(svc, "some-secret", false)
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will not be set for non-OpenShift", func(t *testing.T) {
 		routeAPIFound = false
 		svc := newService(a)
-		needUpdate := ensureAutoTLSAnnotation(a, svc, "some-secret", true)
+		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, false)
 		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, false)

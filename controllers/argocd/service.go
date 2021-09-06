@@ -316,7 +316,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 //
 // When this method returns true, the svc resource will need to be updated on
 // the cluster.
-func ensureAutoTLSAnnotation(cr *argoprojv1a1.ArgoCD, svc *corev1.Service, secretName string, enabled bool) bool {
+func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled bool) bool {
 	var autoTLSAnnotationName, autoTLSAnnotationValue string
 
 	// We currently only support OpenShift for automatic TLS
@@ -353,13 +353,13 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if ensureAutoTLSAnnotation(cr, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
 
-	ensureAutoTLSAnnotation(cr, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
+	ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
@@ -415,13 +415,13 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD)
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if ensureAutoTLSAnnotation(cr, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
 
-	ensureAutoTLSAnnotation(cr, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
+	ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
 
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
