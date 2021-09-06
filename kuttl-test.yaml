@@ -1,7 +1,7 @@
-apiVersion: kudo.dev/v1alpha1
+apiVersion: kuttl.dev/v1beta1
 kind: TestSuite
-crdDir: ./deploy/crds/
 testDirs:
 - ./tests/e2e/
-timeout: 120
+timeout: 180
 startKIND: false
+namespace: argocd-e2e

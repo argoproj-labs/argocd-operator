@@ -1,0 +1,22 @@
+name: Integration tests
+on:
+  pull_request:
+    branches:
+      - 'master'
+      - 'release-*'
+      - 'rhos-*'
+
+jobs:
+  lint_code:
+    name: Run golangci-lint on PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.38.0
+          args: --timeout 5m --exclude SA5011
+          only-new-issues: true
+

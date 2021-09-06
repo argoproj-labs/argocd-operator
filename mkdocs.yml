@@ -1,4 +1,5 @@
 site_name: Argo CD Operator
+site_url: ""
 repo_url: https://github.com/argoproj-labs/argocd-operator
 strict: true
 theme:
@@ -29,7 +30,9 @@ nav:
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
-    - SSO: usage/keycloak.md
+    - Dex: usage/dex.md
+    - Keycloak: usage/keycloak.md
+    - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
   - Reference:
     - ArgoCD: reference/argocd.md

@@ -1,0 +1,19 @@
+# Delete previous cluster
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1alpha1
+  kind: ArgoCD
+  name: example-argocd
+commands:
+  # Sleep to allow resources to be completely deleted
+  - command: sleep 30s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: disable-admin
+spec:
+  disableAdmin: true
