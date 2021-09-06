@@ -117,6 +117,7 @@ spec:
     route:
       enabled: true
       tls:
-        termination: passthrough
+        termination: reencrypt
+        insecureEdgeTerminationPolicy: Redirect
 ```
 
