@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
