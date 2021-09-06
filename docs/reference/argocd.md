@@ -156,6 +156,7 @@ The following properties are available for configuring the Dex component.
 Name | Default | Description
 --- | --- | ---
 Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
+Groups | [Empty] | Optional list of required groups a user must be a member of
 Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
 OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
 Resources | [Empty] | The container compute resources.
@@ -175,6 +176,8 @@ metadata:
 spec:
   dex:
     config: ""
+    groups:
+      - default
     image: quay.io/dexidp/dex
     openShiftOAuth: false
     resources: {}
