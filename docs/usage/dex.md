@@ -12,7 +12,7 @@ Dex can be used to delegate authentication to external identity providers like G
 
 The below section describes how to configure Argo CD SSO using OpenShift connector as an example. Dex makes use of the users and groups defined within OpenShift by querying the platform provided OAuth server.
 
-The `openShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
+The `openShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The `groups` property is used to mandate users to be part of one or all the groups in the groups list. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -24,6 +24,8 @@ metadata:
 spec:
   dex:
     openShiftOAuth: true
+    groups:
+     - default
   rbac:
     defaultPolicy: 'role:readonly'
     policy: |

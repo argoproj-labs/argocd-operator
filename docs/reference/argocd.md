@@ -75,6 +75,7 @@ Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container ima
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 
 ### ApplicationSet Controller Example
 
@@ -156,6 +157,7 @@ The following properties are available for configuring the Dex component.
 Name | Default | Description
 --- | --- | ---
 Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
+Groups | [Empty] | Optional list of required groups a user must be a member of
 Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
 OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
 Resources | [Empty] | The container compute resources.
@@ -175,6 +177,8 @@ metadata:
 spec:
   dex:
     config: ""
+    groups:
+      - default
     image: quay.io/dexidp/dex
     openShiftOAuth: false
     resources: {}
@@ -776,6 +780,7 @@ AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS cer
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
 Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
 LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 
 ### Repo Example
 
@@ -931,6 +936,7 @@ Resources | [Empty] | The container compute resources.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
 
 ### Server Autoscale Options
 

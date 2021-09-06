@@ -82,6 +82,9 @@ type ArgoCDApplicationControllerSpec struct {
 	// LogLevel refers to the log level used by the Application Controller component. Defaults to ArgoCDDefaultLogLevel if not configured. Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
+	// LogFormat refers to the log format used by the Application Controller component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for the Application Controller.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -144,6 +147,9 @@ type ArgoCDDexSpec struct {
 	//Config is the dex connector configuration.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Configuration",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Config string `json:"config,omitempty"`
+
+	// Optional list of required groups a user must be a member of
+	Groups []string `json:"groups,omitempty"`
 
 	// Image is the Dex container image.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Image",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
@@ -323,6 +329,9 @@ type ArgoCDRepoSpec struct {
 	// LogLevel describes the log level that should be used by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
+	// LogFormat describes the log format that should be used by the Repo Server. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
+
 	// MountSAToken describes whether you would like to have the Repo server mount the service account token
 	MountSAToken bool `json:"mountsatoken,omitempty"`
 
@@ -415,6 +424,9 @@ type ArgoCDServerSpec struct {
 
 	// LogLevel refers to the log level to be used by the ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log level to be used by the ArgoCD Server component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the Argo CD server component.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}

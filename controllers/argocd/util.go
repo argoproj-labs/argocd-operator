@@ -114,6 +114,9 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
 
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
+
 	return cmd
 }
 
@@ -404,7 +407,8 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 			"clientID":     getDexOAuthClientID(cr),
 			"clientSecret": *clientSecret,
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
-			"insecureCA":   true, // TODO: Configure for openshift CA
+			"insecureCA":   true, // TODO: Configure for openshift CA,
+			"groups":       cr.Spec.Dex.Groups,
 		},
 	}
 
@@ -1187,4 +1191,14 @@ func getLogLevel(logField string) string {
 		return logField
 	}
 	return common.ArgoCDDefaultLogLevel
+}
+
+// getLogFormat returns the log format for a specified component if it is set or returns the default log format if it is not set
+func getLogFormat(logField string) string {
+	switch strings.ToLower(logField) {
+	case "text",
+		"json":
+		return logField
+	}
+	return common.ArgoCDDefaultLogFormat
 }
