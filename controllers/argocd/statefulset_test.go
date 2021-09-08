@@ -282,3 +282,62 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		}
 	}
 }
+
+func Test_UpdateNodePlacementStateful(t *testing.T) {
+
+	ss := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-sample-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"test_key1": "test_value1",
+						"test_key2": "test_value2",
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:    "test_key1",
+							Value:  "test_value1",
+							Effect: corev1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+		},
+	}
+	ss2 := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-sample-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"test_key1": "test_value1",
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:    "test_key1",
+							Value:  "test_value1",
+							Effect: corev1.TaintEffectNoExecute,
+						},
+					},
+				},
+			},
+		},
+	}
+	expectedChange := false
+	actualChange := false
+	updateNodePlacementStateful(ss, ss, &actualChange)
+	if actualChange != expectedChange {
+		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+	updateNodePlacementStateful(ss, ss2, &actualChange)
+	if actualChange == expectedChange {
+		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+}
