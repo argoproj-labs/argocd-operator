@@ -130,8 +130,13 @@ echo "`minikube ip -p argocd` example-argocd example-argocd-grpc example-argocd-
 The `argocd` client uses GRPC to communicate with the server. We can perform a login to verify access to the Argo CD 
 server.
 
-The default password for the admin user is the name for the server Pod (`example-argocd-server-d468768b-l5wnf` in this 
-example). The `--insecure` flag is required because we are using the default self-signed certificate.
+The default password for the admin user can be obtained using the below command.
+
+```bash
+kubectl get secret example-argocd-cluster -n test -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
+```
+
+The `--insecure` flag is required because we are using the default self-signed certificate.
 
 ```bash
 argocd login example-argocd-grpc --insecure --username admin 
@@ -174,8 +179,11 @@ argocd app delete guestbook --insecure
 
 ### UI
 
-The server UI should be available at https://example-argocd/ and the admin password is the name for the server 
-Pod (`example-argocd-server-d468768b-l5wnf` in this example).
+The server UI should be available at https://example-argocd/ and the default password for the admin user can be obtained using the below command.
+
+```bash
+kubectl get secret example-argocd-cluster -n test -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
+```
 
 ## Cleanup
 
