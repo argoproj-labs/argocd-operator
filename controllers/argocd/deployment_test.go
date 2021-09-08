@@ -450,6 +450,56 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD((func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.NodePlacement = &argoprojv1alpha1.ArgoCDNodePlacementSpec{
+			NodeSelector: deploymentDefaultNodeSelector(),
+			Tolerations:  deploymentDefaultTolerations(),
+		}
+	}))
+	r := makeTestReconciler(t, a)
+	err := r.reconcileRepoDeployment(a) //can use other deployments as well
+	assert.NilError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NilError(t, err)
+
+	if diff := cmp.Diff(deploymentDefaultNodeSelector(), deployment.Spec.Template.Spec.NodeSelector); diff != "" {
+		t.Fatalf("reconcileDeployment failed:\n%s", diff)
+	}
+	if diff := cmp.Diff(deploymentDefaultTolerations(), deployment.Spec.Template.Spec.Tolerations); diff != "" {
+		t.Fatalf("reconcileDeployment failed:\n%s", diff)
+	}
+}
+
+func deploymentDefaultNodeSelector() map[string]string {
+	nodeSelector := map[string]string{
+		"test_key1": "test_value1",
+		"test_key2": "test_value2",
+	}
+	return nodeSelector
+}
+func deploymentDefaultTolerations() []corev1.Toleration {
+	toleration := []corev1.Toleration{
+		{
+			Key:    "test_key1",
+			Value:  "test_value1",
+			Effect: corev1.TaintEffectNoSchedule,
+		},
+		{
+			Key:      "test_key2",
+			Value:    "test_value2",
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+	}
+	return toleration
+}
+
 func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -878,6 +928,64 @@ func operationProcessors(n int32) argoCDOpt {
 func appSync(d time.Duration) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Controller.AppSync = &metav1.Duration{Duration: d}
+	}
+}
+func Test_UpdateNodePlacement(t *testing.T) {
+
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-sample-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"test_key1": "test_value1",
+						"test_key2": "test_value2",
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:    "test_key1",
+							Value:  "test_value1",
+							Effect: corev1.TaintEffectNoSchedule,
+						},
+					},
+				},
+			},
+		},
+	}
+	deployment2 := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-sample-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"test_key1": "test_value1",
+					},
+					Tolerations: []corev1.Toleration{
+						{
+							Key:    "test_key1",
+							Value:  "test_value1",
+							Effect: corev1.TaintEffectNoExecute,
+						},
+					},
+				},
+			},
+		},
+	}
+	expectedChange := false
+	actualChange := false
+	updateNodePlacement(deployment, deployment, &actualChange)
+	if actualChange != expectedChange {
+		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+	updateNodePlacement(deployment, deployment2, &actualChange)
+	if actualChange == expectedChange {
+		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
 }
 
