@@ -72,7 +72,10 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 			},
 		},
 	}
-
+	if cr.Spec.NodePlacement != nil {
+		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
 	ss.Spec.ServiceName = name
 
 	return ss
@@ -85,25 +88,27 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.
 
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+
+	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
-			return r.Client.Delete(context.TODO(), ss)
+			return r.Client.Delete(context.TODO(), existing)
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
 		changed := false
-
-		for i, container := range ss.Spec.Template.Spec.Containers {
+		updateNodePlacementStateful(existing, ss, &changed)
+		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
-				ss.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				changed = true
 			}
 		}
 
 		if changed {
-			ss.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.Client.Update(context.TODO(), ss)
+			return r.Client.Update(context.TODO(), existing)
 		}
 
 		return nil // StatefulSet found, do nothing
@@ -436,6 +441,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		if isRepoServerTLSVerificationRequested(cr) {
 			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
 		}
+		updateNodePlacementStateful(existing, ss, &changed)
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
 			changed = true
@@ -504,4 +510,16 @@ func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key
 
 	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
 	return r.Client.Update(context.TODO(), sts)
+}
+
+//to update nodeSelector and tolerations in reconciler
+func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool) {
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, ss.Spec.Template.Spec.NodeSelector) {
+		existing.Spec.Template.Spec.NodeSelector = ss.Spec.Template.Spec.NodeSelector
+		*changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, ss.Spec.Template.Spec.Tolerations) {
+		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
+		*changed = true
+	}
 }
