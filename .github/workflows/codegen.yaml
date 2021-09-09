@@ -1,4 +1,4 @@
-name: Check for changes to generated code
+name: Generated code
 on:
   push:
     branches:
