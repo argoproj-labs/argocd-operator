@@ -1,0 +1,70 @@
+name: Check for changes to generated code
+on:
+  push:
+    branches:
+      - 'master'
+      - 'release-*'
+      - 'rhos-*'
+  pull_request:
+    branches:
+      - 'master'
+      - 'release-*'
+      - 'rhos-*'
+env:
+  # Golang version to use
+  GOLANG_VERSION: 1.16.4
+  # Version of operator-sdk binary
+  SDK_VERSION: 1.11.0
+  # Checksum of operator-sdk binary
+  SDK_CHECKSUM: 'b1f6fb02c619cfcdb46edf41cbeb4d66f627fd8bba122edaeeb06718965299eb'
+
+jobs:
+  check-go-modules:
+    name: "Check for go.mod/go.sum synchronicity"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Golang
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Download all Go modules
+        run: |
+          go mod download
+      - name: Check for tidyness of go.mod and go.sum
+        run: |
+          go mod tidy
+          git diff --exit-code -- .
+
+  check-sdk-codegen:
+    name: "Check for changes from make bundle"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup Golang
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Download and install Operator SDK
+        run: |
+          set -ue
+          set -o pipefail
+          curl -sLf --retry 3 \
+            -o /tmp/operator-sdk_linux_amd64 \
+            https://github.com/operator-framework/operator-sdk/releases/download/v1.11.0/operator-sdk_linux_amd64
+          calculated=$(sha256sum /tmp/operator-sdk_linux_amd64 | awk '{print $1}')
+          if test "${calculated}" != "${SDK_CHECKSUM}"; then
+            echo "FAILED TO VALIDATE CHECKSUM" >&2
+            echo "Download is: ${calculated}"
+            echo "Should: ${SDK_CHECKSUM}"
+            exit 1
+          fi
+          sudo install -m 0755 /tmp/operator-sdk_linux_amd64 /usr/local/bin/operator-sdk
+      - name: Run make bundle
+        run: |
+          make bundle
+      - name: Ensure there is no diff
+        run: |
+          git diff --exit-code -- .
