@@ -16,7 +16,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -59,9 +59,9 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 
-	assert.NilError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	// resource Creation should fail as HA was disabled
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
+	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
 func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
@@ -73,20 +73,20 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 
 	a.Spec.HA.Enabled = true
 	// test resource is Created when HA is enabled
-	assert.NilError(t, r.reconcileRedisStatefulSet(a))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 
 	// test resource is Updated on reconciliation
 	a.Spec.Redis.Image = testRedisImage
 	a.Spec.Redis.Version = testRedisImageVersion
-	assert.NilError(t, r.reconcileRedisStatefulSet(a))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("%s:%s", testRedisImage, testRedisImageVersion))
 
 	// test resource is Deleted, when HA is disabled
 	a.Spec.HA.Enabled = false
-	assert.NilError(t, r.reconcileRedisStatefulSet(a))
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
 func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
@@ -94,10 +94,10 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -131,13 +131,13 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 
 	a = makeTestArgoCD(controllerProcessors(30))
-	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -164,11 +164,11 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T
 	r := makeTestReconciler(t, a)
 
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", a)
-	assert.NilError(t, r.Client.Create(context.TODO(), deploy))
+	assert.NoError(t, r.Client.Create(context.TODO(), deploy))
 
-	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
-	assert.ErrorContains(t, err, "not found")
+	assert.Errorf(t, err, "not found")
 }
 
 func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing.T) {
@@ -189,10 +189,10 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	}
 	r := makeTestReconciler(t, a, &ex)
 
-	assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 
 	ss := &appsv1.StatefulSet{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-application-controller",
@@ -210,8 +210,8 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
 		},
 	}
-	assert.DeepEqual(t, ss.Spec.Template.Spec.Containers[0].Resources, testResources)
-	assert.DeepEqual(t, ss.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+	assert.Equal(t, ss.Spec.Template.Spec.Containers[0].Resources, testResources)
+	assert.Equal(t, ss.Spec.Template.Spec.InitContainers[0].Resources, testResources)
 }
 
 func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
@@ -258,10 +258,10 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 		})
 		r := makeTestReconciler(t, a)
 
-		assert.NilError(t, r.reconcileApplicationControllerStatefulSet(a))
+		assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a))
 
 		ss := &appsv1.StatefulSet{}
-		assert.NilError(t, r.Client.Get(
+		assert.NoError(t, r.Client.Get(
 			context.TODO(),
 			types.NamespacedName{
 				Name:      "argocd-application-controller",

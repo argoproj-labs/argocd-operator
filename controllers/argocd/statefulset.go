@@ -302,7 +302,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 }
 
 func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
-	env := make([]corev1.EnvVar, 0)
+	env := cr.Spec.Controller.Env
 
 	if cr.Spec.Controller.Sharding.Enabled {
 		env = append(env, corev1.EnvVar{
@@ -323,7 +323,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
-
+	controllerEnv := getArgoControllerContainerEnv(cr)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), true)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
@@ -340,7 +341,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Env: proxyEnvVars(getArgoControllerContainerEnv(cr)...),
+		Env: controllerEnv,
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8082,
