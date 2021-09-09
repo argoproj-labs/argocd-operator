@@ -43,7 +43,7 @@ Name | Default | Description
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
-[**Version**](#version) | v1.7.7 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Version**](#version) | v2.1.2 (SHA) | The tag to use with the container image for all Argo CD components.
 
 ## Application Instance Label Key
 
@@ -131,6 +131,7 @@ LogLevel | info | The log level to be used by the ArgoCD Application Controller 
 AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications
 Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
 Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
+Env | [Empty] | Environment to set for the application controller workloads
 
 ### Controller Example
 
@@ -814,9 +815,11 @@ ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server
 VerifyTLS | false | Whether to enforce strict TLS checking on all components when communicating with repo server
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
 Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
-Version | v2.0.0 (SHA) | The tag to use with the ArgoCD Repo Server.
+Version | same as `.spec.Version` | The tag to use with the ArgoCD Repo Server.
 LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
+ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
+Env | [Empty] | Environment to set for the repository server workloads
 
 ### Repo Example
 
@@ -973,6 +976,7 @@ Resources | [Empty] | The container compute resources.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
+Env | [Empty] | Environment to set for the server workloads
 
 ### Server Autoscale Options
 
