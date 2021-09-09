@@ -302,7 +302,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 }
 
 func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
-	env := cr.Spec.Controller.Env
+	env := make([]corev1.EnvVar, 0)
 
 	if cr.Spec.Controller.Sharding.Enabled {
 		env = append(env, corev1.EnvVar{
@@ -323,8 +323,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
-	controllerEnv := getArgoControllerContainerEnv(cr)
-	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), true)
+	controllerEnv := cr.Spec.Controller.Env
+	// Sharding setting explicitly overrides a value set in the env
+	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	// Let user specify their own environment first
+	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
