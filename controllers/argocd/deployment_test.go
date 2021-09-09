@@ -518,13 +518,13 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	}))
 	r := makeTestReconciler(t, a)
 	err := r.reconcileRepoDeployment(a) //can use other deployments as well
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	if diff := cmp.Diff(deploymentDefaultNodeSelector(), deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)
