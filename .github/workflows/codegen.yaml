@@ -2,14 +2,10 @@ name: Generated code
 on:
   push:
     branches:
-      - 'master'
-      - 'release-*'
-      - 'rhos-*'
+    - 'master'
   pull_request:
     branches:
       - 'master'
-      - 'release-*'
-      - 'rhos-*'
 env:
   # Golang version to use
   GOLANG_VERSION: 1.16.4
@@ -65,6 +61,18 @@ jobs:
       - name: Run make bundle
         run: |
           make bundle
-      - name: Ensure there is no diff
+      - name: Ensure there is no diff in bundle
+        run: |
+          git diff --exit-code -- .
+      - name: Run make generate
+        run: |
+          make generate
+      - name: Ensure there is no diff in generated assets
+        run: |
+          git diff --exit-code -- .
+      - name: Run make manifests
+        run: |
+          make manifests
+      - name: Ensure there is no diff in manifests
         run: |
           git diff --exit-code -- .
