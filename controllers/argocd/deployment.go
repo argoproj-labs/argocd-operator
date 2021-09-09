@@ -283,6 +283,10 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 		},
 	}
 
+	if cr.Spec.NodePlacement != nil {
+		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
 	return deploy
 }
 
@@ -408,7 +412,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
-
+		updateNodePlacement(existing, deploy, &changed)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
@@ -537,7 +541,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 			existing.Spec.Replicas = cr.Spec.Grafana.Size
 			changed = true
 		}
-
+		updateNodePlacement(existing, deploy, &changed)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
@@ -602,7 +606,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
-
+		updateNodePlacement(existing, deploy, &changed)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
@@ -632,19 +636,25 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+
+	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
-			return r.Client.Delete(context.TODO(), deploy)
+			return r.Client.Delete(context.TODO(), existing)
 		}
-
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisHAProxyContainerImage(cr)
 
 		if actualImage != desiredImage {
-			deploy.Spec.Template.Spec.Containers[0].Image = desiredImage
-			deploy.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			return r.Client.Update(context.TODO(), deploy)
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed)
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found, do nothing
 	}
@@ -915,6 +925,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
+		updateNodePlacement(existing, deploy, &changed)
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
 			changed = true
@@ -1040,6 +1051,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
+		updateNodePlacement(existing, deploy, &changed)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
@@ -1117,4 +1129,16 @@ func isDexDisabled() bool {
 		return strings.ToLower(v) == "true"
 	}
 	return false
+}
+
+// to update nodeSelector and tolerations in reconciler
+func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
+		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+		*changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
+		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+		*changed = true
+	}
 }

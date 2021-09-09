@@ -23,7 +23,7 @@ import (
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +44,7 @@ func init() {
 //+operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1beta1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1beta1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{PersistentVolumeClaim,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Pod,v1,""}}
@@ -255,7 +255,7 @@ type ArgoCDIngressSpec struct {
 	// through the SNI TLS extension, if the ingress controller fulfilling the
 	// ingress supports SNI.
 	// +optional
-	TLS []extv1beta1.IngressTLS `json:"tls,omitempty"`
+	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -486,6 +486,14 @@ type KustomizeVersionSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
+//ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
+type ArgoCDNodePlacementSpec struct {
+	// NodeSelector is a field of PodSpec, it is a map of key value pairs used for node selection
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Tolerations allow the pods to schedule onto nodes with matching taints
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -556,6 +564,9 @@ type ArgoCDSpec struct {
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OIDC Config'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	OIDCConfig string `json:"oidcConfig,omitempty"`
+
+	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
+	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`
 
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
@@ -695,6 +706,18 @@ func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 		}
 	}
 	return false
+}
+
+// WantsAutoTLS returns true if user configured a route with reencryption
+// termination policy.
+func (s *ArgoCDServerSpec) WantsAutoTLS() bool {
+	return s.Route.TLS != nil && s.Route.TLS.Termination == routev1.TLSTerminationReencrypt
+}
+
+// WantsAutoTLS returns true if the repository server configuration has set
+// the autoTLS toggle to a supported provider.
+func (r *ArgoCDRepoSpec) WantsAutoTLS() bool {
+	return r.AutoTLS == "openshift"
 }
 
 // ApplicationInstanceLabelKey returns either the custom application instance
