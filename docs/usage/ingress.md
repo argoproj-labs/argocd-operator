@@ -133,7 +133,7 @@ server.
 The default password for the admin user can be obtained using the below command.
 
 ```bash
-kubectl get secret example-argocd-cluster -n test -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
+kubectl get secret example-argocd-cluster -n argocd -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
 ```
 
 The `--insecure` flag is required because we are using the default self-signed certificate.
@@ -182,7 +182,7 @@ argocd app delete guestbook --insecure
 The server UI should be available at https://example-argocd/ and the default password for the admin user can be obtained using the below command.
 
 ```bash
-kubectl get secret example-argocd-cluster -n test -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
+kubectl get secret example-argocd-cluster -n argocd -ojsonpath='{.data.admin\.password}' | base64 -d ; echo
 ```
 
 ## Cleanup
