@@ -227,11 +227,11 @@ func makeTestApplicationSetResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
-			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1"),
 		},
 		Limits: corev1.ResourceList{
 			corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
-			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+			corev1.ResourceCPU:    resourcev1.MustParse("2"),
 		},
 	}
 }

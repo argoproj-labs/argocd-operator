@@ -210,8 +210,27 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
 		},
 	}
-	assert.Equal(t, ss.Spec.Template.Spec.Containers[0].Resources, testResources)
-	assert.Equal(t, ss.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+	rsC := ss.Spec.Template.Spec.Containers[0].Resources
+	assert.True(t, testResources.Requests.Cpu().Equal(*rsC.Requests.Cpu()))
+	assert.True(t, testResources.Requests.Memory().Equal(*rsC.Requests.Memory()))
+	assert.True(t, testResources.Limits.Cpu().Equal(*rsC.Limits.Cpu()))
+	assert.True(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
+
+	// Negative test - differing limits and requests
+	testResources = corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("2024Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("3048Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
+		},
+	}
+	assert.False(t, testResources.Requests.Cpu().Equal(*rsC.Requests.Cpu()))
+	assert.False(t, testResources.Requests.Memory().Equal(*rsC.Requests.Memory()))
+	assert.False(t, testResources.Limits.Cpu().Equal(*rsC.Limits.Cpu()))
+	assert.False(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
 }
 
 func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
