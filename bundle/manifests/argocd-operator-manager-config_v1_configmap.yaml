@@ -14,4 +14,4 @@ data:
       resourceName: b674928d.argoproj.io
 kind: ConfigMap
 metadata:
-  name: manager-config
+  name: argocd-operator-manager-config

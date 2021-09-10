@@ -914,9 +914,9 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        serviceAccountName: argocd-operator
+        serviceAccountName: argocd-operator-controller-manager
       deployments:
-      - name: controller-manager
+      - name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -970,7 +970,7 @@ spec:
                   allowPrivilegeEscalation: false
               securityContext:
                 runAsNonRoot: true
-              serviceAccountName: argocd-operator
+              serviceAccountName: argocd-operator-controller-manager
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -1005,7 +1005,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: argocd-operator
+        serviceAccountName: argocd-operator-controller-manager
     strategy: deployment
   installModes:
   - supported: true

@@ -50,5 +50,5 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
-      serviceAccountName: argocd-operator
+      serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
