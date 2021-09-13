@@ -1217,7 +1217,10 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 			existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			r.Client.Update(context.TODO(), existingDC)
+			err = r.Client.Update(context.TODO(), existingDC)
+			if err != nil {
+				return err
+			}
 
 			err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
 			if err != nil {
@@ -1279,7 +1282,10 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 			existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			r.Client.Update(context.TODO(), existingDeployment)
+			err = r.Client.Update(context.TODO(), existingDeployment)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = r.updateArgoCDConfiguration(cr, kIngURL)

@@ -220,7 +220,7 @@ func TestKeycloak_testServerCert(t *testing.T) {
 	assert.NilError(t, err)
 
 	sslCertsSecret.Data["tls.crt"] = nil
-	r.Client.Update(context.TODO(), sslCertsSecret)
+	assert.NilError(t, r.Client.Update(context.TODO(), sslCertsSecret))
 
 	_, err = r.getKCServerCert(a)
 	assert.NilError(t, err)
