@@ -328,7 +328,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
-
+	controllerEnv := cr.Spec.Controller.Env
+	// Sharding setting explicitly overrides a value set in the env
+	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	// Let user specify their own environment first
+	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr),
@@ -345,7 +349,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Env: proxyEnvVars(getArgoControllerContainerEnv(cr)...),
+		Env: controllerEnv,
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8082,

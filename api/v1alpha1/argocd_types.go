@@ -99,6 +99,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Sharding contains the options for the Application Controller sharding configuration.
 	Sharding ArgoCDApplicationControllerShardSpec `json:"sharding,omitempty"`
+
+	// Env lets you specify environment for application controller pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -358,6 +361,9 @@ type ArgoCDRepoSpec struct {
 
 	// ExecTimeout specifies the timeout in seconds for tool execution
 	ExecTimeout *int `json:"execTimeout,omitempty"`
+
+	// Env lets you specify environment for repo server pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -437,6 +443,9 @@ type ArgoCDServerSpec struct {
 
 	// Service defines the options for the Service backing the ArgoCD Server component.
 	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
+
+	// Env lets you specify environment for API server pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.

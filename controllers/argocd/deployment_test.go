@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +20,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
@@ -65,13 +65,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 		r := makeTestReconciler(t, lglv)
 
 		err := r.reconcileRepoDeployment(lglv)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 
 		for _, con := range deployment.Spec.Template.Spec.Containers {
 			if con.Name == "argocd-repo-server" {
@@ -98,20 +98,83 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileRepoDeployment(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
+	assert.Equal(t, repoServerDefaultVolumes(), deployment.Spec.Template.Spec.Volumes)
+}
 
-	if diff := cmp.Diff(repoServerDefaultVolumes(), deployment.Spec.Template.Spec.Volumes); diff != "" {
-		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
-	}
+func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
+	t.Run("Test some env set in argocd-server", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		a.Spec.Server.Env = []corev1.EnvVar{
+			{
+				Name:  "FOO",
+				Value: "BAR",
+			},
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+		}
+		timeout := 600
+		a.Spec.Repo.ExecTimeout = &timeout
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileServerDeployment(a)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
+	})
+
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
+	t.Run("Test some env set in argocd-repo-server", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		a.Spec.Repo.Env = []corev1.EnvVar{
+			{
+				Name:  "FOO",
+				Value: "BAR",
+			},
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+		}
+		timeout := 600
+		a.Spec.Repo.ExecTimeout = &timeout
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+	})
+
 	t.Run("ExecTimeout set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -120,23 +183,42 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		r := makeTestReconciler(t, a)
 
 		err := r.reconcileRepoDeployment(a)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 
-		found := false
-		for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
-			if e.Name == "ARGOCD_EXEC_TIMEOUT" && e.Value == "600" {
-				found = true
-				break
-			}
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+	})
+
+	t.Run("ExecTimeout set with env set explicitly", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		timeout := 600
+		a.Spec.Repo.ExecTimeout = &timeout
+		a.Spec.Repo.Env = []corev1.EnvVar{
+			{
+				Name:  "ARGOCD_EXEC_TIMEOUT",
+				Value: "20",
+			},
 		}
+		r := makeTestReconciler(t, a)
 
-		assert.Equal(t, found, true)
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
@@ -144,23 +226,14 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		r := makeTestReconciler(t, a)
 
 		err := r.reconcileRepoDeployment(a)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      "argocd-repo-server",
 			Namespace: testNamespace,
 		}, deployment)
-		assert.NilError(t, err)
-
-		found := false
-		for _, e := range deployment.Spec.Template.Spec.Containers[0].Env {
-			if e.Name == "ARGOCD_EXEC_TIMEOUT" && e.Value == "600" {
-				found = true
-				break
-			}
-		}
-
-		assert.Equal(t, found, false)
+		assert.NoError(t, err)
+		assert.Empty(t, deployment.Spec.Template.Spec.Containers[0].Env)
 	})
 }
 
@@ -172,18 +245,15 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileRepoDeployment(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
-
-	if diff := cmp.Diff(repoServerDefaultVolumeMounts(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
-		t.Fatalf("reconcileRepoDeployment failed:\n%s", diff)
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, repoServerDefaultVolumeMounts(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
 }
 
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
@@ -193,16 +263,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 	r := makeTestReconciler(t, a)
 
 	os.Setenv("DISABLE_DEX", "true")
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assertNotFound(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: a.Namespace}, deployment)
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 // When Dex is disabled, the Dex Deployment should be removed.
@@ -213,10 +278,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 	r := makeTestReconciler(t, a)
 	os.Setenv("DISABLE_DEX", "true")
 
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	a = makeTestArgoCD()
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
 	assertNotFound(t, r.Client.Get(
@@ -235,10 +300,10 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	a := makeTestArgoCDWithResources()
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-dex-server",
@@ -256,8 +321,8 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
 		},
 	}
-	assert.DeepEqual(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
-	assert.DeepEqual(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
 }
 
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
@@ -275,7 +340,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileDeployments(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	for _, v := range deploymentNames {
 		assertDeploymentHasProxyVars(t, r.Client, v)
@@ -295,7 +360,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	})
 	r := makeTestReconciler(t, a)
 	err := r.reconcileDeployments(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	for _, v := range deploymentNames {
 		refuteDeploymentHasProxyVars(t, r.Client, v)
 	}
@@ -307,7 +372,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(ZapLogger(true))
 
 	err = r.reconcileDeployments(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	for _, v := range deploymentNames {
 		assertDeploymentHasProxyVars(t, r.Client, v)
@@ -328,7 +393,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileDeployments(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assertDeploymentHasProxyVars(t, r.Client, "argocd-redis-ha-haproxy")
 }
@@ -345,10 +410,10 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	})
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileRedisHAProxyDeployment(a))
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      a.Name + "-redis-ha-haproxy",
@@ -366,8 +431,8 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
 		},
 	}
-	assert.DeepEqual(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
-	assert.DeepEqual(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
@@ -394,22 +459,17 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	r := makeTestReconciler(t, a, d)
 
 	err := r.reconcileRepoDeployment(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
-	if l := len(deployment.Spec.Template.Spec.Volumes); l != 5 {
-		t.Fatalf("reconcileRepoDeployment volumes, got %d, want 5", l)
-	}
-
-	if l := len(deployment.Spec.Template.Spec.Containers[0].VolumeMounts); l != 5 {
-		t.Fatalf("reconcileRepoDeployment mounts, got %d, want 5", l)
-	}
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 5)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 5)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -444,9 +504,7 @@ func Test_proxyEnvVars(t *testing.T) {
 
 	for _, tt := range envTests {
 		e := proxyEnvVars(tt.vars...)
-		if diff := cmp.Diff(tt.want, e); diff != "" {
-			t.Errorf("proxyEnvVars(%#v) diff = \n%s", tt.vars, diff)
-		}
+		assert.Equal(t, tt.want, e)
 	}
 }
 
@@ -460,13 +518,13 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	}))
 	r := makeTestReconciler(t, a)
 	err := r.reconcileRepoDeployment(a) //can use other deployments as well
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      "argocd-repo-server",
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	if diff := cmp.Diff(deploymentDefaultNodeSelector(), deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)
@@ -505,10 +563,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -569,9 +627,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		ServiceAccountName: "argocd-argocd-dex-server",
 	}
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
-		t.Fatalf("reconciliation failed:\n%s", diff)
-	}
+	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
@@ -580,15 +636,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	// Creates the deployment and then changes the CR and rereconciles.
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 	a.Spec.Image = "justatest"
 	a.Spec.Version = "latest"
 	a.Spec.Dex.Image = "testdex"
 	a.Spec.Dex.Version = "v0.0.1"
-	assert.NilError(t, r.reconcileDexDeployment(a))
+	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-dex-server",
@@ -648,20 +704,17 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 		},
 		ServiceAccountName: "argocd-argocd-dex-server",
 	}
-
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
-		t.Fatalf("reconciliation failed:\n%s", diff)
-	}
+	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -720,9 +773,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
-		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
-	}
+	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
@@ -732,10 +783,10 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -795,9 +846,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
-		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
-	}
+	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T) {
@@ -805,15 +854,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assert.NilError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a))
 
 	a = makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Server.Insecure = true
 	})
-	assert.NilError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
@@ -873,9 +922,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
-	if diff := cmp.Diff(want, deployment.Spec.Template.Spec); diff != "" {
-		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
-	}
+	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
@@ -886,10 +933,10 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	defer resetHooks()()
 	Register(testDeploymentHook)
 
-	assert.NilError(t, r.reconcileRedisDeployment(cr))
+	assert.NoError(t, r.reconcileRedisDeployment(cr))
 	d := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
-	assert.DeepEqual(t, int32(3), *d.Spec.Replicas)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	assert.Equal(t, int32(3), *d.Spec.Replicas)
 }
 
 func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
@@ -996,7 +1043,7 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		Name:      name,
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	want := []corev1.EnvVar{
 		{Name: "HTTP_PROXY", Value: testHTTPProxy},
@@ -1004,13 +1051,15 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		{Name: "no_proxy", Value: testNoProxy},
 	}
 	for _, c := range deployment.Spec.Template.Spec.Containers {
-		if diff := cmp.Diff(want, c.Env); diff != "" {
-			t.Errorf("deployment proxy configuration failed for container %v in deployment %q:\n%s", c, name, diff)
+		assert.Len(t, c.Env, len(want))
+		for _, w := range want {
+			assert.Contains(t, c.Env, w)
 		}
 	}
 	for _, c := range deployment.Spec.Template.Spec.InitContainers {
-		if diff := cmp.Diff(want, c.Env); diff != "" {
-			t.Errorf("deployment proxy configuration failed for init-container %v in deployment %q:\n%s", c, name, diff)
+		assert.Len(t, c.Env, len(want))
+		for _, w := range want {
+			assert.Contains(t, c.Env, w)
 		}
 	}
 }
@@ -1022,22 +1071,18 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		Name:      name,
 		Namespace: testNamespace,
 	}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	names := []string{"http_proxy", "https_proxy", "no_proxy"}
 	for _, name := range names {
 		for _, c := range deployment.Spec.Template.Spec.Containers {
 			for _, envVar := range c.Env {
-				if strings.ToLower(envVar.Name) == name {
-					t.Errorf("deployment proxy configuration failed for container %q, config var %q = %q", c.Name, envVar.Name, envVar.Value)
-				}
+				assert.NotEqual(t, strings.ToLower(envVar.Name), name)
 			}
 		}
 		for _, c := range deployment.Spec.Template.Spec.InitContainers {
 			for _, envVar := range c.Env {
-				if strings.ToLower(envVar.Name) == name {
-					t.Errorf("deployment proxy configuration failed for init-container %q, config var %q = %q", c.Name, envVar.Name, envVar.Value)
-				}
+				assert.NotEqual(t, strings.ToLower(envVar.Name), name)
 			}
 		}
 	}
@@ -1045,9 +1090,7 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 
 func assertNotFound(t *testing.T, err error) {
 	t.Helper()
-	if !apierrors.IsNotFound(err) {
-		t.Fatalf("expected not found got %#v", err)
-	}
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func controllerProcessors(n int32) argoCDOpt {

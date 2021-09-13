@@ -801,9 +801,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		deploy.Spec.Template.Spec.ServiceAccountName = cr.Spec.Repo.ServiceAccount
 	}
 
-	repoEnv := proxyEnvVars()
+	// Global proxy env vars go first
+	repoEnv := cr.Spec.Repo.Env
+	// Environment specified in the CR take precedence over everything else
+	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = append(repoEnv, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)})
+		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -957,11 +960,13 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
+	serverEnv := cr.Spec.Server.Env
+	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
-		Env:             proxyEnvVars(),
+		Env:             serverEnv,
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
