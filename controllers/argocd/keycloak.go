@@ -92,8 +92,26 @@ var (
 	controllerRef  bool  = true
 )
 
-<<<<<<< HEAD:controllers/argocd/keycloak.go
-<<<<<<< HEAD:controllers/argocd/keycloak.go
+// KeycloakPostData defines the values required to update Keycloak Realm.
+type keycloakConfig struct {
+	ArgoName           string
+	ArgoNamespace      string
+	Username           string
+	Password           string
+	KeycloakURL        string
+	ArgoCDURL          string
+	KeycloakServerCert []byte
+	VerifyTLS          bool
+}
+
+type oidcConfig struct {
+	Name           string   `json:"name"`
+	Issuer         string   `json:"issuer"`
+	ClientID       string   `json:"clientID"`
+	ClientSecret   string   `json:"clientSecret"`
+	RequestedScope []string `json:"requestedScopes"`
+}
+
 // getKeycloakContainerImage will return the container image for the Keycloak.
 //
 // There are three possible options for configuring the image, and this is the
@@ -122,33 +140,6 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
-=======
-=======
-// KeycloakPostData defines the values required to update Keycloak Realm.
-type keycloakConfig struct {
-	ArgoName           string
-	ArgoNamespace      string
-	Username           string
-	Password           string
-	KeycloakURL        string
-	ArgoCDURL          string
-	KeycloakServerCert []byte
-	VerifyTLS          bool
-}
-
-type oidcConfig struct {
-	Name           string   `json:"name"`
-	Issuer         string   `json:"issuer"`
-	ClientID       string   `json:"clientID"`
-	ClientSecret   string   `json:"clientSecret"`
-	RequestedScope []string `json:"requestedScopes"`
-}
-
->>>>>>> feat: Automatically install and configure Keycloak SSO for Kubernetes platform (#312):pkg/controller/argocd/keycloak.go
-// getKeycloakContainerImage will return container image for Keycloak.
-func getKeycloakContainerImage(img string, ver string) string {
-	return argoutil.CombineImageTag(img, ver)
->>>>>>> feat: Configure Keycloak SSO for Argo CD Instance(#312):pkg/controller/argocd/keycloak.go
 }
 
 func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
@@ -619,15 +610,15 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 
 	// Create Keycloak Ingress
 	ing := newKeycloakIngress(cr)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: ing.Name,
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ing.Name,
 		Namespace: ing.Namespace}, ing)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err := controllerutil.SetControllerReference(cr, ing, r.scheme); err != nil {
+			if err := controllerutil.SetControllerReference(cr, ing, r.Scheme); err != nil {
 				return err
 			}
-			err = r.client.Create(context.TODO(), ing)
+			err = r.Client.Create(context.TODO(), ing)
 			if err != nil {
 				return err
 			}
@@ -638,15 +629,15 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 
 	// Create Keycloak Service
 	svc := newKeycloakService(cr)
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name,
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: svc.Name,
 		Namespace: svc.Namespace}, svc)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err := controllerutil.SetControllerReference(cr, svc, r.scheme); err != nil {
+			if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 				return err
 			}
-			err = r.client.Create(context.TODO(), svc)
+			err = r.Client.Create(context.TODO(), svc)
 			if err != nil {
 				return err
 			}
@@ -657,15 +648,15 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 
 	// Create Keycloak Deployment
 	dep := newKeycloakDeployment(cr)
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name,
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: dep.Name,
 		Namespace: dep.Namespace}, dep)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err := controllerutil.SetControllerReference(cr, dep, r.scheme); err != nil {
+			if err := controllerutil.SetControllerReference(cr, dep, r.Scheme); err != nil {
 				return err
 			}
-			err = r.client.Create(context.TODO(), dep)
+			err = r.Client.Create(context.TODO(), dep)
 			if err != nil {
 				return err
 			}
@@ -767,7 +758,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (
 			Namespace: cr.Namespace,
 		},
 	}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakIng.Name,
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: existingKeycloakIng.Name,
 		Namespace: existingKeycloakIng.Namespace}, existingKeycloakIng)
 	if err != nil {
 		return nil, err
@@ -781,7 +772,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDIng.Name,
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingArgoCDIng.Name,
 		Namespace: existingArgoCDIng.Namespace}, existingArgoCDIng)
 	if err != nil {
 		return nil, err
@@ -966,32 +957,18 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 			GrantMethod: "prompt",
 		}
 
-<<<<<<< HEAD:controllers/argocd/keycloak.go
-	err = controllerutil.SetOwnerReference(cr, oAuthClient, r.Scheme)
-	if err != nil {
-		return err
-	}
-
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(context.TODO(), oAuthClient)
-			if err != nil {
-				return err
-=======
-		err = controllerutil.SetOwnerReference(cr, oAuthClient, r.scheme)
+		err = controllerutil.SetOwnerReference(cr, oAuthClient, r.Scheme)
 		if err != nil {
 			return err
 		}
 
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				err = r.client.Create(context.TODO(), oAuthClient)
+				err = r.Client.Create(context.TODO(), oAuthClient)
 				if err != nil {
 					return err
 				}
->>>>>>> feat: Automatically install and configure Keycloak SSO for Kubernetes platform (#312):pkg/controller/argocd/keycloak.go
 			}
 		}
 	}
@@ -1182,18 +1159,18 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 	if err != nil {
 		return err
 	}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: templateInstanceRef.Name,
 		Namespace: templateInstanceRef.Namespace}, &template.TemplateInstance{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info(fmt.Sprintf("Template API found, Installing keycloak using openshift templates for ArgoCD %s in namespace %s",
 				cr.Name, cr.Namespace))
 
-			if err := controllerutil.SetControllerReference(cr, templateInstanceRef, r.scheme); err != nil {
+			if err := controllerutil.SetControllerReference(cr, templateInstanceRef, r.Scheme); err != nil {
 				return err
 			}
 
-			err = r.client.Create(context.TODO(), templateInstanceRef)
+			err = r.Client.Create(context.TODO(), templateInstanceRef)
 			if err != nil {
 				return err
 			}
@@ -1208,7 +1185,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 			Namespace: cr.Namespace,
 		},
 	}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
@@ -1240,7 +1217,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 			existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			r.client.Update(context.TODO(), existingDC)
+			r.Client.Update(context.TODO(), existingDC)
 
 			err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
 			if err != nil {
@@ -1271,7 +1248,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 		},
 	}
 
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: existingDeployment.Name, Namespace: existingDeployment.Namespace}, existingDeployment)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDeployment.Name, Namespace: existingDeployment.Namespace}, existingDeployment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
@@ -1302,7 +1279,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 			existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			r.client.Update(context.TODO(), existingDeployment)
+			r.Client.Update(context.TODO(), existingDeployment)
 		}
 
 		err = r.updateArgoCDConfiguration(cr, kIngURL)

@@ -39,7 +39,6 @@ import (
 func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
 	t.Helper()
 	s := scheme.Scheme
-	s.AddKnownTypes(argov1alpha1.SchemeGroupVersion, acd)
 	// Register template scheme
 	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
 	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
@@ -89,7 +88,7 @@ func TestReconcile_noTemplateInstance(t *testing.T) {
 }
 
 func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloak()
 
 	// Cluster does not have a template instance
@@ -100,7 +99,7 @@ func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
 }
 
 func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloak()
 
 	// Cluster does not have a template instance
@@ -111,7 +110,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Deployment
 	deployment := &k8sappsv1.Deployment{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
 	assert.NilError(t, err)
 
 	assert.Equal(t, deployment.Name, defaultKeycloakIdentifier)
@@ -145,7 +144,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Service
 	svc := &corev1.Service{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
 	assert.NilError(t, err)
 
 	assert.Equal(t, svc.Name, defaultKeycloakIdentifier)
@@ -157,7 +156,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Ingress
 	ing := &extv1beta1.Ingress{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
 	assert.NilError(t, err)
 
 	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
