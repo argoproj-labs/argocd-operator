@@ -871,7 +871,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				DisplayName: "Login with OpenShift",
 				ProviderID:  "openshift-v4",
 				Config: map[string]string{
-					"baseUrl":      fmt.Sprintf("https://kubernetes.default.svc.cluster.local"),
+					"baseUrl":      "https://kubernetes.default.svc.cluster.local",
 					"clientSecret": oAuthClientSecret,
 					"clientId":     getOAuthClient(cfg.ArgoNamespace),
 					"defaultScope": "user:full",
@@ -1029,7 +1029,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config"))
+		log.Error(err, "unable to get k8s config")
 		return err
 	}
 
@@ -1041,7 +1041,7 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("Set the Realm Creation status annoation to false"))
+	log.Info("Set the Realm Creation status annoation to false")
 	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
 	if err != nil {
 		return err
