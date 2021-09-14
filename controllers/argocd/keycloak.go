@@ -127,13 +127,19 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.SSO.Image
 	if img == "" {
-		img = common.ArgoCDKeycloakImageName
+		img = common.ArgoCDKeycloakImage
+		if IsTemplateAPIAvailable() {
+			img = common.ArgoCDKeycloakImageForOpenShift
+		}
 		defaultImg = true
 	}
 
 	tag := cr.Spec.SSO.Version
 	if tag == "" {
 		tag = common.ArgoCDKeycloakVersion
+		if IsTemplateAPIAvailable() {
+			tag = common.ArgoCDKeycloakVersionForOpenShift
+		}
 		defaultTag = true
 	}
 	if e := os.Getenv(common.ArgoCDKeycloakImageEnvName); e != "" && (defaultTag && defaultImg) {
@@ -549,6 +555,14 @@ func newKeycloakService(cr *argoprojv1a1.ArgoCD) *corev1.Service {
 	}
 }
 
+func getKeycloakContainerEnv() []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: "KEYCLOAK_USER", Value: defaultKeycloakAdminUser},
+		{Name: "KEYCLOAK_PASSWORD", Value: defaultKeycloakAdminPassword},
+		{Name: "PROXY_ADDRESS_FORWARDING", Value: "true"},
+	}
+}
+
 func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 
 	var replicas int32 = 1
@@ -581,11 +595,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 						{
 							Name:  defaultKeycloakIdentifier,
 							Image: defaultKeycloakImage,
-							Env: []corev1.EnvVar{
-								{Name: "KEYCLOAK_USER", Value: defaultKeycloakAdminUser},
-								{Name: "KEYCLOAK_PASSWORD", Value: defaultKeycloakAdminPassword},
-								{Name: "PROXY_ADDRESS_FORWARDING", Value: "true"},
-							},
+							Env:   proxyEnvVars(getKeycloakContainerEnv()...),
 							Ports: []corev1.ContainerPort{
 								{Name: "http", ContainerPort: httpPort},
 								{Name: "https", ContainerPort: portTLS},
