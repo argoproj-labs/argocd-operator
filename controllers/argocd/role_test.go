@@ -18,7 +18,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 	assert.NilError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
 	workloadIdentifier := "x"
@@ -50,7 +50,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	rules := policyRuleForDexServer()
 	role := newRole(dexServer, rules, a)
@@ -112,7 +112,7 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t)
-	assert.NilError(t, createNamespace(r, a.Namespace, a.Namespace))
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 	Register(testRoleHook)
 
 	roles, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
