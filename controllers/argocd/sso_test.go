@@ -132,7 +132,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Name,
 		defaultKeycloakIdentifier)
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Image,
-		defaultKeycloakImage)
+		getKeycloakContainerImage(a))
 
 	testEnv := []corev1.EnvVar{
 		{Name: "KEYCLOAK_USER", Value: defaultKeycloakAdminUser},

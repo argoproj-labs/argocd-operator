@@ -74,8 +74,6 @@ const (
 	defaultTemplateIdentifier = "rhsso"
 	// Default name for Keycloak broker.
 	defaultKeycloakBrokerName = "keycloak-broker"
-	// Default Image name for Keycloak deployments on non-openshift platforms.
-	defaultKeycloakImage = "quay.io/keycloak/keycloak:9.0.3"
 	// Default Keycloak Instance Admin user.
 	defaultKeycloakAdminUser = "admin"
 	// Default Keycloak Instance Admin password.
@@ -594,7 +592,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 					Containers: []corev1.Container{
 						{
 							Name:  defaultKeycloakIdentifier,
-							Image: defaultKeycloakImage,
+							Image: getKeycloakContainerImage(cr),
 							Env:   proxyEnvVars(getKeycloakContainerEnv()...),
 							Ports: []corev1.ContainerPort{
 								{Name: "http", ContainerPort: httpPort},
