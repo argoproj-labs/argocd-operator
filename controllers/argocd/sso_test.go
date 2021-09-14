@@ -18,22 +18,20 @@ import (
 	"context"
 	"testing"
 
+	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	"gotest.tools/assert"
 	k8sappsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
@@ -155,30 +153,34 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	assert.DeepEqual(t, svc.Spec.Type, corev1.ServiceType("LoadBalancer"))
 
 	// Keycloak Ingress
-	ing := &extv1beta1.Ingress{}
+	ing := &networkingv1.Ingress{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
 	assert.NilError(t, err)
 
 	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
 	assert.Equal(t, ing.Namespace, a.Namespace)
 
-	testTLS := []extv1beta1.IngressTLS{
+	testTLS := []networkingv1.IngressTLS{
 		{
 			Hosts: []string{keycloakIngressHost},
 		},
 	}
 	assert.DeepEqual(t, ing.Spec.TLS, testTLS)
 
-	testRules := []extv1beta1.IngressRule{
+	testRules := []networkingv1.IngressRule{
 		{
 			Host: keycloakIngressHost,
-			IngressRuleValue: extv1beta1.IngressRuleValue{
-				HTTP: &extv1beta1.HTTPIngressRuleValue{
-					Paths: []extv1beta1.HTTPIngressPath{
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
 						{
-							Backend: extv1beta1.IngressBackend{
-								ServiceName: defaultKeycloakIdentifier,
-								ServicePort: intstr.FromInt(int(httpPort)),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: defaultKeycloakIdentifier,
+									Port: networkingv1.ServiceBackendPort{
+										Number: httpPort,
+									},
+								},
 							},
 						},
 					},

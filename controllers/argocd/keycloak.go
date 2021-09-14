@@ -33,7 +33,6 @@ import (
 	"gopkg.in/yaml.v2"
 	k8sappsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +46,7 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	networkingv1 "k8s.io/api/networking/v1"
 )
 
 const (
@@ -497,29 +497,33 @@ func newKeycloakTemplate(cr *argoprojv1a1.ArgoCD) (template.Template, error) {
 	return tmpl, err
 }
 
-func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *extv1beta1.Ingress {
+func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 
-	return &extv1beta1.Ingress{
+	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultKeycloakIdentifier,
 			Namespace: cr.Namespace,
 		},
-		Spec: extv1beta1.IngressSpec{
-			TLS: []extv1beta1.IngressTLS{
+		Spec: networkingv1.IngressSpec{
+			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts: []string{keycloakIngressHost},
 				},
 			},
-			Rules: []extv1beta1.IngressRule{
+			Rules: []networkingv1.IngressRule{
 				{
 					Host: keycloakIngressHost,
-					IngressRuleValue: extv1beta1.IngressRuleValue{
-						HTTP: &extv1beta1.HTTPIngressRuleValue{
-							Paths: []extv1beta1.HTTPIngressPath{
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
 								{
-									Backend: extv1beta1.IngressBackend{
-										ServiceName: defaultKeycloakIdentifier,
-										ServicePort: intstr.FromInt(int(httpPort)),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: defaultKeycloakIdentifier,
+											Port: networkingv1.ServiceBackendPort{
+												Number: httpPort,
+											},
+										},
 									},
 								},
 							},
@@ -760,7 +764,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (
 	// Get keycloak hostname from ingress.
 	// keycloak hostname is required to post realm configuration to keycloak when keycloak cannot be accessed using service name
 	// due to network policies or operator running outside the cluster or development purpose.
-	existingKeycloakIng := &extv1beta1.Ingress{
+	existingKeycloakIng := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultKeycloakIdentifier,
 			Namespace: cr.Namespace,
@@ -774,7 +778,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (
 	kIngURL := fmt.Sprintf("https://%s", existingKeycloakIng.Spec.Rules[0].Host)
 
 	// Get ArgoCD hostname from Ingress. ArgoCD hostname is used in the keycloak client configuration.
-	existingArgoCDIng := &extv1beta1.Ingress{
+	existingArgoCDIng := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-%s", cr.Name, "server"),
 			Namespace: cr.Namespace,
