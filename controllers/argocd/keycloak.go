@@ -499,10 +499,18 @@ func newKeycloakTemplate(cr *argoprojv1a1.ArgoCD) (template.Template, error) {
 
 func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 
+	pathType := networkingv1.PathTypeImplementationSpecific
+
+	// annotations
+	atns := getDefaultIngressAnnotations(cr)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      defaultKeycloakIdentifier,
-			Namespace: cr.Namespace,
+			Annotations: atns,
+			Name:        defaultKeycloakIdentifier,
+			Namespace:   cr.Namespace,
 		},
 		Spec: networkingv1.IngressSpec{
 			TLS: []networkingv1.IngressTLS{
@@ -517,14 +525,16 @@ func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
 								{
+									Path: "/",
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
 											Name: defaultKeycloakIdentifier,
 											Port: networkingv1.ServiceBackendPort{
-												Number: httpPort,
+												Name: "http",
 											},
 										},
 									},
+									PathType: &pathType,
 								},
 							},
 						},

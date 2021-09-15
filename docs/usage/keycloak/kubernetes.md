@@ -1,6 +1,8 @@
 # Usage
 
-If the operator is deployed in a Kubernetes Platform, Keycloak acts as a Single sign-on provider for Argo CD.
+This document describes the usage of Keycloak as a Single sign-on provider for ArgoCD.
+
+The following example shows the most minimal valid manifest to create a new Argo CD cluster with keycloak as a Single sign-on provider.
 
 This guide assumes a Kubernetes cluster based on [minikube](https://minikube.sigs.k8s.io/).
 
@@ -14,7 +16,7 @@ The addon is disabled by default, enable it if necessary.
 minikube addons enable ingress
 ```
 
-Verify that the ingress Pod is running. In this example, the ingress controller is running in the `kube-system` namespace.
+Verify that the ingress Pod is running. In this example, the ingress controller is running in the `ingress-nginx` namespace.
 
 ```bash
 kubectl get pods -A
@@ -22,7 +24,7 @@ kubectl get pods -A
 
 ```txt
 NAMESPACE              NAME                                                    READY   STATUS    RESTARTS   AGE
-kube-system            nginx-ingress-controller-6fc5bcc8c9-vg26z               1/1     Running   0          9h
+ingress-nginx       nginx-ingress-controller-6fc5bcc8c9-vg26z               1/1     Running   0          9h
 ........
 ........
 ```
@@ -45,7 +47,7 @@ spec:
     insecure: true
 ```
 
-**NOTE**: If you are running operator locally using `operator-sdk run local`, Please add `verifyTLS: false` to the `.spec.sso` field.
+**NOTE**: If you are running operator locally using `make run`, Please add `verifyTLS: false` to the `.spec.sso` field.
 
 ## Create
 
@@ -143,6 +145,6 @@ metadata:
     example: basic
 spec:
   server:
-    route:
+    ingress:
      enabled: true
 ```

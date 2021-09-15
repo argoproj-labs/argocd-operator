@@ -154,6 +154,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Keycloak Ingress
 	ing := &networkingv1.Ingress{}
+	testPathType := networkingv1.PathTypeImplementationSpecific
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
 	assert.NilError(t, err)
 
@@ -174,14 +175,16 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
 						{
+							Path: "/",
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
 									Name: defaultKeycloakIdentifier,
 									Port: networkingv1.ServiceBackendPort{
-										Number: httpPort,
+										Name: "http",
 									},
 								},
 							},
+							PathType: &testPathType,
 						},
 					},
 				},
