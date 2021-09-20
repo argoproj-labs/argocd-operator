@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	e "errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -104,6 +105,12 @@ func verifyTemplateAPI() error {
 
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		if !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+			err := e.New("duplicated SSO configuration")
+			log.Error(err, fmt.Sprintf("Only can install one SSO provider, please uninstall Dex for ArgoCD %s in namespace %s",
+				cr.Name, cr.Namespace))
+		}
+
 		// TemplateAPI is available, Install keycloak using openshift templates.
 		if IsTemplateAPIAvailable() {
 			templateInstanceRef, err := newKeycloakTemplateInstance(cr)

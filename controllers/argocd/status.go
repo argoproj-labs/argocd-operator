@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"reflect"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -28,6 +29,10 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileStatusDex(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusSsoConfig(cr); err != nil {
 		return err
 	}
 
@@ -88,6 +93,21 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Dex != status {
 		cr.Status.Dex = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
+
+// reconcileStatusSsoConfig will ensure that the SsoConfig status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusSsoConfig(cr *argoprojv1a1.ArgoCD) error {
+	status := "Unknown"
+
+	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		status = "Only can install one SSO provider, please uninstall Dex or keycloak"
+	}
+
+	if cr.Status.SsoConfig != status {
+		cr.Status.SsoConfig = status
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil

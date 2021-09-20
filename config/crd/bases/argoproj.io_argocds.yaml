@@ -1629,6 +1629,8 @@ spec:
                   For some reason the state of the Argo CD server component could
                   not be obtained.'
                 type: string
+              ssoConfig:
+                type: string
             type: object
         type: object
     served: true

@@ -639,6 +639,9 @@ type ArgoCDStatus struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Dex",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Dex string `json:"dex,omitempty"`
 
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="SsoConfig",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	SsoConfig string `json:"ssoConfig,omitempty"`
+
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 	// There are five possible phase values:
 	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
