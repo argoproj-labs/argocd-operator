@@ -111,6 +111,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
 		"--status-processors", "20",
+		"--kubectl-parallelism-limit", "10",
 		"--loglevel", "info",
 		"--logformat", "text"}
 	if diff := cmp.Diff(want, command); diff != "" {
@@ -151,6 +152,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 		"--repo-server", "argocd-repo-server.argocd.svc.cluster.local:8081",
 		"--status-processors", "30",
+		"--kubectl-parallelism-limit", "10",
 		"--loglevel", "info",
 		"--logformat", "text"}
 	if diff := cmp.Diff(want, command); diff != "" {

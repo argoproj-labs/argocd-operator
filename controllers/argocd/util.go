@@ -106,6 +106,7 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
 		"--redis", getRedisServerAddress(cr),
 		"--repo-server", getRepoServerAddress(cr),
 		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
+		"--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)),
 	}
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
@@ -280,6 +281,15 @@ func getArgoServerStatusProcessors(cr *argoprojv1a1.ArgoCD) int32 {
 		sp = cr.Spec.Controller.Processors.Status
 	}
 	return sp
+}
+
+// getArgoControllerParellismLimit returns the parallelism limit for the application controller
+func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
+	pl := common.ArgoCDDefaultControllerParallelismLimit
+	if cr.Spec.Controller.ParallelismLimit > 0 {
+		pl = cr.Spec.Controller.ParallelismLimit
+	}
+	return pl
 }
 
 // getDexContainerImage will return the container image for the Dex server.
