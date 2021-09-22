@@ -46,7 +46,7 @@ const (
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
 	// ArgoCDDefaultApplicationSetImage is the Argo CD Application Set container image to use when not specified.
-	ArgoCDDefaultApplicationSetImage = "quay.io/argocdapplicationset/argocd-applicationset"
+	ArgoCDDefaultApplicationSetImage = "quay.io/argoproj/argocd-applicationset"
 
 	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
 	ArgoCDDefaultApplicationSetVersion = "v0.2.0"
