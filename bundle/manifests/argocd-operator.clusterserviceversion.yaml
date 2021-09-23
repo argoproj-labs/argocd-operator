@@ -138,13 +138,20 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - kind: Application
+    - description: An Application is a group of Kubernetes resources as defined by
+        a manifest.
+      displayName: Application
+      kind: Application
       name: applications.argoproj.io
       version: v1alpha1
-    - kind: ApplicationSet
+    - description: An ApplicationSet is a group or set of Application resources.
+      displayName: ApplicationSet
+      kind: ApplicationSet
       name: applicationsets.argoproj.io
       version: v1alpha1
-    - kind: AppProject
+    - description: An AppProject is a logical grouping of Argo CD Applications.
+      displayName: AppProject
+      kind: AppProject
       name: appprojects.argoproj.io
       version: v1alpha1
     - description: ArgoCDExport is the Schema for the argocdexports API

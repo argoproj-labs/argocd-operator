@@ -46,7 +46,7 @@ const (
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
 	// ArgoCDDefaultApplicationSetImage is the Argo CD Application Set container image to use when not specified.
-	ArgoCDDefaultApplicationSetImage = "quay.io/argocdapplicationset/argocd-applicationset"
+	ArgoCDDefaultApplicationSetImage = "quay.io/argoproj/argocd-applicationset"
 
 	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
 	ArgoCDDefaultApplicationSetVersion = "v0.2.0"
@@ -249,6 +249,9 @@ const (
 
 	// ArgoCDDefaultServerStatusProcessors is the number of ArgoCD Server Status Processors to use when not specified.
 	ArgoCDDefaultServerStatusProcessors = int32(20)
+
+	// ArgoCDDefaultControllerParellelismLimit is the default parallelism limit for application controller
+	ArgoCDDefaultControllerParallelismLimit = int32(10)
 
 	// ArgoCDDefaultServerResourceLimitCPU is the default CPU limit when not specified for the Argo CD server contianer.
 	ArgoCDDefaultServerResourceLimitCPU = "1000m"

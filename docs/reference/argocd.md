@@ -77,6 +77,7 @@ Version | *(recent ApplicationSet version)* | The tag to use with the Applicatio
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
+ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller (`--kubectl-parallelism-limit` flag)
 
 ### ApplicationSet Controller Example
 
