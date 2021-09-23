@@ -334,8 +334,8 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO != nil {
-		err := e.New("duplicated SSO configuration")
-		log.Error(err, fmt.Sprintf("Only can install one SSO provider, please uninstall keycloak for ArgoCD %s in namespace %s",
+		err := e.New("multiple SSO configuration")
+		log.Error(err, fmt.Sprintf("Installation of multiple SSO providers is not permitted. Please choose a single provider for Argo CD %s in namespace %s.",
 			cr.Name, cr.Namespace))
 	}
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)

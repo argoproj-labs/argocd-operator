@@ -1635,6 +1635,11 @@ spec:
                   not be obtained.'
                 type: string
               ssoConfig:
+                description: 'SSOConfig is an indicator of misconfiguration where
+                  multiple SSO providers are configured Success: Only one SSO provider
+                  is configured in CR. Failed: More than one SSO providers are configure
+                  in CR. Unknown: For some reason the SSO configuration could not
+                  be obtained.'
                 type: string
             type: object
         type: object

@@ -32,7 +32,7 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileStatusSsoConfig(cr); err != nil {
+	if err := r.reconcileStatusSSOConfig(cr); err != nil {
 		return err
 	}
 
@@ -98,16 +98,18 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-// reconcileStatusSsoConfig will ensure that the SsoConfig status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusSsoConfig(cr *argoprojv1a1.ArgoCD) error {
+// reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusSSOConfig(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
-		status = "Only can install one SSO provider, please uninstall Dex or keycloak"
+		status = "Failed"
+	} else if (cr.Spec.SSO != nil && reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) || (cr.Spec.SSO == nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) {
+		status = "Success"
 	}
 
-	if cr.Status.SsoConfig != status {
-		cr.Status.SsoConfig = status
+	if cr.Status.SSOConfig != status {
+		cr.Status.SSOConfig = status
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
