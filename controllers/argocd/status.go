@@ -103,8 +103,10 @@ func (r *ReconcileArgoCD) reconcileStatusSSOConfig(cr *argoprojv1a1.ArgoCD) erro
 	status := "Unknown"
 
 	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		// set state to "Failed" when both keycloak and Dex are configured
 		status = "Failed"
 	} else if (cr.Spec.SSO != nil && reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) || (cr.Spec.SSO == nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) {
+		// set state to "Success" when only keycloak or only Dex is configured
 		status = "Success"
 	}
 

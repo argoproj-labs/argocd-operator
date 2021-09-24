@@ -67,6 +67,15 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 		},
 		templateInstance))
 }
+func TestReconcile_testKeycloakTemplateWithDexInstance(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloakWithDex()
+
+	templateAPIFound = true
+	r := makeFakeReconciler(t, a)
+
+	assert.Error(t, r.reconcileSSO(a), "multiple SSO configuration")
+}
 
 func TestReconcile_noTemplateInstance(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))

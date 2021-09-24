@@ -97,6 +97,31 @@ func makeTestArgoCDForKeycloak(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	}
 	return a
 }
+func makeTestArgoCDForKeycloakWithDex(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
+	a := &argoprojv1alpha1.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+		Spec: argoprojv1alpha1.ArgoCDSpec{
+			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+				Provider: "keycloak",
+			},
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				Resources: makeTestDexResources(),
+			},
+			Server: argoprojv1alpha1.ArgoCDServerSpec{
+				Route: argoprojv1alpha1.ArgoCDRouteSpec{
+					Enabled: true,
+				},
+			},
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
 
 func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	a := &argoprojv1alpha1.ArgoCD{

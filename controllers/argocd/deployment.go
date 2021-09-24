@@ -337,6 +337,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		err := e.New("multiple SSO configuration")
 		log.Error(err, fmt.Sprintf("Installation of multiple SSO providers is not permitted. Please choose a single provider for Argo CD %s in namespace %s.",
 			cr.Name, cr.Namespace))
+		return err
 	}
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{

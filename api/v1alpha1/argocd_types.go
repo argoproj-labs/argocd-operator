@@ -642,7 +642,7 @@ type ArgoCDStatus struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Dex",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Dex string `json:"dex,omitempty"`
 
-	// SSOConfig is an indicator of misconfiguration where multiple SSO providers are configured
+	// SSOConfig defines the status of SSO configuration.
 	// Success: Only one SSO provider is configured in CR.
 	// Failed: More than one SSO providers are configure in CR.
 	// Unknown: For some reason the SSO configuration could not be obtained.
