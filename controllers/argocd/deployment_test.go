@@ -293,18 +293,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 		deployment))
 }
 
-// Test when both Dex and keycloak are configured
-func TestReconcileArgoCD_reconcileDexDeployment_with_keycloak_configured(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDForKeycloakWithDex()
-
-	templateAPIFound = true
-	r := makeTestReconciler(t, a)
-
-	assert.Error(t, r.reconcileDexDeployment(a), "multiple SSO configuration")
-}
-
 func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	restoreEnv(t)
 
