@@ -105,7 +105,7 @@ func verifyTemplateAPI() error {
 
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
-		if !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		if cr.Spec.Dex.OpenShiftOAuth == true || cr.Spec.Dex.Config != "" {
 			err := e.New("multiple SSO configuration")
 			log.Error(err, fmt.Sprintf("Installation of multiple SSO providers is not permitted. Please choose a single provider for Argo CD %s in namespace %s.",
 				cr.Name, cr.Namespace))

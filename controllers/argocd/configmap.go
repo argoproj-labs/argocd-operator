@@ -307,8 +307,10 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-			return err
+		if cr.Spec.SSO == nil {
+			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
+				return err
+			}
 		}
 		return r.reconcileExistingArgoConfigMap(cm, cr)
 	}
@@ -353,7 +355,9 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 			}
 			dexConfig = cfg
 		}
-		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+		if cr.Spec.SSO == nil {
+			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+		}
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
