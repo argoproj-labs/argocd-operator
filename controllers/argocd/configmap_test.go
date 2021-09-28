@@ -275,6 +275,25 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 		t.Fatalf("reconcileArgoConfigMap failed, dex.config = %q", c)
 	}
 }
+func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleSSOConfigured(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloakWithDex()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+
+	if c, ok := cm.Data["dex.openShiftOAuth"]; !ok && len(c) != 0 {
+		t.Fatalf("reconcileArgoConfigMap didn't skip setting dex when keycloak is configured, dex.openShiftOAuth = %q", c)
+	}
+}
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))

@@ -1632,6 +1632,12 @@ spec:
                   For some reason the state of the Argo CD server component could
                   not be obtained.'
                 type: string
+              ssoConfig:
+                description: 'SSOConfig defines the status of SSO configuration. Success:
+                  Only one SSO provider is configured in CR. Failed: More than one
+                  SSO providers are configure in CR. Unknown: For some reason the
+                  SSO configuration could not be obtained.'
+                type: string
             type: object
         type: object
     served: true

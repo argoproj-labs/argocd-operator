@@ -307,8 +307,10 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-			return err
+		if cr.Spec.SSO == nil {
+			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
+				return err
+			}
 		}
 		return r.reconcileExistingArgoConfigMap(cm, cr)
 	}
@@ -346,14 +348,16 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	if !isDexDisabled() {
 		dexConfig := getDexConfig(cr)
-		if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
-			cfg, err := r.getOpenShiftDexConfig(cr)
-			if err != nil {
-				return err
+		if cr.Spec.SSO == nil {
+			if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
+				cfg, err := r.getOpenShiftDexConfig(cr)
+				if err != nil {
+					return err
+				}
+				dexConfig = cfg
 			}
-			dexConfig = cfg
+			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 		}
-		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

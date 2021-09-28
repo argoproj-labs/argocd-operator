@@ -642,6 +642,13 @@ type ArgoCDStatus struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Dex",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Dex string `json:"dex,omitempty"`
 
+	// SSOConfig defines the status of SSO configuration.
+	// Success: Only one SSO provider is configured in CR.
+	// Failed: More than one SSO providers are configure in CR.
+	// Unknown: For some reason the SSO configuration could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="SSOConfig",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	SSOConfig string `json:"ssoConfig,omitempty"`
+
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
 	// There are five possible phase values:
 	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.

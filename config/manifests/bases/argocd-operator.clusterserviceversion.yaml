@@ -617,6 +617,14 @@ spec:
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'SSOConfig defines the status of SSO configuration. Success:
+          Only one SSO provider is configured in CR. Failed: More than one SSO providers
+          are configure in CR. Unknown: For some reason the SSO configuration could
+          not be obtained.'
+        displayName: SSOConfig
+        path: ssoConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
   description: '---description---'
   displayName: Argo CD
