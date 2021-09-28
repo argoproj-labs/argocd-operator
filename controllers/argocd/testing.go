@@ -108,7 +108,8 @@ func makeTestArgoCDForKeycloakWithDex(opts ...argoCDOpt) *argoprojv1alpha1.ArgoC
 				Provider: "keycloak",
 			},
 			Dex: argoprojv1alpha1.ArgoCDDexSpec{
-				Resources: makeTestDexResources(),
+				OpenShiftOAuth: true,
+				Resources:      makeTestDexResources(),
 			},
 			Server: argoprojv1alpha1.ArgoCDServerSpec{
 				Route: argoprojv1alpha1.ArgoCDRouteSpec{
