@@ -276,8 +276,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	}
 }
 func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleSSOConfigured(t *testing.T) {
-	restoreEnv(t)
-	os.Setenv("DISABLE_DEX", "false")
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloakWithDex()
 	r := makeTestReconciler(t, a)

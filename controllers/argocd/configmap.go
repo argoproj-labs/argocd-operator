@@ -348,14 +348,14 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	if !isDexDisabled() {
 		dexConfig := getDexConfig(cr)
-		if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
-			cfg, err := r.getOpenShiftDexConfig(cr)
-			if err != nil {
-				return err
-			}
-			dexConfig = cfg
-		}
 		if cr.Spec.SSO == nil {
+			if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
+				cfg, err := r.getOpenShiftDexConfig(cr)
+				if err != nil {
+					return err
+				}
+				dexConfig = cfg
+			}
 			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 		}
 	}
