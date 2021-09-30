@@ -19,9 +19,15 @@ minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 
 Install the OLM components manually. If you already have OLM installed, skip to the [Operator](#operator-install) section.
 
+Either
+
+- install OLM from here: https://github.com/operator-framework/operator-lifecycle-manager/releases
+
+or
+
+- install using the `operator-sdk` command
 ```bash
-kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.14.1/crds.yaml
-kubectl apply -f https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.14.1/olm.yaml
+operator-sdk olm install
 ```
 
 Verify that OLM is installed. There should be two new namespaces, `olm` and `operators` created as a result.
@@ -30,14 +36,14 @@ Verify that OLM is installed. There should be two new namespaces, `olm` and `ope
 kubectl get ns
 ```
 
-```bash
+```
 NAME              STATUS   AGE
-default           Active   15m
-kube-node-lease   Active   15m
-kube-public       Active   15m
-kube-system       Active   15m
-olm               Active   24s
-operators         Active   24s
+kube-system       Active   7d1h
+default           Active   7d1h
+kube-public       Active   7d1h
+kube-node-lease   Active   7d1h
+operators         Active   94s
+olm               Active   94s
 ```
 
 Verify that the OLM Pods are running in the `olm` namespace.
@@ -46,13 +52,13 @@ Verify that the OLM Pods are running in the `olm` namespace.
 kubectl get pods -n olm
 ```
 
-```bash
+```
 NAME                                READY   STATUS    RESTARTS   AGE
-catalog-operator-7dfcfcb46b-xxjdq   1/1     Running   0          3m1s
-olm-operator-76d446f94c-pn6kx       1/1     Running   0          3m1s
-operatorhubio-catalog-h4hc8         1/1     Running   0          2m46s
-packageserver-fb649b58c-96wh6       1/1     Running   0          2m45s
-packageserver-fb649b58c-qn8vx       1/1     Running   0          2m45s
+olm-operator-5b58594fc8-bzpq2       1/1     Running   0          2m10s
+catalog-operator-6d578c5764-l5f5t   1/1     Running   0          2m10s
+packageserver-7495fbf449-w4w6h      1/1     Running   0          80s
+packageserver-7495fbf449-9jmpj      1/1     Running   0          80s
+operatorhubio-catalog-pnsc7         1/1     Running   0          81s
 ```
 
 That's it, OLM should be installed and availble to manage the Argo CD Operator.
@@ -84,7 +90,7 @@ Verify that the Argo CD operator catalog has been created.
 kubectl get catalogsources -n olm
 ```
 
-```bash
+```
 NAME                    DISPLAY               TYPE   PUBLISHER        AGE
 argocd-catalog          Argo CD Operators     grpc   Argo CD          6s
 operatorhubio-catalog   Community Operators   grpc   OperatorHub.io   25m
@@ -96,7 +102,7 @@ Verify that the registry Pod that serves the catalog is running.
 kubectl get pods -n olm -l olm.catalogSource=argocd-catalog
 ```
 
-```bash
+```
 NAME                   READY   STATUS    RESTARTS   AGE
 argocd-catalog-nxn79   1/1     Running   0          55s
 ```
@@ -116,7 +122,7 @@ Verify that the new OperatorGroup was created in the `argocd` namespace.
 kubectl get operatorgroups -n argocd
 ```
 
-```bash
+```
 NAME              AGE
 argocd-operator   10s
 ```
@@ -145,9 +151,9 @@ The Subscription should result in an `InstallPlan` being created in the `argocd`
 kubectl get installplans -n argocd
 ```
 
-```bash
+```
 NAME            CSV                      APPROVAL    APPROVED
-install-slbfr   argocd-operator.v0.0.2   Automatic   true
+install-62hsr   argocd-operator.v0.1.0   Automatic   true
 ```
 
 Finally, verify that the Argo CD Operator Pod is running in the `argocd` namespace.
@@ -157,8 +163,8 @@ kubectl get pods -n argocd
 ```
 
 ```
-NAME                               READY   STATUS    RESTARTS   AGE
-argocd-operator-746b886cd5-cd7m7   1/1     Running   0          4m27s
+NAME                                                  READY   STATUS    RESTARTS   AGE
+argocd-operator-controller-manager-74b9ddb78c-lxzq2   2/2     Running   0          2m27s
 ```
 
 ## Usage 
@@ -170,7 +176,7 @@ documentation to learn how to create new `ArgoCD` resources.
 
 You can clean up the operator resources by running the following commands.
 
-```
+```bash
 kubectl delete -n argocd -f deploy/subscription.yaml
 kubectl delete -n argocd -f deploy/operator_group.yaml
 kubectl delete -n olm -f deploy/catalog_source.yaml
