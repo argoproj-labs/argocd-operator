@@ -4,6 +4,6 @@ metadata:
   name: argocd-catalog
 spec:
   sourceType: grpc
-  image: quay.io/jpitman63/argocd-operator-index:docs-001
+  image: quay.io/argoprojlabs/argocd-operator:v0.1.0
   displayName: Argo CD Operators
   publisher: Argo CD Community
