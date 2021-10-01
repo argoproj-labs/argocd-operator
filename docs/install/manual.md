@@ -1,4 +1,4 @@
-# Manual Installation
+# Manual Installation using kustomize
 
 The following steps can be used to manually install the operator on any Kubernetes environment with minimal overhead.
 
@@ -19,85 +19,36 @@ minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 ## Manual Install
 
 The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes 
-manifests.
+manifests. Note that these steps generates the manifests using kustomize.
 
 ### Namespace
 
-It is a good idea to create a new namespace for the operator.
-
-```bash
-kubectl create namespace argocd
-```
-
-Once the namespace is created, set up the local context to use the new namespace.
-
-```bash
-kubectl config set-context argocd --cluster argocd --namespace argocd --user argocd
-kubectl config use-context argocd
-```
-
-The remaining resources will now be created in the new namespace.
-
-### RBAC
-
-Set up RBAC for the ArgoCD operator and components.
-
-NOTE: The ClusterRoleBindings defined in `deploy/role_binding.yaml` use the `argocd` namespace. You will need to update these if using a different namespace.
- 
-
-```bash
-kubectl create -f deploy/service_account.yaml
-kubectl create -f deploy/role.yaml
-kubectl create -f deploy/role_binding.yaml
-kubectl create -f deploy/cluster_role.yaml
-kubectl create -f deploy/cluster_role_binding.yaml
-```
-
-### CRDs
-
-Add the upstream Argo CD CRDs to the cluster.
-
-```bash
-kubectl create -f deploy/argo-cd
-```
-
-Add the ArgoCD Operator CRDs to the cluster.
-
-```bash
-kubectl create -f deploy/crds
-```
-
-There should be three CRDs present for ArgoCD on the cluster.
-
-```bash
-kubectl get crd
-```
-
-```bash
-NAME                       CREATED AT
-applications.argoproj.io   2019-11-09T02:35:47Z
-appprojects.argoproj.io    2019-11-09T02:35:47Z
-argocdexports.argoproj.io  2019-11-09T02:36:02Z
-argocds.argoproj.io        2019-11-09T02:36:02Z
-```
+By default, the operator is installed into the `argocd-operator-system` namespace. To modify this, update the
+value of the `namespace` specified in the `config/default/kustomization.yaml` file. 
 
 ### Deploy Operator
 
-Deploy the operator
+Deploy the operator. This will create all the necessary resources, including the namespace.
 
 ```bash
-kubectl create -f deploy/operator.yaml
+make deploy
+```
+
+If you want to use your own custom operator container image, you can specify the image name using the `IMG` variable.
+
+```bash
+make deploy IMG=quay.io/my-org/argocd-operator:latest
 ```
 
 The operator pod should start and enter a `Running` state after a few seconds.
 
 ```bash
-kubectl get pods
+kubectl get pods -n argocd-operator-system
 ```
 
 ```bash
-NAME                              READY   STATUS    RESTARTS   AGE
-argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
+NAME                                                  READY   STATUS    RESTARTS   AGE
+argocd-operator-controller-manager-6c449c6998-ts95w   2/2     Running   0          33s
 ```
 
 ## Usage 
@@ -107,6 +58,12 @@ documentation to learn how to create new `ArgoCD` resources.
 
 ## Cleanup 
 
-TODO
+To remove the operator from the cluster, run the following comand. This will remove all resources that were created,
+including the namespace.
+```bash
+make undeploy
+```
+
+
 
 [docs_usage]:../usage/basics.md
