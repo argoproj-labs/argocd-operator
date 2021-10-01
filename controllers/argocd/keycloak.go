@@ -212,7 +212,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 	ns := cr.Namespace
 	keycloakContainer := getKeycloakContainer(cr)
 
-	return &appsv1.DeploymentConfig{
+	dc := &appsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"argocd.argoproj.io/realm-created": "false",
@@ -279,6 +279,14 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 			},
 		},
 	}
+
+	if cr.Spec.NodePlacement != nil {
+		dc.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		dc.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
+
+	return dc
+
 }
 
 func getKeycloakServiceTemplate(ns string) *corev1.Service {
