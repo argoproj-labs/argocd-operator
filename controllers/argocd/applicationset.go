@@ -179,7 +179,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 			existingSpec.ServiceAccountName != podSpec.ServiceAccountName ||
 			!reflect.DeepEqual(existing.Labels, deploy.Labels) ||
 			!reflect.DeepEqual(existing.Spec.Template.Labels, deploy.Spec.Template.Labels) ||
-			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector)
+			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {
@@ -189,6 +191,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 			existing.Labels = deploy.Labels
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			existing.Spec.Selector = deploy.Spec.Selector
+			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
