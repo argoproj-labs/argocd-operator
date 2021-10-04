@@ -332,6 +332,27 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "test-init-container")
 }
 
+func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileRepoDeployment(a)
+	assert.NoError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+
+	deployment.Spec.Template.Spec.Containers[0].Command[6] = "debug"
+	err = r.reconcileRepoDeployment(a)
+
+	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
+}
+
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
