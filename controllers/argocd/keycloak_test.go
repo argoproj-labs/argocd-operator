@@ -225,3 +225,15 @@ func TestKeycloak_testServerCert(t *testing.T) {
 	_, err = r.getKCServerCert(a)
 	assert.NilError(t, err)
 }
+
+func TestKeycloak_NodeLabelSelector(t *testing.T) {
+	a := makeTestArgoCDForKeycloak()
+	a.Spec.NodePlacement = &argoappv1.ArgoCDNodePlacementSpec{
+		NodeSelector: deploymentDefaultNodeSelector(),
+		Tolerations:  deploymentDefaultTolerations(),
+	}
+
+	dc := getKeycloakDeploymentConfigTemplate(a)
+	assert.DeepEqual(t, dc.Spec.Template.Spec.NodeSelector, a.Spec.NodePlacement.NodeSelector)
+	assert.DeepEqual(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
+}
