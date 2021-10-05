@@ -165,6 +165,18 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 					changed = true
 				}
 
+				// Check if Node Placement is updated by the user.
+				actualDC := getKeycloakDeploymentConfigTemplate(cr)
+				if !reflect.DeepEqual(existingDC.Spec.Template.Spec.NodeSelector, actualDC.Spec.Template.Spec.NodeSelector) {
+					existingDC.Spec.Template.Spec.NodeSelector = actualDC.Spec.Template.Spec.NodeSelector
+					changed = true
+				}
+
+				if !reflect.DeepEqual(existingDC.Spec.Template.Spec.Tolerations, actualDC.Spec.Template.Spec.Tolerations) {
+					existingDC.Spec.Template.Spec.Tolerations = actualDC.Spec.Template.Spec.Tolerations
+					changed = true
+				}
+
 				// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
 				if existingDC.Status.AvailableReplicas == expectedReplicas &&
 					existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
