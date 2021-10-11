@@ -367,6 +367,15 @@ type ArgoCDRepoSpec struct {
 
 	// Env lets you specify environment for repo server pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Volumes adds volumes to the repo server deployment
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts adds volumeMounts to the repo server container
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// InitContainers defines the list of initialization containers for the repo server deployment
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

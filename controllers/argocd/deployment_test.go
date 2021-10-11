@@ -93,19 +93,46 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 // reconcileRepoDeployment creates a Deployment with the correct volumes for the
 // repo-server.
 func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	t.Run("create default volumes", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
 
-	err := r.reconcileRepoDeployment(a)
-	assert.NoError(t, err)
-	deployment := &appsv1.Deployment{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      "argocd-repo-server",
-		Namespace: testNamespace,
-	}, deployment)
-	assert.NoError(t, err)
-	assert.Equal(t, repoServerDefaultVolumes(), deployment.Spec.Template.Spec.Volumes)
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+		assert.Equal(t, repoServerDefaultVolumes(), deployment.Spec.Template.Spec.Volumes)
+	})
+
+	t.Run("create extra volumes", func(t *testing.T) {
+		customVolume := corev1.Volume{
+			Name: "custom-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}
+
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Repo.Volumes = []corev1.Volume{customVolume}
+		})
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+		assert.Contains(t, deployment.Spec.Template.Spec.Volumes, customVolume)
+	})
 }
 
 func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
@@ -240,8 +267,57 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 // reconcileRepoDeployment creates a Deployment with the correct mounts for the
 // repo-server.
 func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
+	t.Run("Create default mounts", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+		assert.Equal(t, repoServerDefaultVolumeMounts(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	})
+
+	t.Run("Add extra mounts", func(t *testing.T) {
+		testMount := corev1.VolumeMount{
+			Name:      "test-mount",
+			MountPath: "/test-mount",
+		}
+
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Repo.VolumeMounts = []corev1.VolumeMount{testMount}
+		})
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileRepoDeployment(a)
+		assert.NoError(t, err)
+
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, testMount)
+	})
+}
+
+func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		ic := corev1.Container{
+			Name:  "test-init-container",
+			Image: "test-image",
+		}
+		a.Spec.Repo.InitContainers = []corev1.Container{ic}
+	})
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileRepoDeployment(a)
@@ -253,7 +329,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		Namespace: testNamespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, repoServerDefaultVolumeMounts(), deployment.Spec.Template.Spec.Containers[0].VolumeMounts)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "test-init-container")
 }
 
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
