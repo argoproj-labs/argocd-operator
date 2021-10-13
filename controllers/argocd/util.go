@@ -184,6 +184,18 @@ func getArgoRepoResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
+// getArgoRepoInitContainers will return the initContainers for the Argo CD Repo server container.
+func getArgoRepoInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
+	initContainers := []corev1.Container{}
+
+	// Allow override of initContianers from CR
+	if cr.Spec.Repo.InitContainers != nil {
+		initContainers = cr.Spec.Repo.InitContainers
+	}
+
+	return initContainers
+}
+
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
 func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
 	return cr.Spec.Server.Insecure

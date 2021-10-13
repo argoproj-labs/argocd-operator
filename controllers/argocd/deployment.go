@@ -809,6 +809,35 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
+	deploy.Spec.Template.Spec.InitContainers = getArgoRepoInitContainers(cr)
+
+	repoServerVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		},
+		{
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "gpg-keys",
+			MountPath: "/app/config/gpg/source",
+		},
+		{
+			Name:      "gpg-keyring",
+			MountPath: "/app/config/gpg/keys",
+		},
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/reposerver/tls",
+		},
+	}
+
+	if cr.Spec.Repo.VolumeMounts != nil {
+		repoServerVolumeMounts = append(repoServerVolumeMounts, cr.Spec.Repo.VolumeMounts...)
+	}
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoRepoCommand(cr),
 		Image:           getRepoServerContainerImage(cr),
@@ -842,32 +871,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources: getArgoRepoResources(cr),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			},
-			{
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "gpg-keys",
-				MountPath: "/app/config/gpg/source",
-			},
-			{
-				Name:      "gpg-keyring",
-				MountPath: "/app/config/gpg/keys",
-			},
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/reposerver/tls",
-			},
-		},
+		Resources:    getArgoRepoResources(cr),
+		VolumeMounts: repoServerVolumeMounts,
 	}}
 
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+	repoServerVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
@@ -915,6 +923,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		},
 	}
 
+	if cr.Spec.Repo.Volumes != nil {
+		repoServerVolumes = append(repoServerVolumes, cr.Spec.Repo.Volumes...)
+	}
+
+	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
+
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		changed := false
@@ -942,6 +956,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changed = true
 		}
 
