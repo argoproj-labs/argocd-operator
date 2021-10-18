@@ -23,7 +23,6 @@ nav:
     - OpenShift: install/openshift.md
     - Operator Lifecycle Manager: install/olm.md
     - Manual Installation: install/manual.md
-    - Kustomize Installation: install/kustomize.md
   - Usage: 
     - Basics: usage/basics.md
     - Export: usage/export.md
@@ -42,5 +41,6 @@ nav:
       - Development: 
           - Setup: contribute/development.md
           - OLM Environment: contribute/olm-env.md
+          - OpenAPI: contribute/openapi.md
   - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
   - Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones
