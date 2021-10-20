@@ -1,0 +1,5 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    kubectl -n argocd-e2e patch argocd example-argocd --type=json --patch='[{"op": "remove", "path": "/spec/sso"}]'

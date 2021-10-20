@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec: 
+  sso:
+    provider: keycloak
+    verifyTLS: false
+  server:
+    ingress:
+      enabled: true

@@ -5,3 +5,8 @@ testDirs:
 timeout: 180
 startKIND: false
 namespace: argocd-e2e
+parallel: 1
+suppress:
+  - events
+reportFormat: JSON
+reportName: argocd-operator-e2e

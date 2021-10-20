@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-argocd-application-controller-0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-argocd-application-controller-1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-argocd-application-controller-2
+

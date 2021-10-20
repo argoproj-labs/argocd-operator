@@ -1,0 +1,22 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 30
+- script: |
+    oidcConfig=$(kubectl -n argocd-e2e get cm argocd-cm -o jsonpath='{.data.oidc\.config}')
+    if test "$oidcConfig" == ""; then
+      echo "oidcConfig is empty"
+      exit 1
+    fi
+    if ! echo "$oidcConfig" | grep "issuer: https://keycloak-ingress/auth/realms/argocd"; then
+      echo "oidc issuer misconfiguration"
+      exit 1
+    fi 
+    if ! echo "$oidcConfig" | grep "name: Keycloak"; then
+      echo "oidc provider name misconfiguration"
+      exit 1
+    fi
+    if ! echo "$oidcConfig" | grep clientsecret | grep "oidc.keycloak.clientSecret"; then
+      echo "oidc client secret misconfiguration"
+      exit 1
+    fi

@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec: {}
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: sleep 30s
