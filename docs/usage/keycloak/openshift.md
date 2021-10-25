@@ -1,8 +1,6 @@
 # Usage
 
-Note: This feature is currently supported only in openshift.
-
-This feature enables keycloak as a Single sign-on provider for ArgoCD. If operator is deployed in OpenShift Container Platform, Keycloak acts as an Identity broker between ArgoCD and OpenShift, Which means one can also login into ArgoCD using their OpenShift Users.
+This document describes the usage of Keycloak as a Single sign-on provider for ArgoCD in OpenShift Container Platform. Keycloak acts as an Identity broker between ArgoCD and OpenShift, Which means one can also login into Argo CD using their OpenShift credentials.
 
 The following example shows the most minimal valid manifest to create a new Argo CD cluster with keycloak as a Single sign-on provider.
 
@@ -121,11 +119,11 @@ quit
 
 You can see an option to Log in via keycloak apart from the usual ArgoCD login.
 
-![LOGIN VIA KEYCLOAK](../assets/keycloak/login_via_keycloak.png)
+![LOGIN VIA KEYCLOAK](../../assets/keycloak/login_via_keycloak.png)
 
 Click on **LOGIN VIA KEYCLOAK**. You will see two different options for login as shown below. The one on the left will allow you to login into argo cd via keycloak username and password. The one on the right will allow you to login into argo cd using your openshift username and password.
 
-![Login with Openshift](../assets/keycloak/login_with_openshift.png)
+![Login with Openshift](../../assets/keycloak/login_with_openshift.png)
 
 You can create keycloak users by logging in to keycloak admin console using the Keycloak admin credentials.
 
@@ -146,11 +144,11 @@ You can change the Keycloak Admin Password that is created by the operator as sh
 
 Login to the Keycloak Admin Console using the Admin user as described in the above section. Click on the user drop-down at the top right and click on the `Manage Account`.
 
-![Manage Account](../assets/keycloak/Keycloak_Manageaccount.png)
+![Manage Account](../../assets/keycloak/Keycloak_Manageaccount.png)
 
 Click on the `Password` tab to update the Keycloak Admin Password.
 
-![Change Admin Password](../assets/keycloak/Keycloak_ChangePassword.png)
+![Change Admin Password](../../assets/keycloak/Keycloak_ChangePassword.png)
 
 ## Uninstall
 

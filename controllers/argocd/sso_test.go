@@ -18,17 +18,20 @@ import (
 	"context"
 	"testing"
 
+	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	"gotest.tools/assert"
+	k8sappsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
@@ -80,4 +83,114 @@ func TestReconcile_noTemplateInstance(t *testing.T) {
 	r := makeFakeReconciler(t, a)
 
 	assert.NilError(t, r.reconcileSSO(a))
+}
+
+func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+
+	// Cluster does not have a template instance
+	templateAPIFound = false
+	r := makeReconciler(t, a)
+
+	assert.NilError(t, r.reconcileSSO(a))
+}
+
+func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+
+	// Cluster does not have a template instance
+	templateAPIFound = false
+	r := makeReconciler(t, a)
+
+	assert.NilError(t, r.reconcileSSO(a))
+
+	// Keycloak Deployment
+	deployment := &k8sappsv1.Deployment{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
+	assert.NilError(t, err)
+
+	assert.Equal(t, deployment.Name, defaultKeycloakIdentifier)
+	assert.Equal(t, deployment.Namespace, a.Namespace)
+
+	testLabels := map[string]string{
+		"app": defaultKeycloakIdentifier,
+	}
+	assert.DeepEqual(t, deployment.Labels, testLabels)
+
+	testSelector := &v1.LabelSelector{
+		MatchLabels: map[string]string{
+			"app": defaultKeycloakIdentifier,
+		},
+	}
+	assert.DeepEqual(t, deployment.Spec.Selector, testSelector)
+
+	assert.DeepEqual(t, deployment.Spec.Template.ObjectMeta.Labels, testLabels)
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Name,
+		defaultKeycloakIdentifier)
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Image,
+		getKeycloakContainerImage(a))
+
+	testEnv := []corev1.EnvVar{
+		{Name: "KEYCLOAK_USER", Value: defaultKeycloakAdminUser},
+		{Name: "KEYCLOAK_PASSWORD", Value: defaultKeycloakAdminPassword},
+		{Name: "PROXY_ADDRESS_FORWARDING", Value: "true"},
+	}
+	assert.DeepEqual(t, deployment.Spec.Template.Spec.Containers[0].Env,
+		testEnv)
+
+	// Keycloak Service
+	svc := &corev1.Service{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
+	assert.NilError(t, err)
+
+	assert.Equal(t, svc.Name, defaultKeycloakIdentifier)
+	assert.Equal(t, svc.Namespace, a.Namespace)
+	assert.DeepEqual(t, svc.Labels, testLabels)
+
+	assert.DeepEqual(t, svc.Spec.Selector, testLabels)
+	assert.DeepEqual(t, svc.Spec.Type, corev1.ServiceType("LoadBalancer"))
+
+	// Keycloak Ingress
+	ing := &networkingv1.Ingress{}
+	testPathType := networkingv1.PathTypeImplementationSpecific
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
+	assert.NilError(t, err)
+
+	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
+	assert.Equal(t, ing.Namespace, a.Namespace)
+
+	testTLS := []networkingv1.IngressTLS{
+		{
+			Hosts: []string{keycloakIngressHost},
+		},
+	}
+	assert.DeepEqual(t, ing.Spec.TLS, testTLS)
+
+	testRules := []networkingv1.IngressRule{
+		{
+			Host: keycloakIngressHost,
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: "/",
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: defaultKeycloakIdentifier,
+									Port: networkingv1.ServiceBackendPort{
+										Name: "http",
+									},
+								},
+							},
+							PathType: &testPathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.DeepEqual(t, ing.Spec.Rules, testRules)
 }

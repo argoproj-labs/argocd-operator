@@ -25,8 +25,7 @@ type httpclient struct {
 	token     string
 }
 
-// Creates a new realm for managing identity brokering between ArgoCD and openshift
-// using openshift-v4 as identity provider.
+// Creates a new realm for Keycloak.
 func createRealm(cfg *keycloakConfig) (string, error) {
 
 	req, err := defaultRequester(cfg.KeycloakServerCert, cfg.VerifyTLS)

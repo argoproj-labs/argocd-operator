@@ -77,6 +77,12 @@ func TestKeycloakContainerImage(t *testing.T) {
 	// When both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are not set.
 	testImage := getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
+		"quay.io/keycloak/keycloak@sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf")
+
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	testImage = getKeycloakContainerImage(cr)
+	assert.Equal(t, testImage,
 		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
 
 	// When ENV variable is set.
@@ -220,7 +226,7 @@ func TestKeycloak_testServerCert(t *testing.T) {
 	assert.NilError(t, err)
 
 	sslCertsSecret.Data["tls.crt"] = nil
-	r.Client.Update(context.TODO(), sslCertsSecret)
+	assert.NilError(t, r.Client.Update(context.TODO(), sslCertsSecret))
 
 	_, err = r.getKCServerCert(a)
 	assert.NilError(t, err)
