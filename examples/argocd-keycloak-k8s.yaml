@@ -10,5 +10,5 @@ spec:
     verifyTLS: false
   server:
     ingress:
-     enabled: true
+      enabled: true
     insecure: true

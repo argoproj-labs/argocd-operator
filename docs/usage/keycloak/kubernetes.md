@@ -23,10 +23,8 @@ kubectl get pods -A
 ```
 
 ```txt
-NAMESPACE              NAME                                                    READY   STATUS    RESTARTS   AGE
+NAMESPACE           NAME                                                    READY   STATUS    RESTARTS   AGE
 ingress-nginx       nginx-ingress-controller-6fc5bcc8c9-vg26z               1/1     Running   0          9h
-........
-........
 ```
 
 The following example shows the most minimal valid manifest to create a new Argo CD cluster with Keycloak as a Single sign-on provider.
@@ -43,11 +41,11 @@ spec:
     provider: keycloak
   server:
     ingress:
-     enabled: true
+      enabled: true
     insecure: true
 ```
 
-**NOTE**: If you are running operator locally using `make run`, Please add `verifyTLS: false` to the `.spec.sso` field.
+**NOTE**: If you test the operator locally using `make run`, please add `verifyTLS: false` to the `.spec.sso` field.
 
 ## Create
 
@@ -63,7 +61,7 @@ Create a new Argo CD Instance in the `argocd` namespace using the provided examp
 kubectl create -n argocd -f examples/argocd-keycloak-k8s.yaml
 ```
 
-**NOTE**: `verifyTLS` option should be set to `true` if you want to enable strict TLS validation. If you are running operator on your machine using `operator-sdk run local`, `verifyTLS` should be set to `false`.
+**NOTE**: `verifyTLS` option should be set to `true` if you want to enable strict TLS validation in production. If you are running operator on your machine using `operator-sdk run local`, `verifyTLS` should be set to `false`.
 
 ## Keycloak Instance
 
@@ -76,7 +74,7 @@ kubectl -n argocd get ingress keycloak
 ```
 
 ```txt
-NAME          HOST/PORT     
+NAME        HOST/PORT     
 keycloak    keycloak-ingress  
 ```
 
@@ -99,7 +97,7 @@ kubectl -n argocd get ingress example-argocd-server
 ```
 
 ```txt
-NAME                HOST/PORT     
+NAME                     HOST/PORT     
 example-argocd-server    example-argocd
 ```
 
@@ -146,5 +144,5 @@ metadata:
 spec:
   server:
     ingress:
-     enabled: true
+      enabled: true
 ```
