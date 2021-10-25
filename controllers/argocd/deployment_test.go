@@ -736,8 +736,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	assert.NoError(t, r.reconcileDexDeployment(a))
 	a.Spec.Image = "justatest"
 	a.Spec.Version = "latest"
-	a.Spec.Dex.Image = "testdex"
-	a.Spec.Dex.Version = "v0.0.1"
+	a.Spec.SSO.Provider = argoprojv1alpha1.SSOProviderTypeDex
+	a.Spec.SSO.Dex.Image = "testdex"
+	a.Spec.SSO.Dex.Version = "v0.0.1"
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}

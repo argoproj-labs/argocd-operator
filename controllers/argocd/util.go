@@ -317,13 +317,13 @@ func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
 // common.ArgoCDDefaultDexImage.
 func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.Dex.Image
+	img := cr.Spec.SSO.Dex.Image
 	if img == "" {
 		img = common.ArgoCDDefaultDexImage
 		defaultImg = true
 	}
 
-	tag := cr.Spec.Dex.Version
+	tag := cr.Spec.SSO.Dex.Version
 	if tag == "" {
 		tag = common.ArgoCDDefaultDexVersion
 		defaultTag = true
@@ -374,8 +374,8 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.Dex.Resources != nil {
-		resources = *cr.Spec.Dex.Resources
+	if cr.Spec.SSO.Dex.Resources != nil {
+		resources = *cr.Spec.SSO.Dex.Resources
 	}
 
 	return resources
@@ -430,7 +430,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 			"clientSecret": *clientSecret,
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
 			"insecureCA":   true, // TODO: Configure for openshift CA,
-			"groups":       cr.Spec.Dex.Groups,
+			"groups":       cr.Spec.SSO.Dex.Groups,
 		},
 	}
 

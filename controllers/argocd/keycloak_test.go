@@ -94,8 +94,8 @@ func TestKeycloakContainerImage(t *testing.T) {
 	assert.Equal(t, testImage, "envImage:latest")
 
 	// when both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are set.
-	cr.Spec.SSO.Image = "crImage"
-	cr.Spec.SSO.Version = "crVersion"
+	cr.Spec.SSO.Keycloak.Image = "crImage"
+	cr.Spec.SSO.Keycloak.Version = "crVersion"
 
 	testImage = getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage, "crImage:crVersion")
@@ -162,7 +162,7 @@ func TestKeycloakResources(t *testing.T) {
 
 	// Verify resource requirements are overridden by ArgoCD CR(.spec.SSO.Resources)
 	fR := getFakeKeycloakResources()
-	a.Spec.SSO.Resources = &fR
+	a.Spec.SSO.Keycloak.Resources = &fR
 
 	kc = getKeycloakContainer(a)
 	assert.DeepEqual(t, kc.Resources, getFakeKeycloakResources())

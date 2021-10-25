@@ -297,12 +297,12 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
-	err := r.reconcileDexDeployment(cr)
-	if err != nil {
-		return err
-	}
+	// err := r.reconcileDexDeployment(cr)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = r.reconcileRedisDeployment(cr)
+	err := r.reconcileRedisDeployment(cr)
 	if err != nil {
 		return err
 	}
@@ -390,7 +390,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if dexDisabled {
+		if dexDisabled || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak) {
 			log.Info("deleting the existing dex deployment because dex is disabled")
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)

@@ -174,6 +174,17 @@ type ArgoCDDexSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+type ArgoCDKeycloakSpec struct {
+	// Image is the Keycloak container image.
+	Image string `json:"image,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Keycloak.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Version is the Keycloak container image tag.
+	Version string `json:"version,omitempty"`
+}
+
 // ArgoCDDexOAuthSpec defines the desired state for the Dex OAuth configuration.
 type ArgoCDDexOAuthSpec struct {
 	// Enabled will toggle OAuth support for the Dex server.
@@ -474,20 +485,23 @@ const (
 	// SSOProviderTypeKeycloak means keycloak will be Installed and Integrated with Argo CD. A new realm with name argocd
 	// will be created in this keycloak. This realm will have a client with name argocd that uses OpenShift v4 as Identity Provider.
 	SSOProviderTypeKeycloak SSOProviderType = "keycloak"
+
+	SSOProviderTypeDex SSOProviderType = "dex"
 )
 
 // ArgoCDSSOSpec defines SSO provider.
 type ArgoCDSSOSpec struct {
-	// Image is the SSO container image.
-	Image string `json:"image,omitempty"`
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
-	// Resources defines the Compute Resources required by the container for SSO.
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Dex contains the configuration for Argo CD dex authentication (previously found under cr.spec.Dex)
+	Dex ArgoCDDexSpec `json:"dex,omitempty"`
+
+	// Keycloak contains the configuration for Argo CD keycloak authentication (previously found under cr.spec.sso)
+	Keycloak ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
+
 	// VerifyTLS set to false disables strict TLS validation.
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
-	// Version is the SSO container image tag.
-	Version string `json:"version,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
@@ -523,9 +537,6 @@ type ArgoCDSpec struct {
 
 	// Controller defines the Application Controller options for ArgoCD.
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
-
-	// Dex defines the Dex server options for ArgoCD.
-	Dex ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`

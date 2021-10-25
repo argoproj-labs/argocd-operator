@@ -124,7 +124,7 @@ type oidcConfig struct {
 // common.ArgoCDKeycloakImageName.
 func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.SSO.Image
+	img := cr.Spec.SSO.Keycloak.Image
 	if img == "" {
 		img = common.ArgoCDKeycloakImage
 		if IsTemplateAPIAvailable() {
@@ -133,7 +133,7 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultImg = true
 	}
 
-	tag := cr.Spec.SSO.Version
+	tag := cr.Spec.SSO.Keycloak.Version
 	if tag == "" {
 		tag = common.ArgoCDKeycloakVersion
 		if IsTemplateAPIAvailable() {
@@ -202,8 +202,8 @@ func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := defaultKeycloakResources()
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.SSO.Resources != nil {
-		resources = *cr.Spec.SSO.Resources
+	if cr.Spec.SSO.Keycloak.Resources != nil {
+		resources = *cr.Spec.SSO.Keycloak.Resources
 		return resources
 	}
 
@@ -751,7 +751,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycl
 	}
 
 	// By default TLS Verification should be enabled.
-	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS == true {
+	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS {
 		tlsVerification = true
 	}
 

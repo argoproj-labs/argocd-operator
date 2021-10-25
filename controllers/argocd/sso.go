@@ -15,9 +15,6 @@
 package argocd
 
 import (
-	e "errors"
-	"fmt"
-
 	template "github.com/openshift/api/template/v1"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -45,13 +42,6 @@ func verifyTemplateAPI() error {
 
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
-		if cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "" {
-			err := e.New("multiple SSO configuration")
-			log.Error(err, fmt.Sprintf("Installation of multiple SSO providers is not permitted. Please choose a single provider for Argo CD %s in namespace %s.",
-				cr.Name, cr.Namespace))
-			return err
-		}
-
 		// TemplateAPI is available, Install keycloak using openshift templates.
 		if IsTemplateAPIAvailable() {
 			err := r.reconcileKeycloakForOpenShift(cr)
@@ -63,6 +53,11 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			if err != nil {
 				return err
 			}
+		}
+	} else if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		err := r.reconcileDexDeployment(cr)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
