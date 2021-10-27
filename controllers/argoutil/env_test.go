@@ -1,6 +1,7 @@
 package argoutil
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,5 +80,73 @@ func Test_EnvMerge(t *testing.T) {
 		// Variable has not been changed
 		assert.Contains(t, r, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, r, corev1.EnvVar{Name: "BAR", Value: "FOO"})
+	})
+}
+
+func Test_EnvMerge_testSorted(t *testing.T) {
+	t.Run("Merge non-existing env", func(t *testing.T) {
+		e := []corev1.EnvVar{
+			{
+				Name:  "FOO",
+				Value: "BAR",
+			},
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+		}
+		r := EnvMerge(e, []corev1.EnvVar{{Name: "BAZ", Value: "BAZ"}}, false)
+
+		// verify if the Env Vars are sorted by names
+		s := []corev1.EnvVar{
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+			{
+				Name:  "BAZ",
+				Value: "BAZ",
+			},
+			{
+				Name:  "FOO",
+				Value: "BAR",
+			},
+		}
+		if !reflect.DeepEqual(r, s) {
+			assert.Fail(t, "environmental variables are not sorted")
+		}
+	})
+	t.Run("Merge multiple non-existing and existing env", func(t *testing.T) {
+		e := []corev1.EnvVar{
+			{
+				Name:  "FOO",
+				Value: "BAR",
+			},
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+		}
+		r := EnvMerge(e, []corev1.EnvVar{{Name: "BAZ", Value: "BAZ"}, {Name: "FOO", Value: "FOO"}}, true)
+
+		// verify if the Env Vars are sorted by names
+		s := []corev1.EnvVar{
+			{
+				Name:  "BAR",
+				Value: "FOO",
+			},
+			{
+				Name:  "BAZ",
+				Value: "BAZ",
+			},
+			{
+				Name:  "FOO",
+				Value: "FOO",
+			},
+		}
+		// New variable should be the one we added
+		if !reflect.DeepEqual(r, s) {
+			assert.Fail(t, "environmental variables are not sorted")
+		}
 	})
 }
