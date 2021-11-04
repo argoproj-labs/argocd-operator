@@ -151,6 +151,10 @@ bundle: manifests kustomize ## Generate bundle manifests and metadata, then vali
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
+	rm -fr deploy/olm-catalog/argocd-operator/$(VERSION)
+	mkdir -p deploy/olm-catalog/argocd-operator/$(VERSION)
+	cp -r bundle/manifests/* deploy/olm-catalog/argocd-operator/$(VERSION)/
+	mv deploy/olm-catalog/argocd-operator/$(VERSION)/argocd-operator.clusterserviceversion.yaml deploy/olm-catalog/argocd-operator/$(VERSION)/argocd-operator.v$(VERSION).clusterserviceversion.yaml
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
@@ -159,6 +163,35 @@ bundle-build: ## Build the bundle image.
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
+
+# UTIL_IMG defines the image:tag used for the utility image (for backup).
+# You can use it as an arg. (E.g make bundle-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
+UTIL_IMG ?= $(IMAGE_TAG_BASE)-util:v$(VERSION)
+
+.PHONY: util-build
+util-build: ## Build the util container image (for backup)
+	docker build --no-cache -t $(UTIL_IMG) build/util
+
+.PHONY: util-push
+util-push: ## Push the util container image
+	$(MAKE) docker-push IMG=$(UTIL_IMG)
+
+# REGISTRY_IMG defines the image:tag used for the (legacy) registry container image.
+# You can use it as an arg. (E.g make bundle-build UTIL_IMG=<some-registry>/<project-name-bundle>:<tag>)
+REGISTRY_IMG ?= $(IMAGE_TAG_BASE)-registry:v$(VERSION)
+
+.PHONY: registry-build
+registry-build: ## Build the registry container image
+	rm -fr build/_output
+	mkdir -p build/_output/registry
+	cp -r deploy/registry/* build/_output/registry/
+	mkdir -p build/_output/registry/manifests
+	cp -r deploy/olm-catalog/argocd-operator build/_output/registry/manifests/
+	docker build -t $(REGISTRY_IMG) build/_output/registry
+
+.PHONY: registry-push
+registry-push: ## Push the util container image
+	$(MAKE) docker-push IMG=$(REGISTRY_IMG)
 
 .PHONY: opm
 OPM = ./bin/opm
