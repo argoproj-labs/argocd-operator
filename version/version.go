@@ -14,7 +14,4 @@
 
 package version
 
-var (
-	// Version is the ArgoCD Operator version.
-	Version = "0.0.16"
-)
+var Version string

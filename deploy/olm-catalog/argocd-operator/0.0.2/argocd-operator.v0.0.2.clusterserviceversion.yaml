@@ -1,0 +1,466 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[{"apiVersion":"argoproj.io/v1alpha1","kind":"ArgoCD","metadata":{"name":"example-argocd"}},{"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"name":"guestbook"},"spec":{"destination":{"namespace":"argocd","server":"https://kubernetes.default.svc"},"project":"default","source":{"path":"guestbook","repoURL":"https://github.com/argoproj/argocd-example-apps.git","targetRevision":"HEAD"}}},{"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"name":"example-project"},"spec":{"sourceRepos": ["*"]}}]'
+    capabilities: Deep Insights
+    categories: Integration & Delivery
+    certified: 'false'
+    containerImage: quay.io/jmckind/argocd-operator:v0.0.2
+    createdAt: 2019-09-04 06:44:32
+    description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
+    repository: https://github.com/argoproj-labs/argocd-operator
+    support: Argo CD
+  name: argocd-operator.v0.0.2
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: Application
+      name: applications.argoproj.io
+      version: v1alpha1
+      displayName: Application
+      description: An Application is a group of Kubernetes resources as defined by a manifest.
+    - kind: AppProject
+      name: appprojects.argoproj.io
+      version: v1alpha1
+      displayName: AppProject
+      description: An AppProject is a logical grouping of Argo CD Applications.
+    - kind: ArgoCD
+      name: argocds.argoproj.io
+      version: v1alpha1
+      displayName: ArgoCD
+      description: ArgoCD is the representation of an Argo CD deployment.
+      resources:
+      - kind: Service
+        version: v1
+      - kind: Pod
+        version: v1
+      specDescriptors:
+      - description: The container image to use for the Argo CD components.
+        displayName: Image
+        path: image
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Argo CD'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The container image tag (version) to use for the Argo CD components.
+        displayName: Version
+        path: version
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Argo CD' 
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The number of operation processors for the Argo CD Application Controller.
+        displayName: Operation Processor Count
+        path: controller.processors.operation
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
+        - 'urn:alm:descriptor:com.tectonic.ui:number'
+      - description: The number of status processors for the Argo CD Application Controller.
+        displayName: Status Processor Count
+        path: controller.processors.status
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
+        - 'urn:alm:descriptor:com.tectonic.ui:number'
+      - description: The container image name to use for Dex.
+        displayName: Image
+        path: dex.image
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The container image tag (version) to use for Dex.
+        displayName: Version
+        path: dex.version
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex' 
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Grafana resources should created.
+        displayName: Enabled
+        path: grafana.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Grafana.
+        displayName: Host
+        path: grafana.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The container image name to use for Grafana.
+        displayName: Image
+        path: grafana.image
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The container image tag (version) to use for Grafana.
+        displayName: Version
+        path: grafana.version
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Ingress resources should created.
+        displayName: Enabled
+        path: ingress.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The path to use for the Ingress resource.
+        displayName: Path
+        path: ingress.path
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if Prometheus resources should created.
+        displayName: Enabled
+        path: prometheus.enabled
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The hostname to use for access to Prometheus.
+        displayName: Host
+        path: prometheus.host
+        x-descriptors: 
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The desired number of Pods for Prometheus.
+        displayName: Size
+        path: prometheus.size
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+        - 'urn:alm:descriptor:com.tectonic.ui:podCount'
+      - description: The container image name to use for Redis.
+        displayName: Image
+        path: redis.image
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The container image tag (version) to use for Redis.
+        displayName: Version
+        path: redis.version
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server GRPC Ingress resource.
+        displayName: GRPC Host
+        path: server.grpc.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The hostname to use for the Server Ingress resource.
+        displayName: Host
+        path: server.host
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Selected if the Argo CD server is insecure.
+        displayName: Insecure
+        path: server.insecure
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: The type of Service for the Server component.
+        displayName: Service Type
+        path: server.service.type
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:ClusterIP'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:NodePort'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:LoadBalancer'
+        - 'urn:alm:descriptor:com.tectonic.ui:select:ExternalName'
+      - description: The name of the ConfigMap object that stores the CA certificate.
+        displayName: CA ConfigMap Name 
+        path: tls.ca.configMapName
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:TLS'
+        - 'urn:alm:descriptor:io.kubernetes:ConfigMap'
+      - description: The name of the Secret object that stores the CA certificate.
+        displayName: CA Secret Name
+        path: tls.ca.SecretName
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:TLS'
+        - 'urn:alm:descriptor:io.kubernetes:Secret'
+  description: | 
+    ## Overview
+
+    The Argo CD Operator manages the full lifecycle for the Argo CD components.
+    
+    The operator aims to provide the following.
+  
+    * Easy configuration and installation of the Argo CD components with sane defaults to get up and running quickly.
+    * Provide seamless upgrades to the Argo CD components.
+    * Ablity to back up and restore an Argo CD deployment from a point in time.
+    * Expose and aggregate the metrics for Argo CD and the operator itself using Prometheus and Grafana.
+    * Autoscale the Argo CD components as necessary to handle increased load.
+
+    ## Usage
+
+    Once the operator is installed, deploy Argo CD by creating a new ArgoCD resource in the namespace where the operator is installed.
+
+    ```
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCD
+    metadata:
+    name: example-argocd
+    ```
+
+    See the documentation and examples at the [official github repository](https://github.com/argoproj-labs/argocd-operator) 
+    for more informaction.
+  displayName: Argo CD
+  icon:
+  - base64data: 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
+    mediatype: image/png
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+        - nonResourceURLs:
+          - '*'
+          verbs:
+          - get
+          - list
+        serviceAccountName: argocd-application-controller
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - list
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - pods/log
+          verbs:
+          - get
+        serviceAccountName: argocd-server
+      deployments:
+      - name: argocd-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: argocd-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: argocd-operator
+            spec:
+              containers:
+              - command:
+                - argocd-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: argocd-operator
+                image: quay.io/jmckind/argocd-operator:v0.0.2
+                imagePullPolicy: Always
+                name: argocd-operator
+                resources: {}
+              serviceAccountName: argocd-operator
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - services/finalizers
+          - endpoints
+          - events
+          - configmaps
+          - secrets
+          verbs:
+          - '*'
+        - apiGroups:
+          - extensions
+          resources:
+          - ingresses
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - replicasets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resourceNames:
+          - argocd-operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+        - apiGroups:
+          - apps
+          resources:
+          - replicasets
+          verbs:
+          - get
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheuses
+          - servicemonitors
+          verbs:
+          - '*'
+        serviceAccountName: argocd-operator
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - services/finalizers
+          - endpoints
+          - events
+          - configmaps
+          - secrets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - daemonsets
+          - deployments
+          - replicasets
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - CronJob
+          - Job
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - applications
+          - appprojects
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - list
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - '*'
+        serviceAccountName: argocd-application-controller
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+        serviceAccountName: argocd-dex-server
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - applications
+          - appprojects
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+          - update
+          - delete
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - list
+        serviceAccountName: argocd-server
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: true
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  links:
+  - name: Argo CD
+    url: https://argoproj.github.io/argo-cd/
+  - name: Operator Repo
+    url: https://github.com/argoproj-labs/argocd-operator
+  maintainers:
+  - email: john.mckenzie@redhat.com
+    name: John McKenzie
+  maturity: alpha
+  provider:
+    name: Argo CD
+  version: 0.0.2

@@ -1,0 +1,724 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[{"apiVersion":"argoproj.io/v1alpha1","kind":"ArgoCD","metadata":{"name":"example-argocd"},"spec":{}},{"apiVersion":"argoproj.io/v1alpha1","kind":"ArgoCDExport","metadata":{"name":"example-argocdexport"},"spec":{"argocd":"example-argocd"}},{"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"name":"guestbook"},"spec":{"destination":{"namespace":"argocd","server":"https://kubernetes.default.svc"},"project":"default","source":{"path":"guestbook","repoURL":"https://github.com/argoproj/argocd-example-apps.git","targetRevision":"HEAD"}}},{"apiVersion":"argoproj.io/v1alpha1","kind":"AppProject","metadata":{"name":"example-project"},"spec":{"sourceRepos": ["*"]}}]'
+    capabilities: Auto Pilot
+    categories: Integration & Delivery
+    certified: "false"
+    containerImage: quay.io/jmckind/argocd-operator@sha256:5d7c4b0e8e0fea068e49a9718a35ae068fc267e607f7393374db39916d7186f4
+    createdAt: "2020-02-28 22:47:13"
+    description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
+    repository: https://github.com/argoproj-labs/argocd-operator
+    support: Argo CD
+  name: argocd-operator.v0.0.5
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: Application
+      name: applications.argoproj.io
+      version: v1alpha1
+      displayName: Application
+      description: An Application is a group of Kubernetes resources as defined by a manifest.
+    - kind: AppProject
+      name: appprojects.argoproj.io
+      version: v1alpha1
+      displayName: AppProject
+      description: An AppProject is a logical grouping of Argo CD Applications.
+    - kind: ArgoCDExport
+      name: argocdexports.argoproj.io
+      version: v1alpha1
+      displayName: ArgoCDExport
+      description: ArgoCDExport describes the desired state for the export of a given Argo CD deployment.
+      resources:
+      - kind: CronJob
+        version: batch/v1beta1
+      - kind: Job
+        version: batch/v1
+      - kind: PersistentVolumeClaim
+        version: v1
+      specDescriptors:
+      - description: The name of the ArgoCD instance to export.
+        displayName: ArgoCD
+        path: argocd
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The schedule for the export in Cron format, see https://en.wikipedia.org/wiki/Cron.
+        displayName: Schedule
+        path: schedule
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The storage configuration options for the export.
+        displayName: Storage
+        path: storage
+      statusDescriptors:
+      - description: Phase is a simple, high-level summary of where the ArgoCDExport is in its lifecycle.
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+    - kind: ArgoCD
+      name: argocds.argoproj.io
+      version: v1alpha1
+      displayName: ArgoCD
+      description: ArgoCD is the representation of an Argo CD deployment.
+      resources:
+      - kind: ConfigMap
+        version: v1
+      - kind: Deployment
+        version: apps/v1
+      - kind: Ingress
+        version: extensions/v1
+      - kind: PersistentVolumeClaim
+        version: v1
+      - kind: Secret
+        version: v1
+      - kind: Service
+        version: v1
+      - kind: StatefulSet
+        version: apps/v1
+      specDescriptors:
+      - description: 'The container image to use for the Argo CD components.'
+        displayName: Image
+        path: image
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The container image tag (version) to use for the Argo CD components.'
+        displayName: Version
+        path: version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The number of operation processors for the Argo CD Application Controller.'
+        displayName: 'Operation Processor Count'
+        path: controller.processors.operation
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
+          - 'urn:alm:descriptor:com.tectonic.ui:number'
+      - description: 'The number of status processors for the Argo CD Application Controller.'
+        displayName: 'Status Processor Count'
+        path: controller.processors.status
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
+          - 'urn:alm:descriptor:com.tectonic.ui:number'
+      - description: 'The limits and requests requirements for the Argo CD Application Controller container.'
+        displayName: 'Resource Requirements'
+        path: controller.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'The Dex connector configuration.'
+        displayName: Configuration
+        path: dex.config
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The container image name to use for Dex.'
+        displayName: Image
+        path: dex.image
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if OpenShift OAuth should be automatically configured by the operator.'
+        displayName: 'OpenShift OAuth Enabled'
+        path: dex.openShiftOAuth
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The limits and requests requirements for the Dex container.'
+        displayName: 'Resource Requirements'
+        path: dex.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'The container image tag (version) to use for Dex.'
+        displayName: Version
+        path: dex.version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if Grafana resources should created.'
+        displayName: Enabled
+        path: grafana.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The hostname to use for access to Grafana.'
+        displayName: Host
+        path: grafana.host
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The container image name to use for Grafana.'
+        displayName: Image
+        path: grafana.image
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The limits and requests requirements for the Grafana container.'
+        displayName: 'Resource Requirements'
+        path: grafana.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'The replica count for the Grafana Deployment.'
+        displayName: Size
+        path: grafana.size
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:podCount'
+      - description: 'The container image tag (version) to use for Grafana.'
+        displayName: Version
+        path: grafana.version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if Argo CD high-availability mode should be enabled.'
+        displayName: Enabled
+        path: ha.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:HA'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The name of an ArgoCDExport from which to import initial data.'
+        displayName: Name
+        path: import.name
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Namespace for the ArgoCDExport, defaults to the same namespace as the ArgoCD.'
+        displayName: Namespace
+        path: import.namespace
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if Ingress resources should be created.'
+        displayName: Enabled
+        path: ingress.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The path used for the Ingress resource.'
+        displayName: Path
+        path: ingress.path
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Ingress'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if Prometheus resources should be created.'
+        displayName: Enabled
+        path: prometheus.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The hostname to use for access to Prometheus.'
+        displayName: Host
+        path: prometheus.host
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The replica count for the Prometheus Deployment.'
+        displayName: Size
+        path: prometheus.size
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus'
+          - 'urn:alm:descriptor:com.tectonic.ui:podCount'
+      - description: 'The default role which Argo CD will fall back to when authorizing API requests.'
+        displayName: 'Default Policy'
+        path: rbac.defaultPolicy
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The user-defined RBAC policies and role definitions in CSV format.'
+        displayName: Policy
+        path: rbac.policy
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The OIDC scopes to examine during RBAC enforcement.'
+        displayName: Scopes
+        path: rbac.scopes
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The container image name to use for Redis.'
+        displayName: Image
+        path: redis.image
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The limits and requests requirements for the Redis container.'
+        displayName: 'Resource Requirements'
+        path: redis.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'The container image tag (version) to use for Redis.'
+        displayName: Version
+        path: redis.version
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The limits and requests requirements for the Argo CD repo container.'
+        displayName: 'Resource Requirements'
+        path: repo.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'Selected if autoscaling should be enabled for the Argo CD server.'
+        displayName: Enabled
+        path: server.autoscale.enabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The hostname to use for the GRPC Ingress/Route resource.'
+        displayName: GRPC Host
+        path: server.grpc.host
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The hostname to use for Ingress/Route resources.'
+        displayName: Host
+        path: server.host
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Selected if the Argo CD server should be run without TLS.'
+        displayName: Insecure
+        path: server.insecure
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+      - description: 'The limits and requests requirements for the Argo CD server container.'
+        displayName: 'Resource Requirements'
+        path: server.resources
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:resourceRequirements'
+      - description: 'The ServiceType to use for the Argo CD server Service resource.'
+        displayName: 'Service Type'
+        path: server.service.type
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server'
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'The metadata.label key name where Argo CD injects the app name as a tracking label.'
+        displayName: 'Application Instance Label Key'
+        path: applicationInstanceLabelKey
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Additional config management plugins.'
+        displayName: 'Config Management Plugins'
+        path: configManagementPlugins
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The Google Analytics tracking ID to use for Argo CD.'
+        displayName: 'Google Analytics Tracking ID'
+        path: gaTrackingID
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Selected if user IDs should be hashed before sending to Google Analytics.'
+        displayName: 'Google Analytics Anonymize Users'
+        path: gaAnonymizeUsers
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The URL for getting chat help.'
+        displayName: 'Help Chat URL'
+        path: helpChatURL
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The text to use for getting chat help.'
+        displayName: 'Help Chat Text'
+        path: helpChatText
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The build options/parameters to use with `kustomize build`.'
+        displayName: 'Kustomize Build Options'
+        path: kustomizeBuildOptions
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The OIDC configuration as an alternative to Dex.'
+        displayName: 'OIDC Config'
+        path: oidcConfig
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The repositories to configure Argo CD to use for projects.'
+        displayName: Repositories
+        path: repositories
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Customizes resource behavior. Keys are in the form of group/Kind.'
+        displayName: 'Resource Customizations'
+        path: resourceCustomizations
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Completely ignore entire classes of resource group/kinds.'
+        displayName: 'Resource Exclusions'
+        path: resourceExclusions
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'The SSH known hosts data for connecting Git repositories via SSH.'
+        displayName: 'SSH Known Hosts'
+        path: sshKnownHosts
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:text'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Selected if the application status badge feature should be enabled.'
+        displayName: 'Status Badge Enabled'
+        path: statusBadgeEnabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      - description: 'Selected if anonymous user access should be enabled.'
+        displayName: 'Anonymous Users Enabled'
+        path: usersAnonymousEnabled
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:booleanSwitch'
+          - 'urn:alm:descriptor:com.tectonic.ui:advanced'
+      statusDescriptors:
+      - description: 'Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.'
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: 'Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.'
+        displayName: Server
+        path: server
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+  description: | 
+    ## Overview
+
+    The Argo CD Operator manages the full lifecycle for [Argo CD][argocd_home] and it's components. The operator's goal is
+    to automate the tasks required when operating an Argo CD deployment.
+
+    Beyond installation, the operator helps to automate the process of upgrading, backing up and restoring as needed and
+    remove the human as much as possible. In addition, the operator aims to provide deep insights into the Argo CD
+    environment by configuring Prometheus and Grafana to aggregate, visualize and expose the metrics already exported by
+    Argo CD.
+
+    The operator aims to provide the following, and is a work in progress.
+
+    * Easy configuration and installation of the Argo CD components with sane defaults to get up and running quickly.
+    * Provide seamless upgrades to the Argo CD components.
+    * Ablity to back up and restore an Argo CD deployment from a point in time or recurring schedule.
+    * Aggregate and expose the metrics for Argo CD and the operator itself using Prometheus and Grafana.
+    * Autoscale the Argo CD components as necessary to handle variability in demand.
+
+    ## Usage
+
+    Deploy a basic Argo CD cluster by creating a new ArgoCD resource in the namespace where the operator is installed.
+
+    ```
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCD
+    metadata:
+      name: example-argocd
+    spec: {}
+    ```
+
+    ## Backup
+
+    Backup the cluster above by creating a new ArgoCDExport resource in the namespace where the operator is installed.
+
+    ```
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCDExport
+    metadata:
+      name: example-argocdexport
+    spec:
+      argocd: example-argocd
+    ```
+
+    See the documentation and examples at the [official github repository](https://github.com/argoproj-labs/argocd-operator) 
+    for more information.
+  displayName: Argo CD
+  icon:
+  - base64data: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDIzIDMwIiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MjsiPgogICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAsMSwtOS4yLC03KSI+CiAgICAgICAgPGc+CiAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgPHBhdGggZD0iTTE2LDI3LjdDMTYsMjcuNyAxNS44LDI4LjMgMTUuNSwyOC42QzE1LjMsMjguOCAxNS4xLDI4LjkgMTQuOCwyOC45QzE0LjEsMjkuMSAxMy4zLDI5LjIgMTMuMywyOS4yQzEzLjMsMjkuMiAxNCwyOS4zIDE0LjgsMjkuNEMxNS4xLDI5LjQgMTUuMSwyOS40IDE1LjMsMjkuNUMxNS44LDI5LjUgMTYsMjkuMiAxNiwyOS4yTDE2LDI3LjdaIiBzdHlsZT0iZmlsbDpyZ2IoMjMzLDEwMSw3NSk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuMiwyNy43QzI1LjIsMjcuNyAyNS40LDI4LjMgMjUuNywyOC42QzI1LjksMjguOCAyNi4xLDI4LjkgMjYuNCwyOC45QzI3LjEsMjkuMSAyNy45LDI5LjIgMjcuOSwyOS4yQzI3LjksMjkuMiAyNy4yLDI5LjMgMjYuMywyOS40QzI2LDI5LjQgMjYsMjkuNCAyNS44LDI5LjVDMjUuMiwyOS41IDI1LjEsMjkuMiAyNS4xLDI5LjJMMjUuMiwyNy43WiIgc3R5bGU9ImZpbGw6cmdiKDIzMywxMDEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICA8L2c+CiAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjAuNyIgY3k9IjE3LjgiIHI9IjEwLjgiIHN0eWxlPSJmaWxsOnJnYigxODIsMjA3LDIzNCk7Ii8+CiAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyMC43IiBjeT0iMTcuOCIgcj0iMTAuNCIgc3R5bGU9ImZpbGw6cmdiKDIzMCwyNDUsMjQ4KTsiLz4KICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjIwLjciIGN5PSIxOCIgcj0iOC41IiBzdHlsZT0iZmlsbDpyZ2IoMjA4LDIzMiwyNDApOyIvPgogICAgICAgICAgICAgICAgPGcgaWQ9IkJvZHlfMV8iPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xNS43LDIyQzE1LjcsMjIgMTYuNCwzMy4zIDE2LjQsMzMuNUMxNi40LDMzLjYgMTYuNSwzMy44IDE2LDM0QzE1LjUsMzQuMiAxMy45LDM0LjYgMTMuOSwzNC42TDE2LjMsMzQuNkMxNy40LDM0LjYgMTcuNCwzMy43IDE3LjQsMzMuNUMxNy40LDMzLjMgMTcuNywyOSAxNy43LDI5QzE3LjcsMjkgMTcuOCwzNC4xIDE3LjgsMzQuM0MxNy44LDM0LjUgMTcuNywzNC44IDE3LDM1QzE2LjUsMzUuMSAxNSwzNS40IDE1LDM1LjRMMTcuMywzNS40QzE4LjcsMzUuNCAxOC43LDM0LjUgMTguNywzNC41TDE5LDMwQzE5LDMwIDE5LjEsMzQuNSAxOS4xLDM1QzE5LjEsMzUuNCAxOC44LDM1LjcgMTcuNywzNS45QzE3LDM2LjEgMTYuMSwzNi4zIDE2LjEsMzYuM0wxOC43LDM2LjNDMjAsMzYuMiAyMC4yLDM1LjMgMjAuMiwzNS4zTDIyLjQsMjQuMUwxNS43LDIyWiIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yNS43LDIyQzI1LjcsMjIgMjUsMzMuMyAyNSwzMy41QzI1LDMzLjYgMjQuOSwzMy44IDI1LjQsMzRDMjUuOSwzNC4yIDI3LjUsMzQuNiAyNy41LDM0LjZMMjUuMSwzNC42QzI0LDM0LjYgMjQsMzMuNyAyNCwzMy41QzI0LDMzLjMgMjMuNywyOSAyMy43LDI5QzIzLjcsMjkgMjMuNiwzNC4xIDIzLjYsMzQuM0MyMy42LDM0LjUgMjMuNywzNC44IDI0LjQsMzVDMjQuOSwzNS4xIDI2LjQsMzUuNCAyNi40LDM1LjRMMjQuMSwzNS40QzIyLjcsMzUuNCAyMi43LDM0LjUgMjIuNywzNC41TDIyLjQsMzBDMjIuNCwzMCAyMi4zLDM0LjUgMjIuMywzNUMyMi4zLDM1LjQgMjIuNiwzNS43IDIzLjcsMzUuOUMyNC40LDM2LjEgMjUuMywzNi4zIDI1LjMsMzYuM0wyMi43LDM2LjNDMjEuNCwzNi4yIDIxLjIsMzUuMyAyMS4yLDM1LjNMMTksMjQuMUwyNS43LDIyWiIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yNS44LDE2LjVDMjUuOCwxOS4zIDIzLjUsMjEuNSAyMC44LDIxLjVDMTguMSwyMS41IDE1LjgsMTkuMiAxNS44LDE2LjVDMTUuOCwxMy44IDE4LjEsMTEuNSAyMC44LDExLjVDMjMuNSwxMS41IDI1LjgsMTMuNyAyNS44LDE2LjVaIiBzdHlsZT0iZmlsbDpyZ2IoMjM4LDEyMSw3NSk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICAgICAgPGNsaXBQYXRoIGlkPSJfY2xpcDEiPgogICAgICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuOCwxNi4zTDI1LjIsMzBMMTYuMiwzMEwxNS43LDE2LjMiLz4KICAgICAgICAgICAgICAgICAgICA8L2NsaXBQYXRoPgogICAgICAgICAgICAgICAgICAgIDxnIGNsaXAtcGF0aD0idXJsKCNfY2xpcDEpIj4KICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjAuOCIgY3k9IjE5LjIiIHI9IjguOSIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpOyIvPgogICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuNSwyMkMyNS41LDIyIDI2LjEsMTYuNyAyNS4zLDE0LjdDMjMuOCwxMS4yIDIwLjMsMTEuNSAyMC4zLDExLjVDMjAuMywxMS41IDIyLjMsMTIuMyAyMi40LDE1LjNDMjIuNSwxNy40IDIyLjQsMjAuNSAyMi40LDIwLjVMMjUuNSwyMloiIHN0eWxlPSJmaWxsOnJnYigyMjcsNzgsNTkpO2ZpbGwtb3BhY2l0eTowLjIyO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgPGcgaWQ9IkZhY2VfMV8iPgogICAgICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjE4LjciIGN5PSIxMy44IiByPSIwLjciIHN0eWxlPSJmaWxsOnJnYigyNTEsMjIzLDE5NSk7ZmlsbC1vcGFjaXR5OjAuNTsiLz4KICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgPGc+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjIuNSwyNEMyMi41LDI1LjcgMjEuNywyNi44IDIwLjcsMjYuOEMxOS43LDI2LjggMTguOSwyNS41IDE4LjksMjMuOEMxOC45LDIzLjggMTkuNywyNS40IDIwLjgsMjUuNEMyMS45LDI1LjQgMjIuNSwyNCAyMi41LDI0WiIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yMi41LDI0QzIyLjUsMjUuMSAyMS43LDI1LjcgMjAuNywyNS43QzE5LjcsMjUuNyAxOSwyNC45IDE5LDIzLjlDMTksMjMuOSAxOS44LDI0LjkgMjAuOSwyNC45QzIyLDI0LjkgMjIuNSwyNCAyMi41LDI0WiIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgPGc+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjQuMiIgY3k9IjE5LjMiIHI9IjMuMSIgc3R5bGU9ImZpbGw6cmdiKDIzMywxMDEsNzUpOyIvPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIxNy4yIiBjeT0iMTkuMyIgcj0iMy4xIiBzdHlsZT0iZmlsbDpyZ2IoMjMzLDEwMSw3NSk7Ii8+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyNC4yIiBjeT0iMTkuMyIgcj0iMi40IiBzdHlsZT0iZmlsbDp3aGl0ZTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMTciIGN5PSIxOS4zIiByPSIyLjQiIHN0eWxlPSJmaWxsOndoaXRlOyIvPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjE3IiBjeT0iMTkiIHI9IjAuNyIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyNC4yIiBjeT0iMTkiIHI9IjAuNyIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik05LjcsMjAuNUM5LjQsMjAuNSA5LjIsMjAuMyA5LjIsMjBMOS4yLDE2QzkuMiwxNS43IDkuNCwxNS41IDkuNywxNS41QzEwLDE1LjUgMTAuMiwxNS43IDEwLjIsMTZMMTAuMiwyMEMxMC4yLDIwLjMgMTAsMjAuNSA5LjcsMjAuNVoiIHN0eWxlPSJmaWxsOnJnYigxODIsMjA3LDIzNCk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMzEuNSwyMC41QzMxLjIsMjAuNSAzMSwyMC4zIDMxLDIwTDMxLDE2QzMxLDE1LjcgMzEuMiwxNS41IDMxLjUsMTUuNUMzMS44LDE1LjUgMzIsMTUuNyAzMiwxNkwzMiwyMEMzMiwyMC4zIDMxLjgsMjAuNSAzMS41LDIwLjVaIiBzdHlsZT0iZmlsbDpyZ2IoMTgyLDIwNywyMzQpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMTcuMyIgY3k9IjkuOCIgcj0iMC41IiBzdHlsZT0iZmlsbDp3aGl0ZTsiLz4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xMy43LDIzLjNDMTMuNiwyMy4zIDEzLjUsMjMuMyAxMy40LDIzLjJDMTIuMiwyMS43IDExLjYsMTkuOCAxMS42LDE3LjlDMTEuNiwxNi4zIDEyLDE0LjggMTIuOCwxMy40QzEzLjYsMTIuMSAxNC43LDExIDE2LDEwLjJDMTYuMiwxMC4xIDE2LjQsMTAuMiAxNi41LDEwLjNDMTYuNiwxMC41IDE2LjUsMTAuNyAxNi40LDEwLjhDMTMuOSwxMi4yIDEyLjMsMTQuOSAxMi4zLDE3LjhDMTIuMywxOS42IDEyLjksMjEuMyAxNCwyMi43QzE0LjEsMjIuOCAxNC4xLDIzLjEgMTMuOSwyMy4yQzEzLjgsMjMuMyAxMy44LDIzLjMgMTMuNywyMy4zWiIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuMiwyOEwyNS4yLDI3LjJDMjMuOCwyOCAyMi4zLDI4LjggMjAuNSwyOC44QzE4LjUsMjguOCAxNy4yLDI3LjkgMTUuOSwyNy4yTDE2LDI4QzE2LDI4IDE3LjUsMjkuNiAyMC42LDI5LjZDMjMuNSwyOS41IDI1LjIsMjggMjUuMiwyOFoiIHN0eWxlPSJmaWxsOnJnYigyMzMsMTAxLDc1KTtmaWxsLW9wYWNpdHk6MC4yNTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg== 
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+        - nonResourceURLs:
+          - '*'
+          verbs:
+          - get
+          - list
+        serviceAccountName: argocd-application-controller
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - list
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - pods/log
+          verbs:
+          - get
+        serviceAccountName: argocd-server
+      deployments:
+      - name: argocd-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: argocd-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: argocd-operator
+            spec:
+              containers:
+              - command:
+                - argocd-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: argocd-operator
+                image: quay.io/jmckind/argocd-operator@sha256:5d7c4b0e8e0fea068e49a9718a35ae068fc267e607f7393374db39916d7186f4
+                imagePullPolicy: Always
+                name: argocd-operator
+                resources: {}
+              serviceAccountName: argocd-operator
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - endpoints
+          - events
+          - persistentvolumeclaims
+          - pods
+          - secrets
+          - serviceaccounts
+          - services
+          - services/finalizers
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - replicasets
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resourceNames:
+          - argocd-operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - argocds
+          - argocds/finalizers
+          - argocds/status
+          - argocdexports
+          - argocdexports/finalizers
+          - argocdexports/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - autoscaling
+          resources:
+          - horizontalpodautoscalers
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          - jobs
+          verbs:
+          - '*'
+        - apiGroups:
+          - extensions
+          resources:
+          - ingresses
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheuses
+          - servicemonitors
+          verbs:
+          - '*'
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - '*'
+        serviceAccountName: argocd-operator
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - services/finalizers
+          - endpoints
+          - events
+          - configmaps
+          - secrets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - daemonsets
+          - deployments
+          - replicasets
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          - jobs
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - applications
+          - appprojects
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - list
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - '*'
+        serviceAccountName: argocd-application-controller
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+        serviceAccountName: argocd-dex-server
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - endpoints
+          verbs:
+          - get
+        serviceAccountName: argocd-redis-ha
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - configmaps
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - applications
+          - appprojects
+          verbs:
+          - create
+          - get
+          - list
+          - watch
+          - update
+          - delete
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - list
+        serviceAccountName: argocd-server
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  links:
+  - name: Argo CD
+    url: https://argoproj.github.io/argo-cd/
+  - name: Operator Docs
+    url: https://argocd-operator.readthedocs.io
+  - name: Operator Repo
+    url: https://github.com/argoproj-labs/argocd-operator
+  maintainers:
+  - email: john.mckenzie@redhat.com
+    name: John McKenzie
+  maturity: alpha
+  provider:
+    name: Argo CD Community
+  replaces: argocd-operator.v0.0.4
+  version: 0.0.5
