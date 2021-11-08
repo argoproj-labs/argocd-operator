@@ -170,7 +170,7 @@ spec:
         version: v1
       - kind: CronJob
         name: ""
-        version: v1
+        version: v1beta1
       - kind: Deployment
         name: ""
         version: v1
@@ -253,7 +253,7 @@ spec:
         version: v1
       - kind: CronJob
         name: ""
-        version: v1
+        version: v1beta1
       - kind: Deployment
         name: ""
         version: v1
