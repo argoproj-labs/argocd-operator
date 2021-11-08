@@ -1042,6 +1042,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"info",
 					"--logformat",
 					"text",
+					"--rootpath",
+					"/",
 				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
@@ -1075,6 +1077,42 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
+}
+
+func TestArgoCDServerDeploymentCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	command := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+		"--rootpath",
+		"/foo",
+	}
+
+	deployment := &appsv1.Deployment{}
+	a.Spec.Server.Route.Path = "/foo"
+	assert.NoError(t, r.reconcileServerDeployment(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	assert.Equal(t, command, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {

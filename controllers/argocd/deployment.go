@@ -266,6 +266,18 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
 
+	if ok := (&cr.Spec.Server.Route != nil); ok {
+		cmd = append(cmd, "--rootpath")
+		p := cr.Spec.Server.Route.Path
+		routePath := func(routePath string) string {
+			if routePath == "" {
+				return "/"
+			}
+			return routePath
+		}(p)
+		cmd = append(cmd, routePath)
+	}
+
 	return cmd
 }
 
