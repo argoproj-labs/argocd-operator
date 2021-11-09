@@ -1115,6 +1115,23 @@ func namespaceFilterPredicate() predicate.Predicate {
 			}
 			return false
 		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if argoCDNs, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && argoCDNs != "" {
+				k8sClient, err := initK8sClient()
+				managedNs := e.Object.GetName()
+				if err != nil {
+					return false
+				}
+				// Delete managed namespace from cluster secret
+				err = deleteManagedNamespaceFromClusterSecret(argoCDNs, managedNs, k8sClient)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", managedNs))
+				} else {
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", managedNs))
+				}
+			}
+			return false
+		},
 	}
 }
 
@@ -1153,8 +1170,19 @@ func deleteRBACsForNamespace(ownerNS, sourceNS string, k8sClient kubernetes.Inte
 		}
 	}
 
+	// Delete managed namespace from cluster secret
+	err = deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS, k8sClient)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to delete %s namespace from cluster secret", sourceNS))
+	}
+
+	return nil
+}
+
+func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
+
 	// Get the cluster secret used for configuring ArgoCD
-	labelSelector = metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))
