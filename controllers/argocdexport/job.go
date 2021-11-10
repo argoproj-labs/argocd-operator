@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1b1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -152,8 +151,8 @@ func newJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.Job {
 }
 
 // newCronJob returns a new CronJob instance for the given ArgoCDExport.
-func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1b1.CronJob {
-	return &batchv1b1.CronJob{
+func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
+	return &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
