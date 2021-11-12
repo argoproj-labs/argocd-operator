@@ -42,7 +42,7 @@ func init() {
 //+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCD,v1alpha1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCDExport,v1alpha1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1beta1,""}}
+//+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1,""}}
 //+operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}

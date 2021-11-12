@@ -327,6 +327,8 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	customizations := "testing: testing"
+	updatedCustomizations := "updated-testing: updated-testing"
+
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.ResourceInclusions = customizations
 	})
@@ -345,6 +347,21 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	if c := cm.Data["resource.inclusions"]; c != customizations {
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
 	}
+
+	a.Spec.ResourceInclusions = updatedCustomizations
+	err = r.reconcileArgoConfigMap(a)
+	assert.NilError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NilError(t, err)
+
+	if c := cm.Data["resource.inclusions"]; c != updatedCustomizations {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, updatedCustomizations)
+	}
+
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
