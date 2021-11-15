@@ -471,6 +471,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 		changed = true
 	}
 
+	if cm.Data[common.ArgoCDKeyResourceInclusions] != cr.Spec.ResourceInclusions {
+		cm.Data[common.ArgoCDKeyResourceInclusions] = cr.Spec.ResourceInclusions
+		changed = true
+	}
+
 	uri := r.getArgoServerURI(cr)
 	if cm.Data[common.ArgoCDKeyServerURL] != uri {
 		cm.Data[common.ArgoCDKeyServerURL] = uri
