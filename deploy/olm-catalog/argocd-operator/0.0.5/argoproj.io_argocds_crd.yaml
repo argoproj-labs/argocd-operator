@@ -1,0 +1,499 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: argocds.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: ArgoCD
+    listKind: ArgoCDList
+    plural: argocds
+    singular: argocd
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ArgoCD is the Schema for the argocds API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ArgoCDSpec defines the desired state of ArgoCD
+          properties:
+            applicationInstanceLabelKey:
+              description: ApplicationInstanceLabelKey is the key name where Argo
+                CD injects the app name as a tracking label.
+              type: string
+            configManagementPlugins:
+              description: ConfigManagementPlugins is used to specify additional config
+                management plugins.
+              type: string
+            controller:
+              description: Controller defines the Application Controller options for
+                ArgoCD.
+              properties:
+                processors:
+                  description: Processors contains the options for the Application
+                    Controller processors.
+                  properties:
+                    operation:
+                      description: Operation is the number of application operation
+                        processors.
+                      format: int32
+                      type: integer
+                    status:
+                      description: Status is the number of application status processors.
+                      format: int32
+                      type: integer
+                  type: object
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for the Application Controller.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+              type: object
+            dex:
+              description: Dex defines the Dex server options for ArgoCD.
+              properties:
+                config:
+                  description: Config is the dex connector configuration.
+                  type: string
+                image:
+                  description: Image is the Dex container image.
+                  type: string
+                openShiftOAuth:
+                  description: OpenShiftOAuth enables OpenShift OAuth authentication
+                    for the Dex server.
+                  type: boolean
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Dex.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                version:
+                  description: Version is the Dex container image tag.
+                  type: string
+              type: object
+            gaAnonymizeUsers:
+              description: GAAnonymizeUsers toggles user IDs being hashed before sending
+                to google analytics.
+              type: boolean
+            gaTrackingID:
+              description: GATrackingID is the google analytics tracking ID to use.
+              type: string
+            grafana:
+              description: Grafana defines the Grafana server options for ArgoCD.
+              properties:
+                enabled:
+                  description: Enabled will toggle Grafana support globally for ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                image:
+                  description: Image is the Grafana container image.
+                  type: string
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Grafana.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                size:
+                  description: Size is the replica count for the Grafana Deployment.
+                  format: int32
+                  type: integer
+                version:
+                  description: Version is the Grafana container image tag.
+                  type: string
+              required:
+              - enabled
+              type: object
+            ha:
+              description: HA options for High Availability support for the Redis
+                component.
+              properties:
+                enabled:
+                  description: Enabled will toggle HA support globally for Argo CD.
+                  type: boolean
+              required:
+              - enabled
+              type: object
+            helpChatText:
+              description: HelpChatText is the text for getting chat help, defaults
+                to "Chat now!"
+              type: string
+            helpChatURL:
+              description: HelpChatURL is the URL for getting chat help, this will
+                typically be your Slack channel for support.
+              type: string
+            image:
+              description: Image is the ArgoCD container image for all ArgoCD components.
+              type: string
+            import:
+              description: Import is the import/restore options for ArgoCD.
+              properties:
+                name:
+                  description: Name of an ArgoCDExport from which to import data.
+                  type: string
+                namespace:
+                  description: Namespace for the ArgoCDExport, defaults to the same
+                    namespace as the ArgoCD.
+                  type: string
+              required:
+              - name
+              type: object
+            ingress:
+              description: Ingress defines the Ingress options for ArgoCD.
+              properties:
+                annotations:
+                  additionalProperties:
+                    type: string
+                  description: Annotations is the map of annotations to use for the
+                    Ingress resource.
+                  type: object
+                enabled:
+                  description: Enabled will toggle Ingress support globally for ArgoCD.
+                  type: boolean
+                path:
+                  description: Path used for the Ingress resource.
+                  type: string
+              required:
+              - enabled
+              type: object
+            kustomizeBuildOptions:
+              description: KustomizeBuildOptions is used to specify build options/parameters
+                to use with `kustomize build`.
+              type: string
+            oidcConfig:
+              description: OIDCConfig is the OIDC configuration as an alternative
+                to dex.
+              type: string
+            prometheus:
+              description: Prometheus defines the Prometheus server options for ArgoCD.
+              properties:
+                enabled:
+                  description: Enabled will toggle Prometheus support globally for
+                    ArgoCD.
+                  type: boolean
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                size:
+                  description: Size is the replica count for the Prometheus StatefulSet.
+                  format: int32
+                  type: integer
+              required:
+              - enabled
+              type: object
+            rbac:
+              description: RBAC defines the RBAC configuration for Argo CD.
+              properties:
+                defaultPolicy:
+                  description: DefaultPolicy is the name of the default role which
+                    Argo CD will falls back to, when authorizing API requests (optional).
+                    If omitted or empty, users may be still be able to login, but
+                    will see no apps, projects, etc...
+                  type: string
+                policy:
+                  description: 'Policy is CSV containing user-defined RBAC policies
+                    and role definitions. Policy rules are in the form:   p, subject,
+                    resource, action, object, effect Role definitions and bindings
+                    are in the form:   g, subject, inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
+                    for additional information.'
+                  type: string
+                scopes:
+                  description: 'Scopes controls which OIDC scopes to examine during
+                    rbac enforcement (in addition to `sub` scope). If omitted, defaults
+                    to: ''[groups]''.'
+                  type: string
+              type: object
+            redis:
+              description: Redis defines the Redis server options for ArgoCD.
+              properties:
+                image:
+                  description: Image is the Redis container image.
+                  type: string
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Redis.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                version:
+                  description: Version is the Redis container image tag.
+                  type: string
+              type: object
+            repo:
+              description: Repo defines the repo server options for Argo CD.
+              properties:
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for Redis.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+              type: object
+            repositories:
+              description: Repositories to configure Argo CD with.
+              type: string
+            resourceCustomizations:
+              description: 'ResourceCustomizations customizes resource behavior. Keys
+                are in the form: group/Kind.'
+              type: string
+            resourceExclusions:
+              description: ResourceExclusions is used to completely ignore entire
+                classes of resource group/kinds.
+              type: string
+            server:
+              description: Server defines the options for the ArgoCD Server component.
+              properties:
+                autoscale:
+                  description: Autoscale defines the autoscale options for the Argo
+                    CD Server conponent.
+                  properties:
+                    enabled:
+                      description: Enabled will toggle autoscaling support for the
+                        Argo CD Server component.
+                      type: boolean
+                    hpa:
+                      description: HPA defines the HorizontalPodAutoscaler options
+                        for the Argo CD Server component.
+                      properties:
+                        maxReplicas:
+                          description: upper limit for the number of pods that can
+                            be set by the autoscaler; cannot be smaller than MinReplicas.
+                          format: int32
+                          type: integer
+                        minReplicas:
+                          description: lower limit for the number of pods that can
+                            be set by the autoscaler, default 1.
+                          format: int32
+                          type: integer
+                        scaleTargetRef:
+                          description: reference to scaled resource; horizontal pod
+                            autoscaler will learn the current resource consumption
+                            and will set the desired number of pods by using its Scale
+                            subresource.
+                          properties:
+                            apiVersion:
+                              description: API version of the referent
+                              type: string
+                            kind:
+                              description: 'Kind of the referent; More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds"'
+                              type: string
+                            name:
+                              description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              type: string
+                          required:
+                          - kind
+                          - name
+                          type: object
+                        targetCPUUtilizationPercentage:
+                          description: target average CPU utilization (represented
+                            as a percentage of requested CPU) over all the pods; if
+                            not specified the default autoscaling policy will be used.
+                          format: int32
+                          type: integer
+                      required:
+                      - maxReplicas
+                      - scaleTargetRef
+                      type: object
+                  required:
+                  - enabled
+                  type: object
+                grpc:
+                  description: GRPC defines the state for the Argo CD Server GRPC
+                    options.
+                  properties:
+                    host:
+                      description: Host is the hostname to use for Ingress/Route resources.
+                      type: string
+                  required:
+                  - host
+                  type: object
+                host:
+                  description: Host is the hostname to use for Ingress/Route resources.
+                  type: string
+                insecure:
+                  description: Insecure toggles the insecure flag.
+                  type: boolean
+                resources:
+                  description: Resources defines the Compute Resources required by
+                    the container for the Argo CD server component.
+                  properties:
+                    limits:
+                      additionalProperties:
+                        type: string
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        type: string
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                service:
+                  description: Service defines the options for the Service backing
+                    the ArgoCD Server component.
+                  properties:
+                    type:
+                      description: Type is the ServiceType to use for the Service
+                        resource.
+                      type: string
+                  required:
+                  - type
+                  type: object
+              type: object
+            sshKnownHosts:
+              description: SSHKnownHosts defines the SSH known hosts data for connecting
+                Git repositories via SSH.
+              type: string
+            statusBadgeEnabled:
+              description: StatusBadgeEnabled toggles application status badge feature.
+              type: boolean
+            tls:
+              description: TLS defines the TLS options for ArgoCD.
+              properties:
+                ca:
+                  description: CA defines the CA options.
+                  properties:
+                    configMapName:
+                      description: ConfigMapName is the name of the ConfigMap containing
+                        the CA Certificate.
+                      type: string
+                    secretName:
+                      description: SecretName is the name of the Secret containing
+                        the CA Certificate and Key.
+                      type: string
+                  type: object
+                certs:
+                  additionalProperties:
+                    type: string
+                  description: Certs defines custom TLS certificates for connecting
+                    Git repositories via HTTPS.
+                  type: object
+              type: object
+            usersAnonymousEnabled:
+              description: UsersAnonymousEnabled toggles anonymous user access. The
+                anonymous users get default role permissions specified argocd-rbac-cm.
+              type: boolean
+            version:
+              description: Version is the tag to use with the ArgoCD container image
+                for all ArgoCD components.
+              type: string
+          type: object
+        status:
+          description: ArgoCDStatus defines the observed state of ArgoCD
+          properties:
+            phase:
+              description: 'Phase is a simple, high-level summary of where the ArgoCD
+                is in its lifecycle. There are five possible phase values: Pending:
+                The ArgoCD has been accepted by the Kubernetes system, but one or
+                more of the required resources have not been created. Available: All
+                of the resources for the ArgoCD are ready. Failed: At least one resource
+                has experienced a failure. Unknown: For some reason the state of the
+                ArgoCD phase could not be obtained.'
+              type: string
+            server:
+              description: 'Server is a simple, high-level summary of where the Argo
+                CD server component is in its lifecycle. There are five possible server
+                values: Pending: The Argo CD server component has been accepted by
+                the Kubernetes system, but one or more of the required resources have
+                not been created. Running: All of the required Pods for the Argo CD
+                server component are in a Ready state. Failed: At least one of the  Argo
+                CD server component Pods had a failure. Unknown: For some reason the
+                state of the Argo CD server component could not be obtained.'
+              type: string
+          required:
+          - phase
+          - server
+          type: object
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
