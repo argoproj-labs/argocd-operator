@@ -15,8 +15,13 @@
 package argocd
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
+
 	template "github.com/openshift/api/template/v1"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -42,6 +47,15 @@ func verifyTemplateAPI() error {
 
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		// Ensure SSO provider type and provided configuration are compatible, else throw an error
+		if !reflect.DeepEqual(cr.Spec.SSO.Dex, &v1alpha1.ArgoCDDexSpec{}) {
+			err := errors.New("incorrect SSO configuration")
+			log.Error(err, fmt.Sprintf("provided SSO configuration is incompatible with provider type specified: %s", cr.Spec.SSO.Provider))
+			return err
+		}
+
+		//TO DO: Delete existing Dex deployment if any
+
 		// TemplateAPI is available, Install keycloak using openshift templates.
 		if IsTemplateAPIAvailable() {
 			err := r.reconcileKeycloakForOpenShift(cr)
@@ -55,6 +69,15 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			}
 		}
 	} else if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		// Ensure SSO provider type and provided configuration are compatible, else throw an error
+		if !reflect.DeepEqual(cr.Spec.SSO.Keycloak, &v1alpha1.ArgoCDKeycloakSpec{}) {
+			err := errors.New("incorrect SSO configuration")
+			log.Error(err, fmt.Sprintf("provided SSO configuration is incompatible with provider type specified: %s", cr.Spec.SSO.Provider))
+			return err
+		}
+
+		//TO DO: Delete existing keycloak deployment if any
+
 		err := r.reconcileDexDeployment(cr)
 		if err != nil {
 			return err
@@ -63,19 +86,24 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func deleteSSOConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func deleteSSOConfiguration(cr *argoprojv1a1.ArgoCD, oldSSOSpec *v1alpha1.ArgoCDSSOSpec) error {
 
-	// If SSO is installed using OpenShift templates.
-	if IsTemplateAPIAvailable() {
-		err := deleteKeycloakConfigForOpenShift(cr)
-		if err != nil {
-			return err
+	// check type of SSO provider scheduled for deletion and handle appropriately
+	if oldSSOSpec.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		// If SSO is installed using OpenShift templates
+		if IsTemplateAPIAvailable() {
+			err := deleteKeycloakConfigForOpenShift(cr)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := deleteKeycloakConfigForK8s(cr)
+			if err != nil {
+				return err
+			}
 		}
-	} else {
-		err := deleteKeycloakConfigForK8s(cr)
-		if err != nil {
-			return err
-		}
+	} else if oldSSOSpec.Provider == argoprojv1a1.SSOProviderTypeDex {
+		// TO DO: call function that handles dex deployment deletion
 	}
 
 	return nil

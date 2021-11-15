@@ -925,7 +925,8 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 		},
 	}
 
-	deleteSSOPred := predicate.Funcs{
+	// Predicate for handling all changes to cr.Spec.SSO
+	SSOPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
 			if !ok {
@@ -935,11 +936,16 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 			if !ok {
 				return false
 			}
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := deleteSSOConfiguration(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) {
+				// Handle deletion of whatever SSO is configured
+				if newCR.Spec.SSO == nil {
+					err := deleteSSOConfiguration(newCR, oldCR.Spec.SSO)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+							newCR.Name, newCR.Namespace))
+					}
+				} else {
+
 				}
 			}
 			return true
@@ -947,7 +953,7 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred))
+	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(SSOPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
