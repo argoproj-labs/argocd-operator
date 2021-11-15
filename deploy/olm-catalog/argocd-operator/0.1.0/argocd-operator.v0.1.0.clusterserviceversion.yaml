@@ -132,7 +132,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.2.0
+  name: argocd-operator.v0.1.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -170,7 +170,7 @@ spec:
         version: v1
       - kind: CronJob
         name: ""
-        version: v1
+        version: v1beta1
       - kind: Deployment
         name: ""
         version: v1
@@ -253,7 +253,7 @@ spec:
         version: v1
       - kind: CronJob
         name: ""
-        version: v1
+        version: v1beta1
       - kind: Deployment
         name: ""
         version: v1
@@ -966,7 +966,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.2.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:36a65debc06ec68237e5cb6ce9dd2e5076407b00b05d511654e152bd03f2496a
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1047,5 +1047,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.1.0
-  version: 0.2.0
+  replaces: argocd-operator.v0.0.15
+  version: 0.1.0
