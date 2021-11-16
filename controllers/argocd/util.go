@@ -317,13 +317,13 @@ func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
 // common.ArgoCDDefaultDexImage.
 func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.Dex.Image
+	img := cr.Spec.SSO.Dex.Image
 	if img == "" {
 		img = common.ArgoCDDefaultDexImage
 		defaultImg = true
 	}
 
-	tag := cr.Spec.Dex.Version
+	tag := cr.Spec.SSO.Dex.Version
 	if tag == "" {
 		tag = common.ArgoCDDefaultDexVersion
 		defaultTag = true
@@ -374,8 +374,8 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.Dex.Resources != nil {
-		resources = *cr.Spec.Dex.Resources
+	if cr.Spec.SSO.Dex.Resources != nil {
+		resources = *cr.Spec.SSO.Dex.Resources
 	}
 
 	return resources
@@ -430,7 +430,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 			"clientSecret": *clientSecret,
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
 			"insecureCA":   true, // TODO: Configure for openshift CA,
-			"groups":       cr.Spec.Dex.Groups,
+			"groups":       cr.Spec.SSO.Dex.Groups,
 		},
 	}
 
@@ -935,10 +935,13 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 			if !ok {
 				return false
 			}
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := deleteSSOConfiguration(newCR)
+
+			// Only need to handle Spec.SSO deletion event when Provider is keycloak. Deletion of Dex will be handled
+			// automatically in the reconcilliation loop
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil && oldCR.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+				err := deleteKeycloakConfiguration(newCR)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+					log.Error(err, fmt.Sprintf("Failed to delete Keycloak SSO Configuration for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))
 				}
 			}

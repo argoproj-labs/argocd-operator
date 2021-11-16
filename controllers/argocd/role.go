@@ -116,7 +116,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
 			roles = append(roles, role)
-			if name == dexServer && isDexDisabled() {
+			if name == dexServer && (isDexDisabled() || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
 				continue // Dex is disabled, do nothing
 			}
 
@@ -132,7 +132,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			continue
 		}
 
-		if name == dexServer && isDexDisabled() {
+		if name == dexServer && (isDexDisabled() || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
+			log.Info("deleting the existing Dex role because dex is either disabled or not configured")
 			// Delete any existing Role created for Dex
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err

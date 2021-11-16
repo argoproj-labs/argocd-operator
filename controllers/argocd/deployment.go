@@ -390,8 +390,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if dexDisabled {
-			log.Info("deleting the existing dex deployment because dex is disabled")
+		if dexDisabled || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
+			log.Info("deleting the existing Dex deployment because dex is either disabled or not configured")
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)
 		}
@@ -436,7 +436,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	if dexDisabled {
+	// Dex deployment not found. Keep it that way if any of the following conditions are true
+	if dexDisabled || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
 		return nil
 	}
 

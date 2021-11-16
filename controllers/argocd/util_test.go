@@ -45,8 +45,8 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex.Image = "testing/dex"
-			a.Spec.Dex.Version = "latest"
+			a.Spec.SSO.Dex.Image = "testing/dex"
+			a.Spec.SSO.Dex.Version = "latest"
 		}},
 	},
 	{
