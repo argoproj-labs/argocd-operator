@@ -1079,6 +1079,24 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 	return nil
 }
 
+func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+
+	// If Keycloak is installed using OpenShift templates.
+	if IsTemplateAPIAvailable() {
+		err := deleteKeycloakConfigForOpenShift(cr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := deleteKeycloakConfigForK8s(cr)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Delete Keycloak configuration for OpenShift
 func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 	cfg, err := config.GetConfig()

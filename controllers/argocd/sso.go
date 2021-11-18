@@ -108,24 +108,6 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
-
-	// If Keycloak is installed using OpenShift templates.
-	if IsTemplateAPIAvailable() {
-		err := deleteKeycloakConfigForOpenShift(cr)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := deleteKeycloakConfigForK8s(cr)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // reconcileResources will trigger reconciliation of necessary resources after changes to Dex SSO configuration
 func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 
