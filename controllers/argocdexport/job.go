@@ -17,8 +17,9 @@ package argocdexport
 import (
 	"context"
 	"fmt"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1b1 "k8s.io/api/batch/v1beta1"
