@@ -32,7 +32,7 @@ export_argocd () {
 
 create_backup () {
     echo "creating argo-cd backup"
-    argocd-util export > ${BACKUP_EXPORT_LOCATION}
+    argocd admin export > ${BACKUP_EXPORT_LOCATION}
 }
 
 encrypt_backup () {
@@ -148,7 +148,7 @@ decrypt_backup () {
 
 load_backup () {
     echo "loading argo-cd backup"
-    argocd-util import - < ${BACKUP_EXPORT_LOCATION}
+    argocd admin import - < ${BACKUP_EXPORT_LOCATION}
 }
 
 usage () {
