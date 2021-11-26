@@ -2,6 +2,7 @@ package argoutil
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"sort"
 )
 
 // EnvMerge merges two slices of EnvVar entries into a single one. If existing
@@ -24,9 +25,17 @@ func EnvMerge(existing []corev1.EnvVar, merge []corev1.EnvVar, override bool) []
 		}
 	}
 
-	for _, v := range final {
-		ret = append(ret, v)
+	envName := make([]string, len(final))
+	for _, env := range final {
+		envName = append(envName, env.Name)
 	}
-
+	sort.Strings(envName)
+	for _, name := range envName {
+		for _, v := range final {
+			if v.Name == name {
+				ret = append(ret, v)
+			}
+		}
+	}
 	return ret
 }
