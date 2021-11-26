@@ -487,7 +487,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) 
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRepoServerTLSSecretName}
 	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return err
 		}
 	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
