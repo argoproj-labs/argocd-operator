@@ -307,7 +307,9 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+
+		// Reconcile dex configuration in configmap only if dex is enabled and configured
+		if !isDexDisabled() && cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
 			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 				return err
 			}

@@ -70,6 +70,7 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", applicationController, err)
 	}
+
 	if err := r.reconcileRoleBinding(dexServer, policyRuleForDexServer(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
