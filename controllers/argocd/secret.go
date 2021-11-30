@@ -306,6 +306,10 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 				return err
 			}
 
+			if secret.Data == nil {
+				secret.Data = make(map[string][]byte)
+			}
+
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
 			changed = true
