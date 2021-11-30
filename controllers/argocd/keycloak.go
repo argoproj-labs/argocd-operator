@@ -1093,7 +1093,6 @@ func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
 			return err
 		}
 	}
-
 	return nil
 }
 

@@ -147,3 +147,23 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 
 	return nil
 }
+
+func (r *ReconcileArgoCD) deleteSSOConfiguration(cr *argoprojv1a1.ArgoCD, oldCRSSO *argoprojv1a1.ArgoCDSSOSpec) error {
+
+	if oldCRSSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		if err := deleteKeycloakConfiguration(cr); err != nil {
+			log.Error(err, "Unable to delete existing keycloak configuration")
+			return err
+		}
+
+	} else if oldCRSSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+
+		// Trigger reconciliation of Dex resources so they get deleted
+		if err := r.reconcileDexResources(cr); err != nil {
+			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
+			return err
+		}
+	}
+
+	return nil
+}

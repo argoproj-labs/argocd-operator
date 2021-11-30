@@ -891,7 +891,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -936,12 +936,20 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 				return false
 			}
 
-			// Only need to handle Spec.SSO deletion event when Provider is keycloak. Deletion of Dex will be handled
-			// automatically in the reconcilliation loop
-			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil && oldCR.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
-				err := deleteKeycloakConfiguration(newCR)
+			// Handle deletion of SSO from Argo CD custom resource
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
+				err := r.deleteSSOConfiguration(newCR, oldCR.Spec.SSO)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete Keycloak SSO Configuration for ArgoCD %s in namespace %s",
+					log.Error(err, fmt.Sprintf("Failed to delete existing SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+
+			// Trigger reconciliation of SSO on update event
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
+				err := r.reconcileSSO(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))
 				}
 			}
