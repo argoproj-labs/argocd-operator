@@ -2179,7 +2179,7 @@ spec:
                     type: boolean
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
-                      Default is nil.
+                      Value should be greater than or equal to 0. Default is nil.
                     format: int32
                     type: integer
                   resources:
@@ -4065,7 +4065,8 @@ spec:
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
-                      Default is nil. Value will be overridden if Autoscaler is enabled.
+                      Default is nil. Value should be greater than or equal to 0.
+                      Value will be ignored if Autoscaler is enabled.
                     format: int32
                     type: integer
                   resources:
