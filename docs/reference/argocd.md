@@ -821,7 +821,7 @@ LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid opti
 LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
-Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than 0. 
+Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0. 
 
 ### Repo Example
 
@@ -975,7 +975,7 @@ Host | example-argocd | The hostname to use for Ingress/Route resources.
 [Ingress](#server-ingress-options) | [Object] | Ingress configuration for the Argo CD Server component.
 Insecure | false | Toggles the insecure flag for Argo CD Server.
 Resources | [Empty] | The container compute resources.
-Replicas | [Empty] | The number of replicas for the ArgoCD Server. Must be greater than 0. If Autoscale is enabled, the number of replicas set here will be overridden.
+Replicas | [Empty] | The number of replicas for the ArgoCD Server. Must be greater than equal to 0. If Autoscale is enabled, Replicas is ignored.
 [Route](#server-route-options) | [Object] | Route configuration options.
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
