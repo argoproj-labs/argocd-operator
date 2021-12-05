@@ -9,7 +9,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeycloak_testRealmCreation(t *testing.T) {
@@ -30,7 +30,7 @@ func TestKeycloak_testRealmCreation(t *testing.T) {
 	realm, _ := createRealmConfig(data)
 
 	_, err := h.post(realm, "test")
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestKeycloak_testLogin(t *testing.T) {
@@ -43,10 +43,10 @@ func TestKeycloak_testLogin(t *testing.T) {
 		}
 
 		json, err := jsoniter.Marshal(response)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 
 		size, err := w.Write(json)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, size, len(json))
 
 		w.WriteHeader(204)
@@ -62,7 +62,7 @@ func TestKeycloak_testLogin(t *testing.T) {
 
 	err := h.login("dummy", "dummy")
 
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, h.token, "dummy")
 }
 
@@ -80,29 +80,29 @@ func TestClient_useKeycloakServerCertificate(t *testing.T) {
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ts.Certificate().Raw})
 
 	requester, err := defaultRequester(pemCert, true)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	httpClient, ok := requester.(*http.Client)
-	assert.Check(t, ok)
+	assert.Equal(t, true, ok)
 	assert.Equal(t, httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify, insecure)
 
 	request, err := http.NewRequest("GET", ts.URL, nil)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	resp, err := requester.Do(request)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, resp.StatusCode, 200)
 
 	// Set verifyTLS=false, verify an insecure TLS connection is returned even the serverCertificate is available.
 	requester, err = defaultRequester(pemCert, false)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	httpClient, ok = requester.(*http.Client)
-	assert.Check(t, ok)
+	assert.Equal(t, true, ok)
 	assert.Equal(t, httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify, !insecure)
 
 	request, err = http.NewRequest("GET", ts.URL, nil)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	resp, err = requester.Do(request)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, resp.StatusCode, 200)
 

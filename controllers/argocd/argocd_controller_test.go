@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,7 +50,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -59,7 +59,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 		},
 	}
 	res, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
@@ -78,7 +78,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	a := makeTestArgoCD()
 
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -88,7 +88,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	}
 
 	res, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
@@ -116,7 +116,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	resources := []runtime.Object{a}
 	resources = append(resources, clusterResources(a)...)
 	r := makeTestReconciler(t, resources...)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -125,7 +125,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 		},
 	}
 	res, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	if res.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
@@ -163,7 +163,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 
 	// check if namespace label was removed
 	ns := &corev1.Namespace{}
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
 	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
 		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDManagedByLabel, a.Namespace)
 	}

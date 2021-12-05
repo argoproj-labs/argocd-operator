@@ -21,7 +21,7 @@ import (
 
 	appsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,7 +88,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 	// When ENV variable is set.
 	err := os.Setenv(common.ArgoCDKeycloakImageEnvName, "envImage:latest")
 	defer os.Unsetenv(common.ArgoCDKeycloakImageEnvName)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	testImage = getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage, "envImage:latest")
@@ -107,7 +107,7 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 		Provider: "keycloak",
 	}
 	tmplInstance, err := newKeycloakTemplateInstance(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, tmplInstance.Name, "rhsso")
 	assert.Equal(t, tmplInstance.Namespace, a.Namespace)
@@ -119,7 +119,7 @@ func TestNewKeycloakTemplate(t *testing.T) {
 		Provider: "keycloak",
 	}
 	tmpl, err := newKeycloakTemplate(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, tmpl.Name, "rhsso")
 	assert.Equal(t, tmpl.Namespace, a.Namespace)
@@ -147,10 +147,10 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 			},
 		},
 	}
-	assert.DeepEqual(t, dc.Spec.Strategy, strategy)
+	assert.Equal(t, dc.Spec.Strategy, strategy)
 
 	assert.Equal(t, dc.Spec.Template.ObjectMeta.Name, "${APPLICATION_NAME}")
-	assert.DeepEqual(t, dc.Spec.Template.Spec.Volumes, fakeVolumes)
+	assert.Equal(t, dc.Spec.Template.Spec.Volumes, fakeVolumes)
 }
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
@@ -173,14 +173,14 @@ func TestKeycloakResources(t *testing.T) {
 	kc := getKeycloakContainer(a)
 
 	// Verify resource requirements are set to default.
-	assert.DeepEqual(t, kc.Resources, defaultKeycloakResources())
+	assert.Equal(t, kc.Resources, defaultKeycloakResources())
 
 	// Verify resource requirements are overridden by ArgoCD CR(.spec.SSO.Resources)
 	fR := getFakeKeycloakResources()
 	a.Spec.SSO.Resources = &fR
 
 	kc = getKeycloakContainer(a)
-	assert.DeepEqual(t, kc.Resources, getFakeKeycloakResources())
+	assert.Equal(t, kc.Resources, getFakeKeycloakResources())
 }
 
 func TestNewKeycloakTemplate_testConfigmap(t *testing.T) {
@@ -193,7 +193,7 @@ func TestNewKeycloakTemplate_testService(t *testing.T) {
 	svc := getKeycloakServiceTemplate(fakeNs)
 	assert.Equal(t, svc.Name, "${APPLICATION_NAME}")
 	assert.Equal(t, svc.Namespace, fakeNs)
-	assert.DeepEqual(t, svc.Spec.Selector, map[string]string{
+	assert.Equal(t, svc.Spec.Selector, map[string]string{
 		"deploymentConfig": "${APPLICATION_NAME}"})
 }
 
@@ -201,9 +201,9 @@ func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 	route := getKeycloakRouteTemplate(fakeNs)
 	assert.Equal(t, route.Name, "${APPLICATION_NAME}")
 	assert.Equal(t, route.Namespace, fakeNs)
-	assert.DeepEqual(t, route.Spec.To,
+	assert.Equal(t, route.Spec.To,
 		routev1.RouteTargetReference{Name: "${APPLICATION_NAME}"})
-	assert.DeepEqual(t, route.Spec.TLS,
+	assert.Equal(t, route.Spec.TLS,
 		&routev1.TLSConfig{Termination: "reencrypt"})
 }
 
@@ -218,7 +218,7 @@ func TestKeycloak_testRealmConfigCreation(t *testing.T) {
 	}
 
 	_, err := createRealmConfig(cfg)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestKeycloak_testServerCert(t *testing.T) {
@@ -238,13 +238,13 @@ func TestKeycloak_testServerCert(t *testing.T) {
 	r.Client.Create(context.TODO(), sslCertsSecret)
 
 	_, err := r.getKCServerCert(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	sslCertsSecret.Data["tls.crt"] = nil
-	assert.NilError(t, r.Client.Update(context.TODO(), sslCertsSecret))
+	assert.NoError(t, r.Client.Update(context.TODO(), sslCertsSecret))
 
 	_, err = r.getKCServerCert(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 }
 
 func TestKeycloak_NodeLabelSelector(t *testing.T) {
@@ -255,6 +255,6 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	}
 
 	dc := getKeycloakDeploymentConfigTemplate(a)
-	assert.DeepEqual(t, dc.Spec.Template.Spec.NodeSelector, a.Spec.NodePlacement.NodeSelector)
-	assert.DeepEqual(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
+	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, a.Spec.NodePlacement.NodeSelector)
+	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
 }

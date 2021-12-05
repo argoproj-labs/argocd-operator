@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -327,7 +327,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 
 	// Fake client returns an error if ResourceVersion is not nil
 	a.ResourceVersion = ""
-	assert.NilError(t, r.Client.Create(context.TODO(), a))
+	assert.NoError(t, r.Client.Create(context.TODO(), a))
 
 	type test struct {
 		name string
