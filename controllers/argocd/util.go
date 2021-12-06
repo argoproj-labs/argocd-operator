@@ -1100,6 +1100,31 @@ func namespaceFilterPredicate() predicate.Predicate {
 				} else {
 					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
 				}
+
+				// Delete managed namespace from cluster secret
+				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
+				} else {
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
+				}
+
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
+				k8sClient, err := initK8sClient()
+
+				if err != nil {
+					return false
+				}
+				// Delete managed namespace from cluster secret
+				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
+				} else {
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.Object.GetName()))
+				}
 			}
 			return false
 		},
@@ -1141,8 +1166,13 @@ func deleteRBACsForNamespace(ownerNS, sourceNS string, k8sClient kubernetes.Inte
 		}
 	}
 
+	return nil
+}
+
+func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
+
 	// Get the cluster secret used for configuring ArgoCD
-	labelSelector = metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))

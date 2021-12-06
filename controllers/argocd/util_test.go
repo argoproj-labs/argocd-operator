@@ -465,17 +465,6 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding2, metav1.CreateOptions{})
 	assert.NilError(t, err)
 
-	secret := argoutil.NewSecretWithSuffix(a, "xyz")
-	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
-	secret.Data = map[string][]byte{
-		"server":     []byte(common.ArgoCDDefaultServer),
-		"namespaces": []byte(strings.Join([]string{testNameSpace, "testNamespace2"}, ",")),
-	}
-
-	// create secret with the label
-	_, err = testClient.CoreV1().Secrets(a.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
-	assert.NilError(t, err)
-
 	// run deleteRBACsForNamespace
 	assert.NilError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
 
@@ -492,11 +481,32 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	// roleBinding without the label should still exists, no error
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding2.Name, metav1.GetOptions{})
 	assert.NilError(t, err)
+}
+
+func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
+	a := makeTestArgoCD()
+	testClient := testclient.NewSimpleClientset()
+	testNameSpace := "testNameSpace"
+
+	secret := argoutil.NewSecretWithSuffix(a, "xyz")
+	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+	secret.Data = map[string][]byte{
+		"server":     []byte(common.ArgoCDDefaultServer),
+		"namespaces": []byte(strings.Join([]string{testNameSpace, "testNamespace2"}, ",")),
+	}
+
+	// create secret with the label
+	_, err := testClient.CoreV1().Secrets(a.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	// run deleteManagedNamespaceFromClusterSecret
+	assert.NilError(t, deleteManagedNamespaceFromClusterSecret(a.Namespace, testNameSpace, testClient))
 
 	// secret should still exists with updated list of namespaces
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NilError(t, err)
 	assert.DeepEqual(t, string(s.Data["namespaces"]), "testNamespace2")
+
 }
 
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
