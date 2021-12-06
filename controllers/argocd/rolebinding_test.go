@@ -64,7 +64,10 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	_, err := r.reconcileRole(dexServer, rules, a)
 	assert.NoError(t, err)
 	assert.NoError(t, r.reconcileRoleBinding(dexServer, rules, a))
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb).Error(), "not found")
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -259,7 +259,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
 		r := makeTestReconciler(t, a)
 		err := r.removeDeletionFinalizer(a)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		if a.IsDeletionFinalizerPresent() {
 			t.Fatal("Expected deletion finalizer to be removed")
 		}
@@ -277,7 +277,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		a := makeTestArgoCD()
 		r := makeTestReconciler(t, a)
 		err := r.addDeletionFinalizer(a)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		if !a.IsDeletionFinalizerPresent() {
 			t.Fatal("Expected deletion finalizer to be added")
 		}
@@ -294,13 +294,17 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 	t.Run("Selector for a Valid name", func(t *testing.T) {
 		validName := "argocd-server"
 		selector, err := argocdInstanceSelector(validName)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, selector.String(), "app.kubernetes.io/managed-by=argocd-server")
 	})
 	t.Run("Selector for an Invalid name", func(t *testing.T) {
 		invalidName := "argocd-*/"
 		selector, err := argocdInstanceSelector(invalidName)
-		assert.ErrorContains(t, err, `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
+		//assert.ErrorContains(t, err, `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
+		//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `failed to create a requirement for values[0][app.kubernetes.io/managed-by]: Invalid value: "argocd-*/`)
+
 		assert.Equal(t, selector, nil)
 	})
 }
@@ -440,7 +444,7 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 
 	// create role with label
 	_, err := testClient.RbacV1().Roles(testNameSpace).Create(context.TODO(), role, metav1.CreateOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	role2 := newRole("abc", policyRuleForApplicationController(), a)
 	role2.Namespace = testNameSpace
@@ -448,14 +452,14 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 
 	// create role without label
 	_, err = testClient.RbacV1().Roles(testNameSpace).Create(context.TODO(), role2, metav1.CreateOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	roleBinding := newRoleBindingWithname("xyz", a)
 	roleBinding.Namespace = testNameSpace
 
 	// create roleBinding with label
 	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding, metav1.CreateOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	roleBinding2 := newRoleBindingWithname("abc", a)
 	roleBinding2.Namespace = testNameSpace
@@ -463,24 +467,32 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 
 	// create RoleBinding without label
 	_, err = testClient.RbacV1().RoleBindings(testNameSpace).Create(context.TODO(), roleBinding2, metav1.CreateOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	// run deleteRBACsForNamespace
-	assert.NilError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
+	assert.NoError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
 
 	// role with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role.Name, metav1.GetOptions{})
-	assert.ErrorContains(t, err, "not found")
+	//assert.ErrorContains(t, err, "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+
 	// role without the label should still exists, no error
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role2.Name, metav1.GetOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	// roleBinding with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding.Name, metav1.GetOptions{})
-	assert.ErrorContains(t, err, "not found")
+	//assert.ErrorContains(t, err, "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+
 	// roleBinding without the label should still exists, no error
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), roleBinding2.Name, metav1.GetOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 }
 
@@ -498,15 +510,15 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 
 	// create secret with the label
 	_, err := testClient.CoreV1().Secrets(a.Namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	// run deleteManagedNamespaceFromClusterSecret
-	assert.NilError(t, deleteManagedNamespaceFromClusterSecret(a.Namespace, testNameSpace, testClient))
+	assert.NoError(t, deleteManagedNamespaceFromClusterSecret(a.Namespace, testNameSpace, testClient))
 
 	// secret should still exists with updated list of namespaces
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
-	assert.NilError(t, err)
-	assert.DeepEqual(t, string(s.Data["namespaces"]), "testNamespace2")
+	assert.NoError(t, err)
+	assert.Equal(t, string(s.Data["namespaces"]), "testNamespace2")
 
 }
 
@@ -517,7 +529,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 		Name: a.Namespace,
 	}}
 	err := r.Client.Create(context.TODO(), nsArgocd)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
@@ -527,7 +539,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	}
 
 	err = r.Client.Create(context.TODO(), ns)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
@@ -537,7 +549,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	}
 
 	err = r.Client.Create(context.TODO(), ns2)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
@@ -547,14 +559,14 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	}
 
 	err = r.Client.Create(context.TODO(), ns3)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	nsList := &v1.NamespaceList{}
 	err = r.Client.List(context.TODO(), nsList)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 	for _, n := range nsList.Items {
 		if n.Name == ns3.Name {
 			_, ok := n.Labels[common.ArgoCDManagedByLabel]

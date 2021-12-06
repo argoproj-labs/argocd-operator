@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,40 +31,40 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// objective is to verify if the right rule associations have happened.
 
 	expectedRules := policyRuleForApplicationController()
 	workloadIdentifier := "xrb"
 
-	assert.NilError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
 
 	reconciledServiceAccount := &corev1.ServiceAccount{}
 	reconciledRole := &v1.Role{}
 	reconcileRoleBinding := &v1.RoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconcileRoleBinding))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
-	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconcileRoleBinding))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledServiceAccount))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// undesirable changes
 	reconciledRole.Rules = policyRuleForRedisHa(a)
-	assert.NilError(t, r.Client.Update(context.TODO(), reconciledRole))
+	assert.NoError(t, r.Client.Update(context.TODO(), reconciledRole))
 
 	// fetch it
 	dirtyRole := &v1.Role{}
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, dirtyRole))
-	assert.DeepEqual(t, reconciledRole.Rules, dirtyRole.Rules)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, dirtyRole))
+	assert.Equal(t, reconciledRole.Rules, dirtyRole.Rules)
 
 	// Have the reconciler override them
-	assert.NilError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
+	assert.NoError(t, r.reconcileServiceAccountPermissions(workloadIdentifier, expectedRules, a))
 
 	// fetch it
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
-	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 
 func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T) {
@@ -82,64 +82,79 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	reconcileClusterRole := &v1.ClusterRole{}
 
 	//reconcile ServiceAccountClusterPermissions with no policy rules
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
+	assert.NoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
 	//Service account should be created but no ClusterRole/ClusterRoleBinding should be created
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount).Error(), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole).Error(), "not found")
 
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	// objective is to verify if the right SA associations have happened.
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
+	assert.NoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedNameSA, Namespace: a.Namespace}, reconcileServiceAccount))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 
 	// undesirable changes
 	reconcileClusterRoleBinding.RoleRef.Name = "z"
 	reconcileClusterRoleBinding.Subjects[0].Name = "z"
-	assert.NilError(t, r.Client.Update(context.TODO(), reconcileClusterRoleBinding))
+	assert.NoError(t, r.Client.Update(context.TODO(), reconcileClusterRoleBinding))
 
 	// fetch it
 	dirtyClusterRoleBinding := &v1.ClusterRoleBinding{}
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, dirtyClusterRoleBinding))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, dirtyClusterRoleBinding))
 	assert.Equal(t, reconcileClusterRoleBinding.RoleRef.Name, dirtyClusterRoleBinding.RoleRef.Name)
 
 	// Have the reconciler override them
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
+	assert.NoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
 
 	// fetch it
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
 	assert.Equal(t, expectedClusterRoleName, reconcileClusterRoleBinding.RoleRef.Name)
 
 	// Check if cluster role and rolebinding gets deleted
 	os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
-	assert.NilError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
+	assert.NoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleBindingName}, reconcileClusterRoleBinding).Error(), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole).Error(), "not found")
 }
 
 func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// Dex is enabled, creates a new Service Account for it
 	sa, err := r.reconcileServiceAccount(dexServer, a)
-	assert.NilError(t, err)
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
+	assert.NoError(t, err)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
 
 	//Disable dex, deletes any existing Service Account for it
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
 	sa, err = r.reconcileServiceAccount(dexServer, a)
-	assert.NilError(t, err)
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
+	assert.NoError(t, err)
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa).Error(), "not found")
 }
 
 func testRules() []v1.PolicyRule {

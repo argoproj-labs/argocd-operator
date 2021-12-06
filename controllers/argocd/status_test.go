@@ -3,7 +3,7 @@ package argocd
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -13,7 +13,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig_multi_sso_configured(t *testin
 
 	templateAPIFound = true
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, r.reconcileStatusSSOConfig(a))
+	assert.NoError(t, r.reconcileStatusSSOConfig(a))
 	assert.Equal(t, a.Status.SSOConfig, "Failed")
 }
 func TestReconcileArgoCD_reconcileStatusSSOConfig_only_keycloak_configured(t *testing.T) {
@@ -22,7 +22,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig_only_keycloak_configured(t *te
 
 	templateAPIFound = true
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, r.reconcileStatusSSOConfig(a))
+	assert.NoError(t, r.reconcileStatusSSOConfig(a))
 	assert.Equal(t, a.Status.SSOConfig, "Success")
 }
 func TestReconcileArgoCD_reconcileStatusSSOConfig_only_dex_configured(t *testing.T) {
@@ -31,7 +31,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig_only_dex_configured(t *testing
 
 	templateAPIFound = true
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, r.reconcileStatusSSOConfig(a))
+	assert.NoError(t, r.reconcileStatusSSOConfig(a))
 	assert.Equal(t, a.Status.SSOConfig, "Success")
 }
 func TestReconcileArgoCD_reconcileStatusSSOConfig_no_sso_configured(t *testing.T) {
@@ -40,6 +40,6 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig_no_sso_configured(t *testing.T
 
 	templateAPIFound = true
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, r.reconcileStatusSSOConfig(a))
+	assert.NoError(t, r.reconcileStatusSSOConfig(a))
 	assert.Equal(t, a.Status.SSOConfig, "Unknown")
 }

@@ -67,7 +67,10 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 
 	_, err = r.reconcileRole(dexServer, rules, a)
 	assert.NoError(t, err)
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role).Error(), "not found")
 }
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
@@ -82,7 +85,10 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.NoError(t, err)
 
 	// cluster role should not be created
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, &v1.ClusterRole{}).Error(), "not found")
 
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
@@ -105,7 +111,10 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	// Check if the CLuster Role gets deleted
 	os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
 }
 
 func TestReconcileArgoCD_RoleHooks(t *testing.T) {
