@@ -92,7 +92,7 @@ const (
 	ArgoCDDefaultDexConfig = ""
 
 	// ArgoCDDefaultDexImage is the Dex container image to use when not specified.
-	ArgoCDDefaultDexImage = "quay.io/dexidp/dex"
+	ArgoCDDefaultDexImage = "ghcr.io/dexidp/dex"
 
 	// ArgoCDDefaultDexOAuthRedirectPath is the default path to use for the OAuth Redirect URI.
 	ArgoCDDefaultDexOAuthRedirectPath = "/api/dex/callback"
@@ -107,7 +107,7 @@ const (
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "sha256:77bfea96e8d8f3e4197b9f6020c8f5dedbb701245c19afd69a15747ae4bf2804" // v2.28.0
+	ArgoCDDefaultDexVersion = "sha256:6b3cc1c385fbc7542244614e4432f2546c619b7850d44d2379c598309a06bed8" // v2.30.0
 
 	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"

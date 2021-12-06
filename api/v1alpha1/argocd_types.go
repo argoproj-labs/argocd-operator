@@ -341,6 +341,9 @@ type ArgoCDRepoSpec struct {
 	// MountSAToken describes whether you would like to have the Repo server mount the service account token
 	MountSAToken bool `json:"mountsatoken,omitempty"`
 
+	// Replicas defines the number of replicas for argocd-repo-server. Value should be greater than or equal to 0. Default is nil.
+	Replicas *int32 `json:"replicas,omitempty"`
+
 	// Resources defines the Compute Resources required by the container for Redis.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -445,6 +448,9 @@ type ArgoCDServerSpec struct {
 
 	// LogFormat refers to the log level to be used by the ArgoCD Server component. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
 	LogFormat string `json:"logFormat,omitempty"`
+
+	// Replicas defines the number of replicas for argocd-server. Default is nil. Value should be greater than or equal to 0. Value will be ignored if Autoscaler is enabled.
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// Resources defines the Compute Resources required by the container for the Argo CD server component.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
