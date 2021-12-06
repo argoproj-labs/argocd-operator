@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +36,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 		argoCD,
 	}
 	r := makeReconciler(t, argoCD, objs...)
-	assert.NilError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -46,7 +46,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -68,7 +68,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 		argoCD,
 	}
 	r := makeReconciler(t, argoCD, objs...)
-	assert.NilError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -78,7 +78,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -140,7 +140,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		argoCD,
 	}
 	r := makeReconciler(t, argoCD, objs...)
-	assert.NilError(t, createNamespace(r, argoCD.Namespace, ""))
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
@@ -150,7 +150,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 
 	_, err := r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	loaded := &routev1.Route{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
@@ -179,7 +179,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
 
 	_, err = r.Reconcile(context.TODO(), req)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	loaded = &routev1.Route{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
