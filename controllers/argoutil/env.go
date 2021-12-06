@@ -25,16 +25,15 @@ func EnvMerge(existing []corev1.EnvVar, merge []corev1.EnvVar, override bool) []
 		}
 	}
 
-	// sort final by keys
-	keys := make([]string, 0, len(final))
-	for k := range final {
-		keys = append(keys, k)
+	for _, v := range final {
+		ret = append(ret, v)
 	}
-	sort.Strings(keys)
 
-	for _, v := range keys {
-		ret = append(ret, final[v])
-	}
+	// sort result slice by env name
+	sort.SliceStable(ret,
+		func(i, j int) bool {
+			return ret[i].Name < ret[j].Name
+		})
 
 	return ret
 }
