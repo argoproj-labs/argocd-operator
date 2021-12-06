@@ -23,7 +23,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -51,7 +51,7 @@ func ZapLogger(development bool) logr.Logger {
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
-	assert.NilError(t, argoprojv1alpha1.AddToScheme(s))
+	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewFakeClientWithScheme(s, objs...)
 	return &ReconcileArgoCD{
@@ -216,9 +216,9 @@ func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		cert, err := argoutil.NewSelfSignedCACertificate(key)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 		encoded := argoutil.EncodeCertificatePEM(cert)
 
 		a.Spec.TLS.InitialCerts = map[string]string{
