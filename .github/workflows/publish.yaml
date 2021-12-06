@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      IMG: ${{ secrets.REGISTRY_URL }}/argocd-operator:latest
+      REGISTRY_URL: quay.io
+      ORG: argoprojlabs
+      REPO: argocd-operator
 
     steps:
 
@@ -30,13 +32,17 @@ jobs:
 
       - name: Build operator and Tag Latest
         run: make docker-build
+        env:
+          IMG: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}:latest
 
       - name: Login to Registry
         uses: docker/login-action@v1
         with:
-          registry: ${{ secrets.REGISTRY_URL }}
+          registry: ${{ env.REGISTRY_URL }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Push latest operator
         run: make docker-push
+        env:
+          IMG: ${{ env.REGISTRY_URL }}/${{ env.ORG }}/${{ env.REPO }}:latest
