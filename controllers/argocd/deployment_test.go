@@ -40,6 +40,99 @@ var (
 		"argocd-server"}
 )
 
+func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name          string
+		replicas      int32
+		expectedNil   bool
+		expectedValue int32
+	}{
+		{
+			name:          "replicas field in the spec should reflect the number of replicas on the cluster",
+			replicas:      5,
+			expectedNil:   false,
+			expectedValue: 5,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Repo.Replicas = &test.replicas
+			})
+			r := makeTestReconciler(t, a)
+
+			err := r.reconcileRepoDeployment(a)
+			assert.NoError(t, err)
+
+			deployment := &appsv1.Deployment{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: testNamespace,
+			}, deployment)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedNil, deployment.Spec.Replicas == nil)
+			if deployment.Spec.Replicas != nil {
+				assert.Equal(t, test.expectedValue, *deployment.Spec.Replicas)
+			}
+		})
+	}
+}
+
+func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name          string
+		replicas      int32
+		autoscale     bool
+		expectedNil   bool
+		expectedValue int32
+	}{
+		{
+			name:          "replicas field in the spec should reflect the number of replicas on the cluster",
+			replicas:      5,
+			autoscale:     false,
+			expectedNil:   false,
+			expectedValue: 5,
+		},
+		{
+			name:        "replicas should be overriden by autoscale",
+			replicas:    1,
+			autoscale:   true,
+			expectedNil: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Server.Autoscale.Enabled = test.autoscale
+				a.Spec.Server.Replicas = &test.replicas
+			})
+			r := makeTestReconciler(t, a)
+
+			err := r.reconcileServerDeployment(a)
+			assert.NoError(t, err)
+
+			deployment := &appsv1.Deployment{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-server",
+				Namespace: testNamespace,
+			}, deployment)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedNil, deployment.Spec.Replicas == nil)
+			if deployment.Spec.Replicas != nil {
+				assert.Equal(t, test.expectedValue, *deployment.Spec.Replicas)
+			}
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 

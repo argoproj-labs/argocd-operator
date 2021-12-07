@@ -34,6 +34,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
+// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
+// replicas value is < 0.
+func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
+		return cr.Spec.Repo.Replicas
+	}
+
+	return nil
+}
+
+// getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
+// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
+// replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
+func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
+		return cr.Spec.Server.Replicas
+	}
+
+	return nil
+}
+
 func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
 	if cr.Spec.Import == nil {
 		return nil
@@ -929,6 +951,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 
 	deploy.Spec.Template.Spec.Volumes = repoServerVolumes
 
+	if replicas := getArgoCDRepoServerReplicas(cr); replicas != nil {
+		deploy.Spec.Replicas = replicas
+	}
+
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		changed := false
@@ -962,7 +988,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changed = true
 		}
-
+		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
+			existing.Spec.Replicas = deploy.Spec.Replicas
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
 			changed = true
@@ -1063,6 +1092,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 		},
 	}
 
+	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
+		deploy.Spec.Replicas = replicas
+	}
+
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
@@ -1096,6 +1129,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
 			existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
+			existing.Spec.Replicas = deploy.Spec.Replicas
 			changed = true
 		}
 		if changed {

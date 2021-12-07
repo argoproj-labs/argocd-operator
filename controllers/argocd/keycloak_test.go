@@ -133,7 +133,22 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 
 	assert.Equal(t, dc.Spec.Replicas, fakeReplicas)
-	assert.DeepEqual(t, dc.Spec.Strategy, appsv1.DeploymentStrategy{Type: "Recreate"})
+
+	strategy := appsv1.DeploymentStrategy{
+		Type: "Recreate",
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+				corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+			},
+		},
+	}
+	assert.DeepEqual(t, dc.Spec.Strategy, strategy)
+
 	assert.Equal(t, dc.Spec.Template.ObjectMeta.Name, "${APPLICATION_NAME}")
 	assert.DeepEqual(t, dc.Spec.Template.Spec.Volumes, fakeVolumes)
 }

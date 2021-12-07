@@ -2125,6 +2125,11 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
+                  replicas:
+                    description: Replicas defines the number of replicas for argocd-repo-server.
+                      Value should be greater than or equal to 0. Default is nil.
+                    format: int32
+                    type: integer
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Redis.
@@ -4006,6 +4011,12 @@ spec:
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
                       not set.  Valid options are debug, info, error, and warn.
                     type: string
+                  replicas:
+                    description: Replicas defines the number of replicas for argocd-server.
+                      Default is nil. Value should be greater than or equal to 0.
+                      Value will be ignored if Autoscaler is enabled.
+                    format: int32
+                    type: integer
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for the Argo CD server component.

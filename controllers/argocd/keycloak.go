@@ -305,6 +305,16 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 			Selector: map[string]string{"deploymentConfig": "${APPLICATION_NAME}"},
 			Strategy: appsv1.DeploymentStrategy{
 				Type: "Recreate",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+						corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+						corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+					},
+				},
 			},
 			Template: &corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{

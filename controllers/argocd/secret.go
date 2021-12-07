@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	argopass "github.com/argoproj/argo-cd/util/password"
+	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -304,6 +304,10 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 			hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
 			if err != nil {
 				return err
+			}
+
+			if secret.Data == nil {
+				secret.Data = make(map[string][]byte)
 			}
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
