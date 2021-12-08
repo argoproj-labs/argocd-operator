@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
@@ -102,7 +101,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"admin.enabled":                "true",
 		"configManagementPlugins":      "",
-		"dex.config":                   "",
 		"ga.anonymizeusers":            "false",
 		"ga.trackingid":                "",
 		"help.chatText":                "Chat now!",
@@ -214,7 +212,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.SSO.Dex.OpenShiftOAuth = true
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
 	})
 	sa := &corev1.ServiceAccount{
 		TypeMeta:   metav1.TypeMeta{Kind: "ServiceAccount", APIVersion: "v1"},
@@ -254,13 +257,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileArgoConfigMap_withDexNotConfigured(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{}
+	})
 	r := makeTestReconciler(t, a)
 
-	os.Setenv("DISABLE_DEX", "true")
 	err := r.reconcileArgoConfigMap(a)
 	assert.NilError(t, err)
 

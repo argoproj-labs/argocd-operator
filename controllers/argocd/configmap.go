@@ -308,8 +308,8 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 
-		// Reconcile dex configuration in configmap only if dex is enabled and configured
-		if !isDexDisabled() && cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		// Reconcile dex configuration in configmap only if dex is configured
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
 			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 				return err
 			}
@@ -348,7 +348,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if !isDexDisabled() && cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
 		dexConfig := getDexConfig(cr)
 		if cr.Spec.SSO != nil {
 			if dexConfig == "" && cr.Spec.SSO.Dex.OpenShiftOAuth {

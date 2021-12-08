@@ -115,6 +115,7 @@ func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 				Resources: makeTestControllerResources(),
 			},
 			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+				Provider: argoprojv1alpha1.SSOProviderTypeDex,
 				Dex: argoprojv1alpha1.ArgoCDDexSpec{
 					Resources: makeTestDexResources(),
 				},

@@ -113,8 +113,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == dexServer && (isDexDisabled() || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-				continue // Dex is disabled, do nothing
+			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
+				continue // Dex is not configured, do nothing
 			}
 			roleBindingExists = false
 		}
@@ -133,8 +133,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == dexServer && (isDexDisabled() || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-				log.Info("deleting the existing Dex rolebinding because dex is either disabled or not configured")
+			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
+				log.Info("deleting the existing Dex rolebinding because dex is not configured")
 				// Delete any existing RoleBinding created for Dex
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err

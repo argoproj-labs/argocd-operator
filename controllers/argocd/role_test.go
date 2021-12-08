@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -46,24 +47,30 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
 }
 
-func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole_dex_configuration_and_removal(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	rules := policyRuleForDexServer()
 	role := newRole(dexServer, rules, a)
 
-	// Dex is enabled
+	// Dex is configured
 	_, err := r.reconcileRole(dexServer, rules, a)
 	assert.NilError(t, err)
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
 	assert.DeepEqual(t, rules, role.Rules)
 
-	// Disable Dex
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
+	// Disable configuration removed
+	a.Spec.SSO = nil
 
 	_, err = r.reconcileRole(dexServer, rules, a)
 	assert.NilError(t, err)

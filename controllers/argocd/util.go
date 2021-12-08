@@ -317,16 +317,19 @@ func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
 // common.ArgoCDDefaultDexImage.
 func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.SSO.Dex.Image
-	if img == "" {
-		img = common.ArgoCDDefaultDexImage
-		defaultImg = true
-	}
+	img, tag := "", ""
+	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		img = cr.Spec.SSO.Dex.Image
+		if img == "" {
+			img = common.ArgoCDDefaultDexImage
+			defaultImg = true
+		}
 
-	tag := cr.Spec.SSO.Dex.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultDexVersion
-		defaultTag = true
+		tag = cr.Spec.SSO.Dex.Version
+		if tag == "" {
+			tag = common.ArgoCDDefaultDexVersion
+			defaultTag = true
+		}
 	}
 	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
@@ -374,8 +377,10 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.SSO.Dex.Resources != nil {
-		resources = *cr.Spec.SSO.Dex.Resources
+	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		if cr.Spec.SSO.Dex.Resources != nil {
+			resources = *cr.Spec.SSO.Dex.Resources
+		}
 	}
 
 	return resources

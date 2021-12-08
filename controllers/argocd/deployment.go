@@ -404,15 +404,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}}
-	dexDisabled := isDexDisabled()
-	if dexDisabled {
-		log.Info("reconciling for dex, but dex is disabled")
-	}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if dexDisabled || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
-			log.Info("deleting the existing Dex deployment because dex is either disabled or not configured")
+		if cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
+			log.Info("deleting the existing Dex deployment because dex is not configured")
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)
 		}
@@ -458,7 +454,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	// Dex deployment not found. Keep it that way if any of the following conditions are true
-	if dexDisabled || cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
+	if cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
 		return nil
 	}
 
@@ -1181,13 +1177,6 @@ func caseInsensitiveGetenv(s string) (string, string) {
 		return ls, v
 	}
 	return "", ""
-}
-
-func isDexDisabled() bool {
-	if v := os.Getenv("DISABLE_DEX"); v != "" {
-		return strings.ToLower(v) == "true"
-	}
-	return false
 }
 
 // to update nodeSelector and tolerations in reconciler

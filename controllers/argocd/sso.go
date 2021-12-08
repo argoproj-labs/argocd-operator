@@ -57,7 +57,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 
 		// Trigger reconciliation of Dex resources so they get deleted
-		if err := r.reconcileDexResources(cr); err != nil {
+		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
 			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
 			return err
 		}
@@ -91,7 +91,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 
 		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
-		if err := deleteKeycloakConfiguration(cr); err != nil {
+		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
 			if !apiErrors.IsNotFound(err) {
 				log.Error(err, "Unable to delete existing SSO configuration before configuring Dex")
 				return err

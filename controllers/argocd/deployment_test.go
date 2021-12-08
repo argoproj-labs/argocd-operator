@@ -34,7 +34,6 @@ const (
 var (
 	deploymentNames = []string{
 		"argocd-repo-server",
-		"argocd-dex-server",
 		"argocd-grafana",
 		"argocd-redis",
 		"argocd-server"}
@@ -446,13 +445,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
 }
 
-func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileDexDeployment_with_dex_not_configured(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	os.Setenv("DISABLE_DEX", "true")
+	a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{}
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -460,20 +459,34 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
-// When Dex is disabled, the Dex Deployment should be removed.
-func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
+// When Dex is configured Dex deployment should be present
+// When Dex is not configured the Dex Deployment should be removed.
+func TestReconcileArgoCD_reconcileDexDeployment_with_configuration(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	os.Setenv("DISABLE_DEX", "true")
+	a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+		Provider: argoprojv1alpha1.SSOProviderTypeDex,
+		Dex: argoprojv1alpha1.ArgoCDDexSpec{
+			OpenShiftOAuth: true,
+		},
+	}
 
 	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	a = makeTestArgoCD()
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
 	deployment := &appsv1.Deployment{}
+	assertNoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	a.Spec.SSO = nil
+	assert.NoError(t, r.reconcileDexDeployment(a))
+
+	deployment = &appsv1.Deployment{}
 	assertNotFound(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -750,7 +763,14 @@ func deploymentDefaultTolerations() []corev1.Toleration {
 
 func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 
 	assert.NoError(t, r.reconcileDexDeployment(a))
@@ -822,7 +842,14 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 
 	// Creates the deployment and then changes the CR and rereconciles.
@@ -1143,8 +1170,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 func restoreEnv(t *testing.T) {
 	keys := []string{
 		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
-		"http_proxy", "https_proxy", "no_proxy",
-		"DISABLE_DEX"}
+		"http_proxy", "https_proxy", "no_proxy"}
 	env := map[string]string{}
 	for _, v := range keys {
 		env[v] = os.Getenv(v)
