@@ -16,7 +16,10 @@ package argocdexport
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -161,7 +164,7 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
 	}
 }
 
-func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
+func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
 	pod.Containers = []corev1.Container{{
@@ -174,23 +177,32 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodSpec {
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
-	pod.ServiceAccountName = "argocd-application-controller"
+	pod.ServiceAccountName = fmt.Sprintf("%s-%s", argocdName, "argocd-application-controller")
 	pod.Volumes = []corev1.Volume{
 		getArgoStorageVolume("backup-storage", cr),
 		getArgoSecretVolume("secret-storage", cr),
 	}
 
+	// Configure runAsUser, runAsGroup and fsGroup so that the job can write to the PV
+	// 999 is the uid/gid of the argocd user that the container runs as
+	id := int64(999)
+	pod.SecurityContext = &corev1.PodSecurityContext{
+		RunAsUser:  &id,
+		RunAsGroup: &id,
+		FSGroup:    &id,
+	}
+
 	return pod
 }
 
-func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport) corev1.PodTemplateSpec {
+func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    common.DefaultLabels(cr.Name),
 		},
-		Spec: newExportPodSpec(cr),
+		Spec: newExportPodSpec(cr, argocdName),
 	}
 }
 
@@ -211,8 +223,15 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) 
 
 	cj.Spec.Schedule = *cr.Spec.Schedule
 
+	// To create the job, we need the name of the argocd instance.  Although the argocd export cr contains a field with
+	// the argocd instance name, it's never used anywhere, and so there may be existing argocd export resources with the
+	// wrong name. To avoid these breaking, we look up the name of the argocd instance in the namespace of the export cr.
+	argocdName, err := r.argocdName(cr.Namespace)
+	if err != nil {
+		return err
+	}
 	job := newJob(cr)
-	job.Spec.Template = newPodTemplateSpec(cr)
+	job.Spec.Template = newPodTemplateSpec(cr, argocdName)
 
 	cj.Spec.JobTemplate.Spec = job.Spec
 
@@ -238,10 +257,29 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) erro
 		return nil // Job not complete, move along...
 	}
 
-	job.Spec.Template = newPodTemplateSpec(cr)
+	// To create the job, we need the name of the argocd instance.  Although the argocd export cr contains a field with
+	// the argocd instance name, it's never used anywhere, and so there may be existing argocd export resources with the
+	// wrong name. To avoid these breaking, we look up the name of the argocd instance in the namespace of the export cr.
+	argocdName, err := r.argocdName(cr.Namespace)
+	if err != nil {
+		return err
+	}
+	job.Spec.Template = newPodTemplateSpec(cr, argocdName)
 
 	if err := controllerutil.SetControllerReference(cr, job, r.Scheme); err != nil {
 		return err
 	}
 	return r.Client.Create(context.TODO(), job)
+}
+
+func (r *ReconcileArgoCDExport) argocdName(namespace string) (string, error) {
+	argocds := &argoprojv1a1.ArgoCDList{}
+	if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: namespace}); err != nil {
+		return "", err
+	}
+	if len(argocds.Items) != 1 {
+		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
+	}
+	argocd := argocds.Items[0]
+	return argocd.Name, nil
 }
