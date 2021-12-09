@@ -350,16 +350,14 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
 		dexConfig := getDexConfig(cr)
-		if cr.Spec.SSO != nil {
-			if dexConfig == "" && cr.Spec.SSO.Dex.OpenShiftOAuth {
-				cfg, err := r.getOpenShiftDexConfig(cr)
-				if err != nil {
-					return err
-				}
-				dexConfig = cfg
+		if dexConfig == "" && cr.Spec.SSO.Dex.OpenShiftOAuth {
+			cfg, err := r.getOpenShiftDexConfig(cr)
+			if err != nil {
+				return err
 			}
-			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+			dexConfig = cfg
 		}
+		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

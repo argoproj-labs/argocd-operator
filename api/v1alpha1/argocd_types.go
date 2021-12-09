@@ -184,6 +184,9 @@ type ArgoCDKeycloakSpec struct {
 
 	// Version is the Keycloak container image tag.
 	Version string `json:"version,omitempty"`
+
+	// VerifyTLS set to false disables strict TLS validation.
+	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 }
 
 // ArgoCDDexOAuthSpec defines the desired state for the Dex OAuth configuration.
@@ -507,9 +510,6 @@ type ArgoCDSSOSpec struct {
 
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
-
-	// VerifyTLS set to false disables strict TLS validation.
-	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.

@@ -52,7 +52,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		// Ensure SSO provider type and provided configuration are compatible
 		if !reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
 			err := errors.New("incorrect SSO configuration")
-			log.Error(err, fmt.Sprintf("provided SSO configuration is incompatible with provider type specified: %s", cr.Spec.SSO.Provider))
+			log.Error(err, fmt.Sprintf("cannot supply dex spec when provider is set to: %s", cr.Spec.SSO.Provider))
 			return err
 		}
 
@@ -79,14 +79,14 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		// Ensure SSO provider type and provided configuration are compatible
 		if !reflect.DeepEqual(cr.Spec.SSO.Keycloak, argoprojv1a1.ArgoCDKeycloakSpec{}) {
 			err := errors.New("incorrect SSO configuration")
-			log.Error(err, fmt.Sprintf("provided SSO configuration is incompatible with provider type specified: %s", cr.Spec.SSO.Provider))
+			log.Error(err, fmt.Sprintf("cannot supply keycloak spec when provider is set to: %s", cr.Spec.SSO.Provider))
 			return err
 		}
 
 		// Ensure Dex spec is supplied
 		if reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
 			err := errors.New("incorrect SSO configuration")
-			log.Error(err, fmt.Sprintf("Must supply configuration specifications with provider type specified: %s", cr.Spec.SSO.Provider))
+			log.Error(err, fmt.Sprintf("Must supply dex spec for provider: %s", cr.Spec.SSO.Provider))
 			return err
 		}
 

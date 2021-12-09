@@ -320,9 +320,6 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 
-	// Remove Dex deployment reconciliation from here to ensure that dex is only reconciled through reconcileSSO
-	// so as not to bypass any checks placed there
-
 	err := r.reconcileRedisDeployment(cr)
 	if err != nil {
 		return err

@@ -4219,6 +4219,9 @@ spec:
                               More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
+                      verifyTLS:
+                        description: VerifyTLS set to false disables strict TLS validation.
+                        type: boolean
                       version:
                         description: Version is the Keycloak container image tag.
                         type: string
@@ -4227,9 +4230,6 @@ spec:
                     description: Provider installs and configures the given SSO Provider
                       with Argo CD.
                     type: string
-                  verifyTLS:
-                    description: VerifyTLS set to false disables strict TLS validation.
-                    type: boolean
                 type: object
               statusBadgeEnabled:
                 description: StatusBadgeEnabled toggles application status badge feature.
