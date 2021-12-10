@@ -130,7 +130,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
-			"checksum/init-config": "552ee3bec8fe5d9d865e371f7b615c6d472253649eb65d53ed4ae874f782647c", // TODO: Should this be hard-coded?
+			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
 			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
@@ -138,18 +138,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 	}
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
-		PodAffinity: &corev1.PodAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
-						},
-					},
-					TopologyKey: common.ArgoCDKeyFailureDomainZone,
-				},
-				Weight: int32(100),
-			}},
+		PodAntiAffinity: &corev1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
@@ -160,6 +149,9 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			}},
 		},
 	}
+
+	f := false
+	ss.Spec.Template.Spec.AutomountServiceAccountToken = &f
 
 	ss.Spec.Template.Spec.Containers = []corev1.Container{
 		{
@@ -173,22 +165,50 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(common.ArgoCDDefaultRedisPort),
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"sh",
+							"-c",
+							"/health/redis_liveness.sh",
+						},
 					},
 				},
-				InitialDelaySeconds: int32(15),
+				FailureThreshold:    int32(5),
+				InitialDelaySeconds: int32(30),
+				PeriodSeconds:       int32(15),
+				SuccessThreshold:    int32(1),
+				TimeoutSeconds:      int32(15),
 			},
 			Name: "redis",
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: common.ArgoCDDefaultRedisPort,
 				Name:          "redis",
 			}},
+			ReadinessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"sh",
+							"-c",
+							"/health/redis_readiness.sh",
+						},
+					},
+				},
+				FailureThreshold:    int32(5),
+				InitialDelaySeconds: int32(30),
+				PeriodSeconds:       int32(15),
+				SuccessThreshold:    int32(1),
+				TimeoutSeconds:      int32(15),
+			},
 			Resources: getRedisResources(cr),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
 					Name:      "data",
+				},
+				{
+					MountPath: "/health",
+					Name:      "health",
 				},
 			},
 		},
@@ -203,22 +223,50 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
 				Handler: corev1.Handler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.FromInt(common.ArgoCDDefaultRedisSentinelPort),
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"sh",
+							"-c",
+							"/health/sentinel_liveness.sh",
+						},
 					},
 				},
-				InitialDelaySeconds: int32(15),
+				FailureThreshold:    int32(5),
+				InitialDelaySeconds: int32(30),
+				PeriodSeconds:       int32(15),
+				SuccessThreshold:    int32(1),
+				TimeoutSeconds:      int32(15),
 			},
 			Name: "sentinel",
 			Ports: []corev1.ContainerPort{{
 				ContainerPort: common.ArgoCDDefaultRedisSentinelPort,
 				Name:          "sentinel",
 			}},
+			ReadinessProbe: &corev1.Probe{
+				Handler: corev1.Handler{
+					Exec: &corev1.ExecAction{
+						Command: []string{
+							"sh",
+							"-c",
+							"/health/sentinel_liveness.sh",
+						},
+					},
+				},
+				FailureThreshold:    int32(5),
+				InitialDelaySeconds: int32(30),
+				PeriodSeconds:       int32(15),
+				SuccessThreshold:    int32(1),
+				TimeoutSeconds:      int32(15),
+			},
 			Resources: getRedisResources(cr),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
 					Name:      "data",
+				},
+				{
+					MountPath: "/health",
+					Name:      "health",
 				},
 			},
 		},
@@ -234,15 +282,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		Env: []corev1.EnvVar{
 			{
 				Name:  "SENTINEL_ID_0",
-				Value: "25b71bd9d0e4a51945d8422cab53f27027397c12", // TODO: Should this be hard-coded?
+				Value: "3c0d9c0320bb34888c2df5757c718ce6ca992ce6", // TODO: Should this be hard-coded?
 			},
 			{
 				Name:  "SENTINEL_ID_1",
-				Value: "896627000a81c7bdad8dbdcffd39728c9c17b309", // TODO: Should this be hard-coded?
+				Value: "40000915ab58c3fa8fd888fb8b24711944e6cbb4", // TODO: Should this be hard-coded?
 			},
 			{
 				Name:  "SENTINEL_ID_2",
-				Value: "3acbca861108bc47379b71b1d87d1c137dce591f", // TODO: Should this be hard-coded?
+				Value: "2bbec7894d954a8af3bb54d13eaec53cb024e2ca", // TODO: Should this be hard-coded?
 			},
 		},
 		Image:           getRedisHAContainerImage(cr),
@@ -274,6 +322,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 
 	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
+	var terminationGracePeriodSeconds int64 = 60
+	ss.Spec.Template.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
+
+	var defaultMode int32 = 493
 	ss.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "config",
@@ -284,7 +336,19 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 					},
 				},
 			},
-		}, {
+		},
+		{
+			Name: "health",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &defaultMode,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDRedisHAHealthConfigMapName,
+					},
+				},
+			},
+		},
+		{
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},

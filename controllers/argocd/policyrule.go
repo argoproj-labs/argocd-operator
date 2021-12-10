@@ -39,8 +39,24 @@ func policyRuleForRedisHa(cr *argoprojv1alpha1.ArgoCD) []v1.PolicyRule {
 		},
 	}
 
-	if err := applyReconcilerHook(cr, &rules, "policyRuleForRedisHa"); err != nil {
-		log.Error(err, "error from reconcile hook")
+	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
+	// permissions to start
+	if IsRouteAPIAvailable() {
+		orules := v1.PolicyRule{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				"nonroot",
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		}
+		rules = append(rules, orules)
 	}
 
 	return rules

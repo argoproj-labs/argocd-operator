@@ -615,6 +615,42 @@ func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
 	return conf
 }
 
+// getRedisLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisLivenessScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/redis_liveness.sh.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis liveness script")
+		return ""
+	}
+	return conf
+}
+
+// getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getRedisReadinessScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/redis_readiness.sh.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load redis readiness script")
+		return ""
+	}
+	return conf
+}
+
+// getSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
+// If an error occurs, an empty string value will be returned.
+func getSentinelLivenessScript(cr *argoprojv1a1.ArgoCD) string {
+	path := fmt.Sprintf("%s/sentinel_liveness.sh.tpl", getRedisConfigPath())
+	conf, err := loadTemplateFile(path, map[string]string{})
+	if err != nil {
+		log.Error(err, "unable to load sentinel liveness script")
+		return ""
+	}
+	return conf
+}
+
 // getRedisServerAddress will return the Redis service address for the given ArgoCD.
 func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
