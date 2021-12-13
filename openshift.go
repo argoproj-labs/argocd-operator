@@ -1,4 +1,3 @@
-//go:build openshift
 // +build openshift
 
 package main
