@@ -650,9 +650,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoC
 	}
 
 	cm.Data = map[string]string{
-		"redis_liveness.sh":    getRedisLivenessScript(cr),
-		"redis_readiness.sh":   getRedisReadinessScript(cr),
-		"sentinel_liveness.sh": getSentinelLivenessScript(cr),
+		"redis_liveness.sh":    getRedisLivenessScript(),
+		"redis_readiness.sh":   getRedisReadinessScript(),
+		"sentinel_liveness.sh": getSentinelLivenessScript(),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
