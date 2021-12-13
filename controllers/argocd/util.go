@@ -1085,6 +1085,13 @@ func namespaceFilterPredicate() predicate.Predicate {
 					} else {
 						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
 					}
+
+					// Delete namespace from cluster secret of previously managing argocd instance
+					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
+					} else {
+						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
+					}
 				}
 				return true
 			}
