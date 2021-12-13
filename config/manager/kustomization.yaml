@@ -12,10 +12,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-<<<<<<< HEAD
-  newName: quay.io/jrao/argocd-operator
-  newTag: v0.1.0-1507
-=======
   newName: quay.io/argoprojlabs/argocd-operator
   newTag: v0.2.0
->>>>>>> a07d970362f551595b099801cdf7288746833662
