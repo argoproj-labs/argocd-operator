@@ -210,4 +210,10 @@ const (
 
 	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
 	ArgoCDManagedByLabel = "argocd.argoproj.io/managed-by"
+
+	// ArgoCDControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD application controller
+	ArgoCDControllerClusterRoleEnvName = "CONTROLLER_CLUSTER_ROLE"
+
+	// ArgoCDServerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD server
+	ArgoCDServerClusterRoleEnvName = "SERVER_CLUSTER_ROLE"
 )

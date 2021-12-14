@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -92,4 +93,46 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+}
+
+func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	p := policyRuleForApplicationController()
+
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+
+	workloadIdentifier := "argocd-application-controller"
+	roleBinding := &rbacv1.RoleBinding{}
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+
+	expectedRoleRef := rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     "custom-role",
+	}
+
+	namespaceWithCustomRole := "namespace-with-custom-role"
+	assert.NilError(t, createNamespace(r, namespaceWithCustomRole, a.Namespace))
+	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
+
+	// check if the default rolebindings are created
+	roleBinding = &rbacv1.RoleBinding{}
+	expectedName = fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
+
+	// specify the custom cluster role
+	assert.NilError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role"))
+	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
+	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
+
+	// check if the role ref is updated with cluster role
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+	assert.DeepEqual(t, roleBinding.RoleRef, expectedRoleRef)
+
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
+	assert.DeepEqual(t, roleBinding.RoleRef, expectedRoleRef)
 }
