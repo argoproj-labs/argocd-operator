@@ -2214,6 +2214,17 @@ Failed: At least one of the  Argo CD server component Pods had a failure.
 Unknown: For some reason the state of the Argo CD server component could not be obtained.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>url</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>URL is the url for the hostname to use for Ingress/Route resources</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="argoproj.io/v1alpha1.ArgoCDTLSSpec">ArgoCDTLSSpec

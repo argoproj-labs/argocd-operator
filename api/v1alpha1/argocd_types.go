@@ -702,6 +702,9 @@ type ArgoCDStatus struct {
 
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
+
+	// Host is the hostname of the Ingress.
+	Host string `json:"host,omitempty"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
