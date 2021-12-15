@@ -163,7 +163,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 
 			// if the RoleRef changes, delete the existing role binding and create a new one
-			if customRoleName != "" || !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
+			if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}
