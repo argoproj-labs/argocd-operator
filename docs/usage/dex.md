@@ -22,10 +22,12 @@ metadata:
   labels:
     example: openshift-oauth
 spec:
-  dex:
-    openShiftOAuth: true
-    groups:
-     - default
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+      groups:
+      - default
   rbac:
     defaultPolicy: 'role:readonly'
     policy: |
@@ -65,30 +67,41 @@ metadata:
   labels:
     example: openshift-oauth
 spec:
-  dex:
-    config: |
-      connectors:
-        # GitHub example
-        - type: github
-          id: github
-          name: GitHub
-          config:
-            clientID: xxxxxxxxxxxxxx
-            clientSecret: $dex.github.clientSecret # Alternatively $<some_K8S_secret>:dex.github.clientSecret
-            orgs:
-            - name: dummy-org
+  sso:
+    provider: dex
+    dex:
+      config: |
+        connectors:
+          # GitHub example
+          - type: github
+            id: github
+            name: GitHub
+            config:
+              clientID: xxxxxxxxxxxxxx
+              clientSecret: $dex.github.clientSecret # Alternatively $<some_K8S_secret>:dex.github.clientSecret
+              orgs:
+              - name: dummy-org
 ```
 
-## Disable DEX
+## Install/Uninstall DEX
 
-Dex is installed by default for all the Argo CD instances created by the operator. You can disable this behavior using the environmental variable `DISABLE_DEX` on the operator.
+Dex is not installed by default for any of the Argo CD instances created by the operator. It can be enabled by setting `.spec.sso.provider` to `dex` and supplying a non-empty `.spec.sso.dex` section within the Argo CD custom resource. For example: 
 
-Set the `DISABLE_DEX` to `true` in the Subscription resource of the operator.
-
-```yaml
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: openshift-oauth
 spec:
-  config:
-    env:
-    - name: DISABLE_DEX
-      value: "true"
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
 ```
+Dex can be uninstalled by either deleting the `.spec.sso` field from the Argo CD custom resource, or setting `.spec.sso.provider` to an SSO provider other than dex. Doing so would trigger the removal of all dex related resources created by the operator.
+
+**Important note:** `.spec.sso.dex` is required and must not be empty if `spec.sso.provider` is set to dex.
+
+**Important note:** The `DISABLE_DEX` environment variable is no longer supported for enabling/disabling dex.

@@ -15,7 +15,6 @@ Name | Default | Description
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
-[**Dex**](#dex-options) | [Object] | Dex configuration options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
@@ -178,14 +177,16 @@ metadata:
   labels:
     example: dex
 spec:
-  dex:
-    config: ""
-    groups:
-      - default
-    image: quay.io/dexidp/dex
-    openShiftOAuth: false
-    resources: {}
-    version: v2.21.0
+  sso:
+    provider: dex
+    dex:
+      config: ""
+      groups:
+        - default
+      image: quay.io/dexidp/dex
+      openShiftOAuth: false
+      resources: {}
+      version: v2.21.0
 ```
 
 ### Dex OpenShift OAuth Example
@@ -202,8 +203,10 @@ metadata:
   labels:
     example: openshift-oauth
 spec:
-  dex:
-    openShiftOAuth: true
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
   rbac:
     defaultPolicy: 'role:readonly'
     policy: |
