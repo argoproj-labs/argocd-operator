@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -137,7 +138,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				log.Info("deleting the existing Dex rolebinding because dex is not configured")
 				// Delete any existing RoleBinding created for Dex
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
-					return err
+					if !apiErrors.IsNotFound(err) {
+						return err
+					}
 				}
 				continue
 			}
