@@ -104,6 +104,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range namespaces.Items {
+		customRole := getCustomRoleName(name)
 		role := newRole(name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
@@ -114,6 +115,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+			}
+			if customRole != "" {
+				continue // skip creating default role if custom cluster role is provided
 			}
 			roles = append(roles, role)
 			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
@@ -127,6 +131,14 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				}
 			}
 			if err := r.Client.Create(context.TODO(), role); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		if customRole != "" {
+			// Delete the existing default role if custom role is specified
+			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}
 			continue
