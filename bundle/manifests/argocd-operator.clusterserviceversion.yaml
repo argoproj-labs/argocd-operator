@@ -47,18 +47,6 @@ metadata:
                 }
               }
             },
-            "dex": {
-              "resources": {
-                "limits": {
-                  "cpu": "500m",
-                  "memory": "256Mi"
-                },
-                "requests": {
-                  "cpu": "250m",
-                  "memory": "128Mi"
-                }
-              }
-            },
             "ha": {
               "enabled": false,
               "resources": {
@@ -110,6 +98,21 @@ metadata:
               "route": {
                 "enabled": true
               }
+            },
+            "sso" : {
+              "provider": "dex",
+              "dex": {
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                }
+              },
             }
           }
         },
