@@ -85,7 +85,7 @@ spec:
 
 ## Install/Uninstall DEX
 
-Dex is not installed by default for any of the Argo CD instances created by the operator. It can be enabled by setting `.spec.sso.provider` to `dex` and supplying a non-empty `.spec.sso.dex` section within the Argo CD custom resource. For example: 
+Dex can be enabled by setting `.spec.sso.provider` to `dex` and supplying a non-empty `.spec.sso.dex` section within the Argo CD custom resource. For example: 
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
