@@ -135,7 +135,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			continue
 		}
-    
+
 		if customRole != "" {
 			// Delete the existing default role if custom role is specified
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
