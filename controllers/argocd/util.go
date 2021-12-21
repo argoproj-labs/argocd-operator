@@ -317,16 +317,19 @@ func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
 // common.ArgoCDDefaultDexImage.
 func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.Dex.Image
-	if img == "" {
-		img = common.ArgoCDDefaultDexImage
-		defaultImg = true
-	}
+	img, tag := "", ""
+	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		img = cr.Spec.SSO.Dex.Image
+		if img == "" {
+			img = common.ArgoCDDefaultDexImage
+			defaultImg = true
+		}
 
-	tag := cr.Spec.Dex.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultDexVersion
-		defaultTag = true
+		tag = cr.Spec.SSO.Dex.Version
+		if tag == "" {
+			tag = common.ArgoCDDefaultDexVersion
+			defaultTag = true
+		}
 	}
 	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
@@ -374,8 +377,10 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.Dex.Resources != nil {
-		resources = *cr.Spec.Dex.Resources
+	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
+		if cr.Spec.SSO.Dex.Resources != nil {
+			resources = *cr.Spec.SSO.Dex.Resources
+		}
 	}
 
 	return resources
@@ -430,7 +435,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 			"clientSecret": *clientSecret,
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
 			"insecureCA":   true, // TODO: Configure for openshift CA,
-			"groups":       cr.Spec.Dex.Groups,
+			"groups":       cr.Spec.SSO.Dex.Groups,
 		},
 	}
 
@@ -891,7 +896,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -935,10 +940,21 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 			if !ok {
 				return false
 			}
+
+			// Handle deletion of SSO from Argo CD custom resource
 			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := deleteSSOConfiguration(newCR)
+				err := r.deleteSSOConfiguration(newCR, oldCR.Spec.SSO)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+					log.Error(err, fmt.Sprintf("Failed to delete existing SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+
+			// Trigger reconciliation of SSO on update event
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
+				err := r.reconcileSSO(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))
 				}
 			}

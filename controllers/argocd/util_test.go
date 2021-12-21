@@ -39,14 +39,28 @@ var imageTests = []struct {
 		name:      "dex default configuration",
 		imageFunc: getDexContainerImage,
 		want:      argoutil.CombineImageTag(common.ArgoCDDefaultDexImage, common.ArgoCDDefaultDexVersion),
+		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+				Provider: argoprojv1alpha1.SSOProviderTypeDex,
+				Dex: argoprojv1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				},
+			}
+		}},
 	},
 	{
 		name:      "dex spec configuration",
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex.Image = "testing/dex"
-			a.Spec.Dex.Version = "latest"
+			a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+				Provider: argoprojv1alpha1.SSOProviderTypeDex,
+				Dex: argoprojv1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+					Image:          "testing/dex",
+					Version:        "latest",
+				},
+			}
 		}},
 	},
 	{
@@ -60,6 +74,14 @@ var imageTests = []struct {
 			})
 			os.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
 		},
+		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+				Provider: argoprojv1alpha1.SSOProviderTypeDex,
+				Dex: argoprojv1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				},
+			}
+		}},
 	},
 	{
 		name:      "argo default configuration",

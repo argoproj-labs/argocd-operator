@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -45,22 +46,28 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
 }
 
-func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleBinding_dex_configuration_and_removal(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
 	rules := policyRuleForDexServer()
 	rb := newRoleBindingWithname(dexServer, a)
 
-	// Dex is enabled, creates a role binding
+	// Dex is configured, creates a role binding
 	assert.NilError(t, r.reconcileRoleBinding(dexServer, rules, a))
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
 
-	// Disable Dex, deletes the existing role binding
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
+	// Dex configuration removed, deletes the existing role binding
+	a.Spec.SSO = nil
 
 	_, err := r.reconcileRole(dexServer, rules, a)
 	assert.NilError(t, err)

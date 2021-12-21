@@ -277,56 +277,6 @@ spec:
                         type: integer
                     type: object
                 type: object
-              dex:
-                description: Dex defines the Dex server options for ArgoCD.
-                properties:
-                  config:
-                    description: Config is the dex connector configuration.
-                    type: string
-                  groups:
-                    description: Optional list of required groups a user must be a
-                      member of
-                    items:
-                      type: string
-                    type: array
-                  image:
-                    description: Image is the Dex container image.
-                    type: string
-                  openShiftOAuth:
-                    description: OpenShiftOAuth enables OpenShift OAuth authentication
-                      for the Dex server.
-                    type: boolean
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for Dex.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                    type: object
-                  version:
-                    description: Version is the Dex container image tag.
-                    type: string
-                type: object
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean
@@ -4182,45 +4132,103 @@ spec:
                 description: SSO defines the Single Sign-on configuration for Argo
                   CD
                 properties:
-                  image:
-                    description: Image is the SSO container image.
-                    type: string
+                  dex:
+                    description: Dex contains the configuration for Argo CD dex authentication
+                      (previously found under cr.spec.Dex)
+                    properties:
+                      config:
+                        description: Config is the dex connector configuration.
+                        type: string
+                      groups:
+                        description: Optional list of required groups a user must
+                          be a member of
+                        items:
+                          type: string
+                        type: array
+                      image:
+                        description: Image is the Dex container image.
+                        type: string
+                      openShiftOAuth:
+                        description: OpenShiftOAuth enables OpenShift OAuth authentication
+                          for the Dex server.
+                        type: boolean
+                      resources:
+                        description: Resources defines the Compute Resources required
+                          by the container for Dex.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                      version:
+                        description: Version is the Dex container image tag.
+                        type: string
+                    type: object
+                  keycloak:
+                    description: Keycloak contains the configuration for Argo CD keycloak
+                      authentication (previously found under cr.spec.sso)
+                    properties:
+                      image:
+                        description: Image is the Keycloak container image.
+                        type: string
+                      resources:
+                        description: Resources defines the Compute Resources required
+                          by the container for Keycloak.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                      verifyTLS:
+                        description: VerifyTLS set to false disables strict TLS validation.
+                        type: boolean
+                      version:
+                        description: Version is the Keycloak container image tag.
+                        type: string
+                    type: object
                   provider:
                     description: Provider installs and configures the given SSO Provider
                       with Argo CD.
-                    type: string
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for SSO.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                    type: object
-                  verifyTLS:
-                    description: VerifyTLS set to false disables strict TLS validation.
-                    type: boolean
-                  version:
-                    description: Version is the SSO container image tag.
                     type: string
                 type: object
               statusBadgeEnabled:

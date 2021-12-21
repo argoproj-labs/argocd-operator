@@ -2,9 +2,9 @@ package argocd
 
 import (
 	"context"
-	"os"
 	"testing"
 
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"gotest.tools/assert"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,7 +13,14 @@ import (
 
 func TestReconcileArgoCD_reconcileDexService_Dex_Enabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 
 	s := newServiceWithSuffix("dex-server", "dex-server", a)
@@ -22,22 +29,26 @@ func TestReconcileArgoCD_reconcileDexService_Dex_Enabled(t *testing.T) {
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 }
 
-func TestReconcileArgoCD_reconcileDexService_Dex_Disabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileDexService_dex_configruation_and_removal(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
+		}
+	})
 	r := makeTestReconciler(t, a)
 
 	s := newServiceWithSuffix("dex-server", "dex-server", a)
 
-	// Create Service for Dex
+	// Dex configured, Create Service for Dex
 	assert.NilError(t, r.reconcileDexService(a))
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 
-	// Disable Dex, existing service should be deleted
-	os.Setenv("DISABLE_DEX", "true")
-	t.Cleanup(func() {
-		os.Unsetenv("DISABLE_DEX")
-	})
+	// Dex configuration removed, existing service should be deleted
+	a.Spec.SSO = nil
 
 	assert.NilError(t, r.reconcileDexService(a))
 	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s), "not found")

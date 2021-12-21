@@ -120,8 +120,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				continue // skip creating default role if custom cluster role is provided
 			}
 			roles = append(roles, role)
-			if name == dexServer && isDexDisabled() {
-				continue // Dex is disabled, do nothing
+			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
+				continue // Dex is not configured, do nothing
 			}
 
 			// Only set ownerReferences for roles in same namespace as ArgoCD CR
@@ -144,7 +144,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			continue
 		}
 
-		if name == dexServer && isDexDisabled() {
+		if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
+			log.Info("deleting the existing Dex role because dex is not configured")
 			// Delete any existing Role created for Dex
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
