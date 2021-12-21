@@ -8,6 +8,7 @@ import (
 
 	"gotest.tools/assert"
 	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -131,4 +132,44 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	role = roles[0]
 	assert.NilError(t, err)
 	assert.DeepEqual(t, role.Rules, []v1.PolicyRule{})
+}
+
+func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NilError(t, createNamespace(r, "namespace-custom-role", a.Namespace))
+
+	workloadIdentifier := "argocd-application-controller"
+	expectedRules := policyRuleForApplicationController()
+	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, err)
+
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	reconciledRole := &v1.Role{}
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+
+	// check if roles are created for the new namespace as well
+	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole))
+	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+
+	// set the custom role as env variable
+	assert.NilError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role"))
+	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
+
+	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NilError(t, err)
+
+	// check if the default cluster roles are removed
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)
+	if err == nil || !errors.IsNotFound(err) {
+		t.Fatal(err)
+	}
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole)
+	if err == nil || !errors.IsNotFound(err) {
+		t.Fatal(err)
+	}
 }
