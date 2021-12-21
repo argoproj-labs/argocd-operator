@@ -102,6 +102,6 @@ spec:
 ```
 Dex can be uninstalled by either deleting the `.spec.sso` field from the Argo CD custom resource, or setting `.spec.sso.provider` to an SSO provider other than dex. Doing so would trigger the removal of all dex related resources created by the operator.
 
-**Important note:** `.spec.sso.dex` is required and must not be empty if `spec.sso.provider` is set to dex.
+**NOTE:** `.spec.sso.dex` is required and must not be empty if `spec.sso.provider` is set to dex.
 
-**Important note:** The `DISABLE_DEX` environment variable is no longer supported for enabling/disabling dex.
+**NOTE:** The `DISABLE_DEX` environment variable is no longer supported for enabling/disabling dex.

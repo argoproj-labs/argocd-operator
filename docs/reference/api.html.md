@@ -2118,6 +2118,19 @@ ArgoCDServerSpec
 </tr>
 <tr>
 <td>
+<code>sso</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDSSOSpec">
+ArgoCDSSOSpec
+</a>
+</em>
+</td>
+<td>
+<p>SSO defines the Single Sign-on configuration for Argo CD.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>statusBadgeEnabled</code></br>
 <em>
 bool
