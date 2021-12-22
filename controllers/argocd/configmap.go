@@ -73,8 +73,8 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 
 func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
-	if len(cr.Spec.SSO.Dex.Config) > 0 {
-		config = cr.Spec.SSO.Dex.Config
+	if len(cr.Spec.Dex.Config) > 0 {
+		config = cr.Spec.Dex.Config
 	}
 	return config
 }
@@ -307,9 +307,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-
-		// Reconcile dex configuration in configmap only if dex is configured
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		if cr.Spec.SSO == nil {
 			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 				return err
 			}
@@ -348,16 +346,18 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+	if !isDexDisabled() {
 		dexConfig := getDexConfig(cr)
-		if dexConfig == "" && cr.Spec.SSO.Dex.OpenShiftOAuth {
-			cfg, err := r.getOpenShiftDexConfig(cr)
-			if err != nil {
-				return err
+		if cr.Spec.SSO == nil {
+			if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
+				cfg, err := r.getOpenShiftDexConfig(cr)
+				if err != nil {
+					return err
+				}
+				dexConfig = cfg
 			}
-			dexConfig = cfg
+			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 		}
-		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -370,7 +370,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
-	if len(desired) <= 0 && cr.Spec.SSO.Dex.OpenShiftOAuth {
+	if len(desired) <= 0 && cr.Spec.Dex.OpenShiftOAuth {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
 			return err

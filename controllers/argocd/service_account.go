@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -97,7 +96,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
-	if cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex || reflect.DeepEqual(cr.Spec.SSO.Dex, argoprojv1a1.ArgoCDDexSpec{}) || !cr.Spec.SSO.Dex.OpenShiftOAuth {
+	if !cr.Spec.Dex.OpenShiftOAuth {
 		return nil // OpenShift OAuth not enabled, move along...
 	}
 
@@ -158,14 +157,13 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-			return sa, nil // Dex is not configured, do nothing
+		if name == dexServer && isDexDisabled() {
+			return sa, nil // Dex is disabled, do nothing
 		}
 		exists = false
 	}
 	if exists {
-		if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-			log.Info("deleting the existing Dex service account because dex is not configured")
+		if name == dexServer && isDexDisabled() {
 			// Delete any existing Service Account created for Dex
 			return sa, r.Client.Delete(context.TODO(), sa)
 		}

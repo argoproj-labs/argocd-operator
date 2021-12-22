@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,7 +71,6 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", applicationController, err)
 	}
-
 	if err := r.reconcileRoleBinding(dexServer, policyRuleForDexServer(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
@@ -126,8 +124,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-				continue // Dex is not configured, do nothing
+			if name == dexServer && isDexDisabled() {
+				continue // Dex is disabled, do nothing
 			}
 			roleBindingExists = false
 		}
@@ -156,13 +154,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == dexServer && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex) {
-				log.Info("deleting the existing Dex rolebinding because dex is not configured")
+			if name == dexServer && isDexDisabled() {
 				// Delete any existing RoleBinding created for Dex
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
-					if !apiErrors.IsNotFound(err) {
-						return err
-					}
+					return err
 				}
 				continue
 			}
