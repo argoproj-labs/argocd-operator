@@ -69,16 +69,15 @@ func newServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.Argo
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
-			log.Info("deleting the existing Dex service because dex is not configured")
+		if isDexDisabled() {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
 		}
 		return nil
 	}
 
-	if cr.Spec.SSO == nil || cr.Spec.SSO.Provider != argoprojv1a1.SSOProviderTypeDex {
-		return nil // Dex is not configured, do nothing
+	if isDexDisabled() {
+		return nil // Dex is disabled, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{

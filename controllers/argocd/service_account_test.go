@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"gotest.tools/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -123,26 +122,20 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole), "not found")
 }
 
-func TestReconcileArgoCD_reconcileServiceAccount_dex_configuration_and_removal(t *testing.T) {
+func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
-			Provider: argoprojv1alpha1.SSOProviderTypeDex,
-			Dex: argoprojv1alpha1.ArgoCDDexSpec{
-				OpenShiftOAuth: true,
-			},
-		}
-	})
+	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 	assert.NilError(t, createNamespace(r, a.Namespace, ""))
 
-	// Dex is configured, creates a new Service Account for it
+	// Dex is enabled, creates a new Service Account for it
 	sa, err := r.reconcileServiceAccount(dexServer, a)
 	assert.NilError(t, err)
 	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
 
-	// Dex configuration is removed, deletes any existing Service Account for it
-	a.Spec.SSO = nil
+	//Disable dex, deletes any existing Service Account for it
+	os.Setenv("DISABLE_DEX", "true")
+	defer os.Unsetenv("DISABLE_DEX")
 
 	sa, err = r.reconcileServiceAccount(dexServer, a)
 	assert.NilError(t, err)
