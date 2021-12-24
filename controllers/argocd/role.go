@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,7 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -90,20 +88,9 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 // Managed by a single instance of ArgoCD.
 func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
-	namespaces := corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the ArgoCD instance
-	if err := r.Client.List(context.TODO(), &namespaces, listOption); err != nil {
-		return nil, err
-	}
-
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
 
 	// create policy rules for each namespace
-	for _, namespace := range namespaces.Items {
+	for _, namespace := range r.ManagedNamespaces.Items {
 		customRole := getCustomRoleName(name)
 		role := newRole(name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
