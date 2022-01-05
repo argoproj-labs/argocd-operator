@@ -22,6 +22,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -38,7 +39,8 @@ var _ reconcile.Reconciler = &ReconcileArgoCD{}
 // TODO(upgrade): rename to ArgoCDRecoonciler
 type ReconcileArgoCD struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme            *runtime.Scheme
+	ManagedNamespaces *corev1.NamespaceList
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -108,6 +110,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 
 	// get the latest version of argocd instance before reconciling
 	if err = r.Client.Get(ctx, request.NamespacedName, argocd); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err = r.setManagedNamespaces(argocd); err != nil {
 		return reconcile.Result{}, err
 	}
 

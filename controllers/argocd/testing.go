@@ -294,5 +294,10 @@ func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
 		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: managedBy}
 	}
 
+	if r.ManagedNamespaces == nil {
+		r.ManagedNamespaces = &corev1.NamespaceList{}
+	}
+	r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, *ns)
+
 	return r.Client.Create(context.TODO(), ns)
 }

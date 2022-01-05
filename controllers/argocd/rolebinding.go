@@ -91,18 +91,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	var sa *corev1.ServiceAccount
 	var error error
 
-	namespaces := corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the ArgoCD instance
-	if err := r.Client.List(context.TODO(), &namespaces, listOption); err != nil {
-		return err
-	}
-
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-
 	if sa, error = r.reconcileServiceAccount(name, cr); error != nil {
 		return error
 	}
@@ -111,7 +99,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		return error
 	}
 
-	for _, namespace := range namespaces.Items {
+	for _, namespace := range r.ManagedNamespaces.Items {
 		// get expected name
 		roleBinding := newRoleBindingWithname(name, cr)
 		roleBinding.Namespace = namespace.Name
