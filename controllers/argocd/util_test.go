@@ -577,3 +577,51 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 		assert.Equal(t, ok, false)
 	}
 }
+
+func TestSetManagedNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	nsList := &v1.NamespaceList{
+		Items: []v1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-1",
+					Labels: map[string]string{
+						common.ArgoCDManagedByLabel: testNamespace,
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-2",
+					Labels: map[string]string{
+						common.ArgoCDManagedByLabel: testNamespace,
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-3",
+					Labels: map[string]string{
+						common.ArgoCDManagedByLabel: "random-namespace",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-4",
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, nsList)
+
+	err := r.setManagedNamespaces(a)
+	assert.NilError(t, err)
+
+	assert.Equal(t, len(r.ManagedNamespaces.Items), 3)
+	for _, n := range r.ManagedNamespaces.Items {
+		if n.Labels[common.ArgoCDManagedByLabel] != testNamespace && n.Name != testNamespace {
+			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
+		}
+	}
+}

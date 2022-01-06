@@ -30,6 +30,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -1097,6 +1098,13 @@ func namespaceFilterPredicate() predicate.Predicate {
 					} else {
 						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
 					}
+
+					// Delete namespace from cluster secret of previously managing argocd instance
+					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
+					} else {
+						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
+					}
 				}
 				return true
 			}
@@ -1254,4 +1262,20 @@ func getLogFormat(logField string) string {
 		return logField
 	}
 	return common.ArgoCDDefaultLogFormat
+}
+
+func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
+	namespaces := &corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedByLabel: cr.Namespace,
+	}
+
+	// get the list of namespaces managed by the Argo CD instance
+	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+		return err
+	}
+
+	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
+	r.ManagedNamespaces = namespaces
+	return nil
 }

@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
@@ -87,7 +88,6 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 // reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
 // This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
 func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
-	var roles []*v1.Role
 	var sa *corev1.ServiceAccount
 	var error error
 
@@ -95,14 +95,14 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		return error
 	}
 
-	if roles, error = r.reconcileRole(name, rules, cr); error != nil {
+	if _, error = r.reconcileRole(name, rules, cr); error != nil {
 		return error
 	}
 
-	for _, role := range roles {
+	for _, namespace := range r.ManagedNamespaces.Items {
 		// get expected name
 		roleBinding := newRoleBindingWithname(name, cr)
-		roleBinding.Namespace = role.Namespace
+		roleBinding.Namespace = namespace.Name
 
 		// fetch existing rolebinding by name
 		existingRoleBinding := &v1.RoleBinding{}
@@ -125,10 +125,20 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				Namespace: sa.Namespace,
 			},
 		}
-		roleBinding.RoleRef = v1.RoleRef{
-			APIGroup: v1.GroupName,
-			Kind:     "Role",
-			Name:     role.Name,
+
+		customRoleName := getCustomRoleName(name)
+		if customRoleName != "" {
+			roleBinding.RoleRef = v1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "ClusterRole",
+				Name:     customRoleName,
+			}
+		} else {
+			roleBinding.RoleRef = v1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "Role",
+				Name:     generateResourceName(name, cr),
+			}
 		}
 
 		if roleBindingExists {
@@ -165,6 +175,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 	}
 	return nil
+}
+
+func getCustomRoleName(name string) string {
+	if name == applicationController {
+		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
+	}
+	if name == server {
+		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
+	}
+	return ""
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {

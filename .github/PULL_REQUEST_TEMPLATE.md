@@ -3,6 +3,7 @@
 > For example, `> /kind bug` would simply become: `/kind bug`
 
 > /kind bug
+> /kind chore
 > /kind cleanup
 > /kind failing-test
 > /kind enhancement
