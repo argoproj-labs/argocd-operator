@@ -22,7 +22,7 @@ import (
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	k8sappsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -40,7 +40,7 @@ func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.
 	// Register template scheme
 	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
 	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
-	assert.NilError(t, argov1alpha1.AddToScheme(s))
+	assert.NoError(t, argov1alpha1.AddToScheme(s))
 	templatev1.Install(s)
 	oappsv1.Install(s)
 	routev1.Install(s)
@@ -59,10 +59,10 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	templateAPIFound = true
 	r := makeFakeReconciler(t, a)
 
-	assert.NilError(t, r.reconcileSSO(a))
+	assert.NoError(t, r.reconcileSSO(a))
 
 	templateInstance := &templatev1.TemplateInstance{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "rhsso",
@@ -82,7 +82,7 @@ func TestReconcile_noTemplateInstance(t *testing.T) {
 	a := makeTestArgoCDForKeycloak()
 	r := makeFakeReconciler(t, a)
 
-	assert.NilError(t, r.reconcileSSO(a))
+	assert.NoError(t, r.reconcileSSO(a))
 }
 
 func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
@@ -93,7 +93,7 @@ func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
 	templateAPIFound = false
 	r := makeReconciler(t, a)
 
-	assert.NilError(t, r.reconcileSSO(a))
+	assert.NoError(t, r.reconcileSSO(a))
 }
 
 func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
@@ -104,12 +104,12 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	templateAPIFound = false
 	r := makeReconciler(t, a)
 
-	assert.NilError(t, r.reconcileSSO(a))
+	assert.NoError(t, r.reconcileSSO(a))
 
 	// Keycloak Deployment
 	deployment := &k8sappsv1.Deployment{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, deployment)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, deployment.Name, defaultKeycloakIdentifier)
 	assert.Equal(t, deployment.Namespace, a.Namespace)
@@ -117,16 +117,16 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	testLabels := map[string]string{
 		"app": defaultKeycloakIdentifier,
 	}
-	assert.DeepEqual(t, deployment.Labels, testLabels)
+	assert.Equal(t, deployment.Labels, testLabels)
 
 	testSelector := &v1.LabelSelector{
 		MatchLabels: map[string]string{
 			"app": defaultKeycloakIdentifier,
 		},
 	}
-	assert.DeepEqual(t, deployment.Spec.Selector, testSelector)
+	assert.Equal(t, deployment.Spec.Selector, testSelector)
 
-	assert.DeepEqual(t, deployment.Spec.Template.ObjectMeta.Labels, testLabels)
+	assert.Equal(t, deployment.Spec.Template.ObjectMeta.Labels, testLabels)
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Name,
 		defaultKeycloakIdentifier)
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Image,
@@ -137,26 +137,26 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 		{Name: "KEYCLOAK_PASSWORD", Value: defaultKeycloakAdminPassword},
 		{Name: "PROXY_ADDRESS_FORWARDING", Value: "true"},
 	}
-	assert.DeepEqual(t, deployment.Spec.Template.Spec.Containers[0].Env,
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Env,
 		testEnv)
 
 	// Keycloak Service
 	svc := &corev1.Service{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, svc)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, svc.Name, defaultKeycloakIdentifier)
 	assert.Equal(t, svc.Namespace, a.Namespace)
-	assert.DeepEqual(t, svc.Labels, testLabels)
+	assert.Equal(t, svc.Labels, testLabels)
 
-	assert.DeepEqual(t, svc.Spec.Selector, testLabels)
-	assert.DeepEqual(t, svc.Spec.Type, corev1.ServiceType("LoadBalancer"))
+	assert.Equal(t, svc.Spec.Selector, testLabels)
+	assert.Equal(t, svc.Spec.Type, corev1.ServiceType("LoadBalancer"))
 
 	// Keycloak Ingress
 	ing := &networkingv1.Ingress{}
 	testPathType := networkingv1.PathTypeImplementationSpecific
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
 	assert.Equal(t, ing.Namespace, a.Namespace)
@@ -166,7 +166,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 			Hosts: []string{keycloakIngressHost},
 		},
 	}
-	assert.DeepEqual(t, ing.Spec.TLS, testTLS)
+	assert.Equal(t, ing.Spec.TLS, testTLS)
 
 	testRules := []networkingv1.IngressRule{
 		{
@@ -192,5 +192,5 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 		},
 	}
 
-	assert.DeepEqual(t, ing.Spec.Rules, testRules)
+	assert.Equal(t, ing.Spec.Rules, testRules)
 }

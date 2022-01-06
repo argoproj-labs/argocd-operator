@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -45,10 +45,10 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 
 	sa := corev1.ServiceAccount{}
 
-	assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",
@@ -176,10 +176,10 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 
 	sa := corev1.ServiceAccount{}
 
-	assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",
@@ -200,10 +200,10 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 
 	sa := corev1.ServiceAccount{}
 
-	assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
 
 	deployment := &appsv1.Deployment{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",
@@ -312,10 +312,10 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 			a.Spec.ApplicationSet = test.appSetField
 
 			sa := corev1.ServiceAccount{}
-			assert.NilError(t, r.reconcileApplicationSetDeployment(a, &sa))
+			assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
 
 			deployment := &appsv1.Deployment{}
-			assert.NilError(t, r.Client.Get(
+			assert.NoError(t, r.Client.Get(
 				context.TODO(),
 				types.NamespacedName{
 					Name:      "argocd-applicationset-controller",
@@ -337,10 +337,10 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	retSa, err := r.reconcileApplicationSetServiceAccount(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	sa := &corev1.ServiceAccount{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",
@@ -359,10 +359,10 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	roleRet, err := r.reconcileApplicationSetRole(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	role := &rbacv1.Role{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",
@@ -396,7 +396,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	sort.Strings(expectedResources)
 	sort.Strings(foundResources)
 
-	assert.DeepEqual(t, expectedResources, foundResources)
+	assert.Equal(t, expectedResources, foundResources)
 }
 
 func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
@@ -408,10 +408,10 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
 	err := r.reconcileApplicationSetRoleBinding(a, role, sa)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	roleBinding := &rbacv1.RoleBinding{}
-	assert.NilError(t, r.Client.Get(
+	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-applicationset-controller",

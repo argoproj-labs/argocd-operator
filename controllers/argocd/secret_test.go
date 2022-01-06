@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -212,34 +212,40 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
 
-	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), a.Namespace)
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Equal(t, string(testSecret.Data["namespaces"]), a.Namespace)
 
 	want := "argocd,someRandomNamespace"
 	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
 	r.Client.Update(context.TODO(), testSecret)
 
 	// reconcile to check namespace with the label gets added
-	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), want)
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
-	assert.NilError(t, createNamespace(r, "xyz", a.Namespace))
+	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
 	want = "argocd,someRandomNamespace,xyz"
 	// reconcile to check namespace with the label gets added
-	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.DeepEqual(t, string(testSecret.Data["namespaces"]), want)
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
 
-	assert.NilError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
+	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
 }
