@@ -43,6 +43,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	// Check if the RedisHa policy rules are overwritten to Application Controller
 	// policy rules by the reconciler
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
