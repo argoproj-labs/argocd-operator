@@ -21,6 +21,9 @@ minikube start -p argocd --cpus=4 --disk-size=40gb --memory=8gb
 The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes 
 manifests. Note that these steps generates the manifests using kustomize.
 
+!!! info
+    Make sure you download the source code from release section: https://github.com/argoproj-labs/argocd-operator/releases. Compiling from the source code cloned off main repo may not provide the most stable result.
+
 ### Namespace
 
 By default, the operator is installed into the `argocd-operator-system` namespace. To modify this, update the
@@ -28,7 +31,7 @@ value of the `namespace` specified in the `config/default/kustomization.yaml` fi
 
 ### Deploy Operator
 
-Deploy the operator. This will create all the necessary resources, including the namespace.
+Deploy the operator. This will create all the necessary resources, including the namespace. For running the make command you need to install go-lang package on your system.
 
 ```bash
 make deploy
@@ -50,7 +53,9 @@ kubectl get pods -n argocd-operator-system
 NAME                                                  READY   STATUS    RESTARTS   AGE
 argocd-operator-controller-manager-6c449c6998-ts95w   2/2     Running   0          33s
 ```
-
+!!! info
+    If you see `Error: container's runAsUser breaks non-root policy`, means container wants to have admin privilege. run `oc adm policy add-scc-to-user privileged -z default -n argocd-operator-system` to enable admin on the namespace and change the following line in deployment resource: `runAsNonRoot: false`. This is a quick fix to make it running, this is not a suggested approach for *production*.
+    
 ## Usage 
 
 Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage] 
