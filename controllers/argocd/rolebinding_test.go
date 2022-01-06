@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -103,19 +104,19 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	p := policyRuleForApplicationController()
 
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	workloadIdentifier := "argocd-application-controller"
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 
 	namespaceWithCustomRole := "namespace-with-custom-role"
-	assert.NilError(t, createNamespace(r, namespaceWithCustomRole, a.Namespace))
-	assert.NilError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
+	assert.NoError(t, createNamespace(r, namespaceWithCustomRole, a.Namespace))
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
 	// check if the default rolebindings are created
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, &rbacv1.RoleBinding{}))
 
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, &rbacv1.RoleBinding{}))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, &rbacv1.RoleBinding{}))
 
 	checkForUpdatedRoleRef := func(t *testing.T, roleName, expectedName string) {
 		t.Helper()
@@ -125,23 +126,23 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 			Name:     roleName,
 		}
 		roleBinding := &rbacv1.RoleBinding{}
-		assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
-		assert.DeepEqual(t, roleBinding.RoleRef, expectedRoleRef)
+		assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
+		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 
-		assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
-		assert.DeepEqual(t, roleBinding.RoleRef, expectedRoleRef)
+		assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: namespaceWithCustomRole}, roleBinding))
+		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 	}
 
-	assert.NilError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role"))
+	assert.NoError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role"))
 	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
-	assert.NilError(t, r.reconcileRoleBinding(applicationController, p, a))
+	assert.NoError(t, r.reconcileRoleBinding(applicationController, p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-application-controller")
 	checkForUpdatedRoleRef(t, "custom-controller-role", expectedName)
 
-	assert.NilError(t, os.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role"))
+	assert.NoError(t, os.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role"))
 	defer os.Unsetenv(common.ArgoCDServerClusterRoleEnvName)
-	assert.NilError(t, r.reconcileRoleBinding("argocd-server", p, a))
+	assert.NoError(t, r.reconcileRoleBinding("argocd-server", p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-server")
 	checkForUpdatedRoleRef(t, "custom-server-role", expectedName)

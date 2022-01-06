@@ -106,12 +106,14 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	// Check if the RedisHa policy rules are overwritten to Application Controller
 	// policy rules for cluster role by the reconciler
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.Equal(t, expectedRules, reconciledClusterRole.Rules)
 
 	// Check if the CLuster Role gets deleted
 	os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
@@ -140,29 +142,29 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NilError(t, createNamespace(r, a.Namespace, ""))
-	assert.NilError(t, createNamespace(r, "namespace-custom-role", a.Namespace))
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, "namespace-custom-role", a.Namespace))
 
 	workloadIdentifier := "argocd-application-controller"
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	reconciledRole := &v1.Role{}
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
-	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// check if roles are created for the new namespace as well
-	assert.NilError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole))
-	assert.DeepEqual(t, expectedRules, reconciledRole.Rules)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "namespace-custom-role"}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// set the custom role as env variable
-	assert.NilError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role"))
+	assert.NoError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role"))
 	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
 
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	// check if the default cluster roles are removed
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole)

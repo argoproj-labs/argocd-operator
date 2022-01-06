@@ -616,7 +616,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 	r := makeTestReconciler(t, nsList)
 
 	err := r.setManagedNamespaces(a)
-	assert.NilError(t, err)
+	assert.NoError(t, err)
 
 	assert.Equal(t, len(r.ManagedNamespaces.Items), 3)
 	for _, n := range r.ManagedNamespaces.Items {
