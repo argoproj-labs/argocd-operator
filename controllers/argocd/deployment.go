@@ -962,6 +962,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		desiredImage := getRepoServerContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			if existing.Spec.Template.ObjectMeta.Labels == nil {
+				existing.Spec.Template.ObjectMeta.Labels = map[string]string{
+					"image.upgraded": time.Now().UTC().Format("01022006-150406-MST"),
+				}
+			}
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}

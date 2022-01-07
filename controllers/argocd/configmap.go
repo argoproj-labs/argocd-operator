@@ -680,15 +680,17 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoprojv1a1.ArgoCD) error 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
-	cm.Data = getInitialTLSCerts(cr)
-	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
-		return err
+
+	if !argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		cm.Data = getInitialTLSCerts(cr)
+		if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+			return err
+		}
+		return r.Client.Create(context.TODO(), cm)
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		return r.Client.Update(context.TODO(), cm)
-	}
-	return r.Client.Create(context.TODO(), cm)
+	cm.Data = getInitialTLSCerts(cr)
+	return r.Client.Update(context.TODO(), cm)
 }
 
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
