@@ -152,6 +152,12 @@ const (
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
 
+	// ArgoCDKeyBannerContent is the configuration key for a banner message content.
+	ArgoCDKeyBannerContent = "ui.bannercontent"
+
+	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
+	ArgoCDKeyBannerURL = "ui.bannerurl"
+
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"
 

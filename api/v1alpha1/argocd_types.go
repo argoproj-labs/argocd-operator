@@ -634,6 +634,9 @@ type ArgoCDSpec struct {
 	// Version is the tag to use with the ArgoCD container image for all ArgoCD components.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// Banner defines an additional banner to be displayed in Argo CD UI
+	Banner *Banner `json:"banner,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD
@@ -702,6 +705,15 @@ type ArgoCDStatus struct {
 
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
+}
+
+// Banner defines an additional banner message to be displayed in Argo CD UI
+// https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners
+type Banner struct {
+	// Content defines the banner message content to display
+	Content string `json:"content"`
+	// URL defines an optional URL to be used as banner message link
+	URL string `json:"url,omitempty"`
 }
 
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
