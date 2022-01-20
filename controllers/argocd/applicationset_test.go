@@ -147,6 +147,62 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 	}
 }
 
+func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Proxy Env vars
+	setProxyEnvVars()
+	defer unSetProxyEnvVars()
+
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+
+	r := makeTestReconciler(t, a)
+
+	sa := corev1.ServiceAccount{}
+
+	r.reconcileApplicationSetDeployment(a, &sa)
+
+	want := []corev1.EnvVar{
+		{
+			Name:  "HTTPS_PROXY",
+			Value: "https://example.com",
+		},
+		{
+			Name:  "HTTP_PROXY",
+			Value: "http://example.com",
+		},
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+		{
+			Name:  "NO_PROXY",
+			Value: ".cluster.local",
+		},
+	}
+
+	deployment := &appsv1.Deployment{}
+
+	// reconcile ApplicationSets
+	r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment)
+
+	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers[0].Env); diff != "" {
+		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
+	}
+
+}
+
 func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -430,4 +486,16 @@ func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
 	assert.Equal(t, meta.Labels["app.kubernetes.io/name"], "argocd-applicationset-controller")
 	assert.Equal(t, meta.Labels["app.kubernetes.io/part-of"], "argocd-applicationset")
 	assert.Equal(t, meta.Labels["app.kubernetes.io/component"], "controller")
+}
+
+func setProxyEnvVars() {
+	os.Setenv("HTTPS_PROXY", "https://example.com")
+	os.Setenv("HTTP_PROXY", "http://example.com")
+	os.Setenv("NO_PROXY", ".cluster.local")
+}
+
+func unSetProxyEnvVars() {
+	os.Unsetenv("HTTPS_PROXY")
+	os.Unsetenv("HTTP_PROXY")
+	os.Unsetenv("NO_PROXY")
 }
