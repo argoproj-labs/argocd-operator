@@ -132,16 +132,21 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		},
 	}
 
-	podSpec.Containers = []corev1.Container{{
-		Command: getArgoApplicationSetCommand(cr),
-		Env: []corev1.EnvVar{{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
+	// Global proxy env vars go first
+	appSetEnv := []corev1.EnvVar{{
+		Name: "NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
 			},
-		}},
+		},
+	}}
+	// Environment specified in the CR take precedence over everything else
+	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
+
+	podSpec.Containers = []corev1.Container{{
+		Command:         getArgoApplicationSetCommand(cr),
+		Env:             appSetEnv,
 		Image:           getApplicationSetContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
