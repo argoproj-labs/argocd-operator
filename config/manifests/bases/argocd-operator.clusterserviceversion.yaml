@@ -661,4 +661,4 @@ spec:
   provider:
     name: Argo CD Community
   replaces: argocd-operator.v0.1.0
-  version: 0.0.0
+  version: 0.2.0
