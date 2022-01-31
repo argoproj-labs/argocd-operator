@@ -35,6 +35,7 @@ nav:
       - OpenShift: usage/keycloak/openshift.md
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
+    - Custom Roles: usage/custom_roles.md
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
