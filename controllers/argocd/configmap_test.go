@@ -85,20 +85,8 @@ func TestReconcileArgoCD_reconcileTLSCerts_withUpdate(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
 
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
-
-	want := map[string]string{
+	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"admin.enabled":                "true",
 		"configManagementPlugins":      "",
@@ -118,102 +106,61 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"users.anonymous.enabled":      "false",
 	}
 
-	if diff := cmp.Diff(want, cm.Data); diff != "" {
-		t.Fatalf("reconcileArgoConfigMap failed:\n%s", diff)
-	}
-}
-
-func TestReconcileArgoCD_reconcileArgoConfigMapWithBanner(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(withBanner("Custom Styles - Banners", ""))
-	r := makeTestReconciler(t, a)
-
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
-
-	want := map[string]string{
-		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
-		"admin.enabled":                "true",
-		"configManagementPlugins":      "",
-		"dex.config":                   "",
-		"ga.anonymizeusers":            "false",
-		"ga.trackingid":                "",
-		"help.chatText":                "Chat now!",
-		"help.chatUrl":                 "https://mycorp.slack.com/argo-cd",
-		"kustomize.buildOptions":       "",
-		"oidc.config":                  "",
-		"repositories":                 "",
-		"repository.credentials":       "",
-		"resource.inclusions":          "",
-		"resource.exclusions":          "",
-		"statusbadge.enabled":          "false",
-		"url":                          "https://argocd-server",
-		"users.anonymous.enabled":      "false",
-		"ui.bannercontent":             "Custom Styles - Banners",
+	cmdTests := []struct {
+		name     string
+		opts     []argoCDOpt
+		dataDiff map[string]string
+	}{
+		{
+			"defaults",
+			[]argoCDOpt{},
+			map[string]string{},
+		},
+		{
+			"with-banner",
+			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Banner = &argoprojv1alpha1.Banner{
+					Content: "Custom Styles - Banners",
+				}
+			}},
+			map[string]string{
+				"users.anonymous.enabled": "false",
+				"ui.bannercontent":        "Custom Styles - Banners",
+			},
+		},
+		{
+			"with-banner-and-url",
+			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Banner = &argoprojv1alpha1.Banner{
+					Content: "Custom Styles - Banners",
+					URL:     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+				}
+			}},
+			map[string]string{
+				"ui.bannercontent": "Custom Styles - Banners",
+				"ui.bannerurl":     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+			},
+		},
 	}
 
-	if diff := cmp.Diff(want, cm.Data); diff != "" {
-		t.Fatalf("reconcileArgoConfigMap failed:\n%s", diff)
-	}
-}
+	for _, tt := range cmdTests {
+		a := makeTestArgoCD(tt.opts...)
+		r := makeTestReconciler(t, a)
 
-func TestReconcileArgoCD_reconcileArgoConfigMapWithBannerAndURL(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(withBanner(
-		"Custom Styles - Banners",
-		"https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
-	))
-	r := makeTestReconciler(t, a)
+		err := r.reconcileArgoConfigMap(a)
+		assert.NoError(t, err)
 
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
+		cm := &corev1.ConfigMap{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
 
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
+		want := merge(defaultConfigMapData, tt.dataDiff)
 
-	want := map[string]string{
-		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
-		"admin.enabled":                "true",
-		"configManagementPlugins":      "",
-		"dex.config":                   "",
-		"ga.anonymizeusers":            "false",
-		"ga.trackingid":                "",
-		"help.chatText":                "Chat now!",
-		"help.chatUrl":                 "https://mycorp.slack.com/argo-cd",
-		"kustomize.buildOptions":       "",
-		"oidc.config":                  "",
-		"repositories":                 "",
-		"repository.credentials":       "",
-		"resource.inclusions":          "",
-		"resource.exclusions":          "",
-		"statusbadge.enabled":          "false",
-		"url":                          "https://argocd-server",
-		"users.anonymous.enabled":      "false",
-		"ui.bannercontent":             "Custom Styles - Banners",
-		"ui.bannerurl":                 "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
-	}
-
-	if diff := cmp.Diff(want, cm.Data); diff != "" {
-		t.Fatalf("reconcileArgoConfigMap failed:\n%s", diff)
-	}
-}
-
-func withBanner(content string, url string) argoCDOpt {
-	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Banner = &argoprojv1alpha1.Banner{
-			Content: content,
-			URL:     url,
+		if diff := cmp.Diff(want, cm.Data); diff != "" {
+			t.Fatalf("reconcileArgoConfigMap (%s) failed:\n%s", tt.name, diff)
 		}
 	}
 }
