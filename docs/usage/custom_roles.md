@@ -1,6 +1,6 @@
 # Custom Roles
 
-Admins can configure a common cluster role for all the Argo CD instances running on a cluster by specifying them in environment variables. The operator looks for the environment variable `CONTROLLER_CLUSTER_ROLE` for argocd application controller and `SERVER_CLUSTER_ROLE` for argocd server and refers them in role bindings. In the presence of custom roles, the operator will not create the default role and uses the existing custom role for every Argo CD instance. We can inject these environment variables either in the Subscription OLM object or directly into the operator deployment.
+As an administrative user, when you give Argo CD access to a namespace by using the `argocd.argoproj.io/managed-by` label, it assumes namespace-admin privileges. These privileges are an issue for administrators who provide namespaces to non-administrators, such as development teams, because the privileges enable non-administrators to modify objects such as network policies. With this update, administrators can configure a common cluster role for all the managed namespaces. In role bindings for the Argo CD application controller, the Operator refers to the CONTROLLER_CLUSTER_ROLE environment variable. In role bindings for the Argo CD server, the Operator refers to the SERVER_CLUSTER_ROLE environment variable. If these environment variables contain custom roles, the Operator doesn't create the default admin role. Instead, it uses the existing custom role for all managed namespaces.
 
 Example: Custom role environment variables in operator Subscription:
 
