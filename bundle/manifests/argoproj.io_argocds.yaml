@@ -4354,6 +4354,9 @@ spec:
                   of the  Argo CD Dex component Pods had a failure. Unknown: For some
                   reason the state of the Argo CD Dex component could not be obtained.'
                 type: string
+              host:
+                description: Host is the hostname of the Ingress.
+                type: string
               phase:
                 description: 'Phase is a simple, high-level summary of where the ArgoCD
                   is in its lifecycle. There are five possible phase values: Pending:
