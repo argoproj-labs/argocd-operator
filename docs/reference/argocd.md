@@ -1157,6 +1157,28 @@ spec:
     initialCerts: []
 ```
 
+### IntialCerts Example
+
+Initial set of repository certificates to be configured in Argo CD upon creation of the cluster.
+
+This property maps directly to the data field in the argocd-tls-certs-cm ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Updating new certificates should then be made through the Argo CD web UI or CLI.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: intialCerts
+spec:
+  tls:
+    ca: {}
+    initialCerts:
+      test.example.com: |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
+```
+
 ## Users Anonymous Enabled
 
 Enables anonymous user access. The anonymous users get default role permissions specified `argocd-rbac-cm`.

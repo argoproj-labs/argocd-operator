@@ -625,3 +625,14 @@ func TestSetManagedNamespaces(t *testing.T) {
 		}
 	}
 }
+
+func generateEncodedPEM(t *testing.T, host string) []byte {
+	key, err := argoutil.NewPrivateKey()
+	assert.NoError(t, err)
+
+	cert, err := argoutil.NewSelfSignedCACertificate(key)
+	assert.NoError(t, err)
+
+	encoded := argoutil.EncodeCertificatePEM(cert)
+	return encoded
+}
