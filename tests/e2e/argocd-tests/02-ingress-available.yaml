@@ -29,3 +29,24 @@ spec:
     ingress:
       enabled: true
     insecure: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-argocd-server
+spec:
+  rules:
+  - host: argocd
+    http:
+      paths:
+      - backend:
+          service:
+            name: argocd-server
+            port:
+              name: http
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - argocd
+    secretName: argocd-secret
