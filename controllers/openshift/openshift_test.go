@@ -174,28 +174,6 @@ func TestReconcileArgoCD_reconcileRedisHaServerStatefulSet(t *testing.T) {
 	assert.Equal(t, s.Spec.Template.Spec.Containers[1].Args, want1)
 }
 
-func TestReconcileArgoCD_reconcilePolicyRuleForRedisHa(t *testing.T) {
-	a := makeTestArgoCD()
-
-	rules := []rbacv1.PolicyRule{
-		{
-			APIGroups: []string{
-				"",
-			},
-			Resources: []string{
-				"endpoints",
-			},
-			Verbs: []string{
-				"get",
-			},
-		},
-	}
-
-	assert.NoError(t, reconcilerHook(a, &rules, "policyRuleForRedisHa"))
-	assert.Equal(t, 2, len(rules))
-	assert.Equal(t, rules[1], getPolicyRuleForRedisHa())
-}
-
 func TestReconcileArgoCD_reconcileSecrets(t *testing.T) {
 	setClusterConfigNamespaces()
 	defer unSetClusterConfigNamespaces()

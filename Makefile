@@ -96,7 +96,10 @@ build: generate fmt vet ## Build manager binary.
 	go build -ldflags=$(LD_FLAGS) -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run -ldflags=$(LD_FLAGS) ./main.go
+	REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run -ldflags=$(LD_FLAGS) ./main.go
+
+run-openshift: manifests generate fmt vet ## Run a controller from your host.
+	REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run -ldflags=$(LD_FLAGS) ./main.go ./openshift.go
 
 docker-build: test ## Build docker image with the manager.
 	docker build --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} .

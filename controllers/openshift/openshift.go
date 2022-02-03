@@ -40,11 +40,6 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 			logv.Info("configuring openshift redis haproxy")
 			o.Spec.Template.Spec.Containers[0].Command = append(getCommandForRedhatRedisHaProxy(), o.Spec.Template.Spec.Containers[0].Command...)
 		}
-	case *[]rbacv1.PolicyRule:
-		if hint == "policyRuleForRedisHa" {
-			logv.Info("configuring policy rule for Redis HA")
-			*o = append(*o, getPolicyRuleForRedisHa())
-		}
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
 			logv.Info("configuring openshift redis-ha-server stateful set")
@@ -87,23 +82,6 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 		}
 	}
 	return nil
-}
-
-func getPolicyRuleForRedisHa() rbacv1.PolicyRule {
-	return rbacv1.PolicyRule{
-		APIGroups: []string{
-			"security.openshift.io",
-		},
-		ResourceNames: []string{
-			"nonroot",
-		},
-		Resources: []string{
-			"securitycontextconstraints",
-		},
-		Verbs: []string{
-			"use",
-		},
-	}
 }
 
 func getPolicyRuleForApplicationController() []rbacv1.PolicyRule {

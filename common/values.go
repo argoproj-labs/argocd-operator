@@ -59,6 +59,9 @@ const (
 	// ArgoCDRedisHAConfigMapName is the upstream ArgoCD Redis HA ConfigMap name.
 	ArgoCDRedisHAConfigMapName = "argocd-redis-ha-configmap"
 
+	// ArgoCDRedisHAHealthConfigMapName is the upstream ArgoCD Redis HA Health ConfigMap name.
+	ArgoCDRedisHAHealthConfigMapName = "argocd-redis-ha-health-configmap"
+
 	// ArgoCDRedisProbesConfigMapName is the upstream ArgoCD Redis Probes ConfigMap name.
 	ArgoCDRedisProbesConfigMapName = "argocd-redis-ha-probes"
 

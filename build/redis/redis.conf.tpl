@@ -1,5 +1,6 @@
 dir "/data"
 port 6379
+bind 0.0.0.0
 maxmemory 0
 maxmemory-policy volatile-lru
 min-replicas-max-lag 5

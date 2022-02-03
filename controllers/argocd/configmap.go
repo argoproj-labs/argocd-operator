@@ -628,7 +628,37 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) e
 	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
 		return err
 	}
+	if err := r.reconcileRedisHAHealthConfigMap(cr); err != nil {
+		return err
+	}
 	return nil
+}
+
+// reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.Client.Delete(context.TODO(), cm)
+		}
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	cm.Data = map[string]string{
+		"redis_liveness.sh":    getRedisLivenessScript(),
+		"redis_readiness.sh":   getRedisReadinessScript(),
+		"sentinel_liveness.sh": getSentinelLivenessScript(),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), cm)
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
