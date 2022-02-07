@@ -193,3 +193,41 @@ kubectl delete -n argocd -f examples/argocd-ingress.yaml
 
 [install_olm]:../install/olm.md
 [docs_argo]:https://argoproj.github.io/argo-cd/getting_started/#creating-apps-via-cli
+
+### Host for Ingress in Argo CD Status
+
+When setting up access to Argo CD via an Ingress, one can easily retrieve hostnames used for accessing the Argo CD installation through the ArgoCD Operand's `status` field. To expose the `host` field, run `kubectl edit argocd argocd` and then edit the Argo CD instance server to have ingress enabled as `true`, like so: 
+
+```yaml
+server:
+    autoscale:
+      enabled: false
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: true
+    route:
+      enabled: false
+    service:
+      type: ""
+  tls:
+    ca: {}
+```
+If an ingress is found, hostname(s) of the ingress can now be accessed by inspecting your Argo CD instance. This data could be the hostname and/or the IP address(es), depending on what data is available. It will look like the following: 
+
+```yaml
+status:
+  applicationController: Running
+  dex: Running
+  host: 172.24.0.7
+  phase: Available
+  redis: Running
+  repo: Running
+  server: Running
+  ssoConfig: Unknown
+```
+
+If both Route and Ingress are enabled in the Argo CD spec and a route is available, the status for the Route will be prioritized over the Ingress's. In that case, the `host` for the Ingress is not shown in the `status`. 
+
+Unlike with Routes, an Ingress does not go to pending status.  Hence, this will not affect the overall status of the Operand.
