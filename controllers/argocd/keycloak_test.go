@@ -83,7 +83,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 	templateAPIFound = true
 	testImage = getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
-		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
+		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
 
 	// When ENV variable is set.
 	err := os.Setenv(common.ArgoCDKeycloakImageEnvName, "envImage:latest")
@@ -160,7 +160,7 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	}
 	kc := getKeycloakContainer(a)
 	assert.Equal(t, kc.Image,
-		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
+		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
 	assert.Equal(t, kc.ImagePullPolicy, corev1.PullAlways)
 	assert.Equal(t, kc.Name, "${APPLICATION_NAME}")
 }
