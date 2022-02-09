@@ -1317,6 +1317,11 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 				cr.Name, cr.Namespace))
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+			if err != nil {
+				return err
+			}
+
 			existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				return r.Client.Update(context.TODO(), existingDC)
