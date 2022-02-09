@@ -47,6 +47,32 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
+func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
+
+	// only 1 role for the Argo CD instance namespace will be created
+	expectedNumberOfRoles := 1
+	// check no dexServer role is created for the new namespace with managed-by label
+	workloadIdentifier := dexServer
+	expectedRoleNamespace := a.Namespace
+	expectedDexServerRules := policyRuleForDexServer()
+	dexRoles, err := r.reconcileRole(workloadIdentifier, expectedDexServerRules, a)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
+	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
+	
+	// check no redisHa role is created for the new namespace with managed-by label
+	workloadIdentifier = redisHa
+	expectedRedisHaRules := policyRuleForRedisHa(a)
+	redisHaRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
+	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].ObjectMeta.Namespace)
+}
 
 func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
