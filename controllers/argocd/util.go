@@ -1303,3 +1303,11 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	r.ManagedNamespaces = namespaces
 	return nil
 }
+
+func getBaseURL() string {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "")
+	}
+	return cfg.Host
+}

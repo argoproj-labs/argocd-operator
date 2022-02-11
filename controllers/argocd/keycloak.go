@@ -960,10 +960,11 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				DisplayName: "Login with OpenShift",
 				ProviderID:  "openshift-v4",
 				Config: map[string]string{
-					"baseUrl":      "https://kubernetes.default.svc.cluster.local",
+					"baseUrl":      getBaseURL(),
 					"clientSecret": oAuthClientSecret,
 					"clientId":     getOAuthClient(cfg.ArgoNamespace),
 					"defaultScope": "user:full",
+					"syncMode":     "IMPORT",
 				},
 			},
 		}
