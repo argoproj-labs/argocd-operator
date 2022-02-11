@@ -45,6 +45,29 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
 }
 
+func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, "newTestNamespace", a.Namespace))
+
+	// check no dexServer rolebinding is created for the new namespace with managed-by label
+	roleBinding := &rbacv1.RoleBinding{}
+	workloadIdentifier := dexServer
+	expectedDexServerRules := policyRuleForDexServer()
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedDexServerRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+
+	// check no redisHa rolebinding is created for the new namespace with managed-by label
+	workloadIdentifier = redisHa
+	expectedRedisHaRules := policyRuleForRedisHa(a)
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+}
+
 func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
