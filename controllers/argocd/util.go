@@ -38,6 +38,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1304,10 +1305,63 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func getBaseURL() string {
+func isProxyCluster() bool {
 	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "failed to get k8s config")
+	}
+
+	// Initialize config client.
+	configClient, err := configv1client.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "failed to initialize openshift config client")
+		return false
+	}
+
+	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "failed to get proxy configuration")
+		return false
+	}
+
+	if proxy.Spec.HTTPSProxy != "" {
+		log.Info("proxy configuration detected")
+		return true
+	}
+
+	return false
+}
+
+func getOpenShiftAPIURL() string {
+	k8s, err := initK8sClient()
+	if err != nil {
+		log.Error(err, "failed to initialize k8s client")
+	}
+
+	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "")
 	}
-	return cfg.Host
+
+	var cf string
+	if v, ok := cm.Data["console-config.yaml"]; ok {
+		cf = v
+	}
+
+	data := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(cf), data)
+	if err != nil {
+		log.Error(err, "")
+	}
+
+	var apiURL interface{}
+	var out string
+	if c, ok := data["clusterInfo"]; ok {
+		ci, _ := c.(map[interface{}]interface{})
+
+		apiURL, _ = ci["masterPublicURL"]
+		out = fmt.Sprintf("%v", apiURL)
+	}
+
+	return out
 }
