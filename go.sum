@@ -154,8 +154,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/apache/arrow/go/arrow v0.0.0-20191024131854-af6fa24be0db/go.mod h1:VTxUBvSJ3s3eHAg65PNgrsn5BtqCRPdmyXh6rAfdxN0=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
-github.com/argoproj/argo-cd/v2 v2.2.2 h1:sKfiJuGiG85dBRYZz20n+y3tqs+F7yuLAKkxTH0Y260=
-github.com/argoproj/argo-cd/v2 v2.2.2/go.mod h1:J51If+krhtBEbNP/Y/l9sh9HctPHiiGueqPAkfFXXBo=
+github.com/argoproj/argo-cd/v2 v2.2.4 h1:PoxrWuwGV8UhDkvOE2iYDRa799jnT68tU6XvDZzLzL0=
+github.com/argoproj/argo-cd/v2 v2.2.4/go.mod h1:J51If+krhtBEbNP/Y/l9sh9HctPHiiGueqPAkfFXXBo=
 github.com/argoproj/gitops-engine v0.5.2/go.mod h1:K2RYpGXh11VdFwDksS23SyFTOJaPcsF+MVJ/FHlqEOE=
 github.com/argoproj/pkg v0.11.1-0.20211203175135-36c59d8fafe0/go.mod h1:ra+bQPmbVAoEL+gYSKesuigt4m49i3Qa3mE/xQcjCiA=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
