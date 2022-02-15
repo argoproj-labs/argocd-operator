@@ -422,7 +422,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 		Namespace: testNamespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "test-init-container")
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[1].Name, "test-init-container")
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
@@ -642,6 +642,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 							Image:   "test-image",
 						},
 					},
+					InitContainers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
 				},
 			},
 		},
@@ -658,8 +664,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NoError(t, err)
 
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 5)
-	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 5)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 8)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 7)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -1335,12 +1341,30 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "var-files",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "plugins",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -1354,7 +1378,9 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "tls-certs", MountPath: "/app/config/tls"},
 		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
+		{Name: "tmp", MountPath: "/tmp"},
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
+		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
 	}
 	return mounts
 }

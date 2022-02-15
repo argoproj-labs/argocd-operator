@@ -379,6 +379,9 @@ type ArgoCDRepoSpec struct {
 
 	// InitContainers defines the list of initialization containers for the repo server deployment
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+
+	// SidecarContainers defines the list of sidecar containers for the repo server deployment
+	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

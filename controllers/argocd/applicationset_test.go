@@ -36,6 +36,41 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
+	repoMounts := repoServerDefaultVolumeMounts()
+	ignoredMounts := map[string]bool{
+		"plugins": true,
+		"tmp":     true,
+	}
+	mounts := make([]corev1.VolumeMount, len(repoMounts)-len(ignoredMounts), len(repoMounts)-len(ignoredMounts))
+	j := 0
+	for _, mount := range repoMounts {
+		if !ignoredMounts[mount.Name] {
+			mounts[j] = mount
+			j += 1
+		}
+	}
+	return mounts
+}
+
+func applicationSetDefaultVolumes() []corev1.Volume {
+	repoVolumes := repoServerDefaultVolumes()
+	ignoredVolumes := map[string]bool{
+		"var-files": true,
+		"plugins":   true,
+		"tmp":       true,
+	}
+	volumes := make([]corev1.Volume, len(repoVolumes)-len(ignoredVolumes), len(repoVolumes)-len(ignoredVolumes))
+	j := 0
+	for _, volume := range repoVolumes {
+		if !ignoredVolumes[volume.Name] {
+			volumes[j] = volume
+			j += 1
+		}
+	}
+	return volumes
+}
+
 func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -77,7 +112,7 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
-		VolumeMounts:    repoServerDefaultVolumeMounts(),
+		VolumeMounts:    applicationSetDefaultVolumeMounts(),
 	}}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
@@ -293,14 +328,14 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 				corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
 			},
 		},
-		VolumeMounts: repoServerDefaultVolumeMounts(),
+		VolumeMounts: applicationSetDefaultVolumeMounts(),
 	}}
 
 	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 
-	volumesWant := repoServerDefaultVolumes()
+	volumesWant := applicationSetDefaultVolumes()
 
 	if diff := cmp.Diff(volumesWant, deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
