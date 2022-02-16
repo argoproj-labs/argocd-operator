@@ -1298,6 +1298,20 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 			cr.Name, cr.Namespace))
 	}
 
+	// Handle Image upgrades
+	desiredImage := getKeycloakContainerImage(cr)
+	if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
+		existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+
+		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			return r.Client.Update(context.TODO(), existingDC)
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
 	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
 	if existingDC.Status.AvailableReplicas == expectedReplicas &&
 		existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
