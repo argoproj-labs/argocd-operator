@@ -1296,19 +1296,19 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
-	}
+	} else {
+		// Handle Image upgrades
+		desiredImage := getKeycloakContainerImage(cr)
+		if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
+			existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
 
-	// Handle Image upgrades
-	desiredImage := getKeycloakContainerImage(cr)
-	if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
-		existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				return r.Client.Update(context.TODO(), existingDC)
+			})
 
-		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			return r.Client.Update(context.TODO(), existingDC)
-		})
-
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 

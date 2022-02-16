@@ -1359,7 +1359,7 @@ func getOpenShiftAPIURL() string {
 	if c, ok := data["clusterInfo"]; ok {
 		ci, _ := c.(map[interface{}]interface{})
 
-		apiURL, _ = ci["masterPublicURL"]
+		apiURL = ci["masterPublicURL"]
 		out = fmt.Sprintf("%v", apiURL)
 	}
 

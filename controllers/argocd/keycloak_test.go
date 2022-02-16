@@ -77,7 +77,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 	// When both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are not set.
 	testImage := getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
-		"quay.io/keycloak/keycloak@sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf")
+		"quay.io/keycloak/keycloak@sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9")
 
 	// For OpenShift Container Platform.
 	templateAPIFound = true
@@ -208,6 +208,7 @@ func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 }
 
 func TestKeycloak_testRealmConfigCreation(t *testing.T) {
+	templateAPIFound = false
 	cfg := &keycloakConfig{
 		ArgoName:      "foo-argocd",
 		ArgoNamespace: "foo",
