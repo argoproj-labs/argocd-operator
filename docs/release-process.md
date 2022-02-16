@@ -121,3 +121,11 @@ https://github.com/redhat-openshift-ecosystem/community-operators-prod
 * Edit the CSV file in the new release folder, and add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
 
 * Commit and push the changes, then create a PR.
+
+* In the `argocd-operator` repo, synchronize any changes in the release folder under `deploy/olm-catalog/argocd-operator` on the release branch back to the master branch (ensure the folder is an exact copy of what's on the release branch)
+
+* Update the VERSION in the Makefile in the `argocd-operator` repo's master branch to the next version (e.g. from `0.2.0 to 0.3.0)
+
+* Run `make bundle` to generate the intial bundle manifests for the next version
+
+* Commit and push the changes, then create a PR
