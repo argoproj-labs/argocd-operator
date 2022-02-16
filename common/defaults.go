@@ -173,8 +173,8 @@ const (
 	ArgoCDKeycloakImage = "quay.io/keycloak/keycloak"
 
 	// ArgoCDKeycloakVersion is the default Keycloak version used for the non-openshift platform when not specified.
-	// Version: 9.0.3
-	ArgoCDKeycloakVersion = "sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf"
+	// Version: 15.0.2
+	ArgoCDKeycloakVersion = "sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9"
 
 	// ArgoCDKeycloakImageForOpenShift is the default Keycloak Image used for the OpenShift platform when not specified.
 	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8"
