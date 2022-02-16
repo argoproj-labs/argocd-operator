@@ -226,10 +226,9 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 }
 
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
-func getArgoCmpServerInitCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoCmpServerInitCommand() []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "cp")
-	cmd = append(cmd, "-n")
 	cmd = append(cmd, "-n")
 	cmd = append(cmd, "/usr/local/bin/argocd")
 	cmd = append(cmd, "/var/run/argocd/argocd-cmp-server")
@@ -845,7 +844,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Name:            "copyutil",
 		Image:           getArgoContainerImage(cr),
-		Command:         getArgoCmpServerInitCommand(cr),
+		Command:         getArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       getArgoRepoResources(cr),
 		Env:             repoEnv,
