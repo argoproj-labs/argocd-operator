@@ -238,3 +238,15 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+.PHONY : build-deploy
+KUBECTL = $(shell which kubectl)
+build-deploy : docker-build docker-push clear-bundle bundle bundle-build bundle-push catalog-build catalog-push
+	$(shell cat deploy/catalog_source.yaml| sed 's,image: .*,image: $(CATALOG_IMG),' > deploy/catalog_source_temp.yaml)
+	$(KUBECTL) create -n olm -f deploy/catalog_source_temp.yaml
+	rm -rf deploy/catalog_source_temp.yaml
+	$(KUBECTL) create ns argocd
+	$(KUBECTL) create -n argocd -f deploy/operator_group.yaml
+	$(KUBECTL) create -n argocd -f deploy/subscription.yaml
+clear-bundle :
+	rm -fr bundle/
