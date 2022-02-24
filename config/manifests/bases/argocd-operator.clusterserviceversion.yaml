@@ -3,7 +3,7 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: '[]'
-    capabilities: Auto Pilot
+    capabilities: Deep Inisights
     categories: Integration & Delivery
     certified: "false"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
