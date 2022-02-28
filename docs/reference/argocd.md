@@ -43,7 +43,7 @@ Name | Default | Description
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
-[**Version**](#version) | v2.2.2 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Version**](#version) | v2.2.5 (SHA) | The tag to use with the container image for all Argo CD components.
 
 ## Application Instance Label Key
 
@@ -1155,6 +1155,28 @@ spec:
       configMapName: example-argocd-ca
       secretName: example-argocd-ca
     initialCerts: []
+```
+
+### IntialCerts Example
+
+Initial set of repository certificates to be configured in Argo CD upon creation of the cluster.
+
+This property maps directly to the data field in the argocd-tls-certs-cm ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Updating new certificates should then be made through the Argo CD web UI or CLI.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: intialCerts
+spec:
+  tls:
+    ca: {}
+    initialCerts:
+      test.example.com: |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
 ```
 
 ## Users Anonymous Enabled
