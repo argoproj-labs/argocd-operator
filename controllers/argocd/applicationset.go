@@ -76,6 +76,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
 func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+	applicationSetDisabled := isApplicationSetDisabled(cr.Spec.ApplicationSet)
+	if applicationSetDisabled {
+		log.Info("reconciling for application set deployment, but application set is disabled")
+	}
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
 
 	setAppSetLabels(&deploy.ObjectMeta)
@@ -176,6 +180,12 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	}}
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if applicationSetDisabled {
+			if err := r.Client.Delete(context.TODO(), existing); err != nil {
+				return err
+			}
+			return nil
+		}
 
 		existingSpec := existing.Spec.Template.Spec
 
@@ -206,12 +216,19 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+	if applicationSetDisabled {
+		return nil
+	}
 	return r.Client.Create(context.TODO(), deploy)
 
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
 
+	applicationSetDisabled := isApplicationSetDisabled(cr.Spec.ApplicationSet)
+	if applicationSetDisabled {
+		log.Info("reconciling for application set service account, but application set is disabled")
+	}
 	sa := newServiceAccountWithName("applicationset-controller", cr)
 	setAppSetLabels(&sa.ObjectMeta)
 
@@ -224,9 +241,18 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1
 	}
 
 	if exists {
+		if applicationSetDisabled {
+			if err := r.Client.Delete(context.TODO(), sa); err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
 		return sa, nil
 	}
 
+	if applicationSetDisabled {
+		return nil, nil
+	}
 	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
 		return nil, err
 	}
@@ -240,7 +266,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
-
+	applicationSetDisabled := isApplicationSetDisabled(cr.Spec.ApplicationSet)
+	if applicationSetDisabled {
+		log.Info("reconciling for application set role, but application set is disabled")
+	}
 	policyRules := []v1.PolicyRule{
 
 		// ApplicationSet
@@ -319,7 +348,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 			},
 		},
 	}
-
 	role := newRole("applicationset-controller", policyRules, cr)
 	setAppSetLabels(&role.ObjectMeta)
 
@@ -327,6 +355,12 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
+		}
+		if applicationSetDisabled {
+			if err := r.Client.Delete(context.TODO(), role); err != nil {
+				return nil, err
+			}
+			return nil, nil
 		}
 		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
 			return nil, err
@@ -342,6 +376,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+	applicationSetDisabled := isApplicationSetDisabled(cr.Spec.ApplicationSet)
+	if applicationSetDisabled {
+		log.Info("reconciling for application set role binding, but application set is disabled")
+	}
 
 	name := "applicationset-controller"
 
@@ -378,7 +416,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.Ar
 	}
 
 	if roleBindingExists {
+		if applicationSetDisabled {
+			if err := r.Client.Delete(context.TODO(), roleBinding); err != nil {
+				return err
+			}
+			return nil
+		}
 		return r.Client.Update(context.TODO(), roleBinding)
+	}
+	if applicationSetDisabled {
+		return nil
 	}
 
 	return r.Client.Create(context.TODO(), roleBinding)
@@ -423,6 +470,13 @@ func getApplicationSetResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirem
 	}
 
 	return resources
+}
+
+func isApplicationSetDisabled(appSet *argoprojv1a1.ArgoCDApplicationSet) bool {
+	if appSet != nil {
+		return appSet.Disabled
+	}
+	return false
 }
 
 func setAppSetLabels(obj *metav1.ObjectMeta) {

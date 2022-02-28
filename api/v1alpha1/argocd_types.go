@@ -131,6 +131,9 @@ type ArgoCDApplicationSet struct {
 
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// Disabled describes whether the ApplicationSet controller should be disabled. Defaults to be enabled if not set.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
