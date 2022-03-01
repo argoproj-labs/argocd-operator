@@ -1,11 +1,11 @@
 # Argo CD v2.2.5
-FROM quay.io/argoproj/argocd@sha256:0cdf5aac80f0a77307cbb288a0c1e5e39d4bac0cafb3c285a6d3c656b9f8e910
+FROM quay.io/argoproj/argocd@sha256:bac1aeee8e78e64d81a633b9f64148274abfa003165544354e2ebf1335b6ee73
 
 USER root
 
 # Ensure system dependencies are installed
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl python && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install the Google Cloud SDK (CLI)
