@@ -42,6 +42,10 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  disabled:
+                    description: Disabled describes whether the ApplicationSet controller
+                      should be disabled. Defaults to be enabled if not set.
+                    type: boolean
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
