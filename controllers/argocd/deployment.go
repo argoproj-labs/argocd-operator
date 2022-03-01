@@ -847,6 +847,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		Command:         getArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       getArgoRepoResources(cr),
+		Env:             proxyEnvVars(),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "var-files",
