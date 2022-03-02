@@ -5,7 +5,7 @@ USER root
 
 # Ensure system dependencies are installed
 RUN apt-get update && \
-    apt-get install -y curl python && \
+    apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install the Google Cloud SDK (CLI)
