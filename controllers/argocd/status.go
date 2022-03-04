@@ -17,6 +17,10 @@ package argocd
 import (
 	"context"
 	"reflect"
+	"strings"
+
+	routev1 "github.com/openshift/api/route/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -51,6 +55,11 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileStatusServer(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileStatusHost(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -211,4 +220,71 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
+}
+
+// reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
+	cr.Status.Host = ""
+	cr.Status.Phase = "Available"
+	if cr.Spec.Server.Route.Enabled {
+		if !IsRouteAPIAvailable() {
+			log.Info("Routes not available in non-OpenShift environments, please use Ingresses instead")
+			return nil
+		}
+		route := newRouteWithSuffix("server", cr)
+		if !argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+			log.Info("argocd-server route requested but not found on cluster")
+			return nil
+		} else {
+			// status.ingress not available
+			if route.Status.Ingress == nil {
+				cr.Status.Host = ""
+				cr.Status.Phase = "Pending"
+			} else {
+				// conditions exist and type is RouteAdmitted
+				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
+					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
+						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Phase = "Available"
+					} else {
+						cr.Status.Host = ""
+						cr.Status.Phase = "Pending"
+					}
+				} else {
+					// no conditions are available
+					if route.Status.Ingress[0].Host != "" {
+						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Phase = "Available"
+					} else {
+						cr.Status.Host = "Unavailable"
+						cr.Status.Phase = "Pending"
+					}
+				}
+			}
+		}
+	} else if cr.Spec.Server.Ingress.Enabled {
+		ingress := newIngressWithSuffix("server", cr)
+		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+			log.Info("argocd-server ingress requested but not found on cluster")
+			return nil
+		} else {
+			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
+				var s []string
+				var hosts string
+				for _, ingressElement := range ingress.Status.LoadBalancer.Ingress {
+					if ingressElement.Hostname != "" {
+						s = append(s, ingressElement.Hostname)
+						continue
+					} else if ingressElement.IP != "" {
+						s = append(s, ingressElement.IP)
+						continue
+					}
+				}
+				hosts = strings.Join(s, ", ")
+				cr.Status.Host = hosts
+				cr.Status.Phase = "Available"
+			}
+		}
+	}
+	return r.Client.Status().Update(context.TODO(), cr)
 }
