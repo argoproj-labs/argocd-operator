@@ -21,6 +21,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"time"
@@ -71,7 +72,7 @@ func ParsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
 
 // NewSelfSignedCACertificate returns a self-signed CA certificate based on given configuration and private key.
 // The certificate has one-year lease.
-func NewSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) {
+func NewSelfSignedCACertificate(name string, key *rsa.PrivateKey) (*x509.Certificate, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
 	if err != nil {
 		return nil, err
@@ -84,6 +85,7 @@ func NewSelfSignedCACertificate(key *rsa.PrivateKey) (*x509.Certificate, error) 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 		IsCA:                  true,
+		Subject:               pkix.Name{CommonName: fmt.Sprintf("argocd-operator@%s", name)},
 	}
 	certDERBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, key.Public(), key)
 	if err != nil {
