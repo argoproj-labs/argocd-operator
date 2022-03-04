@@ -217,7 +217,7 @@ func initialCerts(t *testing.T, host string) argoCDOpt {
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
 		assert.NoError(t, err)
-		cert, err := argoutil.NewSelfSignedCACertificate(key)
+		cert, err := argoutil.NewSelfSignedCACertificate(a.Name, key)
 		assert.NoError(t, err)
 		encoded := argoutil.EncodeCertificatePEM(cert)
 

@@ -630,7 +630,7 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 
-	cert, err := argoutil.NewSelfSignedCACertificate(key)
+	cert, err := argoutil.NewSelfSignedCACertificate("foo", key)
 	assert.NoError(t, err)
 
 	encoded := argoutil.EncodeCertificatePEM(cert)

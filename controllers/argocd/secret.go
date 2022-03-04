@@ -92,7 +92,7 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 		return nil, err
 	}
 
-	cert, err := argoutil.NewSelfSignedCACertificate(key)
+	cert, err := argoutil.NewSelfSignedCACertificate(cr.Name, key)
 	if err != nil {
 		return nil, err
 	}
