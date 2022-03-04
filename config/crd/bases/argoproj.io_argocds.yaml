@@ -5031,6 +5031,10 @@ spec:
                 description: ResourceInclusions is used to only include specific group/kinds
                   in the reconciliation process.
                 type: string
+              resourceTrackingMethod:
+                description: ResourceTrackingMethod defines how Argo CD should track
+                  resources that it manages
+                type: string
               server:
                 description: Server defines the options for the ArgoCD Server component.
                 properties:

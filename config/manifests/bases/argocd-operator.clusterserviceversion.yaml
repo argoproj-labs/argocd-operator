@@ -457,6 +457,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceTrackingMethod defines how Argo CD should track resources
+          that it manages
+        displayName: Resource Tracking Method'
+        path: resourceTrackingMethod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
         displayName: Autoscale Enabled'
