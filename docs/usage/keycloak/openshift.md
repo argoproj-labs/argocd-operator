@@ -95,14 +95,12 @@ By default any user logged into ArgoCD will have read-only access. User level ac
 
 ### Group Level RBAC
 
-The below example shows how to grant admin access to a group with name `system:cluster-admins`. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
+The below example shows how to grant admin access to a group with name `cluster-admins`. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
 
 ```yaml
 policy.csv: |
-  g, system:cluster-admins, role:admin
+  g, cluster-admins, role:admin
 ```
-
-Note: Currently, group based RBAC only works with the default OpenShift groups(groups that are created at bootstrap like system:masters, system:cluster-admins, system:authenticated, system:admin .....)
 
 ### User Level RBAC
 

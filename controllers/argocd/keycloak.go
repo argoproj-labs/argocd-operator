@@ -969,7 +969,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 					"clientSecret": oAuthClientSecret,
 					"clientId":     getOAuthClient(cfg.ArgoNamespace),
 					"defaultScope": "user:full",
-					"syncMode":     "IMPORT",
+					"syncMode":     "FORCE",
 				},
 			},
 		}
