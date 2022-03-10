@@ -5,7 +5,8 @@ metadata:
 spec:
   sso:
     provider: keycloak
-    verifyTLS: false
+    # uncomment the below line when running operator locally.
+    # verifyTLS: false 
   server:
     route:
       enabled: true
