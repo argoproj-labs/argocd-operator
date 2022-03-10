@@ -225,6 +225,16 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 	return cmd
 }
 
+// getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
+func getArgoCmpServerInitCommand() []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "cp")
+	cmd = append(cmd, "-n")
+	cmd = append(cmd, "/usr/local/bin/argocd")
+	cmd = append(cmd, "/var/run/argocd/argocd-cmp-server")
+	return cmd
+}
+
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
@@ -831,7 +841,24 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
-	deploy.Spec.Template.Spec.InitContainers = getArgoRepoInitContainers(cr)
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Name:            "copyutil",
+		Image:           getArgoContainerImage(cr),
+		Command:         getArgoCmpServerInitCommand(),
+		ImagePullPolicy: corev1.PullAlways,
+		Resources:       getArgoRepoResources(cr),
+		Env:             proxyEnvVars(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "var-files",
+				MountPath: "/var/run/argocd",
+			},
+		},
+	}}
+
+	if cr.Spec.Repo.InitContainers != nil {
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Repo.InitContainers...)
+	}
 
 	repoServerVolumeMounts := []corev1.VolumeMount{
 		{
@@ -851,8 +878,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			MountPath: "/app/config/gpg/keys",
 		},
 		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+		{
 			Name:      "argocd-repo-server-tls",
 			MountPath: "/app/config/reposerver/tls",
+		},
+		{
+			Name:      "plugins",
+			MountPath: "/home/argocd/cmp-server/plugins",
 		},
 	}
 
@@ -897,6 +932,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		VolumeMounts: repoServerVolumeMounts,
 	}}
 
+	if cr.Spec.Repo.SidecarContainers != nil {
+		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Repo.SidecarContainers...)
+	}
+
 	repoServerVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
@@ -935,12 +974,30 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			},
 		},
 		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "var-files",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "plugins",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -989,16 +1046,42 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
-			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
+			existing.Spec.Template.Spec.Containers[1:]) {
+			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
+				deploy.Spec.Template.Spec.Containers[1:]...)
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts,
+			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts) {
+			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts = deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Env,
+			existing.Spec.Template.Spec.InitContainers[0].Env) {
+			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
+			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Command, existing.Spec.Template.Spec.InitContainers[0].Command) {
+			existing.Spec.Template.Spec.InitContainers[0].Command = deploy.Spec.Template.Spec.InitContainers[0].Command
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[1:],
+			existing.Spec.Template.Spec.InitContainers[1:]) {
+			existing.Spec.Template.Spec.InitContainers = append(existing.Spec.Template.Spec.InitContainers[0:1],
+				deploy.Spec.Template.Spec.InitContainers[1:]...)
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
-			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
 			changed = true
 		}
 		if changed {
