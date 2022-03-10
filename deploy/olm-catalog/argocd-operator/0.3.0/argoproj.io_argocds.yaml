@@ -82,6 +82,20 @@ spec:
                       (optional)
                     type: string
                 type: object
+              banner:
+                description: Banner defines an additional banner to be displayed in
+                  Argo CD UI
+                properties:
+                  content:
+                    description: Content defines the banner message content to display
+                    type: string
+                  url:
+                    description: URL defines an optional URL to be used as banner
+                      message link
+                    type: string
+                required:
+                - content
+                type: object
               configManagementPlugins:
                 description: ConfigManagementPlugins is used to specify additional
                   config management plugins.
