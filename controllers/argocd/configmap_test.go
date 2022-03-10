@@ -124,20 +124,8 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 
 func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
 
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
-
-	want := map[string]string{
+	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
 		"admin.enabled":                "true",
 		"configManagementPlugins":      "",
@@ -157,8 +145,62 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"users.anonymous.enabled":      "false",
 	}
 
-	if diff := cmp.Diff(want, cm.Data); diff != "" {
-		t.Fatalf("reconcileArgoConfigMap failed:\n%s", diff)
+	cmdTests := []struct {
+		name     string
+		opts     []argoCDOpt
+		dataDiff map[string]string
+	}{
+		{
+			"defaults",
+			[]argoCDOpt{},
+			map[string]string{},
+		},
+		{
+			"with-banner",
+			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Banner = &argoprojv1alpha1.Banner{
+					Content: "Custom Styles - Banners",
+				}
+			}},
+			map[string]string{
+				"users.anonymous.enabled": "false",
+				"ui.bannercontent":        "Custom Styles - Banners",
+			},
+		},
+		{
+			"with-banner-and-url",
+			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Banner = &argoprojv1alpha1.Banner{
+					Content: "Custom Styles - Banners",
+					URL:     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+				}
+			}},
+			map[string]string{
+				"ui.bannercontent": "Custom Styles - Banners",
+				"ui.bannerurl":     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
+			},
+		},
+	}
+
+	for _, tt := range cmdTests {
+		a := makeTestArgoCD(tt.opts...)
+		r := makeTestReconciler(t, a)
+
+		err := r.reconcileArgoConfigMap(a)
+		assert.NoError(t, err)
+
+		cm := &corev1.ConfigMap{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		want := merge(defaultConfigMapData, tt.dataDiff)
+
+		if diff := cmp.Diff(want, cm.Data); diff != "" {
+			t.Fatalf("reconcileArgoConfigMap (%s) failed:\n%s", tt.name, diff)
+		}
 	}
 }
 

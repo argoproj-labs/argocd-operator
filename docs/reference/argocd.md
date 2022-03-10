@@ -44,6 +44,7 @@ Name | Default | Description
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
 [**Version**](#version) | v2.2.2 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Banner**](#banner) | [Object] | Add a UI banner message.
 
 ## Application Instance Label Key
 
@@ -1217,4 +1218,29 @@ metadata:
     example: version
 spec:
   version: v1.7.7
+```
+
+## Banner
+
+The following properties are available for configuring a [UI banner message](https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners). 
+
+Name | Default | Description
+--- | --- | ---
+Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
+BAnner.URL.SecretName | [Empty] | The banner message link URL (optional).
+
+### Banner Example
+The following example enables a UI banner with message content and URL.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: version
+spec:
+  banner:
+    content: "Custom Styles - Banners"
+    url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
 ```

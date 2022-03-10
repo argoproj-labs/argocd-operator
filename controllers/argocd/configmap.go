@@ -360,6 +360,15 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		}
 	}
 
+	if cr.Spec.Banner != nil {
+		if cr.Spec.Banner.Content != "" {
+			cm.Data[common.ArgoCDKeyBannerContent] = cr.Spec.Banner.Content
+			if cr.Spec.Banner.URL != "" {
+				cm.Data[common.ArgoCDKeyBannerURL] = cr.Spec.Banner.URL
+			}
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
@@ -495,6 +504,26 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
 		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
 		changed = true
+	}
+
+	if cr.Spec.Banner != nil {
+		if cm.Data[common.ArgoCDKeyBannerContent] != fmt.Sprint(cr.Spec.Banner.Content) {
+			cm.Data[common.ArgoCDKeyBannerContent] = fmt.Sprint(cr.Spec.Banner.Content)
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyBannerURL] != fmt.Sprint(cr.Spec.Banner.URL) {
+			cm.Data[common.ArgoCDKeyBannerURL] = fmt.Sprint(cr.Spec.Banner.URL)
+			changed = true
+		}
+	} else {
+		if _, ok := cm.Data[common.ArgoCDKeyBannerContent]; ok {
+			delete(cm.Data, common.ArgoCDKeyBannerContent)
+			changed = true
+		}
+		if _, ok := cm.Data[common.ArgoCDKeyBannerURL]; ok {
+			delete(cm.Data, common.ArgoCDKeyBannerURL)
+			changed = true
+		}
 	}
 
 	if changed {
