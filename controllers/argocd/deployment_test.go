@@ -425,6 +425,83 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[1].Name, "test-init-container")
 }
 
+func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	d := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+					InitContainers: []corev1.Container{},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, d)
+
+	err := r.reconcileRepoDeployment(a)
+	assert.NoError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
+}
+func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	d := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "unknown",
+							Command: []string{"testing-ic"},
+							Image:   "test-image-ic",
+						},
+					},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, d)
+
+	err := r.reconcileRepoDeployment(a)
+	assert.NoError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
+}
+
 func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()

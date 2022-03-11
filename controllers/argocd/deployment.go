@@ -1056,6 +1056,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 				deploy.Spec.Template.Spec.Containers[1:]...)
 			changed = true
 		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+			changed = true
+		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts,
 			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts = deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts
@@ -1072,12 +1076,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Command, existing.Spec.Template.Spec.InitContainers[0].Command) {
 			existing.Spec.Template.Spec.InitContainers[0].Command = deploy.Spec.Template.Spec.InitContainers[0].Command
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[1:],
-			existing.Spec.Template.Spec.InitContainers[1:]) {
-			existing.Spec.Template.Spec.InitContainers = append(existing.Spec.Template.Spec.InitContainers[0:1],
-				deploy.Spec.Template.Spec.InitContainers[1:]...)
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
