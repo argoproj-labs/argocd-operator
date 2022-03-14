@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd-keycloak
+  labels:
+    example: keycloak
+spec:
+  sso: 
+    provider: keycloak
+    verifyTLS: false # required when running operator locally
+  server:
+    route: 
+      enabled: true

@@ -29,3 +29,11 @@ kubectl delete namespace argocd-e2e
 kubectl create namespace argocd-e2e-cluster-config
 kubectl kuttl test --config kuttl-test-cluster-config.yaml
 kubectl delete namespace argocd-e2e-cluster-config
+
+# Run the below test only on OpenShift Container Platform
+kubectl get crds | grep openshiftapiservers.operator.openshift.io
+if [ $? -eq 0 ]; then
+    kubectl kuttl test --config kuttl-test-rhsso.yaml
+else
+    echo "skipping test rhsso"
+fi
