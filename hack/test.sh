@@ -16,7 +16,7 @@
 #
 # Script to run the operator tests.
 
-set -e
+set -e 
 
 kubectl create namespace argocd-e2e
 kubectl kuttl test
@@ -30,10 +30,11 @@ kubectl create namespace argocd-e2e-cluster-config
 kubectl kuttl test --config kuttl-test-cluster-config.yaml
 kubectl delete namespace argocd-e2e-cluster-config
 
-# Run the below test only on OpenShift Container Platform
-kubectl get crds | grep openshiftapiservers.operator.openshift.io
-if [ $? -eq 0 ]; then
+# if target cluster is ocp, run kuttl-test-rhsso.yaml
+# else run kuttl-test-keycloak.yaml
+isOCP=$(kubectl get crds | grep "openshiftapiservers.operator.openshift.io" || true)
+if [[ ! -z ${isOCP} ]]; then
     kubectl kuttl test --config kuttl-test-rhsso.yaml
 else
-    echo "skipping test rhsso"
+    kubectl kuttl test --config kuttl-test-keycloak.yaml
 fi
