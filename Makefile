@@ -122,6 +122,12 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
+##@ E2E
+
+e2e: ## Run operator e2e tests
+	$(shell pwd)/hack/test.sh
+
+all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.

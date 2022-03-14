@@ -11,6 +11,10 @@ A Kubernetes operator for managing Argo CD clusters.
 
 See the [documentation][docs] for installation and usage of the operator.
 
+## E2E testing
+
+E2E tests are written using [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli). Please Install [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli) to run the tests.
+
 ## License
 
 The Argo CD Operator is released under the Apache 2.0 license. See the [LICENSE][license_file] file for details.
