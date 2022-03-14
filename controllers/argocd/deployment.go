@@ -1060,24 +1060,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts,
-			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts) {
-			existing.Spec.Template.Spec.InitContainers[0].VolumeMounts = deploy.Spec.Template.Spec.InitContainers[0].VolumeMounts
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Env,
-			existing.Spec.Template.Spec.InitContainers[0].Env) {
-			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Command, existing.Spec.Template.Spec.InitContainers[0].Command) {
-			existing.Spec.Template.Spec.InitContainers[0].Command = deploy.Spec.Template.Spec.InitContainers[0].Command
-			changed = true
-		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
 			changed = true
