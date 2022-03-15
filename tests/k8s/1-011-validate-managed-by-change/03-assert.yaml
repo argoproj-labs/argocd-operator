@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: test-1-25-argo1
+status:
+  health:
+    status: Missing
+  sync:
+    status: Unknown
+---  
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: test-1-25-argo2
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced
+ 

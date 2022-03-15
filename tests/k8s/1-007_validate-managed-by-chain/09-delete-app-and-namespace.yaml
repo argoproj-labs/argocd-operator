@@ -1,0 +1,15 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  name: test-1-12-custom
+- apiVersion: argoproj.io/v1alpha1
+  kind: Application
+  name: test-1-12-custom2
+- apiVersion: v1
+  kind: Namespace
+  name: test-1-12-custom
+command:
+- shell: sleep 5

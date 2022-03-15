@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-12-custom
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-12-custom2
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec: {}

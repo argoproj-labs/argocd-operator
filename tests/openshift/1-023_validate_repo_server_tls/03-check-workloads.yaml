@@ -1,0 +1,8 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 5
+- script: |
+    oc -n test-1-23-custom get deployment argocd-server \
+        -o jsonpath='{.spec.template.spec.containers[0].command}' \
+        | jq -r | grep -- '--repo-server-strict-tls'

@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 10
+- script: |
+    set -e
+    set -o pipefail
+    for wl in deployments/argocd-server deployments/argocd-repo-server statefulsets/argocd-application-controller; do
+      res=$(oc get -n $NAMESPACE $wl -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}')
+      if test "$res" != "2"; then
+        echo "Reconciliation of resources for $wl failed: Should be 2, is '$res'"
+        exit 1
+      fi
+    done

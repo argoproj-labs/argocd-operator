@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: test-1-23-custom
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/redhat-developer/gitops-operator
+    path: ./test/examples/nginx
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: test-1-23-custom
+  syncPolicy:
+    automated: {}
+    retry:
+      limit: 1

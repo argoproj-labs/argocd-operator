@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    # we do expect error from jq here if env is not set at all
+    replicas=$(oc get -n $NAMESPACE statefulset argocd-application-controller -o json \
+      | jq -r '.spec.template.spec.containers[0].env[]|select(.name=="ARGOCD_CONTROLLER_REPLICASE").value')
+    if test "$replicas" != ""; then
+      echo "Environment ARGOCD_CONTROLLER_REPLICAS not correct. Should '', is '$replicas'"
+      exit 1
+    fi

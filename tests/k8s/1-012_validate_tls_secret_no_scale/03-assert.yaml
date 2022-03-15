@@ -1,0 +1,12 @@
+# This makes sure that we still have the first generation of the deployment,
+# and that no rollout is pending right now.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+status:
+  observedGeneration: 1
+  availableReplicas: 1
+  replicas: 1
+  readyReplicas: 1
+  updatedReplicas: 1

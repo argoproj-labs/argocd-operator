@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    replicas=$(oc get -n $NAMESPACE statefulset argocd-application-controller -o json \
+      | jq -r '.spec.template.spec.containers[0].env[]|select(.name=="ARGOCD_CONTROLLER_REPLICAS").value')
+    if test "$replicas" != "3"; then
+      echo "Environment ARGOCD_CONTROLLER_REPLICAS not correct. Should '3', is '$replicas'"
+      exit 1
+    fi

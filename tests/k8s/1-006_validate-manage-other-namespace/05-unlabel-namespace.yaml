@@ -1,0 +1,6 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: kubectl label ns test-1-9-custom argocd.argoproj.io/managed-by-
+- script: sleep 5

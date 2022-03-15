@@ -1,0 +1,17 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+# Wait for the Operator to become available
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  phase: Available
+---
+# Additional namespace that we want to manage
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-9-custom

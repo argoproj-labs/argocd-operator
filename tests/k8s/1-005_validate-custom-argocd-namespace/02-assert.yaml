@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: validate-custom-argocd
+  namespace: test-1-8-custom
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced

@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+name: e2e
+testDirs:
+  - .
+suppress:
+  - events
+parallel: 5
+timeout: 180
+reportFormat: JSON
+reportName: e2e

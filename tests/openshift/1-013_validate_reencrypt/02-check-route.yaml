@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    routeURL=$(oc -n $NAMESPACE get route argocd-server -o jsonpath='{.status.ingress[0].host}')
+    if ! curl --silent -k https://${routeURL} | grep -q "Your browser does not support JavaScript."; then
+      echo "Route not configured properly"
+      exit 1
+    fi

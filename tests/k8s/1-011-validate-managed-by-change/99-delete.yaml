@@ -1,0 +1,12 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: v1
+  kind: Namespace
+  name: test-1-25-target
+- apiVersion: v1
+  kind: Namespace
+  name: test-1-25-argo1
+- apiVersion: v1
+  kind: Namespace
+  name: test-1-25-argo2
