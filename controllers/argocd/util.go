@@ -17,6 +17,8 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -1364,4 +1366,20 @@ func getOpenShiftAPIURL() string {
 	}
 
 	return out
+}
+
+// generateRandomBytes returns a securely generated random bytes.
+func generateRandomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Error(err, "")
+	}
+	return b
+}
+
+// generateRandomString returns a securely generated random string.
+func generateRandomString(s int) string {
+	b := generateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b)
 }

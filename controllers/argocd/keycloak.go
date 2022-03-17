@@ -66,10 +66,6 @@ const (
 	keycloakClient = "argocd"
 	// Keycloak realm for Argo CD.
 	keycloakRealm = "argocd"
-	// Secret to authenticate argocd client.
-	argocdClientSecret = "admin"
-	// Secret to authenticate oAuthClient.
-	oAuthClientSecret = "admin"
 	// Identifier for Keycloak.
 	defaultKeycloakIdentifier = "keycloak"
 	// Identifier for TemplateInstance and Template.
@@ -85,11 +81,13 @@ const (
 )
 
 var (
-	privilegedMode bool  = false
-	graceTime      int64 = 75
-	portTLS        int32 = 8443
-	httpPort       int32 = 8080
-	controllerRef  bool  = true
+	// client secret for keycloak, argocd and openshift-v4 IdP.
+	oAuthClientSecret       = generateRandomString(8)
+	privilegedMode    bool  = false
+	graceTime         int64 = 75
+	portTLS           int32 = 8443
+	httpPort          int32 = 8080
+	controllerRef     bool  = true
 )
 
 // KeycloakPostData defines the values required to update Keycloak Realm.
@@ -885,7 +883,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				RootURL:                 cfg.ArgoCDURL,
 				AdminURL:                cfg.ArgoCDURL,
 				ClientAuthenticatorType: "client-secret",
-				Secret:                  argocdClientSecret,
+				Secret:                  oAuthClientSecret,
 				RedirectUris: []string{fmt.Sprintf("%s/%s",
 					cfg.ArgoCDURL, "auth/callback")},
 				WebOrigins: []string{cfg.ArgoCDURL},
@@ -1039,7 +1037,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 		return err
 	}
 
-	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(argocdClientSecret)
+	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(oAuthClientSecret)
 	err = r.Client.Update(context.TODO(), argoCDSecret)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
@@ -1193,6 +1191,30 @@ func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	err = deleteOAuthClient(cr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Delete OpenShift OAuthClient
+func deleteOAuthClient(cr *argoprojv1a1.ArgoCD) error {
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// We use the foreground propagation policy to ensure that the garbage
+	// collector removes all instantiated objects before the TemplateInstance
+	// itself disappears.
+	foreground := metav1.DeletePropagationForeground
+	deleteOptions := metav1.DeleteOptions{PropagationPolicy: &foreground}
+
 	// Delete OAuthClient created for keycloak.
 	oauth, err := oauthclient.NewForConfig(cfg)
 	if err != nil {
@@ -1204,9 +1226,13 @@ func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 		cr.Name, cr.Namespace))
 
 	oa := getOAuthClient(cr.Namespace)
-	err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
-	if err != nil {
-		return err
+
+	_, err = oauth.OAuthClients().Get(context.TODO(), oa, metav1.GetOptions{})
+	if err == nil {
+		err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1335,6 +1361,13 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 		if response == successResponse {
 			log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
 				cr.Name, cr.Namespace))
+
+			// OAuthClient configuration does not get deleted from previous instances occasionally.
+			// It is safe to delete before updating the OIDC config.
+			err = deleteOAuthClient(cr)
+			if err != nil {
+				return err
+			}
 
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
