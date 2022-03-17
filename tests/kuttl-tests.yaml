@@ -5,7 +5,7 @@ testDirs:
   - .
 suppress:
   - events
-parallel: 5
-timeout: 180
+parallel: 1
+timeout: 300
 reportFormat: JSON
 reportName: e2e

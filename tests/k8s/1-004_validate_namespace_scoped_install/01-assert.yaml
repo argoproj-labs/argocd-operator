@@ -40,7 +40,6 @@ metadata:
   name: argocd-redis
 status:
   replicas: 1
-  readyReplicas: 1
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,7 +47,6 @@ metadata:
   name: argocd-server
 status:
   replicas: 1
-  readyReplicas: 1
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -56,7 +54,6 @@ metadata:
   name: argocd-repo-server
 status:
   replicas: 1
-  readyReplicas: 1
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -64,4 +61,3 @@ metadata:
   name: argocd-application-controller
 status:
   replicas: 1
-  readyReplicas: 1

@@ -36,7 +36,7 @@ make all
 ### Running manual with kuttl
 
 ```sh
-kubectl kuttl test --config kuttl-test-keycloak.yaml
+kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 ```
 
 ### Running single tests
@@ -46,7 +46,7 @@ one), you may want to run single test cases isolated. To do so, you can pass
 the name of the test using `--test` to `kuttl`, i.e.
 
 ```sh
-kubectl kuttl test --config kuttl-test-redis-ha.yaml --test argocd-tests
+kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml --test 1-003_validate_redis_ha
 ```
 
 The name of the test is the name of the directory containing its steps and
@@ -155,7 +155,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
 - script: |
-    val=$(oc get -n $NAMESPACE deployments argocd-server -o json \
+    val=$(kubectl get -n $NAMESPACE deployments argocd-server -o json \
       | jq -r '.spec.templates.spec.containers[0].env[]|select(.name=="FOO").value')
     if test "$val" != "bar"; then
       echo "Expectation failed for for env FOO in argocd-server: should 'bar', is '$val'"

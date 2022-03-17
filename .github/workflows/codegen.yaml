@@ -46,7 +46,6 @@ jobs:
       - name: Download and install Operator SDK
         run: |
           set -ue
-          set -o pipefail
           curl -sLf --retry 3 \
             -o /tmp/operator-sdk_linux_amd64 \
             https://github.com/operator-framework/operator-sdk/releases/download/v1.11.0/operator-sdk_linux_amd64
