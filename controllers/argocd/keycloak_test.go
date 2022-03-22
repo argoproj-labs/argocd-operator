@@ -81,6 +81,8 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 	// For OpenShift Container Platform.
 	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	testImage = getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
 		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
@@ -102,6 +104,10 @@ func TestKeycloakContainerImage(t *testing.T) {
 }
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -114,6 +120,10 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -126,6 +136,10 @@ func TestNewKeycloakTemplate(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -154,6 +168,10 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -208,7 +226,6 @@ func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 }
 
 func TestKeycloak_testRealmConfigCreation(t *testing.T) {
-	templateAPIFound = false
 	cfg := &keycloakConfig{
 		ArgoName:      "foo-argocd",
 		ArgoNamespace: "foo",
@@ -258,4 +275,8 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, a.Spec.NodePlacement.NodeSelector)
 	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
+}
+
+func removeTemplateAPI() {
+	templateAPIFound = false
 }

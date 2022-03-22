@@ -83,7 +83,6 @@ const (
 var (
 	// client secret for keycloak, argocd and openshift-v4 IdP.
 	oAuthClientSecret       = generateRandomString(8)
-	privilegedMode    bool  = false
 	graceTime         int64 = 75
 	portTLS           int32 = 8443
 	httpPort          int32 = 8080

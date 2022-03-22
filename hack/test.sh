@@ -30,11 +30,4 @@ kubectl create namespace argocd-e2e-cluster-config
 kubectl kuttl test --config kuttl-test-cluster-config.yaml
 kubectl delete namespace argocd-e2e-cluster-config
 
-# if target cluster is ocp, run kuttl-test-rhsso.yaml
-# else run kuttl-test-keycloak.yaml
-isOCP=$(kubectl get crds | grep "openshiftapiservers.operator.openshift.io" || true)
-if [[ ! -z ${isOCP} ]]; then
-    kubectl kuttl test --config kuttl-test-rhsso.yaml
-else
-    kubectl kuttl test --config kuttl-test-keycloak.yaml
-fi
+kubectl kuttl test --config kuttl-test-keycloak.yaml
