@@ -1226,6 +1226,10 @@ func deleteOAuthClient(cr *argoprojv1a1.ArgoCD) error {
 
 	oa := getOAuthClient(cr.Namespace)
 
+	// TODO: Remove the oauth.OAuthClients().Get and proceed with delete once the issue is resolved.
+	// OAuthClient configuration does not get deleted from previous instances occasionally.
+	// It is safe to verify if OAuthClient exists and perform delete.
+	// https://github.com/openshift/client-go/issues/209
 	_, err = oauth.OAuthClients().Get(context.TODO(), oa, metav1.GetOptions{})
 	if err == nil {
 		err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
@@ -1361,8 +1365,10 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 			log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
 				cr.Name, cr.Namespace))
 
+			// TODO: Remove the deleteOAuthClient invocation once the issue is resolved.
 			// OAuthClient configuration does not get deleted from previous instances occasionally.
 			// It is safe to delete before updating the OIDC config.
+			// https://github.com/openshift/client-go/issues/209
 			err = deleteOAuthClient(cr)
 			if err != nil {
 				return err
