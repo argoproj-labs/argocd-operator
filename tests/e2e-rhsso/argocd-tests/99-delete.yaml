@@ -1,0 +1,5 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: oc delete argocd example-argocd-keycloak -n argocd-e2e-rhsso
+  - command: oc delete ns argocd-e2e-rhsso

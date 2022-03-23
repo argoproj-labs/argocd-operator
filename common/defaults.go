@@ -173,15 +173,15 @@ const (
 	ArgoCDKeycloakImage = "quay.io/keycloak/keycloak"
 
 	// ArgoCDKeycloakVersion is the default Keycloak version used for the non-openshift platform when not specified.
-	// Version: 9.0.3
-	ArgoCDKeycloakVersion = "sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf"
+	// Version: 15.0.2
+	ArgoCDKeycloakVersion = "sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9"
 
 	// ArgoCDKeycloakImageForOpenShift is the default Keycloak Image used for the OpenShift platform when not specified.
-	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso74-openshift-rhel8"
+	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8"
 
 	// ArgoCDKeycloakVersionForOpenShift is the default Keycloak version used for the OpenShift platform when not specified.
-	// Version: 7.4.0
-	ArgoCDKeycloakVersionForOpenShift = "sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc"
+	// Version: 7.5.1
+	ArgoCDKeycloakVersionForOpenShift = "sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3"
 
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""

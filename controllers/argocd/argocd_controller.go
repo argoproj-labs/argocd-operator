@@ -59,6 +59,8 @@ var log = logr.Log.WithName("controller_argocd")
 //+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects,verbs=*
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
 //+kubebuilder:rbac:groups="",resources=pods;pods/log,verbs=get
+//+kubebuilder:rbac:groups=template.openshift.io,resources=templates;templateinstances;templateconfigs,verbs=*
+//+kubebuilder:rbac:groups="oauth.openshift.io",resources=oauthclients,verbs=get;list;watch;create;delete;patch;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

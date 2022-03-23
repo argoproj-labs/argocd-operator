@@ -16,7 +16,7 @@
 #
 # Script to run the operator tests.
 
-set -e
+set -e 
 
 kubectl create namespace argocd-e2e
 kubectl kuttl test
@@ -29,3 +29,5 @@ kubectl delete namespace argocd-e2e
 kubectl create namespace argocd-e2e-cluster-config
 kubectl kuttl test --config kuttl-test-cluster-config.yaml
 kubectl delete namespace argocd-e2e-cluster-config
+
+kubectl kuttl test --config kuttl-test-keycloak.yaml
