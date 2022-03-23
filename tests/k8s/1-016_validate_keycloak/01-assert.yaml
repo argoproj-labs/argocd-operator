@@ -14,7 +14,7 @@ kind: Deployment
 metadata:
   name: keycloak
 status:
-  readyReplicas: 1
+  replicas: 1
 ---
 apiVersion: v1
 kind: Service
