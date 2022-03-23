@@ -898,6 +898,18 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - oauth.openshift.io
+          resources:
+          - oauthclients
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - rbac.authorization.k8s.io
           resources:
           - '*'
@@ -915,6 +927,14 @@ spec:
           resources:
           - routes
           - routes/custom-host
+          verbs:
+          - '*'
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - templateconfigs
+          - templateinstances
+          - templates
           verbs:
           - '*'
         - apiGroups:

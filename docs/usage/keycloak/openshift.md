@@ -75,46 +75,6 @@ kubectl -n argocd exec keycloak-1-2sjcl -- "env" | grep SSO_ADMIN_PASSWORD
 SSO_ADMIN_PASSWORD=GVXxHifH
 ```
 
-## Additional Steps for Disconnected OpenShift Clusters
-
-In a [disconnected](https://access.redhat.com/documentation/en-us/red_hat_openshift_container_storage/4.7/html/planning_your_deployment/disconnected-environment_rhocs) cluster, Keycloak communicates with OpenShift Oauth Server through proxy. Below are some additional steps that needs to followed to get Keycloak integrated with OpenShift Oauth Login.
-
-### Login to the Keycloak Pod
-
-```bash
-oc exec -it dc/keycloak -n argocd -- /bin/bash
-```
-
-### Run JBoss Cli command
-
-```bash
-/opt/eap/bin/jboss-cli.sh
-```
-
-### Start an Embedded Standalone Server
-
-```bash
-embed-server --server-config=standalone-openshift.xml
-```
-
-### Run the below command to setup proxy mappings for OpenShift OAuth Server host
-
-```bash
-/subsystem=keycloak-server/spi=connectionsHttpClient/provider=default:write-attribute(name=properties.proxy-mappings,value=["<oauth-server-hostname>;http://<proxy-server-host>:<proxy-server-port>"])
-```
-
-### Stop the Embedded Server
-
-```bash
-quit
-```
-
-### Reload JBoss
-
-```bash
-/opt/eap/bin/jboss-cli.sh --connect --command=:reload
-```
-
 ## Login
 
 You can see an option to Log in via keycloak apart from the usual ArgoCD login.
@@ -129,13 +89,27 @@ You can create keycloak users by logging in to keycloak admin console using the 
 
 **NOTE:** Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
 
-By default any user logged into ArgoCD will have read-only access. User level access can be managed by updating the argocd-rbac-cm configmap.
+## RBAC
 
-The below example show how to grant user foobar with email ID `foobang@example.com` admin access to ArgoCD. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
+By default any user logged into ArgoCD will have read-only access. User level access can be managed by updating the `argocd-rbac-cm` configmap.
+
+### Group Level RBAC
+
+The below example shows how to grant admin access to a group with name `cluster-admins`. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
 
 ```yaml
 policy.csv: |
-  g, foobang@example.com, role:admin
+  g, cluster-admins, role:admin
+```
+
+### User Level RBAC
+
+If you wish to configure RBAC for users instead of groups, consider the below example.
+Example shows how to grant admin access to User foobar with email ID `foobar@example.com`. More information regarding ArgoCD RBAC can be found [here](https://argoproj.github.io/argo-cd/operator-manual/rbac/)
+
+```yaml
+policy.csv: |
+  g, foobar@example.com, role:admin
 ```
 
 ## Change Keycloak Admin Password

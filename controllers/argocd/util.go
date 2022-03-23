@@ -17,6 +17,8 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -38,6 +40,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1278,4 +1281,81 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
 	r.ManagedNamespaces = namespaces
 	return nil
+}
+
+func isProxyCluster() bool {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "failed to get k8s config")
+	}
+
+	// Initialize config client.
+	configClient, err := configv1client.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "failed to initialize openshift config client")
+		return false
+	}
+
+	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "failed to get proxy configuration")
+		return false
+	}
+
+	if proxy.Spec.HTTPSProxy != "" {
+		log.Info("proxy configuration detected")
+		return true
+	}
+
+	return false
+}
+
+func getOpenShiftAPIURL() string {
+	k8s, err := initK8sClient()
+	if err != nil {
+		log.Error(err, "failed to initialize k8s client")
+	}
+
+	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "")
+	}
+
+	var cf string
+	if v, ok := cm.Data["console-config.yaml"]; ok {
+		cf = v
+	}
+
+	data := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(cf), data)
+	if err != nil {
+		log.Error(err, "")
+	}
+
+	var apiURL interface{}
+	var out string
+	if c, ok := data["clusterInfo"]; ok {
+		ci, _ := c.(map[interface{}]interface{})
+
+		apiURL = ci["masterPublicURL"]
+		out = fmt.Sprintf("%v", apiURL)
+	}
+
+	return out
+}
+
+// generateRandomBytes returns a securely generated random bytes.
+func generateRandomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Error(err, "")
+	}
+	return b
+}
+
+// generateRandomString returns a securely generated random string.
+func generateRandomString(s int) string {
+	b := generateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b)
 }
