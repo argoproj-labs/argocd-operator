@@ -53,7 +53,7 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
-	cl := fake.NewFakeClientWithScheme(s, objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,
