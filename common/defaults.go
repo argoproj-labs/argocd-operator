@@ -49,7 +49,7 @@ const (
 	ArgoCDDefaultApplicationSetImage = "quay.io/argoproj/argocd-applicationset"
 
 	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
-	ArgoCDDefaultApplicationSetVersion = "v0.2.0"
+	ArgoCDDefaultApplicationSetVersion = "v0.4.1"
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
