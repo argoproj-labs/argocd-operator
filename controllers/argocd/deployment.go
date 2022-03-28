@@ -156,7 +156,7 @@ func getArgoImportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 }
 
 // getArgoImportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
-func getArgoImportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+func getArgoImportVolumeMounts() []corev1.VolumeMount {
 	mounts := make([]corev1.VolumeMount, 0)
 
 	mounts = append(mounts, corev1.VolumeMount{
@@ -633,7 +633,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		Env:       proxyEnvVars(),
 	}}
 
-	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+	if err := applyReconcilerHook(cr, deploy); err != nil {
 		return err
 	}
 
@@ -822,7 +822,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
-	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+	if err := applyReconcilerHook(cr, deploy); err != nil {
 		return err
 	}
 
@@ -1241,9 +1241,7 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 
 func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
 	result := []corev1.EnvVar{}
-	for _, v := range vars {
-		result = append(result, v)
-	}
+	result = append(result, vars...)
 	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
 	for _, p := range proxyKeys {
 		if k, v := caseInsensitiveGetenv(p); k != "" {

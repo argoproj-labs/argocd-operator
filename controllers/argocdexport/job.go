@@ -90,7 +90,7 @@ func getArgoExportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 }
 
 // getArgoExportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
-func getArgoExportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+func getArgoExportVolumeMounts() []corev1.VolumeMount {
 	mounts := make([]corev1.VolumeMount, 0)
 
 	mounts = append(mounts, corev1.VolumeMount{
@@ -173,7 +173,7 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.P
 		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
-		VolumeMounts:    getArgoExportVolumeMounts(cr),
+		VolumeMounts:    getArgoExportVolumeMounts(),
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure

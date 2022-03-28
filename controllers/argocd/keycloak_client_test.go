@@ -29,7 +29,7 @@ func TestKeycloak_testRealmCreation(t *testing.T) {
 	data := &keycloakConfig{}
 	realm, _ := createRealmConfig(data)
 
-	_, err := h.post(realm, "test")
+	_, err := h.post(realm)
 	assert.NoError(t, err)
 }
 

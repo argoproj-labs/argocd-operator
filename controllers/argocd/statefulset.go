@@ -361,7 +361,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		Type: appsv1.RollingUpdateStatefulSetStrategyType,
 	}
 
-	if err := applyReconcilerHook(cr, ss, ""); err != nil {
+	if err := applyReconcilerHook(cr, ss); err != nil {
 		return err
 	}
 
@@ -490,7 +490,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
-			VolumeMounts:    getArgoImportVolumeMounts(export),
+			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
 		podSpec.Volumes = getArgoImportVolumes(export)

@@ -2,8 +2,6 @@ package argocd
 
 import (
 	v1 "k8s.io/api/rbac/v1"
-
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func policyRuleForApplicationController() []v1.PolicyRule {
@@ -23,7 +21,7 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForRedisHa(cr *argoprojv1alpha1.ArgoCD) []v1.PolicyRule {
+func policyRuleForRedisHa() []v1.PolicyRule {
 
 	rules := []v1.PolicyRule{
 		{
