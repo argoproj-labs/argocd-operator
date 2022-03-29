@@ -447,12 +447,12 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 	}
 	for _, s := range clusterSecrets.Items {
 		// check if cluster secret with default server address exists
-		// update the list of namespaces if value differs.
 		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
+			// if the cluster belongs to cluster config namespace,
+			// remove all namespaces from cluster secret,
+			// else update the list of namespaces if value differs.
 			if clusterConfigInstance {
-				if err := r.Client.Delete(context.TODO(), &s); err != nil {
-					return err
-				}
+				delete(s.Data, "namespaces")
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
@@ -462,8 +462,8 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 				}
 				sort.Strings(ns)
 				s.Data["namespaces"] = []byte(strings.Join(ns, ","))
-				return r.Client.Update(context.TODO(), &s)
 			}
+			return r.Client.Update(context.TODO(), &s)
 		}
 	}
 
