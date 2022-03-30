@@ -22,7 +22,7 @@ func TestReconcileArgoCD_reconcileApplicableClusterRole(t *testing.T) {
 		},
 		Rules: makeTestPolicyRules(),
 	}
-	assert.NoError(t, reconcilerHook(a, testClusterRole))
+	assert.NoError(t, reconcilerHook(a, testClusterRole, ""))
 
 	want := policyRulesForClusterConfig()
 	assert.Equal(t, want, testClusterRole.Rules)
@@ -36,7 +36,7 @@ func TestReconcileArgoCD_reconcileNotApplicableClusterRole(t *testing.T) {
 	a := makeTestArgoCDForClusterConfig()
 	testClusterRole := makeTestClusterRole()
 
-	assert.NoError(t, reconcilerHook(a, testClusterRole))
+	assert.NoError(t, reconcilerHook(a, testClusterRole, ""))
 	assert.Equal(t, makeTestPolicyRules(), testClusterRole.Rules)
 }
 
@@ -56,11 +56,11 @@ func TestReconcileArgoCD_reconcileMultipleClusterRoles(t *testing.T) {
 
 	testNotApplicableClusterRole := makeTestClusterRole()
 
-	assert.NoError(t, reconcilerHook(a, testApplicableClusterRole))
+	assert.NoError(t, reconcilerHook(a, testApplicableClusterRole, ""))
 	want := policyRulesForClusterConfig()
 	assert.Equal(t, want, testApplicableClusterRole.Rules)
 
-	assert.NoError(t, reconcilerHook(a, testNotApplicableClusterRole))
+	assert.NoError(t, reconcilerHook(a, testNotApplicableClusterRole, ""))
 	assert.Equal(t, makeTestPolicyRules(), testNotApplicableClusterRole.Rules)
 }
 
@@ -72,7 +72,7 @@ func TestReconcileArgoCD_testDeployment(t *testing.T) {
 	a := makeTestArgoCDForClusterConfig()
 	testDeployment := makeTestDeployment()
 	// reconcilerHook should not error on a Deployment resource
-	assert.NoError(t, reconcilerHook(a, testDeployment))
+	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
 }
 
 func TestReconcileArgoCD_notInClusterConfigNamespaces(t *testing.T) {
@@ -87,7 +87,7 @@ func TestReconcileArgoCD_notInClusterConfigNamespaces(t *testing.T) {
 		},
 		Rules: makeTestPolicyRules(),
 	}
-	assert.NoError(t, reconcilerHook(a, testClusterRole))
+	assert.NoError(t, reconcilerHook(a, testClusterRole, ""))
 
 	want := makeTestPolicyRules()
 	assert.Equal(t, want, testClusterRole.Rules)
@@ -116,13 +116,13 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	testDeployment.ObjectMeta.Name = a.Name + "-" + "redis"
 	want := append(getArgsForRedhatRedis(), testDeployment.Spec.Template.Spec.Containers[0].Args...)
 
-	assert.NoError(t, reconcilerHook(a, testDeployment))
+	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
 	assert.Equal(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
 
 	testDeployment.ObjectMeta.Name = a.Name + "-" + "not-redis"
 	want = testDeployment.Spec.Template.Spec.Containers[0].Args
 
-	assert.NoError(t, reconcilerHook(a, testDeployment))
+	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
 	assert.Equal(t, testDeployment.Spec.Template.Spec.Containers[0].Args, want)
 }
 
@@ -133,7 +133,7 @@ func TestReconcileArgoCD_reconcileRedisHaProxyDeployment(t *testing.T) {
 	testDeployment.ObjectMeta.Name = a.Name + "-redis-ha-haproxy"
 	want := append(getCommandForRedhatRedisHaProxy(), testDeployment.Spec.Template.Spec.Containers[0].Command...)
 
-	assert.NoError(t, reconcilerHook(a, testDeployment))
+	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
 	assert.Equal(t, testDeployment.Spec.Template.Spec.Containers[0].Command, want)
 	assert.Equal(t, 0, len(testDeployment.Spec.Template.Spec.Containers[0].Args))
 
@@ -141,7 +141,7 @@ func TestReconcileArgoCD_reconcileRedisHaProxyDeployment(t *testing.T) {
 	testDeployment.ObjectMeta.Name = a.Name + "-" + "not-redis-ha-haproxy"
 	want = testDeployment.Spec.Template.Spec.Containers[0].Command
 
-	assert.NoError(t, reconcilerHook(a, testDeployment))
+	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
 	assert.Equal(t, testDeployment.Spec.Template.Spec.Containers[0].Command, want)
 }
 
@@ -149,7 +149,7 @@ func TestReconcileArgoCD_reconcileRedisHaServerStatefulSet(t *testing.T) {
 	a := makeTestArgoCD()
 	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
 
-	assert.NoError(t, reconcilerHook(a, s))
+	assert.NoError(t, reconcilerHook(a, s, ""))
 
 	// Check the name to ensure we're looking at the right container definition
 	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Name, "redis")
@@ -169,7 +169,7 @@ func TestReconcileArgoCD_reconcileRedisHaServerStatefulSet(t *testing.T) {
 	want0 := s.Spec.Template.Spec.Containers[0].Args
 	want1 := s.Spec.Template.Spec.Containers[1].Args
 
-	assert.NoError(t, reconcilerHook(a, s))
+	assert.NoError(t, reconcilerHook(a, s, ""))
 	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Args, want0)
 	assert.Equal(t, s.Spec.Template.Spec.Containers[1].Args, want1)
 }
@@ -184,7 +184,7 @@ func TestReconcileArgoCD_reconcileSecrets(t *testing.T) {
 			"namespaces": []byte(testNamespace),
 		},
 	}
-	assert.NoError(t, reconcilerHook(a, testSecret))
+	assert.NoError(t, reconcilerHook(a, testSecret, ""))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), "")
 
 	a.Namespace = "someRandomNamespace"
@@ -193,6 +193,6 @@ func TestReconcileArgoCD_reconcileSecrets(t *testing.T) {
 			"namespaces": []byte("someRandomNamespace"),
 		},
 	}
-	assert.NoError(t, reconcilerHook(a, testSecret))
+	assert.NoError(t, reconcilerHook(a, testSecret, ""))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), "someRandomNamespace")
 }

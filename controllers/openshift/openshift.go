@@ -23,7 +23,7 @@ func init() {
 	argocd.Register(reconcilerHook)
 }
 
-func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}) error {
+func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) error {
 
 	logv := log.WithValues("ArgoCD Namespace", cr.Namespace, "ArgoCD Name", cr.Name)
 	switch o := v.(type) {

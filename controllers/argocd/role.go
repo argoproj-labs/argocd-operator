@@ -97,7 +97,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 		customRole := getCustomRoleName(name)
 		role := newRole(name, policyRules, cr)
-		if err := applyReconcilerHook(cr, role); err != nil {
+		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
 		}
 		role.Namespace = namespace.Name
@@ -157,7 +157,7 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 		allowed = true
 	}
 	clusterRole := newClusterRole(name, policyRules, cr)
-	if err := applyReconcilerHook(cr, clusterRole); err != nil {
+	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
 		return nil, err
 	}
 
