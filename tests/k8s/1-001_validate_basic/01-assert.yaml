@@ -85,10 +85,3 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: example-argocd-argocd-dex-server
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: guestbook-ui
-status:
-  readyReplicas: 1

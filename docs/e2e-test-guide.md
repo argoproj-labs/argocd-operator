@@ -15,7 +15,17 @@ The system executing the tests must have following tools installed:
 
 There should be a `kubeconfig` pointing to your cluster, user should have full admin privileges (i.e. `kubeadm`).
 
-Note that the e2e tests for Redis HA mode require a cluster with at least three worker nodes.  A local three-worker node
+**Note:** E2E tests utilize GNU Grep under the hood. Please make sure that you have the GNU compatible `grep` installed.
+
+If you are on OSX you can install GNU compatible grep using the below command. The package is installed as `ggrep` by default. Please set this(ggrep) as an alias to `grep`.  
+
+```sh
+brew install grep
+```
+
+Use the below commands to install GNU compatible `grep` on OSX.
+
+Also, note that the e2e tests for Redis HA mode require a cluster with at least three worker nodes.  A local three-worker node
 cluster can be created using [k3d](https://k3d.io/)
 
 ## Running the tests

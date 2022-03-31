@@ -5,12 +5,6 @@ delete:
 - apiVersion: argoproj.io/v1alpha1
   kind: ArgoCD
   name: example-argocd
-- apiVersion: apps/v1
-  kind: Deployment
-  name: guestbook-ui
-- apiVersion: argoproj.io/v1alpha1
-  kind: Application
-  name: guestbook
 commands:
   # Sleep to allow resources to be completely deleted
   - command: sleep 30s

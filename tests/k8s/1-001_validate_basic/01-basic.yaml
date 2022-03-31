@@ -5,19 +5,3 @@ metadata:
   labels:
     example: basic
 spec: {}
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: guestbook
-spec:
-  project: default
-  source:
-    repoURL: 'https://github.com/argoproj/argocd-example-apps.git'
-    path: guestbook
-    targetRevision: HEAD
-  destination:
-    server: 'https://kubernetes.default.svc'
-    namespace: argocd-e2e
-  syncPolicy:
-    automated: {}

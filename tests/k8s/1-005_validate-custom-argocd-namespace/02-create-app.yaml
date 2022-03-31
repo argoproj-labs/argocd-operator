@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/argoproj-labs/argocd-operator
-    path: test/examples/nginx
+    path: tests/config/nginx
     targetRevision: HEAD
   destination:
     server: https://kubernetes.default.svc
