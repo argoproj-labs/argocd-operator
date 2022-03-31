@@ -1,21 +1,13 @@
-# Delete previous cluster
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-delete:
-- apiVersion: argoproj.io/v1alpha1
-  kind: ArgoCDExport
-  name: example-argocdexport
-- apiVersion: argoproj.io/v1alpha1
-  kind: ArgoCD
-  name: example-argocd
-commands:
-  # Sleep to allow resources to be completely deleted
-  - command: sleep 30s
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-17-custom
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cmp-plugin
+  namespace: test-1-17-custom
 data:
   plugin.yaml: |
     apiVersion: argoproj.io/v1alpha1
@@ -36,6 +28,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
+  namespace: test-1-17-custom
 spec:
   server:
     route:
@@ -67,6 +60,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: guestbook
+  namespace: test-1-17-custom
 spec:
   project: default
   source:
@@ -79,6 +73,6 @@ spec:
           value: myfoo
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: argocd-e2e
+    namespace: test-1-17-custom
   syncPolicy:
     automated: {}

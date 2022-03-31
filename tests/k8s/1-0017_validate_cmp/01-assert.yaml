@@ -8,6 +8,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
+  namespace: test-1-17-custom
 status:
   phase: Available
 ---
@@ -15,6 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: example-argocd-repo-server
+  namespace: test-1-17-custom
 status:
   readyReplicas: 1
 ---
@@ -22,6 +24,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: guestbook
+  namespace: test-1-17-custom
   annotations:
     Bar: baz
     Foo: myfoo

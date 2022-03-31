@@ -5,6 +5,7 @@ delete:
 - apiVersion: argoproj.io/v1alpha1
   kind: ArgoCD
   name: example-argocd
+  namespace: argocd-e2e-cluster-config
 commands:
   # Sleep to allow resources to be completely deleted
   - command: sleep 30s
@@ -13,6 +14,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
+  namespace: argocd-e2e-cluster-config
   labels:
     example: initial-ssh-hosts
 spec:

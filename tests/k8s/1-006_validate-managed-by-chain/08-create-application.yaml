@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/argoproj-labs/argocd-operator
-    path: tests/config/nginx
+    repoURL: https://github.com/redhat-developer/gitops-operator
+    path: test/examples/nginx
     targetRevision: "HEAD"
   destination:
     server: "https://kubernetes.default.svc"
