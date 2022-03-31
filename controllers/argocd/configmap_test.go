@@ -435,6 +435,18 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 	cm := &corev1.ConfigMap{}
 
+	t.Run("Check default tracking method", func(t *testing.T) {
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.True(t, ok)
+	})
+
 	t.Run("Tracking method label", func(t *testing.T) {
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
