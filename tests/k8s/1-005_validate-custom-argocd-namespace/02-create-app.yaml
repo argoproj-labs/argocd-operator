@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/redhat-developer/gitops-operator
+    repoURL: https://github.com/argoproj-labs/argocd-operator
     path: test/examples/nginx
     targetRevision: HEAD
   destination:

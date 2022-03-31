@@ -4,7 +4,7 @@ E2E tests are written using [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli).
 
 ## Requirements
 
-This test suite assumes that an Argo CD Operator is installed on the cluster or running locally using `make run`.
+This test suite assumes that an Argo CD Operator is installed on the cluster or running locally using `make install run`.
 
 The system executing the tests must have following tools installed:
 
@@ -14,6 +14,9 @@ The system executing the tests must have following tools installed:
 * `curl`
 
 There should be a `kubeconfig` pointing to your cluster, user should have full admin privileges (i.e. `kubeadm`).
+
+Note that the e2e tests for Redis HA mode require a cluster with at least three worker nodes.  A local three-worker node
+cluster can be created using [k3d](https://k3d.io/)
 
 ## Running the tests
 
