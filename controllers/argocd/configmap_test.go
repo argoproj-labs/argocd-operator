@@ -425,9 +425,7 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.ResourceTrackingMethod = argoprojv1alpha1.ResourceTrackingMethodLabel.String()
-	})
+	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileArgoConfigMap(a)
