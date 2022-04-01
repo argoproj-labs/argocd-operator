@@ -126,23 +126,24 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	defaultConfigMapData := map[string]string{
-		"application.instanceLabelKey": common.ArgoCDDefaultApplicationInstanceLabelKey,
-		"admin.enabled":                "true",
-		"configManagementPlugins":      "",
-		"dex.config":                   "",
-		"ga.anonymizeusers":            "false",
-		"ga.trackingid":                "",
-		"help.chatText":                "Chat now!",
-		"help.chatUrl":                 "https://mycorp.slack.com/argo-cd",
-		"kustomize.buildOptions":       "",
-		"oidc.config":                  "",
-		"repositories":                 "",
-		"repository.credentials":       "",
-		"resource.inclusions":          "",
-		"resource.exclusions":          "",
-		"statusbadge.enabled":          "false",
-		"url":                          "https://argocd-server",
-		"users.anonymous.enabled":      "false",
+		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
+		"application.resourceTrackingMethod": argoprojv1alpha1.ResourceTrackingMethodLabel.String(),
+		"admin.enabled":                      "true",
+		"configManagementPlugins":            "",
+		"dex.config":                         "",
+		"ga.anonymizeusers":                  "false",
+		"ga.trackingid":                      "",
+		"help.chatText":                      "Chat now!",
+		"help.chatUrl":                       "https://mycorp.slack.com/argo-cd",
+		"kustomize.buildOptions":             "",
+		"oidc.config":                        "",
+		"repositories":                       "",
+		"repository.credentials":             "",
+		"resource.inclusions":                "",
+		"resource.exclusions":                "",
+		"statusbadge.enabled":                "false",
+		"url":                                "https://argocd-server",
+		"users.anonymous.enabled":            "false",
 	}
 
 	cmdTests := []struct {
@@ -421,6 +422,91 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	}, cm)
 	assert.NoError(t, err)
 	// Currently the gpg keys configmap is empty
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+
+	t.Run("Check default tracking method", func(t *testing.T) {
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.True(t, ok)
+	})
+
+	t.Run("Tracking method label", func(t *testing.T) {
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.True(t, ok)
+	})
+
+	t.Run("Set tracking method to annotation+label", func(t *testing.T) {
+		a.Spec.ResourceTrackingMethod = argoprojv1alpha1.ResourceTrackingMethodAnnotationAndLabel.String()
+		err = r.reconcileArgoConfigMap(a)
+		assert.NoError(t, err)
+
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.True(t, ok)
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodAnnotationAndLabel.String(), rtm)
+	})
+
+	t.Run("Set tracking method to annotation", func(t *testing.T) {
+		a.Spec.ResourceTrackingMethod = argoprojv1alpha1.ResourceTrackingMethodAnnotation.String()
+		err = r.reconcileArgoConfigMap(a)
+		assert.NoError(t, err)
+
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.True(t, ok)
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodAnnotation.String(), rtm)
+	})
+
+	// Invalid value sets the default "label"
+	t.Run("Set tracking method to invalid value", func(t *testing.T) {
+		a.Spec.ResourceTrackingMethod = "anotaions"
+		err = r.reconcileArgoConfigMap(a)
+		assert.NoError(t, err)
+
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
+		assert.True(t, ok)
+		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+	})
+
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
