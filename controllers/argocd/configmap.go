@@ -181,7 +181,13 @@ func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
 // getResourceTrackingMethod will return the resource tracking method for the given ArgoCD.
 func getResourceTrackingMethod(cr *argoprojv1a1.ArgoCD) string {
 	rtm := argoprojv1a1.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
-	log.Info(fmt.Sprintf("Found %s as tracking method", cr.Spec.ResourceTrackingMethod))
+	if rtm == argoprojv1a1.ResourceTrackingMethodInvalid {
+		log.Info(fmt.Sprintf("Found '%s' as resource tracking method, which is invalid. Using default 'label' method.", cr.Spec.ResourceTrackingMethod))
+	} else if cr.Spec.ResourceTrackingMethod != "" {
+		log.Info(fmt.Sprintf("Found '%s' as tracking method", cr.Spec.ResourceTrackingMethod))
+	} else {
+		log.Info("Using default resource tracking method 'label'")
+	}
 	return rtm.String()
 }
 
