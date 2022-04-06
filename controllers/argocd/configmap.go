@@ -178,6 +178,19 @@ func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
 	return re
 }
 
+// getResourceTrackingMethod will return the resource tracking method for the given ArgoCD.
+func getResourceTrackingMethod(cr *argoprojv1a1.ArgoCD) string {
+	rtm := argoprojv1a1.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
+	if rtm == argoprojv1a1.ResourceTrackingMethodInvalid {
+		log.Info(fmt.Sprintf("Found '%s' as resource tracking method, which is invalid. Using default 'label' method.", cr.Spec.ResourceTrackingMethod))
+	} else if cr.Spec.ResourceTrackingMethod != "" {
+		log.Info(fmt.Sprintf("Found '%s' as tracking method", cr.Spec.ResourceTrackingMethod))
+	} else {
+		log.Info("Using default resource tracking method 'label'")
+	}
+	return rtm.String()
+}
+
 // getInitialRepositories will return the initial repositories for the given ArgoCD.
 func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
 	repos := common.ArgoCDDefaultRepositories
@@ -340,6 +353,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	}
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
 	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -482,6 +496,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 
 	if cm.Data[common.ArgoCDKeyResourceInclusions] != cr.Spec.ResourceInclusions {
 		cm.Data[common.ArgoCDKeyResourceInclusions] = cr.Spec.ResourceInclusions
+		changed = true
+	}
+
+	if cm.Data[common.ArgoCDKeyResourceTrackingMethod] != cr.Spec.ResourceTrackingMethod {
+		cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 		changed = true
 	}
 

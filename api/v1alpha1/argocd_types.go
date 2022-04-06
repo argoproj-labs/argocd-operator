@@ -616,6 +616,10 @@ type ArgoCDSpec struct {
 	// reconciliation process.
 	ResourceInclusions string `json:"resourceInclusions,omitempty"`
 
+	// ResourceTrackingMethod defines how Argo CD should track resources that it manages
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Tracking Method'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ResourceTrackingMethod string `json:"resourceTrackingMethod,omitempty"`
+
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
@@ -771,4 +775,49 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	} else {
 		return common.ArgoCDDefaultApplicationInstanceLabelKey
 	}
+}
+
+// ResourceTrackingMethod represents the Argo CD resource tracking method to use
+type ResourceTrackingMethod int
+
+const (
+	ResourceTrackingMethodInvalid            ResourceTrackingMethod = -1
+	ResourceTrackingMethodLabel              ResourceTrackingMethod = 0
+	ResourceTrackingMethodAnnotation         ResourceTrackingMethod = 1
+	ResourceTrackingMethodAnnotationAndLabel ResourceTrackingMethod = 2
+)
+
+const (
+	stringResourceTrackingMethodLabel              string = "label"
+	stringResourceTrackingMethodAnnotation         string = "annotation"
+	stringResourceTrackingMethodAnnotationAndLabel string = "annotation+label"
+)
+
+// String returns the string representation for a ResourceTrackingMethod
+func (r ResourceTrackingMethod) String() string {
+	switch r {
+	case ResourceTrackingMethodLabel:
+		return stringResourceTrackingMethodLabel
+	case ResourceTrackingMethodAnnotation:
+		return stringResourceTrackingMethodAnnotation
+	case ResourceTrackingMethodAnnotationAndLabel:
+		return stringResourceTrackingMethodAnnotationAndLabel
+	}
+
+	// Default is to use label
+	return stringResourceTrackingMethodLabel
+}
+
+// ParseResourceTrackingMethod parses a string into a resource tracking method
+func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
+	switch name {
+	case stringResourceTrackingMethodLabel, "":
+		return ResourceTrackingMethodLabel
+	case stringResourceTrackingMethodAnnotation:
+		return ResourceTrackingMethodAnnotation
+	case stringResourceTrackingMethodAnnotationAndLabel:
+		return ResourceTrackingMethodAnnotationAndLabel
+	}
+
+	return ResourceTrackingMethodInvalid
 }
