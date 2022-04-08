@@ -495,6 +495,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
+	brokenPod := getBrokenPod(ss, cr)
+	if brokenPod != nil {
+		r.Client.Delete(context.TODO(), brokenPod)
+	}
+
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
@@ -590,4 +595,25 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
 		*changed = true
 	}
+}
+
+//to fetch the broken pod of StatefulSet if any, this function intends to delete the broken pod that cannot
+//be restarted due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
+func getBrokenPod(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) *corev1.Pod {
+
+	k8s, err := initK8sClient()
+	if err != nil {
+		log.Error(err, "failed to initialize k8s client")
+	}
+
+	labelSel := common.ArgoCDKeyName + " = " + fmt.Sprintf("%s-%s", cr.Name, "application-controller")
+	po, err := k8s.CoreV1().Pods(ss.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSel})
+	if err != nil {
+		log.Error(err, "failed to get Pod List")
+	}
+
+	if po.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
+		return &po.Items[0]
+	}
+	return nil
 }
