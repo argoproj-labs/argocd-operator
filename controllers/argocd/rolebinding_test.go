@@ -54,14 +54,14 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 
 	// check no dexServer rolebinding is created for the new namespace with managed-by label
 	roleBinding := &rbacv1.RoleBinding{}
-	workloadIdentifier := dexServer
+	workloadIdentifier := common.ArgoCDDexServerComponent
 	expectedDexServerRules := policyRuleForDexServer()
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedDexServerRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// check no redisHa rolebinding is created for the new namespace with managed-by label
-	workloadIdentifier = redisHa
+	workloadIdentifier = common.ArgoCDRedisHAComponent
 	expectedRedisHaRules := policyRuleForRedisHa()
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
@@ -74,19 +74,19 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	rules := policyRuleForDexServer()
-	rb := newRoleBindingWithname(dexServer, a)
+	rb := newRoleBindingWithname(common.ArgoCDDexServerComponent, a)
 
 	// Dex is enabled, creates a role binding
-	assert.NoError(t, r.reconcileRoleBinding(dexServer, rules, a))
+	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
 
 	// Disable Dex, deletes the existing role binding
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
-	_, err := r.reconcileRole(dexServer, rules, a)
+	_, err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
 	assert.NoError(t, err)
-	assert.NoError(t, r.reconcileRoleBinding(dexServer, rules, a))
+	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, a))
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
@@ -156,7 +156,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 
 	assert.NoError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role"))
 	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
-	assert.NoError(t, r.reconcileRoleBinding(applicationController, p, a))
+	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDApplicationControllerComponent, p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-application-controller")
 	checkForUpdatedRoleRef(t, "custom-controller-role", expectedName)

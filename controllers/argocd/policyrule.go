@@ -2,6 +2,8 @@ package argocd
 
 import (
 	v1 "k8s.io/api/rbac/v1"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func policyRuleForApplicationController() []v1.PolicyRule {
@@ -170,6 +172,48 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			Verbs: []string{
 				"list",
 			},
+		},
+	}
+}
+
+func getPolicyRuleList() []struct {
+	name       string
+	policyRule []v1.PolicyRule
+} {
+	return []struct {
+		name       string
+		policyRule []v1.PolicyRule
+	}{
+		{
+			name:       common.ArgoCDApplicationControllerComponent,
+			policyRule: policyRuleForApplicationController(),
+		}, {
+			name:       common.ArgoCDDexServerComponent,
+			policyRule: policyRuleForDexServer(),
+		}, {
+			name:       common.ArgoCDServerComponent,
+			policyRule: policyRuleForServer(),
+		}, {
+			name:       common.ArgoCDRedisHAComponent,
+			policyRule: policyRuleForRedisHa(),
+		},
+	}
+}
+
+func getPolicyRuleClusterRoleList() []struct {
+	name       string
+	policyRule []v1.PolicyRule
+} {
+	return []struct {
+		name       string
+		policyRule []v1.PolicyRule
+	}{
+		{
+			name:       common.ArgoCDApplicationControllerComponent,
+			policyRule: policyRuleForApplicationController(),
+		}, {
+			name:       common.ArgoCDServerComponent,
+			policyRule: policyRuleForServerClusterRole(),
 		},
 	}
 }
