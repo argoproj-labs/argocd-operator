@@ -30,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.16
+          go-version: 1.17
 
       - name: Restore go build cache
         uses: actions/cache@v1
@@ -78,7 +78,7 @@ jobs:
       - name: Setup Golang
         uses: actions/setup-go@v1
         with:
-          go-version: 1.16
+          go-version: 1.17
       - name: GH actions workaround - Kill XSP4 process
         run: |
           sudo pkill mono || true
