@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd-e2e-cluster-config
+status:
+  phase: Available
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+ name: example-argocd-argocd-e2e-cluster-config-argocd-application-controller
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-argocd-argocd-e2e-cluster-config-argocd-server

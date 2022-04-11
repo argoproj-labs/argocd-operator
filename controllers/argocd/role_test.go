@@ -64,7 +64,6 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
 	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
-	
 	// check no redisHa role is created for the new namespace with managed-by label
 	workloadIdentifier = redisHa
 	expectedRedisHaRules := policyRuleForRedisHa(a)

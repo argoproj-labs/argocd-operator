@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-1-12-custom2
+status:
+  health:
+    status: Healthy
+  sync:
+    status: Synced

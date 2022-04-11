@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  server:
+    resources:
+      limits:
+        cpu: 1
+        memory: 200Mi
+      requests:
+        cpu: 50m
+        memory: 200Mi
+  controller:
+    resources:
+      limits:
+        cpu: 1
+        memory: 2000Mi
+      requests:
+        cpu: 50m
+        memory: 200Mi
+  repo:
+    resources:
+      limits:
+        cpu: 1
+        memory: 200Mi
+      requests:
+        cpu: 50m
+        memory: 200Mi
