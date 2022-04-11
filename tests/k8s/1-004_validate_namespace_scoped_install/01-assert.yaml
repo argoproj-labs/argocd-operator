@@ -1,0 +1,63 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  phase: Available
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-ca
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-cluster
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-default-cluster-config
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-tls
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-redis
+status:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+status:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+status:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-application-controller
+status:
+  replicas: 1

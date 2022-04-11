@@ -19,6 +19,7 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Release Process: release-process.md
+  - E2E Testing: e2e-test-guide.md
   - Install:
     - Getting Started: install/start.md
     - OpenShift: install/openshift.md

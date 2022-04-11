@@ -1,0 +1,6 @@
+---
+# Label the namespace that we want to manage
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: kubectl label ns test-1-12-custom2 argocd.argoproj.io/managed-by=$NAMESPACE
