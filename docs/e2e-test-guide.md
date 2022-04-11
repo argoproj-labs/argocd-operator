@@ -59,7 +59,7 @@ one), you may want to run single test cases isolated. To do so, you can pass
 the name of the test using `--test` to `kuttl`, i.e.
 
 ```sh
-kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml --test 1-003_validate_redis_ha
+kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml --test 1-004_validate_namespace_scoped_install
 ```
 
 The name of the test is the name of the directory containing its steps and
