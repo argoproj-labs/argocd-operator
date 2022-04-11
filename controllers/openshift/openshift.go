@@ -99,6 +99,17 @@ func getPolicyRuleForApplicationController() []rbacv1.PolicyRule {
 				"watch",
 			},
 		},
+		{
+			APIGroups: []string{
+				"monitoring.coreos.com",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"*",
+			},
+		},
 	}
 }
 
