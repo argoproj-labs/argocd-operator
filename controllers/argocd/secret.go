@@ -541,6 +541,81 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) 
 	return nil
 }
 
+// reconcileRedisTLSSecret checks whether the argocd-operator-redis-tls secret
+// has changed since our last reconciliation loop. It does so by comparing the
+// checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
+// values calculated from the live state in the cluster.
+func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD) error {
+	var tlsSecretObj corev1.Secret
+	var sha256sum string
+
+	log.Info("reconciling redis-server TLS secret")
+
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
+		// We only process secrets of type kubernetes.io/tls
+		return nil
+	} else {
+		// We do the checksum over a concatenated byte stream of cert + key
+		crt, crtOk := tlsSecretObj.Data[corev1.TLSCertKey]
+		key, keyOk := tlsSecretObj.Data[corev1.TLSPrivateKeyKey]
+		if crtOk && keyOk {
+			var sumBytes []byte
+			sumBytes = append(sumBytes, crt...)
+			sumBytes = append(sumBytes, key...)
+			sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+		}
+	}
+
+	// The content of the TLS secret has changed since we last looked if the
+	// calculated checksum doesn't match the one stored in the status.
+	if cr.Status.RedisTLSChecksum != sha256sum {
+		// We store the value early to prevent a possible restart loop, for the
+		// cost of a possibly missed restart when we cannot update the status
+		// field of the resource.
+		cr.Status.RedisTLSChecksum = sha256sum
+		err = r.Client.Status().Update(context.TODO(), cr)
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of redis
+		redisDepl := newDeploymentWithSuffix("redis", "redis", cr)
+		err = r.triggerRollout(redisDepl, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of API server
+		apiDepl := newDeploymentWithSuffix("server", "server", cr)
+		err = r.triggerRollout(apiDepl, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of repository server
+		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+		err = r.triggerRollout(repoDepl, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of application controller
+		controllerSts := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+		err = r.triggerRollout(controllerSts, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // reconcileSecrets will reconcile all ArgoCD Secret resources.
 func (r *ReconcileArgoCD) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileClusterSecrets(cr); err != nil {

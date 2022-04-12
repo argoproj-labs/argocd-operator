@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -34,13 +35,35 @@ func (r *ReconcileArgoCD) clusterResourceMapper(o client.Object) []reconcile.Req
 	return result
 }
 
+func isSecretOfInterest(o client.Object) bool {
+	if strings.HasSuffix(o.GetName(), "-repo-server-tls") {
+		return true
+	}
+	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
+		return true
+	}
+	return false
+}
+
+func isOwnerOfInterest(owner v1.OwnerReference) bool {
+	if owner.Kind != "Service" {
+		return false
+	}
+	if strings.HasSuffix(owner.Name, "-repo-server") {
+		return true
+	}
+	if strings.HasSuffix(owner.Name, "-redis") {
+		return true
+	}
+	return false
+}
+
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
 // ArgoCD object that we want to reconcile.
 func (r *ReconcileArgoCD) tlsSecretMapper(o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
-	// The secret must end with '-repo-server-tls'
-	if !strings.HasSuffix(o.GetName(), "-repo-server-tls") {
+	if !isSecretOfInterest(o) {
 		return result
 	}
 	namespacedArgoCDObject := client.ObjectKey{}
@@ -51,7 +74,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(o client.Object) []reconcile.Request {
 		// service, which in turn is owned by the controller. This method performs
 		// a lookup of the controller through the intermediate owning service.
 		for _, secretOwner := range secretOwnerRefs {
-			if secretOwner.Kind == "Service" && strings.HasSuffix(secretOwner.Name, "-repo-server") {
+			if isOwnerOfInterest(secretOwner) {
 				key := client.ObjectKey{Name: secretOwner.Name, Namespace: o.GetNamespace()}
 				svc := &corev1.Service{}
 

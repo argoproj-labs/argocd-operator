@@ -103,7 +103,7 @@ func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_tlsSecretMapper(t *testing.T) {
+func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -299,6 +299,223 @@ func TestReconcileArgoCD_tlsSecretMapper(t *testing.T) {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-repo-server-tls",
+				Namespace: "argocd-operator",
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("foo"),
+				corev1.TLSPrivateKeyKey: []byte("bar"),
+			},
+		}
+		objs := []runtime.Object{
+			secret,
+		}
+		r := makeReconciler(t, argocd, objs...)
+		want := []reconcile.Request{}
+		got := r.tlsSecretMapper(secret)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+		}
+	})
+
+}
+
+func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
+	argocd := &v1alpha1.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+			UID:       "abcd",
+		},
+	}
+
+	t.Run("Map with proper ownerReference", func(t *testing.T) {
+		service := &v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-redis",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "argoproj.io/v1alpha1",
+						Kind:       "ArgoCD",
+						Name:       "argocd",
+						UID:        argocd.GetUID(),
+					},
+				},
+				UID: "service-123",
+			},
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-operator-redis-tls",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       "argocd-redis",
+						UID:        service.GetUID(),
+					},
+				},
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("foo"),
+				corev1.TLSPrivateKeyKey: []byte("bar"),
+			},
+		}
+		objs := []runtime.Object{
+			argocd,
+			secret,
+			service,
+		}
+		r := makeReconciler(t, argocd, objs...)
+		want := []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Name:      "argocd",
+					Namespace: "argocd-operator",
+				},
+			},
+		}
+		got := r.tlsSecretMapper(secret)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+		}
+	})
+
+	t.Run("Map with ownerReference on non-existing owner", func(t *testing.T) {
+		service := &v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-redis",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "argoproj.io/v1alpha1",
+						Kind:       "ArgoCD",
+						Name:       "argocd",
+						UID:        argocd.GetUID(),
+					},
+				},
+				UID: "service-123",
+			},
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-operator-redis-tls",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       "argocd-redis",
+						UID:        service.GetUID(),
+					},
+				},
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("foo"),
+				corev1.TLSPrivateKeyKey: []byte("bar"),
+			},
+		}
+		objs := []runtime.Object{
+			argocd,
+			secret,
+		}
+		r := makeReconciler(t, argocd, objs...)
+		want := []reconcile.Request{}
+		got := r.tlsSecretMapper(secret)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+		}
+	})
+
+	t.Run("Map with invalid owner", func(t *testing.T) {
+		service := &v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-redis",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "argoproj.io/v1alpha1",
+						Kind:       "ArgoCD",
+						Name:       "argocd",
+						UID:        argocd.GetUID(),
+					},
+				},
+				UID: "service-123",
+			},
+		}
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-operator-redis-tls",
+				Namespace: "argocd-operator",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       "argocd-server",
+						UID:        service.GetUID(),
+					},
+				},
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("foo"),
+				corev1.TLSPrivateKeyKey: []byte("bar"),
+			},
+		}
+		objs := []runtime.Object{
+			argocd,
+			secret,
+			service,
+		}
+		r := makeReconciler(t, argocd, objs...)
+		want := []reconcile.Request{}
+		got := r.tlsSecretMapper(secret)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+		}
+	})
+
+	t.Run("Map with owner annotation", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-operator-redis-tls",
+				Namespace: "argocd-operator",
+				Annotations: map[string]string{
+					common.AnnotationName: "argocd",
+				},
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("foo"),
+				corev1.TLSPrivateKeyKey: []byte("bar"),
+			},
+		}
+		objs := []runtime.Object{
+			secret,
+		}
+		r := makeReconciler(t, argocd, objs...)
+		want := []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Name:      "argocd",
+					Namespace: "argocd-operator",
+				},
+			},
+		}
+		got := r.tlsSecretMapper(secret)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+		}
+	})
+
+	t.Run("Map without owner and without annotation", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "argocd-operator-redis-tls",
 				Namespace: "argocd-operator",
 			},
 			Type: corev1.SecretTypeTLS,

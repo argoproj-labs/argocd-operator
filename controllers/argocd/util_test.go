@@ -427,7 +427,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		cr := makeTestArgoCD(tt.opts...)
-		cmd := getArgoApplicationControllerCommand(cr)
+		cmd := getArgoApplicationControllerCommand(cr, false)
 
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)

@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"reflect"
 	"strings"
@@ -207,8 +209,75 @@ func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
+func getArgoRedisArgs(useTLS bool) []string {
+	args := make([]string, 0)
+
+	args = append(args, "--save", "")
+	args = append(args, "--appendonly", "no")
+
+	if useTLS {
+		args = append(args, "--tls-port", "6379")
+		args = append(args, "--port", "0")
+
+		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
+		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
+		args = append(args, "--tls-auth-clients", "no")
+	}
+
+	return args
+}
+
+func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
+	var tlsSecretObj corev1.Secret
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "error looking up redis tls secret")
+		}
+		return false
+	}
+
+	secretOwnerRefs := tlsSecretObj.GetOwnerReferences()
+	if len(secretOwnerRefs) > 0 {
+		// OpenShift service CA makes the owner reference for the TLS secret to the
+		// service, which in turn is owned by the controller. This method performs
+		// a lookup of the controller through the intermediate owning service.
+		for _, secretOwner := range secretOwnerRefs {
+			if isOwnerOfInterest(secretOwner) {
+				key := client.ObjectKey{Name: secretOwner.Name, Namespace: tlsSecretObj.GetNamespace()}
+				svc := &corev1.Service{}
+
+				// Get the owning object of the secret
+				err := r.Client.Get(context.TODO(), key, svc)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
+					return false
+				}
+
+				// If there's an object of kind ArgoCD in the owner's list,
+				// this will be our reconciled object.
+				serviceOwnerRefs := svc.GetOwnerReferences()
+				for _, serviceOwner := range serviceOwnerRefs {
+					if serviceOwner.Kind == "ArgoCD" {
+						return true
+					}
+				}
+			}
+		}
+	} else {
+		// For secrets without owner (i.e. manually created), we apply some
+		// heuristics. This may not be as accurate (e.g. if the user made a
+		// typo in the resource's name), but should be good enough for now.
+		if _, ok := tlsSecretObj.Annotations[common.AnnotationName]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "uid_entrypoint.sh")
@@ -216,6 +285,11 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, getRedisServerAddress(cr))
+
+	if useTLSForRedis {
+		cmd = append(cmd, "--redis-use-tls")
+		cmd = append(cmd, "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt")
+	}
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
@@ -237,7 +311,7 @@ func getArgoCmpServerInitCommand() []string {
 }
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -247,6 +321,11 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	if isRepoServerTLSVerificationRequested(cr) {
 		cmd = append(cmd, "--repo-server-strict-tls")
+	}
+
+	if useTLSForRedis {
+		cmd = append(cmd, "--redis-use-tls")
+		cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
 	}
 
 	cmd = append(cmd, "--staticassets")
@@ -352,13 +431,13 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	err := r.reconcileDexDeployment(cr)
 	if err != nil {
 		return err
 	}
 
-	err = r.reconcileRedisDeployment(cr)
+	err = r.reconcileRedisDeployment(cr, useTLSForRedis)
 	if err != nil {
 		return err
 	}
@@ -368,12 +447,12 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	err = r.reconcileRepoDeployment(cr)
+	err = r.reconcileRepoDeployment(cr, useTLSForRedis)
 	if err != nil {
 		return err
 	}
 
-	err = r.reconcileServerDeployment(cr)
+	err = r.reconcileServerDeployment(cr, useTLSForRedis)
 	if err != nil {
 		return err
 	}
@@ -636,15 +715,10 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
-func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Args: []string{
-			"--save",
-			"",
-			"--appendonly",
-			"no",
-		},
+		Args:            getArgoRedisArgs(useTLS),
 		Image:           getRedisContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "redis",
@@ -655,7 +729,25 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		},
 		Resources: getRedisResources(cr),
 		Env:       proxyEnvVars(),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/redis/tls",
+			},
+		},
 	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
 
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
@@ -676,6 +768,12 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changed = true
+		}
+
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
@@ -857,7 +955,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	automountToken := false
 	if cr.Spec.Repo.MountSAToken {
@@ -923,6 +1021,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			MountPath: "/app/config/reposerver/tls",
 		},
 		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/reposerver/tls/redis",
+		},
+		{
 			Name:      "plugins",
 			MountPath: "/home/argocd/cmp-server/plugins",
 		},
@@ -933,7 +1035,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command:         getArgoRepoCommand(cr),
+		Command:         getArgoRepoCommand(cr, useTLSForRedis),
 		Image:           getRepoServerContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		LivenessProbe: &corev1.Probe{
@@ -1021,6 +1123,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
 			},
@@ -1114,12 +1225,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
-func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command:         getArgoServerCommand(cr),
+		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Env:             serverEnv,
@@ -1164,6 +1275,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 				Name:      "argocd-repo-server-tls",
 				MountPath: "/app/config/server/tls",
 			},
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/server/tls/redis",
+			},
 		},
 	}}
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
@@ -1177,7 +1292,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 					},
 				},
 			},
-		}, {
+		},
+		{
 			Name: "tls-certs",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -1186,11 +1302,21 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 					},
 				},
 			},
-		}, {
+		},
+		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
 			},

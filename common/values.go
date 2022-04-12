@@ -77,6 +77,9 @@ const (
 	// ArgoCDTLSCertsConfigMapName is the upstream hard-coded TLS certificate data ConfigMap name.
 	ArgoCDTLSCertsConfigMapName = "argocd-tls-certs-cm"
 
+	// ArgoCDRedisServerTLSSecretName is the name of the TLS secret for the redis-server
+	ArgoCDRedisServerTLSSecretName = "argocd-operator-redis-tls"
+
 	// ArgoCDRepoServerTLSSecretName is the name of the TLS secret for the repo-server
 	ArgoCDRepoServerTLSSecretName = "argocd-repo-server-tls"
 

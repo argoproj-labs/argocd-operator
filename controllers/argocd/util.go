@@ -103,15 +103,22 @@ func getArgoApplicationControllerResources(cr *argoprojv1a1.ArgoCD) corev1.Resou
 }
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
-func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
 		"--redis", getRedisServerAddress(cr),
-		"--repo-server", getRepoServerAddress(cr),
-		"--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)),
-		"--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)),
 	}
+
+	if useTLSForRedis {
+		cmd = append(cmd, "--redis-use-tls")
+		cmd = append(cmd, "--redis-ca-certificate", "/app/config/controller/tls/redis/tls.crt")
+	}
+
+	cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
+	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
+
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}
@@ -753,13 +760,15 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	useTLSForRedis := r.redisShouldUseTLS(cr)
+
 	log.Info("reconciling deployments")
-	if err := r.reconcileDeployments(cr); err != nil {
+	if err := r.reconcileDeployments(cr, useTLSForRedis); err != nil {
 		return err
 	}
 
 	log.Info("reconciling statefulsets")
-	if err := r.reconcileStatefulSets(cr); err != nil {
+	if err := r.reconcileStatefulSets(cr, useTLSForRedis); err != nil {
 		return err
 	}
 
@@ -807,6 +816,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisTLSSecret(cr); err != nil {
 		return err
 	}
 
