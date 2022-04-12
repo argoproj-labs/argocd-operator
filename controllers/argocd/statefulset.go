@@ -495,8 +495,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	brokenPod := containsBrokenPod(ss, cr)
-	if brokenPod {
+	invalidImagePod := containsInvalidImage(ss, cr)
+	if invalidImagePod {
 		if err := r.Client.Delete(context.TODO(), ss); err != nil {
 			return err
 		}
@@ -599,9 +599,9 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 	}
 }
 
-//to fetch the broken pod of StatefulSet if any, this function intends to delete the broken pod that cannot
-//be restarted due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsBrokenPod(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) bool {
+// Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
+// These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
+func containsInvalidImage(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) bool {
 
 	k8s, err := initK8sClient()
 	if err != nil {
@@ -615,12 +615,9 @@ func containsBrokenPod(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) bool {
 	}
 
 	if len(po.Items) > 0 {
-		for _, p := range po.Items {
-			if len(p.Status.ContainerStatuses) > 0 {
-				if p.Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
-					brokenPod = true
-					break
-				}
+		if len(po.Items[0].Status.ContainerStatuses) > 0 {
+			if po.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
+				brokenPod = true
 			}
 		}
 	}
