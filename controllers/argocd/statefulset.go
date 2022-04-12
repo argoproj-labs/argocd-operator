@@ -495,9 +495,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	brokenPod := getBrokenPod(ss, cr)
-	if brokenPod != nil {
-		r.Client.Delete(context.TODO(), brokenPod)
+	brokenPod := containsBrokenPod(ss, cr)
+	if brokenPod {
+		if err := r.Client.Delete(context.TODO(), ss); err != nil {
+			return err
+		}
 	}
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
@@ -599,21 +601,28 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 //to fetch the broken pod of StatefulSet if any, this function intends to delete the broken pod that cannot
 //be restarted due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func getBrokenPod(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) *corev1.Pod {
+func containsBrokenPod(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) bool {
 
 	k8s, err := initK8sClient()
 	if err != nil {
-		log.Error(err, "failed to initialize k8s client")
+		log.Error(err, "Failed to initialize k8s client")
 	}
-
+	brokenPod := false
 	labelSel := common.ArgoCDKeyName + " = " + fmt.Sprintf("%s-%s", cr.Name, "application-controller")
 	po, err := k8s.CoreV1().Pods(ss.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSel})
 	if err != nil {
-		log.Error(err, "failed to get Pod List")
+		log.Error(err, "Failed to list Pods")
 	}
 
-	if po.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
-		return &po.Items[0]
+	if len(po.Items) > 0 {
+		for _, p := range po.Items {
+			if len(p.Status.ContainerStatuses) > 0 {
+				if p.Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
+					brokenPod = true
+					break
+				}
+			}
+		}
 	}
-	return nil
+	return brokenPod
 }
