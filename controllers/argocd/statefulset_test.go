@@ -364,3 +364,10 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
 }
+func Test_ContainsBrokenPod(t *testing.T) {
+	a := makeTestArgoCD()
+	ss := &appsv1.StatefulSet{}
+	if containsBrokenPod(ss, a) {
+		t.Fatalf("containsBrokenPod should return false but returned true")
+	}
+}
