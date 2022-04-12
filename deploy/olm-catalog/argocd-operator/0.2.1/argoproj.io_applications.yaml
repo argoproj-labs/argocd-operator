@@ -1,6 +1,7 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  creationTimestamp: null
   labels:
     app.kubernetes.io/name: applications.argoproj.io
     app.kubernetes.io/part-of: argocd
@@ -233,11 +234,6 @@ spec:
                                   type: string
                               type: object
                             type: array
-                          ignoreMissingValueFiles:
-                            description: IgnoreMissingValueFiles prevents helm template
-                              from failing when valueFiles do not exist locally by
-                              not appending them to helm template --values
-                            type: boolean
                           parameters:
                             description: Parameters is a list of Helm parameters which
                               are passed to the helm template command upon manifest
@@ -266,10 +262,6 @@ spec:
                             description: ReleaseName is the Helm release name to use.
                               If omitted it will use the application name
                             type: string
-                          skipCrds:
-                            description: SkipCrds skips custom resource definition
-                              installation step (Helm's --skip-crds)
-                            type: boolean
                           valueFiles:
                             description: ValuesFiles is a list of Helm value files
                               to use when generating a template
@@ -326,15 +318,6 @@ spec:
                             description: CommonLabels is a list of additional labels
                               to add to rendered manifests
                             type: object
-                          forceCommonAnnotations:
-                            description: ForceCommonAnnotations specifies whether
-                              to force applying common annotations to resources for
-                              Kustomize apps
-                            type: boolean
-                          forceCommonLabels:
-                            description: ForceCommonLabels specifies whether to force
-                              applying common labels to resources for Kustomize apps
-                            type: boolean
                           images:
                             description: Images is a list of Kustomize image override
                               specifications
@@ -464,29 +447,18 @@ spec:
                   properties:
                     group:
                       type: string
-                    jqPathExpressions:
-                      items:
-                        type: string
-                      type: array
                     jsonPointers:
                       items:
                         type: string
                       type: array
                     kind:
                       type: string
-                    managedFieldsManagers:
-                      description: ManagedFieldsManagers is a list of trusted managers.
-                        Fields mutated by those managers will take precedence over
-                        the desired state defined in the SCM and won't be displayed
-                        in diffs
-                      items:
-                        type: string
-                      type: array
                     name:
                       type: string
                     namespace:
                       type: string
                   required:
+                  - jsonPointers
                   - kind
                   type: object
                 type: array
@@ -607,11 +579,6 @@ spec:
                               type: string
                           type: object
                         type: array
-                      ignoreMissingValueFiles:
-                        description: IgnoreMissingValueFiles prevents helm template
-                          from failing when valueFiles do not exist locally by not
-                          appending them to helm template --values
-                        type: boolean
                       parameters:
                         description: Parameters is a list of Helm parameters which
                           are passed to the helm template command upon manifest generation
@@ -639,10 +606,6 @@ spec:
                         description: ReleaseName is the Helm release name to use.
                           If omitted it will use the application name
                         type: string
-                      skipCrds:
-                        description: SkipCrds skips custom resource definition installation
-                          step (Helm's --skip-crds)
-                        type: boolean
                       valueFiles:
                         description: ValuesFiles is a list of Helm value files to
                           use when generating a template
@@ -698,14 +661,6 @@ spec:
                         description: CommonLabels is a list of additional labels to
                           add to rendered manifests
                         type: object
-                      forceCommonAnnotations:
-                        description: ForceCommonAnnotations specifies whether to force
-                          applying common annotations to resources for Kustomize apps
-                        type: boolean
-                      forceCommonLabels:
-                        description: ForceCommonLabels specifies whether to force
-                          applying common labels to resources for Kustomize apps
-                        type: boolean
                       images:
                         description: Images is a list of Kustomize image override
                           specifications
@@ -984,11 +939,6 @@ spec:
                                     type: string
                                 type: object
                               type: array
-                            ignoreMissingValueFiles:
-                              description: IgnoreMissingValueFiles prevents helm template
-                                from failing when valueFiles do not exist locally
-                                by not appending them to helm template --values
-                              type: boolean
                             parameters:
                               description: Parameters is a list of Helm parameters
                                 which are passed to the helm template command upon
@@ -1018,10 +968,6 @@ spec:
                               description: ReleaseName is the Helm release name to
                                 use. If omitted it will use the application name
                               type: string
-                            skipCrds:
-                              description: SkipCrds skips custom resource definition
-                                installation step (Helm's --skip-crds)
-                              type: boolean
                             valueFiles:
                               description: ValuesFiles is a list of Helm value files
                                 to use when generating a template
@@ -1078,16 +1024,6 @@ spec:
                               description: CommonLabels is a list of additional labels
                                 to add to rendered manifests
                               type: object
-                            forceCommonAnnotations:
-                              description: ForceCommonAnnotations specifies whether
-                                to force applying common annotations to resources
-                                for Kustomize apps
-                              type: boolean
-                            forceCommonLabels:
-                              description: ForceCommonLabels specifies whether to
-                                force applying common labels to resources for Kustomize
-                                apps
-                              type: boolean
                             images:
                               description: Images is a list of Kustomize image override
                                 specifications
@@ -1376,12 +1312,6 @@ spec:
                                           type: string
                                       type: object
                                     type: array
-                                  ignoreMissingValueFiles:
-                                    description: IgnoreMissingValueFiles prevents
-                                      helm template from failing when valueFiles do
-                                      not exist locally by not appending them to helm
-                                      template --values
-                                    type: boolean
                                   parameters:
                                     description: Parameters is a list of Helm parameters
                                       which are passed to the helm template command
@@ -1414,10 +1344,6 @@ spec:
                                       to use. If omitted it will use the application
                                       name
                                     type: string
-                                  skipCrds:
-                                    description: SkipCrds skips custom resource definition
-                                      installation step (Helm's --skip-crds)
-                                    type: boolean
                                   valueFiles:
                                     description: ValuesFiles is a list of Helm value
                                       files to use when generating a template
@@ -1475,16 +1401,6 @@ spec:
                                     description: CommonLabels is a list of additional
                                       labels to add to rendered manifests
                                     type: object
-                                  forceCommonAnnotations:
-                                    description: ForceCommonAnnotations specifies
-                                      whether to force applying common annotations
-                                      to resources for Kustomize apps
-                                    type: boolean
-                                  forceCommonLabels:
-                                    description: ForceCommonLabels specifies whether
-                                      to force applying common labels to resources
-                                      for Kustomize apps
-                                    type: boolean
                                   images:
                                     description: Images is a list of Kustomize image
                                       override specifications
@@ -1751,11 +1667,6 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              ignoreMissingValueFiles:
-                                description: IgnoreMissingValueFiles prevents helm
-                                  template from failing when valueFiles do not exist
-                                  locally by not appending them to helm template --values
-                                type: boolean
                               parameters:
                                 description: Parameters is a list of Helm parameters
                                   which are passed to the helm template command upon
@@ -1786,10 +1697,6 @@ spec:
                                 description: ReleaseName is the Helm release name
                                   to use. If omitted it will use the application name
                                 type: string
-                              skipCrds:
-                                description: SkipCrds skips custom resource definition
-                                  installation step (Helm's --skip-crds)
-                                type: boolean
                               valueFiles:
                                 description: ValuesFiles is a list of Helm value files
                                   to use when generating a template
@@ -1846,16 +1753,6 @@ spec:
                                 description: CommonLabels is a list of additional
                                   labels to add to rendered manifests
                                 type: object
-                              forceCommonAnnotations:
-                                description: ForceCommonAnnotations specifies whether
-                                  to force applying common annotations to resources
-                                  for Kustomize apps
-                                type: boolean
-                              forceCommonLabels:
-                                description: ForceCommonLabels specifies whether to
-                                  force applying common labels to resources for Kustomize
-                                  apps
-                                type: boolean
                               images:
                                 description: Images is a list of Kustomize image override
                                   specifications
@@ -2111,11 +2008,6 @@ spec:
                                       type: string
                                   type: object
                                 type: array
-                              ignoreMissingValueFiles:
-                                description: IgnoreMissingValueFiles prevents helm
-                                  template from failing when valueFiles do not exist
-                                  locally by not appending them to helm template --values
-                                type: boolean
                               parameters:
                                 description: Parameters is a list of Helm parameters
                                   which are passed to the helm template command upon
@@ -2146,10 +2038,6 @@ spec:
                                 description: ReleaseName is the Helm release name
                                   to use. If omitted it will use the application name
                                 type: string
-                              skipCrds:
-                                description: SkipCrds skips custom resource definition
-                                  installation step (Helm's --skip-crds)
-                                type: boolean
                               valueFiles:
                                 description: ValuesFiles is a list of Helm value files
                                   to use when generating a template
@@ -2206,16 +2094,6 @@ spec:
                                 description: CommonLabels is a list of additional
                                   labels to add to rendered manifests
                                 type: object
-                              forceCommonAnnotations:
-                                description: ForceCommonAnnotations specifies whether
-                                  to force applying common annotations to resources
-                                  for Kustomize apps
-                                type: boolean
-                              forceCommonLabels:
-                                description: ForceCommonLabels specifies whether to
-                                  force applying common labels to resources for Kustomize
-                                  apps
-                                type: boolean
                               images:
                                 description: Images is a list of Kustomize image override
                                   specifications
@@ -2303,3 +2181,9 @@ spec:
     served: true
     storage: true
     subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null

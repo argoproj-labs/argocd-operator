@@ -1067,5 +1067,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.2.0
+  replaces: argocd-operator.v0.2.1
   version: 0.3.0
