@@ -148,7 +148,7 @@ func newStatefulSet(cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
 			Image:           "dummy-image",
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					TCPSocket: &corev1.TCPSocketAction{
 						Port: intstr.FromInt(common.ArgoCDDefaultRedisPort),
 					},
@@ -178,7 +178,7 @@ func newStatefulSet(cr *argoprojv1alpha1.ArgoCD) *appsv1.StatefulSet {
 			Image:           "dummy-image",
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					TCPSocket: &corev1.TCPSocketAction{
 						Port: intstr.FromInt(common.ArgoCDDefaultRedisSentinelPort),
 					},
