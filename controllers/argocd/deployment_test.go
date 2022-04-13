@@ -882,6 +882,16 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"/shared/argocd-dex",
 					"rundex",
 				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz/live",
+							Port: intstr.FromInt(5558),
+						},
+					},
+					InitialDelaySeconds: 60,
+					PeriodSeconds:       30,
+				},
 				Ports: []corev1.ContainerPort{
 					{
 						Name:          "http",
@@ -890,6 +900,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					{
 						Name:          "grpc",
 						ContainerPort: 5557,
+					},
+					{
+						Name:          "metrics",
+						ContainerPort: 5558,
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
@@ -960,6 +974,16 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"/shared/argocd-dex",
 					"rundex",
 				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz/live",
+							Port: intstr.FromInt(5558),
+						},
+					},
+					InitialDelaySeconds: 60,
+					PeriodSeconds:       30,
+				},
 				Ports: []corev1.ContainerPort{
 					{
 						Name:          "http",
@@ -968,6 +992,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					{
 						Name:          "grpc",
 						ContainerPort: 5557,
+					},
+					{
+						Name:          "metrics",
+						ContainerPort: 5558,
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
