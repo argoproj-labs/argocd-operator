@@ -551,13 +551,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 		return nil // StatefulSet found with nothing to do, move along...
 	}
-	// pod := &corev1.PodList{}
-	// fmt.Println("PODSSS ", r.Client.List(context.TODO(), pod))
+
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
-
 			return err
 		}
 	}
@@ -612,7 +610,7 @@ func containsInvalidImage(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD, r *Re
 	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
 
 	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
-		fmt.Println(err, "Failed to list Pods")
+		log.Error(err, "Failed to list Pods")
 	}
 	if len(podList.Items) > 0 {
 		if len(podList.Items[0].Status.ContainerStatuses) > 0 {
