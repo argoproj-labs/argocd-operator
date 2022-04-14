@@ -369,27 +369,10 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 func Test_ContainsValidImage(t *testing.T) {
 
 	a := makeTestArgoCD()
-
-	ss := newStatefulSetWithSuffix("application-controller", "application-controller", a)
-	ssName := fmt.Sprintf("%s-%s", a.Name, "application-controller")
-	ss.Spec = appsv1.StatefulSetSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: ssName,
-			},
-		},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					common.ArgoCDKeyName: ssName,
-				},
-			},
-		},
-	}
 	po := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				common.ArgoCDKeyName: ssName,
+				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
 			},
 		},
 	}
@@ -398,7 +381,7 @@ func Test_ContainsValidImage(t *testing.T) {
 		a,
 	}
 	r := makeTestReconciler(t, objs...)
-	if containsInvalidImage(ss, a, r) {
+	if containsInvalidImage(a, r) {
 		t.Fatalf("containsInvalidImage failed, got true, expected false")
 	}
 

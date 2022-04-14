@@ -496,7 +496,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	invalidImagePod := containsInvalidImage(ss, cr, r)
+	invalidImagePod := containsInvalidImage(cr, r)
 	if invalidImagePod {
 		if err := r.Client.Delete(context.TODO(), ss); err != nil {
 			return err
@@ -602,7 +602,7 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD, r *ReconcileArgoCD) bool {
+func containsInvalidImage(cr *argoprojv1a1.ArgoCD, r *ReconcileArgoCD) bool {
 
 	brokenPod := false
 
