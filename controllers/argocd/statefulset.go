@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -495,7 +496,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		podSpec.Volumes = getArgoImportVolumes(export)
 	}
 
-	invalidImagePod := containsInvalidImage(ss, cr)
+	invalidImagePod := containsInvalidImage(ss, cr, r)
 	if invalidImagePod {
 		if err := r.Client.Delete(context.TODO(), ss); err != nil {
 			return err
@@ -550,11 +551,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 		return nil // StatefulSet found with nothing to do, move along...
 	}
-
+	// pod := &corev1.PodList{}
+	// fmt.Println("PODSSS ", r.Client.List(context.TODO(), pod))
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
+
 			return err
 		}
 	}
@@ -601,22 +604,19 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD) bool {
+func containsInvalidImage(ss *appsv1.StatefulSet, cr *argoprojv1a1.ArgoCD, r *ReconcileArgoCD) bool {
 
-	k8s, err := initK8sClient()
-	if err != nil {
-		log.Error(err, "Failed to initialize k8s client")
-	}
 	brokenPod := false
-	labelSel := common.ArgoCDKeyName + " = " + fmt.Sprintf("%s-%s", cr.Name, "application-controller")
-	po, err := k8s.CoreV1().Pods(ss.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSel})
-	if err != nil {
-		log.Error(err, "Failed to list Pods")
-	}
 
-	if len(po.Items) > 0 {
-		if len(po.Items[0].Status.ContainerStatuses) > 0 {
-			if po.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || po.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
+	podList := &corev1.PodList{}
+	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+
+	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
+		fmt.Println(err, "Failed to list Pods")
+	}
+	if len(podList.Items) > 0 {
+		if len(podList.Items[0].Status.ContainerStatuses) > 0 {
+			if podList.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
 				brokenPod = true
 			}
 		}
