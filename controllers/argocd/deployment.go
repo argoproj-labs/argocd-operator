@@ -374,6 +374,16 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "dex",
 		Env:             proxyEnvVars(),
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz/live",
+					Port: intstr.FromInt(common.ArgoCDDefaultDexMetricsPort),
+				},
+			},
+			InitialDelaySeconds: 60,
+			PeriodSeconds:       30,
+		},
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
@@ -381,6 +391,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			}, {
 				ContainerPort: common.ArgoCDDefaultDexGRPCPort,
 				Name:          "grpc",
+			}, {
+				ContainerPort: common.ArgoCDDefaultDexMetricsPort,
+				Name:          "metrics",
 			},
 		},
 		Resources: getDexResources(cr),
