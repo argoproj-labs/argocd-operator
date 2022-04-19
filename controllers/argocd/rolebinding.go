@@ -20,7 +20,7 @@ import (
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
-func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
+func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
@@ -32,7 +32,7 @@ func newClusterRoleBinding(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRole
 
 // newClusterRoleBindingWithname creates a new ClusterRoleBinding with the given name for the given ArgCD.
 func newClusterRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
-	roleBinding := newClusterRoleBinding(name, cr)
+	roleBinding := newClusterRoleBinding(cr)
 	roleBinding.Name = GenerateUniqueResourceName(name, cr)
 
 	labels := roleBinding.ObjectMeta.Labels
@@ -75,7 +75,7 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
 
-	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
+	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", redisHa, err)
 	}
 
@@ -191,7 +191,7 @@ func getCustomRoleName(name string) string {
 	return ""
 }
 
-func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, sa *corev1.ServiceAccount, cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoprojv1a1.ArgoCD) error {
 
 	// get expected name
 	roleBinding := newClusterRoleBindingWithname(name, cr)

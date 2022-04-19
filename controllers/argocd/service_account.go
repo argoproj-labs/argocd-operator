@@ -73,7 +73,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		return err
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDRedisHAComponent, policyRuleForRedisHa(cr), cr); err != nil {
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDRedisHAComponent, policyRuleForRedisHa(), cr); err != nil {
 		return err
 	}
 
@@ -130,10 +130,9 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var role *v1.ClusterRole
-	var sa *corev1.ServiceAccount
 	var err error
 
-	sa, err = r.reconcileServiceAccount(name, cr)
+	_, err = r.reconcileServiceAccount(name, cr)
 	if err != nil {
 		return err
 	}
@@ -142,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 		return err
 	}
 
-	return r.reconcileClusterRoleBinding(name, role, sa, cr)
+	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {

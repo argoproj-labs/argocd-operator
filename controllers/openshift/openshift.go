@@ -43,7 +43,7 @@ func reconcilerHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, hint string) err
 	case *appsv1.StatefulSet:
 		if o.ObjectMeta.Name == cr.ObjectMeta.Name+"-redis-ha-server" {
 			logv.Info("configuring openshift redis-ha-server stateful set")
-			for index, _ := range o.Spec.Template.Spec.Containers {
+			for index := range o.Spec.Template.Spec.Containers {
 				if o.Spec.Template.Spec.Containers[index].Name == "redis" {
 					o.Spec.Template.Spec.Containers[index].Args = getArgsForRedhatHaRedisServer()
 					o.Spec.Template.Spec.Containers[index].Command = []string{}

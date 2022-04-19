@@ -447,7 +447,7 @@ func getRedisConfigPath() string {
 
 // getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisConf(cr *argoprojv1a1.ArgoCD) string {
+func getRedisConf() string {
 	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
@@ -596,7 +596,7 @@ func getRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequiremen
 
 // getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
+func getRedisSentinelConf() string {
 	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
@@ -719,7 +719,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	log.Info("reconciling roles")
-	if _, err := r.reconcileRoles(cr); err != nil {
+	if err := r.reconcileRoles(cr); err != nil {
 		return err
 	}
 
@@ -1045,15 +1045,6 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 	return bldr
 }
 
-// withClusterLabels will add the given labels to the labels for the cluster and return the result.
-func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map[string]string {
-	labels := argoutil.LabelsForCluster(cr)
-	for key, val := range addLabels {
-		labels[key] = val
-	}
-	return labels
-}
-
 // boolPtr returns a pointer to val
 func boolPtr(val bool) *bool {
 	return &val
@@ -1120,7 +1111,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 					if err != nil {
 						return false
 					}
-					if err := deleteRBACsForNamespace(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 					} else {
 						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
@@ -1142,7 +1133,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 				if err != nil {
 					return false
 				}
-				if err := deleteRBACsForNamespace(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
@@ -1179,7 +1170,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
-func deleteRBACsForNamespace(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
+func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
 
 	// List all the roles created for ArgoCD using the label selector

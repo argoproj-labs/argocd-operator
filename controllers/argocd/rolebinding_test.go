@@ -8,7 +8,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -63,7 +62,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 
 	// check no redisHa rolebinding is created for the new namespace with managed-by label
 	workloadIdentifier = redisHa
-	expectedRedisHaRules := policyRuleForRedisHa(a)
+	expectedRedisHaRules := policyRuleForRedisHa()
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }
@@ -101,9 +100,8 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 
 	workloadIdentifier := "x"
 	expectedClusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}}
-	expectedServiceAccount := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier, Namespace: a.Namespace}}
 
-	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, expectedServiceAccount, a))
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
 
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	expectedName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
@@ -115,7 +113,7 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	assert.NoError(t, r.Client.Update(context.TODO(), clusterRoleBinding))
 
 	// try reconciling it again and verify if the changes are overwritten
-	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, expectedServiceAccount, a))
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
 
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))

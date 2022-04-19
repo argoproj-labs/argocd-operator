@@ -728,8 +728,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 		"haproxy.cfg":     getRedisHAProxyConfig(cr),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
 		"init.sh":         getRedisInitScript(cr),
-		"redis.conf":      getRedisConf(cr),
-		"sentinel.conf":   getRedisSentinelConf(cr),
+		"redis.conf":      getRedisConf(),
+		"sentinel.conf":   getRedisSentinelConf(),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
