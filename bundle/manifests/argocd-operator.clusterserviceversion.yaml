@@ -986,7 +986,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator@sha256:78dd6fcdd2c67a24fd63c71641c2903563e21a07c109939f5c0c27efb16ba187
+                image: quay.io/argoprojlabs/argocd-operator@sha256:f6fc8c310ff6c86d9e0b5acbc16de7dc14d0f5dd813094e380d636482bccb090
                 livenessProbe:
                   httpGet:
                     path: /healthz
