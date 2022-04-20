@@ -1081,7 +1081,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	command := []string{
+	baseCommand := []string{
 		"argocd-server",
 		"--staticassets",
 		"/shared/app",
@@ -1095,13 +1095,13 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"info",
 		"--logformat",
 		"text",
-		"--rootpath",
-		"/foo",
 	}
 
-	// When route path is configured
-	a.Spec.Server.Route.Enabled = true
-	a.Spec.Server.Route.Path = "/foo"
+	// When a single command argument is passed
+	a.Spec.Server.CommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+	}
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.reconcileServerDeployment(a))
@@ -1113,41 +1113,44 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 		deployment))
-	assert.Equal(t, command, deployment.Spec.Template.Spec.Containers[0].Command)
 
-	// When route path is set to empty
-	a.Spec.Server.Route.Path = ""
+	cmd := append(baseCommand, []string{"--rootpath", "/argocd"}...)
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
-	newDeployment := &appsv1.Deployment{}
+	// When multiple command arguments are passed
+	a.Spec.Server.CommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+	}
+
 	assert.NoError(t, r.reconcileServerDeployment(a))
-
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      "argocd-server",
 			Namespace: a.Namespace,
 		},
-		newDeployment))
+		deployment))
 
-	newCommand := []string{
-		"argocd-server",
-		"--staticassets",
-		"/shared/app",
-		"--dex-server",
-		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
-		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
-		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
-		"--loglevel",
-		"info",
-		"--logformat",
-		"text",
-		"--rootpath",
-		"/",
-	}
+	cmd = append(cmd, []string{"--foo", "bar", "test"}...)
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
-	assert.Equal(t, newCommand, newDeployment.Spec.Template.Spec.Containers[0].Command)
+	// Remove all the command arguments that were added.
+	a.Spec.Server.CommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {

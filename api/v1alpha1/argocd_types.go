@@ -467,6 +467,9 @@ type ArgoCDServerSpec struct {
 
 	// Env lets you specify environment for API server pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Command arguments for Argo CD server
+	CommandArgs []string `json:"commandArgs,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.

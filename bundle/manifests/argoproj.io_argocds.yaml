@@ -5095,6 +5095,11 @@ spec:
                     required:
                     - enabled
                     type: object
+                  commandArgs:
+                    description: Command arguments for Argo CD server
+                    items:
+                      type: string
+                    type: array
                   env:
                     description: Env lets you specify environment for API server pods
                     items:
