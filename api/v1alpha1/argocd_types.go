@@ -328,8 +328,8 @@ type ArgoCDRedisSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
 
-	// VerifyTLS defines whether redis server API should be accessed using strict TLS validation
-	VerifyTLS bool `json:"verifytls,omitempty"`
+	// DisableTLSVerification defines whether redis server API should be accessed using strict TLS validation
+	DisableTLSVerification bool `json:"disableTLSVerification,omitempty"`
 
 	// AutoTLS specifies the method to use for automatic TLS configuration for the redis server
 	// The value specified here can currently be:

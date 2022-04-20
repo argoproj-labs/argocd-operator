@@ -1010,30 +1010,62 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 }
 
 func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileRepoDeployment(a, true))
+	t.Run("with DisableTLSVerification = false (the default)", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+		assert.NoError(t, r.reconcileRepoDeployment(a, true))
 
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-repo-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
+		deployment := &appsv1.Deployment{}
+		assert.NoError(t, r.Client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: a.Namespace,
+			},
+			deployment))
 
-	wantCmd := []string{
-		"uid_entrypoint.sh",
-		"argocd-repo-server",
-		"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
-		"--redis-use-tls",
-		"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
-		"--loglevel", "info",
-		"--logformat", "text",
-	}
-	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+		wantCmd := []string{
+			"uid_entrypoint.sh",
+			"argocd-repo-server",
+			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis-use-tls",
+			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
+			"--loglevel", "info",
+			"--logformat", "text",
+		}
+		assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+	})
+
+	t.Run("with DisableTLSVerification = true", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(cd *argoprojv1alpha1.ArgoCD) {
+			cd.Spec.Redis.DisableTLSVerification = true
+		})
+		r := makeTestReconciler(t, a)
+		assert.NoError(t, r.reconcileRepoDeployment(a, true))
+
+		deployment := &appsv1.Deployment{}
+		assert.NoError(t, r.Client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: a.Namespace,
+			},
+			deployment))
+
+		wantCmd := []string{
+			"uid_entrypoint.sh",
+			"argocd-repo-server",
+			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis-use-tls",
+			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
+			"--redis-insecure-skip-tls-verify",
+			"--loglevel", "info",
+			"--logformat", "text",
+		}
+		assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+	})
 }
 
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
@@ -1115,9 +1147,6 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		deployment))
 	wantCmd := []string{
 		"argocd-server",
-		"--redis-use-tls",
-		"--redis-ca-certificate",
-		"/app/config/server/tls/redis/tls.crt",
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
@@ -1126,6 +1155,9 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		"argocd-repo-server.argocd.svc.cluster.local:8081",
 		"--redis",
 		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--redis-use-tls",
+		"--redis-ca-certificate",
+		"/app/config/server/tls/redis/tls.crt",
 		"--loglevel",
 		"info",
 		"--logformat",

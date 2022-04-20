@@ -113,6 +113,9 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
 		cmd = append(cmd, "--redis-ca-certificate", "/app/config/controller/tls/redis/tls.crt")
+		if isRedisTLSVerificationDisabled(cr) {
+			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+		}
 	}
 
 	cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
@@ -202,6 +205,10 @@ func getArgoServerInsecure(cr *argoprojv1a1.ArgoCD) bool {
 
 func isRepoServerTLSVerificationRequested(cr *argoprojv1a1.ArgoCD) bool {
 	return cr.Spec.Repo.VerifyTLS
+}
+
+func isRedisTLSVerificationDisabled(cr *argoprojv1a1.ArgoCD) bool {
+	return cr.Spec.Redis.DisableTLSVerification
 }
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.

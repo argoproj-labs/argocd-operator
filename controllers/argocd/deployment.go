@@ -289,6 +289,9 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
 		cmd = append(cmd, "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt")
+		if isRedisTLSVerificationDisabled(cr) {
+			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+		}
 	}
 
 	cmd = append(cmd, "--loglevel")
@@ -323,11 +326,6 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
 
-	if useTLSForRedis {
-		cmd = append(cmd, "--redis-use-tls")
-		cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
-	}
-
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
@@ -339,6 +337,14 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, getRedisServerAddress(cr))
+
+	if useTLSForRedis {
+		cmd = append(cmd, "--redis-use-tls")
+		cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
+		if isRedisTLSVerificationDisabled(cr) {
+			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+		}
+	}
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
