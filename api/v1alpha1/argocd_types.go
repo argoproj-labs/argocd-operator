@@ -783,6 +783,12 @@ func (r *ArgoCDRepoSpec) WantsAutoTLS() bool {
 	return r.AutoTLS == "openshift"
 }
 
+// WantsAutoTLS returns true if the redis server configuration has set
+// the autoTLS toggle to a supported provider.
+func (r *ArgoCDRedisSpec) WantsAutoTLS() bool {
+	return r.AutoTLS == "openshift"
+}
+
 // ApplicationInstanceLabelKey returns either the custom application instance
 // label key if set, or the default value.
 func (a *ArgoCD) ApplicationInstanceLabelKey() string {
