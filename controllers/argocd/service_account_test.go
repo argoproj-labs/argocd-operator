@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -141,7 +142,7 @@ func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// Dex is enabled, creates a new Service Account for it
-	sa, err := r.reconcileServiceAccount(dexServer, a)
+	sa, err := r.reconcileServiceAccount(common.ArgoCDDexServerComponent, a)
 	assert.NoError(t, err)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
 
@@ -149,7 +150,7 @@ func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
-	sa, err = r.reconcileServiceAccount(dexServer, a)
+	sa, err = r.reconcileServiceAccount(common.ArgoCDDexServerComponent, a)
 	assert.NoError(t, err)
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available

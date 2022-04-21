@@ -68,20 +68,15 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
 func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRoleBinding(applicationController, policyRuleForApplicationController(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", applicationController, err)
-	}
-	if err := r.reconcileRoleBinding(dexServer, policyRuleForDexServer(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
+
+	params := getPolicyRuleList()
+
+	for _, param := range params {
+		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr); err != nil {
+			return fmt.Errorf("error reconciling roleBinding for %q: %w", param.name, err)
+		}
 	}
 
-	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", redisHa, err)
-	}
-
-	if err := r.reconcileRoleBinding(server, policyRuleForServer(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", server, err)
-	}
 	return nil
 }
 
@@ -101,7 +96,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 	for _, namespace := range r.ManagedNamespaces.Items {
 		// only create dexServer and redisHa rolebindings for the namespace where the argocd instance is deployed
-		if cr.ObjectMeta.Namespace != namespace.Name && (name == dexServer || name == redisHa) {
+		if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
 			break
 		}
 		// get expected name
@@ -116,7 +111,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == dexServer && isDexDisabled() {
+			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
 				continue // Dex is disabled, do nothing
 			}
 			roleBindingExists = false
@@ -146,7 +141,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == dexServer && isDexDisabled() {
+			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
 				// Delete any existing RoleBinding created for Dex
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
@@ -160,9 +155,12 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 					return err
 				}
 			} else {
-				existingRoleBinding.Subjects = roleBinding.Subjects
-				if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
-					return err
+				// if the Subjects differ, update the role bindings
+				if !reflect.DeepEqual(roleBinding.Subjects, existingRoleBinding.Subjects) {
+					existingRoleBinding.Subjects = roleBinding.Subjects
+					if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
+						return err
+					}
 				}
 				continue
 			}
@@ -182,10 +180,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 }
 
 func getCustomRoleName(name string) string {
-	if name == applicationController {
+	if name == common.ArgoCDApplicationControllerComponent {
 		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
 	}
-	if name == server {
+	if name == common.ArgoCDServerComponent {
 		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
 	}
 	return ""
