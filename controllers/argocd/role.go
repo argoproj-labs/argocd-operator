@@ -63,7 +63,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	clusterParams := getPolicyRuleClusterRoleList()
 
 	for _, clusterParam := range clusterParams {
-		if _, err := r.reconcileRole(clusterParam.name, clusterParam.policyRule, cr); err != nil {
+		if _, err := r.reconcileClusterRole(clusterParam.name, clusterParam.policyRule, cr); err != nil {
 			return err
 		}
 	}
