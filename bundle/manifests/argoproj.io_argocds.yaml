@@ -862,6 +862,10 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
+                  disableTLSVerification:
+                    description: DisableTLSVerification defines whether redis server
+                      API should be accessed using strict TLS validation
+                    type: boolean
                   image:
                     description: Image is the Redis container image.
                     type: string
@@ -892,10 +896,6 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
-                  verifytls:
-                    description: VerifyTLS defines whether redis server API should
-                      be accessed using strict TLS validation
-                    type: boolean
                   version:
                     description: Version is the Redis container image tag.
                     type: string
@@ -5725,6 +5725,11 @@ spec:
                   of the  Argo CD Redis component Pods had a failure. Unknown: For
                   some reason the state of the Argo CD Redis component could not be
                   obtained.'
+                type: string
+              redisTLSChecksum:
+                description: RedisTLSChecksum contains the SHA256 checksum of the
+                  latest known state of tls.crt and tls.key in the argocd-operator-redis-tls
+                  secret.
                 type: string
               repo:
                 description: 'Repo is a simple, high-level summary of where the Argo
