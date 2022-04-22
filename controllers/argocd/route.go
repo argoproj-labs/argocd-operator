@@ -243,11 +243,6 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
 	}
 
-	// Allow override of the Path for the Route
-	if len(cr.Spec.Server.Route.Path) > 0 {
-		route.Spec.Path = cr.Spec.Server.Route.Path
-	}
-
 	if cr.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{

@@ -5095,11 +5095,6 @@ spec:
                     required:
                     - enabled
                     type: object
-                  commandArgs:
-                    description: Command arguments for Argo CD server
-                    items:
-                      type: string
-                    type: array
                   env:
                     description: Env lets you specify environment for API server pods
                     items:
@@ -5209,6 +5204,14 @@ spec:
                       required:
                       - name
                       type: object
+                    type: array
+                  extraCommandArgs:
+                    description: Extra Command arguments that would append to the
+                      Argo CD server command. ExtraCommandArgs will not be added,
+                      if one of these commands is already part of the server command
+                      with same or different value.
+                    items:
+                      type: string
                     type: array
                   grpc:
                     description: GRPC defines the state for the Argo CD Server GRPC

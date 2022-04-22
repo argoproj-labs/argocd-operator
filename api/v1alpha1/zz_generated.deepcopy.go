@@ -763,8 +763,8 @@ func (in *ArgoCDServerSpec) DeepCopyInto(out *ArgoCDServerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.CommandArgs != nil {
-		in, out := &in.CommandArgs, &out.CommandArgs
+	if in.ExtraCommandArgs != nil {
+		in, out := &in.ExtraCommandArgs, &out.ExtraCommandArgs
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
