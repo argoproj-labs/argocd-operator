@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -266,7 +267,30 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
 
+	extraArgs := cr.Spec.Server.ExtraCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+
+	cmd = append(cmd, extraArgs...)
 	return cmd
+}
+
+// isMergable returns error if any of the extraCommandArgs already exists in the Argo CD server cmd.
+func isMergable(extraArgs []string, cmd []string) error {
+	if len(extraArgs) > 0 {
+		for _, arg := range extraArgs {
+			if len(arg) > 2 && arg[:2] == "--" {
+				if ok := contains(cmd, arg); ok {
+					err := errors.New("Duplicate argument error")
+					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // getDexServerAddress will return the Dex server address.

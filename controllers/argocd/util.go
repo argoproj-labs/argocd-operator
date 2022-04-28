@@ -1374,3 +1374,13 @@ func generateRandomString(s int) string {
 	b := generateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b)
 }
+
+// contains returns true if a string is part of the given slice.
+func contains(s []string, g string) bool {
+	for _, a := range s {
+		if a == g {
+			return true
+		}
+	}
+	return false
+}

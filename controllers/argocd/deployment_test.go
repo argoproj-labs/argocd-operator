@@ -1077,6 +1077,109 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
+func TestArgoCDServerDeploymentCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	baseCommand := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	// When a single command argument is passed
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+	}
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd := append(baseCommand, "--rootpath", "/argocd")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When multiple command arguments are passed
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd = append(cmd, "--foo", "bar", "test")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When one of the ExtraCommandArgs already exists in cmd with same or different value
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// Remove all the command arguments that were added.
+	a.Spec.Server.ExtraCommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
+
+func TestArgoCDServerCommand_isMergable(t *testing.T) {
+	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	extraCMDArgs := []string{"--extra-path", "/"}
+	assert.NoError(t, isMergable(extraCMDArgs, cmd))
+
+	cmd = []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	extraCMDArgs = []string{"--server", "bar.com"}
+	assert.Error(t, isMergable(extraCMDArgs, cmd))
+}
+
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
