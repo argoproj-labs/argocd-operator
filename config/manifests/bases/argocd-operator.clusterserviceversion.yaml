@@ -578,6 +578,19 @@ spec:
         path: dex
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'NotificationsController is a simple, high-level summary of where
+          the Argo CD notifications controller component is in its lifecycle. There
+          are five possible NotificationsController values: Pending: The Argo CD notifications
+          controller component has been accepted by the Kubernetes system, but one
+          or more of the required resources have not been created. Running: All of
+          the required Pods for the Argo CD notifications controller component are
+          in a Ready state. Failed: At least one of the  Argo CD notifications controller
+          component Pods had a failure. Unknown: For some reason the state of the
+          Argo CD notifications controller component could not be obtained.'
+        displayName: NotificationsController
+        path: notificationsController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Phase is a simple, high-level summary of where the ArgoCD is
           in its lifecycle. There are five possible phase values: Pending: The ArgoCD
           has been accepted by the Kubernetes system, but one or more of the required

@@ -162,3 +162,22 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, r.reconcileStatusNotifications(a))
+	assert.Equal(t, "", a.Status.NotificationsController)
+
+	a.Spec.Notifications.Enabled = true
+	assert.NoError(t, r.reconcileNotificationsController(a))
+	assert.NoError(t, r.reconcileStatusNotifications(a))
+	assert.Equal(t, "Running", a.Status.NotificationsController)
+
+	a.Spec.Notifications.Enabled = false
+	assert.NoError(t, r.deleteNotificationsResources(a))
+	assert.NoError(t, r.reconcileStatusNotifications(a))
+	assert.Equal(t, "", a.Status.NotificationsController)
+}

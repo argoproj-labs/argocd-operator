@@ -806,6 +806,13 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if cr.Spec.Notifications.Enabled {
+		log.Info("reconciling Notifications controller")
+		if err := r.reconcileNotificationsController(cr); err != nil {
+			return err
+		}
+	}
+
 	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
 		return err
 	}
@@ -919,7 +926,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -974,8 +981,29 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 		},
 	}
 
+	deleteNotificationsPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoprojv1a1.ArgoCD)
+			if !ok {
+				return false
+			}
+			if (oldCR.Spec.Notifications.Enabled != newCR.Spec.Notifications.Enabled) && !newCR.Spec.Notifications.Enabled {
+				err := r.deleteNotificationsResources(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+			return true
+		},
+	}
+
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred))
+	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})

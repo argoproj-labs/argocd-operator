@@ -15,7 +15,7 @@
 package common
 
 const (
-	// ArgoCDApplicationControllerComponent is the name of the application controller  control plane component
+	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 
 	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
@@ -35,6 +35,9 @@ const (
 
 	// ArgoCDDexServerComponent is the name of the Dex server control plane component
 	ArgoCDDexServerComponent = "argocd-dex-server"
+
+	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
+	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
 
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
