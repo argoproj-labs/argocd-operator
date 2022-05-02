@@ -1193,7 +1193,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	}
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -1215,7 +1215,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"test",
 	}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -1233,7 +1233,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -1247,7 +1247,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	// Remove all the command arguments that were added.
 	a.Spec.Server.ExtraCommandArgs = []string{}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
