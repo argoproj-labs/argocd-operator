@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -489,10 +490,17 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
-			VolumeMounts:    getArgoImportVolumeMounts(export),
+			VolumeMounts:    getArgoImportVolumeMounts(),
 		}}
 
 		podSpec.Volumes = getArgoImportVolumes(export)
+	}
+
+	invalidImagePod := containsInvalidImage(cr, r)
+	if invalidImagePod {
+		if err := r.Client.Delete(context.TODO(), ss); err != nil {
+			return err
+		}
 	}
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
@@ -590,4 +598,26 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
 		*changed = true
 	}
+}
+
+// Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
+// These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
+func containsInvalidImage(cr *argoprojv1a1.ArgoCD, r *ReconcileArgoCD) bool {
+
+	brokenPod := false
+
+	podList := &corev1.PodList{}
+	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+
+	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
+		log.Error(err, "Failed to list Pods")
+	}
+	if len(podList.Items) > 0 {
+		if len(podList.Items[0].Status.ContainerStatuses) > 0 {
+			if podList.Items[0].Status.ContainerStatuses[0].State.Waiting != nil && (podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ImagePullBackOff" || podList.Items[0].Status.ContainerStatuses[0].State.Waiting.Reason == "ErrImagePull") {
+				brokenPod = true
+			}
+		}
+	}
+	return brokenPod
 }

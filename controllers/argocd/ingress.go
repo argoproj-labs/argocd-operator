@@ -28,7 +28,7 @@ import (
 )
 
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
-func getDefaultIngressAnnotations(cr *argoprojv1a1.ArgoCD) map[string]string {
+func getDefaultIngressAnnotations() map[string]string {
 	annotations := make(map[string]string)
 	annotations[common.ArgoCDKeyIngressClass] = "nginx"
 	return annotations
@@ -107,7 +107,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	// Add annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
@@ -181,7 +181,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	}
 
 	// Add annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
@@ -254,7 +254,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	// Add annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
@@ -329,7 +329,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	// Add annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 

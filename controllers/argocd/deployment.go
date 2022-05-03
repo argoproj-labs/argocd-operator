@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -156,7 +157,7 @@ func getArgoImportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 }
 
 // getArgoImportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
-func getArgoImportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+func getArgoImportVolumeMounts() []corev1.VolumeMount {
 	mounts := make([]corev1.VolumeMount, 0)
 
 	mounts = append(mounts, corev1.VolumeMount{
@@ -266,7 +267,30 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
 
+	extraArgs := cr.Spec.Server.ExtraCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+
+	cmd = append(cmd, extraArgs...)
 	return cmd
+}
+
+// isMergable returns error if any of the extraCommandArgs already exists in the Argo CD server cmd.
+func isMergable(extraArgs []string, cmd []string) error {
+	if len(extraArgs) > 0 {
+		for _, arg := range extraArgs {
+			if len(arg) > 2 && arg[:2] == "--" {
+				if ok := contains(cmd, arg); ok {
+					err := errors.New("Duplicate argument error")
+					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // getDexServerAddress will return the Dex server address.
@@ -374,6 +398,16 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "dex",
 		Env:             proxyEnvVars(),
+		LivenessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz/live",
+					Port: intstr.FromInt(common.ArgoCDDefaultDexMetricsPort),
+				},
+			},
+			InitialDelaySeconds: 60,
+			PeriodSeconds:       30,
+		},
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
@@ -381,6 +415,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			}, {
 				ContainerPort: common.ArgoCDDefaultDexGRPCPort,
 				Name:          "grpc",
+			}, {
+				ContainerPort: common.ArgoCDDefaultDexMetricsPort,
+				Name:          "metrics",
 			},
 		},
 		Resources: getDexResources(cr),
@@ -1228,9 +1265,7 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 
 func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
 	result := []corev1.EnvVar{}
-	for _, v := range vars {
-		result = append(result, v)
-	}
+	result = append(result, vars...)
 	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
 	for _, p := range proxyKeys {
 		if k, v := caseInsensitiveGetenv(p); k != "" {

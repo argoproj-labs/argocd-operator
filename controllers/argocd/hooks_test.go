@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 var errMsg = errors.New("this is a test error")
@@ -33,7 +34,7 @@ func testClusterRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) e
 func testRoleHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	switch o := v.(type) {
 	case *v1.Role:
-		if o.Name == cr.Name+"-"+applicationController {
+		if o.Name == cr.Name+"-"+common.ArgoCDApplicationControllerComponent {
 			o.Rules = append(o.Rules, testRules()...)
 		}
 	}

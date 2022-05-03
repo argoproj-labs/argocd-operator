@@ -73,11 +73,6 @@ func nowBytes() []byte {
 	return []byte(time.Now().UTC().Format(time.RFC3339))
 }
 
-// nowDefault is a shortcut function to return the current date/time in the default format.
-func nowDefault() string {
-	return time.Now().UTC().Format("01022006-150406-MST")
-}
-
 // nowNano returns a string with the current UTC time as epoch in nanoseconds
 func nowNano() string {
 	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
@@ -166,7 +161,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
-		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
+		return r.reconcileExistingArgoSecret(secret, clusterSecret, tlsSecret)
 	}
 
 	// Secret not found, create it...
@@ -295,7 +290,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
-func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+func (r *ReconcileArgoCD) reconcileExistingArgoSecret(secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
 	if hasArgoAdminPasswordChanged(secret, clusterSecret) {

@@ -58,7 +58,7 @@ func createRealm(cfg *keycloakConfig) (string, error) {
 		return "", err
 	}
 
-	status, _ := h.post(realmConfig, cfg.ArgoNamespace)
+	status, _ := h.post(realmConfig)
 
 	return status, nil
 }
@@ -108,7 +108,7 @@ func (h *httpclient) login(user, pass string) error {
 }
 
 // Post the updated realm configuration to keycloak realm API.
-func (h *httpclient) post(realmConfig []byte, ns string) (string, error) {
+func (h *httpclient) post(realmConfig []byte) (string, error) {
 	request, err := http.NewRequest("POST",
 		fmt.Sprintf("%s%s", h.URL, realmURL),
 		bytes.NewBuffer(realmConfig))

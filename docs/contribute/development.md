@@ -79,7 +79,7 @@ make test
 
 Run the e2e tests.
 
-Refer E2E test [guide](../../docs/e2e-test-guide.md) for the setup and execution.
+Refer E2E test [guide](../e2e-test-guide.md) for the setup and execution.
 
 ```bash
 k3d cluster create --servers 3

@@ -580,13 +580,6 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: ResourceTrackingMethod defines how Argo CD should track resources
-          that it manages
-        displayName: Resource Tracking Method'
-        path: resourceTrackingMethod
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
         displayName: Autoscale Enabled'
@@ -993,7 +986,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.3.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:f6fc8c310ff6c86d9e0b5acbc16de7dc14d0f5dd813094e380d636482bccb090
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1074,5 +1067,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.2.0
+  replaces: argocd-operator.v0.2.1
   version: 0.3.0

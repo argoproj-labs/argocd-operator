@@ -2216,13 +2216,13 @@ Unknown: For some reason the state of the Argo CD server component could not be 
 </tr>
 <tr>
 <td>
-<code>url</code></br>
+<code>host</code></br>
 <em>
 string
 </em>
 </td>
 <td>
-<p>URL is the url for the hostname to use for Ingress/Route resources</p>
+<p>Host is the url for the hostname to use for Ingress/Route resources</p>
 </td>
 </tr>
 </tbody>

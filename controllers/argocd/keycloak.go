@@ -556,7 +556,7 @@ func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 	pathType := networkingv1.PathTypeImplementationSpecific
 
 	// annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 

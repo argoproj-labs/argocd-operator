@@ -60,33 +60,23 @@ func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.Ser
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) error {
+	params := getPolicyRuleList()
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDServerComponent, policyRuleForServer(), cr); err != nil {
-		return err
+	for _, param := range params {
+		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr); err != nil {
+			return err
+		}
 	}
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
-		return err
-	}
+	clusterParams := getPolicyRuleClusterRoleList()
 
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDRedisHAComponent, policyRuleForRedisHa(cr), cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDServerComponent, policyRuleForServerClusterRole(), cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileServiceAccountClusterPermissions(common.ArgoCDApplicationControllerComponent, policyRuleForApplicationController(), cr); err != nil {
-		return err
+	for _, clusterParam := range clusterParams {
+		if err := r.reconcileServiceAccountClusterPermissions(clusterParam.name, clusterParam.policyRule, cr); err != nil {
+			return err
+		}
 	}
 
 	// specialized handling for dex
-
 	if err := r.reconcileDexServiceAccount(cr); err != nil {
 		return err
 	}
@@ -130,10 +120,9 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var role *v1.ClusterRole
-	var sa *corev1.ServiceAccount
 	var err error
 
-	sa, err = r.reconcileServiceAccount(name, cr)
+	_, err = r.reconcileServiceAccount(name, cr)
 	if err != nil {
 		return err
 	}
@@ -142,7 +131,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 		return err
 	}
 
-	return r.reconcileClusterRoleBinding(name, role, sa, cr)
+	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
@@ -157,13 +146,13 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		if name == dexServer && isDexDisabled() {
+		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
 			return sa, nil // Dex is disabled, do nothing
 		}
 		exists = false
 	}
 	if exists {
-		if name == dexServer && isDexDisabled() {
+		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
 			// Delete any existing Service Account created for Dex
 			return sa, r.Client.Delete(context.TODO(), sa)
 		}

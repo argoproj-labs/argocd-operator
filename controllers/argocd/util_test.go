@@ -471,7 +471,7 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	assert.NoError(t, err)
 
 	// run deleteRBACsForNamespace
-	assert.NoError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
+	assert.NoError(t, deleteRBACsForNamespace(testNameSpace, testClient))
 
 	// role with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role.Name, metav1.GetOptions{})

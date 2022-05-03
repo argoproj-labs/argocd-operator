@@ -1003,6 +1003,7 @@ The following properties are available for configuring the Argo CD Server compon
 Name | Default | Description
 --- | --- | ---
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+[ExtraCommandArgs](#server-command-arguments) | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
 [Ingress](#server-ingress-options) | [Object] | Ingress configuration for the Argo CD Server component.
@@ -1023,6 +1024,32 @@ Name | Default | Description
 --- | --- | ---
 Enabled | false | Toggle Autoscaling support globally for the Argo CD server component.
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
+
+### Server Command Arguments
+
+Allows a user to pass arguments to Argo CD Server command.
+
+Name | Default | Description
+--- | --- | ---
+ExtraCommandArgs | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
+
+**Note**: ExtraCommandArgs will not be added, if one of these commands is already part of the server command with same or different value.
+
+### Server Command Arguments Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: server
+spec:
+  server:
+    extraCommandArgs:
+      - --rootpath
+      - /argocd
+```
 
 ### Server GRPC Options
 
@@ -1091,6 +1118,9 @@ spec:
           kind: Deployment
           name: example-argocd-server
         targetCPUUtilizationPercentage: 50
+    extraCommandArgs:
+      - --rootpath
+      - /argocd
     grpc:
       host: example-argocd-grpc
       ingress: false
