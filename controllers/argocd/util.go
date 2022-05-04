@@ -981,6 +981,8 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		},
 	}
 
+	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
+	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
 	deleteNotificationsPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
