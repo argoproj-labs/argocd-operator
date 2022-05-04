@@ -5,10 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileArgoCD_reconcileDexService_Dex_Enabled(t *testing.T) {

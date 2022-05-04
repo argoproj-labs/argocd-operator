@@ -6,9 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -16,6 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.ArgoCD) error {
@@ -282,7 +283,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 	}
 
 	podSpec.Containers = []corev1.Container{{
-		Command:         getNotificationsCommand(cr),
+		Command:         getNotificationsCommand(),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            common.ArgoCDNotificationsControllerComponent,
@@ -406,7 +407,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 }
 
-func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getNotificationsCommand() []string {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-notifications")
