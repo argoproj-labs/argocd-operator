@@ -993,7 +993,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			if !ok {
 				return false
 			}
-			if (oldCR.Spec.Notifications.Enabled != newCR.Spec.Notifications.Enabled) && !newCR.Spec.Notifications.Enabled {
+			if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
 				err := r.deleteNotificationsResources(newCR)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
