@@ -305,6 +305,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -712,6 +713,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -1068,6 +1070,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -1079,6 +1082,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
