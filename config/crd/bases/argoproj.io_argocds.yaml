@@ -380,6 +380,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -716,6 +719,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -5236,6 +5242,9 @@ spec:
                           enabled:
                             description: Enabled will toggle the creation of the Ingress.
                             type: boolean
+                          ingressClassName:
+                            description: IngressClassName for the Ingress resource.
+                            type: string
                           path:
                             description: Path used for the Ingress resource.
                             type: string
@@ -5291,6 +5300,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string
