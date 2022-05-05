@@ -30,7 +30,7 @@ import (
 // getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
 func getDefaultIngressAnnotations() map[string]string {
 	annotations := make(map[string]string)
-	annotations[common.ArgoCDKeyIngressClass] = "nginx"
+	// annotations[common.ArgoCDKeyIngressClass] = "nginx"
 	return annotations
 }
 
@@ -118,6 +118,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 
 	ingress.ObjectMeta.Annotations = atns
 
+	ingress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
+
 	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
@@ -190,6 +192,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 	}
 
 	ingress.ObjectMeta.Annotations = atns
+
+	ingress.Spec.IngressClassName = cr.Spec.Server.GRPC.Ingress.IngressClassName
 
 	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
@@ -265,6 +269,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 
 	ingress.ObjectMeta.Annotations = atns
 
+	ingress.Spec.IngressClassName = cr.Spec.Grafana.Ingress.IngressClassName
+
 	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
@@ -339,6 +345,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	ingress.ObjectMeta.Annotations = atns
+
+	ingress.Spec.IngressClassName = cr.Spec.Prometheus.Ingress.IngressClassName
 
 	pathType := networkingv1.PathTypeImplementationSpecific
 	// Add rules
