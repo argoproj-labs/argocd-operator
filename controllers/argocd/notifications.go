@@ -43,6 +43,16 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.Argo
 		return err
 	}
 
+	log.Info("reconciling notifications configmap")
+	if err := r.reconcileNotificationsConfigMap(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications secret")
+	if err := r.reconcileNotificationsSecret(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -86,6 +96,16 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 	log.Info("reconciling notifications role")
 	_, err = r.reconcileNotificationsRole(cr)
 	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications configmap")
+	if err := r.reconcileNotificationsConfigMap(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications secret")
+	if err := r.reconcileNotificationsSecret(cr); err != nil {
 		return err
 	}
 
@@ -143,6 +163,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
 		}
+		log.Info(fmt.Sprintf("Role %s not found", desiredRole.Name))
 		roleExists = false
 	}
 
@@ -407,6 +428,97 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 }
 
+// reconcileNotificationsConfigMap only creates/deletes the argocd-notifications-cm based on whether notifications is enabled/disabled in the CR
+// It does not reconcile/overwrite any fields or information in the configmap itself
+func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoCD) error {
+
+	desiredConfigMap := newConfigMapWithName("argocd-notifications-cm", cr)
+	desiredConfigMap.Data = getNotificationsConfig()
+
+	cmExists := true
+	existingConfigMap := &corev1.ConfigMap{}
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap); err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the configmap associated with %s : %s", desiredConfigMap.Name, err)
+		}
+		cmExists = false
+	}
+
+	if cmExists {
+		// CM exists but shouldn't, so it should be deleted
+		if !cr.Spec.Notifications.Enabled {
+			log.Info(fmt.Sprintf("Deleting configmap %s as notifications is disabled", existingConfigMap.Name))
+			return r.Client.Delete(context.TODO(), existingConfigMap)
+		}
+
+		// CM exists and should, nothing to do here
+		return nil
+	}
+
+	// CM doesn't exist and shouldn't, nothing to do here
+	if !cr.Spec.Notifications.Enabled {
+		return nil
+	}
+
+	// CM doesn't exist but should, so it should be created
+	if err := controllerutil.SetControllerReference(cr, desiredConfigMap, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info(fmt.Sprintf("Creating configmap %s", desiredConfigMap.Name))
+	err := r.Client.Create(context.TODO(), desiredConfigMap)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileNotificationsSecret only creates/deletes the argocd-notifications-secret based on whether notifications is enabled/disabled in the CR
+// It does not reconcile/overwrite any fields or information in the secret itself
+func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) error {
+
+	desiredSecret := argoutil.NewSecretWithName(cr, "argocd-notifications-secret")
+
+	secretExists := true
+	existingSecret := &corev1.Secret{}
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredSecret.Name, existingSecret); err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the secret associated with %s : %s", desiredSecret.Name, err)
+		}
+		secretExists = false
+	}
+
+	if secretExists {
+		// secret exists but shouldn't, so it should be deleted
+		if !cr.Spec.Notifications.Enabled {
+			log.Info(fmt.Sprintf("Deleting secret %s as notifications is disabled", existingSecret.Name))
+			return r.Client.Delete(context.TODO(), existingSecret)
+		}
+
+		// secret exists and should, nothing to do here
+		return nil
+	}
+
+	// secret doesn't exist and shouldn't, nothing to do here
+	if !cr.Spec.Notifications.Enabled {
+		return nil
+	}
+
+	// secret doesn't exist but should, so it should be created
+	if err := controllerutil.SetControllerReference(cr, desiredSecret, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info(fmt.Sprintf("Creating configmap %s", desiredSecret.Name))
+	err := r.Client.Create(context.TODO(), desiredSecret)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func getNotificationsCommand() []string {
 
 	cmd := make([]string, 0)
@@ -415,7 +527,7 @@ func getNotificationsCommand() []string {
 	return cmd
 }
 
-// getNotificationsResources will return the ResourceRequirements for the Notifications container.
+// getNotificationsResources returns the ResourceRequirements for the Notifications container.
 func getNotificationsResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
@@ -425,4 +537,26 @@ func getNotificationsResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequireme
 	}
 
 	return resources
+}
+
+// getNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
+func getNotificationsConfig() map[string]string {
+
+	notificationsConfig := make(map[string]string)
+
+	notificationsConfig["template.app-created"] = `|
+	email:
+		subject: Application {{.app.metadata.name}} has been created.
+  	message: Application {{.app.metadata.name}} has been created.
+  	teams:
+		title: Application {{.app.metadata.name}} has been created.`
+
+	notificationsConfig["template.app-deleted"] = `|
+	email:
+		subject: Application {{.app.metadata.name}} has been deleted.
+  	message: Application {{.app.metadata.name}} has been deleted.
+  	teams:
+		title: Application {{.app.metadata.name}} has been deleted.`
+
+	return notificationsConfig
 }
