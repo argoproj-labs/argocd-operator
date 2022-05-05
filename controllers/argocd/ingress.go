@@ -27,13 +27,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-// getDefaultIngressAnnotations will return the default Ingress Annotations for the given ArgoCD.
-func getDefaultIngressAnnotations() map[string]string {
-	annotations := make(map[string]string)
-	// annotations[common.ArgoCDKeyIngressClass] = "nginx"
-	return annotations
-}
-
 // getArgoServerPath will return the Ingress Path for the Argo CD component.
 func getPathOrDefault(path string) string {
 	result := common.ArgoCDDefaultIngressPath
@@ -106,8 +99,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 		return nil // Ingress not enabled, move along...
 	}
 
-	// Add annotations
-	atns := getDefaultIngressAnnotations()
+	// Add default annotations
+	atns := make(map[string]string)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
@@ -182,8 +175,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 		return nil // Ingress not enabled, move along...
 	}
 
-	// Add annotations
-	atns := getDefaultIngressAnnotations()
+	// Add default annotations
+	atns := make(map[string]string)
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
@@ -257,8 +250,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 		return nil // Grafana itself or Ingress not enabled, move along...
 	}
 
-	// Add annotations
-	atns := getDefaultIngressAnnotations()
+	// Add default annotations
+	atns := make(map[string]string)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
@@ -334,8 +327,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 		return nil // Prometheus itself or Ingress not enabled, move along...
 	}
 
-	// Add annotations
-	atns := getDefaultIngressAnnotations()
+	// Add default annotations
+	atns := make(map[string]string)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
