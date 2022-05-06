@@ -39,6 +39,13 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	desiredPolicyRules := policyRuleForNotificationsController()
 
 	assert.Equal(t, desiredPolicyRules, testRole.Rules)
+
+	a.Spec.Notifications.Enabled = false
+	_, err = r.reconcileNotificationsRole(a)
+	assert.NoError(t, err)
+	role := &rbacv1.Role{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, role)
+	assertNotFound(t, err)
 }
 
 func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
@@ -59,6 +66,13 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	}, testSa))
 
 	assert.Equal(t, testSa.Name, desiredSa.Name)
+
+	a.Spec.Notifications.Enabled = false
+	_, err = r.reconcileNotificationsServiceAccount(a)
+	assert.NoError(t, err)
+	sa := &corev1.ServiceAccount{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, sa)
+	assertNotFound(t, err)
 }
 
 func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
@@ -85,6 +99,12 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 
 	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
+
+	a.Spec.Notifications.Enabled = false
+	assert.NoError(t, r.reconcileNotificationsRoleBinding(a, role, sa))
+	roleBinding = &rbacv1.RoleBinding{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, roleBinding)
+	assertNotFound(t, err)
 
 }
 
@@ -179,4 +199,63 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	if diff := cmp.Diff(expectedSelector, deployment.Spec.Selector); diff != "" {
 		t.Fatalf("failed to reconcile notifications-controller label selector:\n%s", diff)
 	}
+
+	a.Spec.Notifications.Enabled = false
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+	deployment = &appsv1.Deployment{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, deployment)
+	assertNotFound(t, err)
+
+}
+
+func TestReconcileNotifications_CreateSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileNotificationsSecret(a)
+	assert.NoError(t, err)
+
+	testSecret := &corev1.Secret{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-notifications-secret",
+		Namespace: a.Namespace,
+	}, testSecret))
+
+	a.Spec.Notifications.Enabled = false
+	err = r.reconcileNotificationsSecret(a)
+	assert.NoError(t, err)
+	secret := &corev1.Secret{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
+	assertNotFound(t, err)
+}
+
+func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileNotificationsConfigMap(a)
+	assert.NoError(t, err)
+
+	testCm := &corev1.ConfigMap{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-notifications-cm",
+		Namespace: a.Namespace,
+	}, testCm))
+
+	assert.True(t, len(testCm.Data) > 0)
+
+	a.Spec.Notifications.Enabled = false
+	err = r.reconcileNotificationsConfigMap(a)
+	assert.NoError(t, err)
+	testCm = &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-cm", Namespace: a.Namespace}, testCm)
+	assertNotFound(t, err)
 }
