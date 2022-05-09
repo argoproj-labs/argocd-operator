@@ -571,3 +571,82 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
 	}
 }
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	// Verify Argo CD configmap is created.
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify that updates to the configmap are rejected(reconciled back to default) by the operator.
+	cm.Data["ping"] = "pong"
+	err = r.Client.Update(context.TODO(), cm)
+	assert.NoError(t, err)
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cm.Data["ping"], "")
+
+	// Verify that operator updates argocd-cm according to ExtraConfig.
+	a.Spec.ExtraConfig = map[string]string{
+		"foo": "bar",
+	}
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cm.Data["foo"], "bar")
+
+	// Verify that ExtraConfig overrides FirstClass entries
+	a.Spec.DisableAdmin = true
+	a.Spec.ExtraConfig["admin.enabled"] = "true"
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, cm.Data["admin.enabled"], "true")
+
+	// Verify that deletion of a field from ExtraConfig does not delete any existing configuration
+	// created by FirstClass citizens.
+	a.Spec.ExtraConfig = make(map[string]string, 0)
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, cm.Data["admin.enabled"], "false")
+
+}

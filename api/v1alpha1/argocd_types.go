@@ -544,6 +544,14 @@ type ArgoCDSpec struct {
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
 
+	// ExtraConfig can be used to add fields to Argo CD configmap that are not supported by Argo CD CRD.
+	//
+	// Note: ExtraConfig takes precedence over Argo CD CRD.
+	// For example, A user sets `argocd.Spec.DisableAdmin` = true and also
+	// `a.Spec.ExtraConfig["admin.enabled"]` = true. In this case, operator updates
+	// Argo CD Configmap as follows -> argocd-cm.Data["admin.enabled"] = true.
+	ExtraConfig map[string]string `json:"extraConfig,omitempty"`
+
 	// GATrackingID is the google analytics tracking ID to use.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Google Analytics Tracking ID'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	GATrackingID string `json:"gaTrackingID,omitempty"`
