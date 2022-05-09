@@ -188,9 +188,6 @@ func getPolicyRuleList() []struct {
 			name:       common.ArgoCDApplicationControllerComponent,
 			policyRule: policyRuleForApplicationController(),
 		}, {
-			name:       common.ArgoCDDexServerComponent,
-			policyRule: policyRuleForDexServer(),
-		}, {
 			name:       common.ArgoCDServerComponent,
 			policyRule: policyRuleForServer(),
 		}, {

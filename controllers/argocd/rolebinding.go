@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -111,9 +112,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
+
+			if name == common.ArgoCDDexServerComponent &&
+				// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+				(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+					// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+					(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex))) {
+
 				continue // Dex is disabled, do nothing
 			}
+
 			roleBindingExists = false
 		}
 
@@ -141,8 +149,21 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-				// Delete any existing RoleBinding created for Dex
+			if name == common.ArgoCDDexServerComponent &&
+				// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+				(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+					// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+					(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex))) {
+
+				// Don't delete dex roleBinding if dex configuration is present in argocd-cm. This is done to prevent a breaking change to users
+				// who may be using dex without setting DISABLE_DEX in their env
+				if (!reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
+					log.Info("Could not delete dex roleBinding due to existing dex configuration in argocd-cm configmap. Remove dexConfig to allow deletion of dex roleBinding")
+					return nil
+				}
+
+				// Delete any existing RoleBinding created for Dex since dex is disabled
+				log.Info("deleting the existing Dex roleBinding because dex is not configured")
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}

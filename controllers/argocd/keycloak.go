@@ -165,7 +165,16 @@ type CustomKeycloakAPIRealm struct {
 // common.ArgoCDKeycloakImageName.
 func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
-	img := cr.Spec.SSO.Image
+
+	img := ""
+	tag := ""
+
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Image != "" {
+		img = cr.Spec.SSO.Image
+	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Image != "" {
+		img = cr.Spec.SSO.Keycloak.Image
+	}
+
 	if img == "" {
 		img = common.ArgoCDKeycloakImage
 		if IsTemplateAPIAvailable() {
@@ -174,7 +183,12 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultImg = true
 	}
 
-	tag := cr.Spec.SSO.Version
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Version != "" {
+		tag = cr.Spec.SSO.Version
+	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Version != "" {
+		tag = cr.Spec.SSO.Keycloak.Version
+	}
+
 	if tag == "" {
 		tag = common.ArgoCDKeycloakVersion
 		if IsTemplateAPIAvailable() {
@@ -243,9 +257,10 @@ func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := defaultKeycloakResources()
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.SSO.Resources != nil {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Resources != nil {
 		resources = *cr.Spec.SSO.Resources
-		return resources
+	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Resources != nil {
+		resources = *cr.Spec.SSO.Keycloak.Resources
 	}
 
 	return resources
@@ -804,7 +819,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycl
 	}
 
 	// By default TLS Verification should be enabled.
-	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS {
+	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS || cr.Spec.SSO.Keycloak.VerifyTLS == nil || *cr.Spec.SSO.Keycloak.VerifyTLS {
 		tlsVerification = true
 	}
 
@@ -1155,6 +1170,42 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 	_, err = dcClient.DeploymentConfigs(dc.Namespace).Update(context.TODO(), existingDC, metav1.UpdateOptions{})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+
+	// TemplateAPI is available, Install keycloak using openshift templates.
+	if IsTemplateAPIAvailable() {
+		err := r.reconcileKeycloakForOpenShift(cr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.reconcileKeycloak(cr)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+
+	// If SSO is installed using OpenShift templates.
+	if IsTemplateAPIAvailable() {
+		err := deleteKeycloakConfigForOpenShift(cr)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := deleteKeycloakConfigForK8s(cr)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

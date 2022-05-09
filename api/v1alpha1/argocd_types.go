@@ -261,6 +261,21 @@ type ArgoCDIngressSpec struct {
 	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
 }
 
+// ArgoCDKeycloakSpec defines the desired state for the Keycloak component.
+type ArgoCDKeycloakSpec struct {
+	// Image is the Keycloak container image.
+	Image string `json:"image,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Keycloak.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Version is the Keycloak container image tag.
+	Version string `json:"version,omitempty"`
+
+	// VerifyTLS set to false disables strict TLS validation.
+	VerifyTLS *bool `json:"verifyTLS,omitempty"`
+}
+
 //+kubebuilder:object:root=true
 
 // ArgoCDList contains a list of ArgoCD
@@ -488,6 +503,9 @@ const (
 	// SSOProviderTypeKeycloak means keycloak will be Installed and Integrated with Argo CD. A new realm with name argocd
 	// will be created in this keycloak. This realm will have a client with name argocd that uses OpenShift v4 as Identity Provider.
 	SSOProviderTypeKeycloak SSOProviderType = "keycloak"
+
+	// SSOProviderTypeDex means dex will be Installed and Integrated with Argo CD.
+	SSOProviderTypeDex SSOProviderType = "dex"
 )
 
 // ArgoCDSSOSpec defines SSO provider.
@@ -502,6 +520,12 @@ type ArgoCDSSOSpec struct {
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 	// Version is the SSO container image tag.
 	Version string `json:"version,omitempty"`
+
+	// Dex contains the configuration for Argo CD dex authentication
+	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
+
+	// Keycloak contains the configuration for Argo CD keycloak authentication
+	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
@@ -674,7 +698,7 @@ type ArgoCDStatus struct {
 
 	// SSOConfig defines the status of SSO configuration.
 	// Success: Only one SSO provider is configured in CR.
-	// Failed: More than one SSO providers are configure in CR.
+	// Failed: SSO configuration is illegal or more than one SSO providers are configured in CR.
 	// Unknown: For some reason the SSO configuration could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="SSOConfig",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	SSOConfig string `json:"ssoConfig,omitempty"`

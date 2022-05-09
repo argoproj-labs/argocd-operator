@@ -523,79 +523,11 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
 }
 
-func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	os.Setenv("DISABLE_DEX", "true")
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-dex-server", Namespace: a.Namespace}, deployment)
-	assert.True(t, apierrors.IsNotFound(err))
-}
-
-// When Dex is disabled, the Dex Deployment should be removed.
-func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
-	restoreEnv(t)
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	os.Setenv("DISABLE_DEX", "true")
-
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	a = makeTestArgoCD()
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assertNotFound(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-}
-
-func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
-	restoreEnv(t)
-
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDWithResources()
-	r := makeTestReconciler(t, a)
-
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      a.Name + "-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	testResources := corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{
-			corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
-			corev1.ResourceCPU:    resourcev1.MustParse("250m"),
-		},
-		Limits: corev1.ResourceList{
-			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
-			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
-		},
-	}
-	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
-	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
-}
-
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
 // environment propagated.
 func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	restoreEnv(t)
+	os.Setenv("DISABLE_DEX", "false")
 	os.Setenv("HTTP_PROXY", testHTTPProxy)
 	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
 	os.Setenv("no_proxy", testNoProxy)
@@ -607,6 +539,8 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	r := makeTestReconciler(t, a)
 
 	err := r.reconcileDeployments(a)
+	assert.NoError(t, err)
+	err = r.reconcileDexDeployment(a)
 	assert.NoError(t, err)
 
 	for _, v := range deploymentNames {
@@ -622,12 +556,17 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
+	os.Setenv("DISABLE_DEX", "false")
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
 	})
 	r := makeTestReconciler(t, a)
 	err := r.reconcileDeployments(a)
 	assert.NoError(t, err)
+
+	err = r.reconcileDexDeployment(a)
+	assert.NoError(t, err)
+
 	for _, v := range deploymentNames {
 		refuteDeploymentHasProxyVars(t, r.Client, v)
 	}
@@ -639,6 +578,8 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(ZapLogger(true))
 
 	err = r.reconcileDeployments(a)
+	assert.NoError(t, err)
+	err = r.reconcileDexDeployment(a)
 	assert.NoError(t, err)
 
 	for _, v := range deploymentNames {
@@ -829,183 +770,6 @@ func deploymentDefaultTolerations() []corev1.Toleration {
 		},
 	}
 	return toleration
-}
-
-func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-	want := corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: "static-files",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-		InitContainers: []corev1.Container{
-			{
-				Name:  "copyutil",
-				Image: getArgoContainerImage(a),
-				Command: []string{
-					"cp",
-					"-n",
-					"/usr/local/bin/argocd",
-					"/shared/argocd-dex",
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "static-files",
-						MountPath: "/shared",
-					},
-				},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		Containers: []corev1.Container{
-			{
-				Name:  "dex",
-				Image: getDexContainerImage(a),
-				Command: []string{
-					"/shared/argocd-dex",
-					"rundex",
-				},
-				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/healthz/live",
-							Port: intstr.FromInt(5558),
-						},
-					},
-					InitialDelaySeconds: 60,
-					PeriodSeconds:       30,
-				},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "http",
-						ContainerPort: 5556,
-					},
-					{
-						Name:          "grpc",
-						ContainerPort: 5557,
-					},
-					{
-						Name:          "metrics",
-						ContainerPort: 5558,
-					},
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		ServiceAccountName: "argocd-argocd-dex-server",
-	}
-
-	assert.Equal(t, want, deployment.Spec.Template.Spec)
-}
-
-func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-
-	// Creates the deployment and then changes the CR and rereconciles.
-	assert.NoError(t, r.reconcileDexDeployment(a))
-	a.Spec.Image = "justatest"
-	a.Spec.Version = "latest"
-	a.Spec.Dex.Image = "testdex"
-	a.Spec.Dex.Version = "v0.0.1"
-	assert.NoError(t, r.reconcileDexDeployment(a))
-
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-dex-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-	want := corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: "static-files",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-		InitContainers: []corev1.Container{
-			{
-				Name:  "copyutil",
-				Image: "justatest:latest",
-				Command: []string{
-					"cp",
-					"-n",
-					"/usr/local/bin/argocd",
-					"/shared/argocd-dex",
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "static-files",
-						MountPath: "/shared",
-					},
-				},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		Containers: []corev1.Container{
-			{
-				Name:  "dex",
-				Image: "testdex:v0.0.1",
-				Command: []string{
-					"/shared/argocd-dex",
-					"rundex",
-				},
-				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/healthz/live",
-							Port: intstr.FromInt(5558),
-						},
-					},
-					InitialDelaySeconds: 60,
-					PeriodSeconds:       30,
-				},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "http",
-						ContainerPort: 5556,
-					},
-					{
-						Name:          "grpc",
-						ContainerPort: 5557,
-					},
-					{
-						Name:          "metrics",
-						ContainerPort: 5558,
-					},
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		ServiceAccountName: "argocd-argocd-dex-server",
-	}
-	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {

@@ -65,45 +65,6 @@ func newServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.Argo
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
-// reconcileDexService will ensure that the Service for Dex is present.
-func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
-	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if isDexDisabled() {
-			// Service exists but enabled flag has been set to false, delete the Service
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		return nil
-	}
-
-	if isDexDisabled() {
-		return nil // Dex is disabled, do nothing
-	}
-
-	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
-	}
-
-	svc.Spec.Ports = []corev1.ServicePort{
-		{
-			Name:       "http",
-			Port:       common.ArgoCDDefaultDexHTTPPort,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexHTTPPort),
-		}, {
-			Name:       "grpc",
-			Port:       common.ArgoCDDefaultDexGRPCPort,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(common.ArgoCDDefaultDexGRPCPort),
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), svc)
-}
-
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
@@ -451,12 +412,8 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileServices will ensure that all Services are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
-	err := r.reconcileDexService(cr)
-	if err != nil {
-		return err
-	}
 
-	err = r.reconcileGrafanaService(cr)
+	err := r.reconcileGrafanaService(cr)
 	if err != nil {
 		return err
 	}

@@ -73,33 +73,6 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].ObjectMeta.Namespace)
 }
 
-func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	rules := policyRuleForDexServer()
-	role := newRole(common.ArgoCDDexServerComponent, rules, a)
-
-	// Dex is enabled
-	_, err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
-	assert.NoError(t, err)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
-	assert.Equal(t, rules, role.Rules)
-
-	// Disable Dex
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
-
-	_, err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
-	assert.NoError(t, err)
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
-	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role).Error(), "not found")
-}
-
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()

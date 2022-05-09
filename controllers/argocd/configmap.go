@@ -19,13 +19,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -73,8 +74,12 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 
 func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
-	if len(cr.Spec.Dex.Config) > 0 {
+
+	// Allow override of config from CR
+	if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
 		config = cr.Spec.Dex.Config
+	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && len(cr.Spec.SSO.Dex.Config) > 0 {
+		config = cr.Spec.SSO.Dex.Config
 	}
 	return config
 }
@@ -320,7 +325,12 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if cr.Spec.SSO == nil {
+
+		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider`
+		// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
+		if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+			// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
+			(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
 			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 				return err
 			}
@@ -360,18 +370,26 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if !isDexDisabled() {
+	// create dex config if dex is enabled either through DISABLE_DEX or through `.spec.sso`
+
+	// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
+	if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+		// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
+		(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
+
 		dexConfig := getDexConfig(cr)
-		if cr.Spec.SSO == nil {
-			if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
-				cfg, err := r.getOpenShiftDexConfig(cr)
-				if err != nil {
-					return err
-				}
-				dexConfig = cfg
+
+		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
+		// openshift dex config
+		if dexConfig == "" && (!reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+			(cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth)) {
+			cfg, err := r.getOpenShiftDexConfig(cr)
+			if err != nil {
+				return err
 			}
-			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+			dexConfig = cfg
 		}
+		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
 	if cr.Spec.Banner != nil {
@@ -387,38 +405,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
-}
-
-// reconcileDexConfiguration will ensure that Dex is configured properly.
-func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
-	actual := cm.Data[common.ArgoCDKeyDexConfig]
-	desired := getDexConfig(cr)
-	if len(desired) <= 0 && cr.Spec.Dex.OpenShiftOAuth {
-		cfg, err := r.getOpenShiftDexConfig(cr)
-		if err != nil {
-			return err
-		}
-		desired = cfg
-	}
-
-	if actual != desired {
-		// Update ConfigMap with desired configuration.
-		cm.Data[common.ArgoCDKeyDexConfig] = desired
-		if err := r.Client.Update(context.TODO(), cm); err != nil {
-			return err
-		}
-
-		// Trigger rollout of Dex Deployment to pick up changes.
-		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
-			log.Info("unable to locate dex deployment")
-			return nil
-		}
-
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
-		return r.Client.Update(context.TODO(), deploy)
-	}
-	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {

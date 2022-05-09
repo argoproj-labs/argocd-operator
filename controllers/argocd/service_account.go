@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -24,16 +25,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
-
-// getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
-func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoprojv1a1.ArgoCD) string {
-	uri := r.getArgoServerURI(cr)
-	return uri + common.ArgoCDDefaultDexOAuthRedirectPath
-}
 
 // newServiceAccount returns a new ServiceAccount instance.
 func newServiceAccount(cr *argoprojv1a1.ArgoCD) *corev1.ServiceAccount {
@@ -84,40 +80,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 	return nil
 }
 
-// reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
-func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
-	if !cr.Spec.Dex.OpenShiftOAuth {
-		return nil // OpenShift OAuth not enabled, move along...
-	}
-
-	log.Info("oauth enabled, configuring dex service account")
-	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		return err
-	}
-
-	// Get the OAuth redirect URI that should be used.
-	uri := r.getDexOAuthRedirectURI(cr)
-	log.Info(fmt.Sprintf("URI: %s", uri))
-
-	// Get the current redirect URI
-	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
-	if found && currentURI == uri {
-		return nil // Redirect URI annotation found and correct, move along...
-	}
-
-	log.Info(fmt.Sprintf("current URI: %s is not correct, should be: %s", currentURI, uri))
-	if len(ann) <= 0 {
-		ann = make(map[string]string)
-	}
-
-	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
-	sa.ObjectMeta.Annotations = ann
-
-	return r.Client.Update(context.TODO(), sa)
-}
-
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var role *v1.ClusterRole
 	var err error
@@ -146,14 +108,33 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
+
+		if name == common.ArgoCDDexServerComponent &&
+			// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+			(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+				// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+				(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex))) {
+
 			return sa, nil // Dex is disabled, do nothing
 		}
 		exists = false
 	}
 	if exists {
-		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-			// Delete any existing Service Account created for Dex
+		if name == common.ArgoCDDexServerComponent &&
+			// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+			(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+				// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+				(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex))) {
+
+			// Don't delete dex sa if dex configuration is present in argocd-cm. This is done to prevent a breaking change to users
+			// who may be using dex without setting DISABLE_DEX in their env
+			if (!reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
+				log.Info("Could not delete dex serviceaccount due to existing dex configuration in argocd-cm configmap. Remove dexConfig to allow deletion of dex serviceaccount")
+				return sa, nil
+			}
+
+			// Delete any existing Service Account created for Dex since dex is disabled
+			log.Info("deleting the existing Dex service account because dex is not configured")
 			return sa, r.Client.Delete(context.TODO(), sa)
 		}
 		return sa, nil

@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -98,7 +99,13 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				continue // skip creating default role if custom cluster role is provided
 			}
 			roles = append(roles, role)
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
+
+			if name == common.ArgoCDDexServerComponent &&
+				// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+				(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+					// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+					(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex))) {
+
 				continue // Dex is disabled, do nothing
 			}
 
@@ -115,8 +122,22 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 
 		// Delete the existing default role if custom role is specified
-		// or if there is an existing Role created for Dex
-		if customRole != "" || (name == common.ArgoCDDexServerComponent && isDexDisabled()) {
+		// or if there is an existing Role created for Dex but dex is disabled or not configured
+		if customRole != "" ||
+			(name == common.ArgoCDDexServerComponent &&
+				// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
+				(isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+					// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
+					(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex)))) {
+
+			// Don't delete dex role if dex configuration is present in argocd-cm. This is done to prevent a breaking change to users
+			// who may be using dex without setting DISABLE_DEX in their env
+			if (!reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
+				log.Info("Could not delete dex role due to existing dex configuration in argocd-cm configmap. Remove dexConfig to allow deletion of dex role")
+				return roles, nil
+			}
+
+			log.Info("deleting the existing Dex role because dex is not configured")
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}
