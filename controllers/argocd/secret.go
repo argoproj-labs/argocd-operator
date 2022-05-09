@@ -545,7 +545,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) 
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	var tlsSecretObj corev1.Secret
 	var sha256sum string
 
@@ -585,10 +585,37 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD) error
 		}
 
 		// Trigger rollout of redis
-		redisDepl := newDeploymentWithSuffix("redis", "redis", cr)
-		err = r.triggerRollout(redisDepl, "redis.tls.cert.changed")
-		if err != nil {
-			return err
+		if cr.Spec.HA.Enabled {
+			err = r.recreateRedisHAConfigMap(cr, useTLSForRedis)
+			if err != nil {
+				return err
+			}
+			err = r.recreateRedisHAHealthConfigMap(cr, useTLSForRedis)
+			if err != nil {
+				return err
+			}
+			haProxyDepl := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+			err = r.triggerRollout(haProxyDepl, "redis.tls.cert.changed")
+			if err != nil {
+				return err
+			}
+			// If we use triggerRollout on the redis stateful set, kubernetes will attempt to restart the  pods
+			// one at a time, and the first one to restart (which will be using tls) will hang as it tries to
+			// communicate with the existing pods (which are not using tls) to establish which is the master.
+			// So instead we delete the stateful set, which will delete all the pods.
+			redisSts := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+			if argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
+				err = r.Client.Delete(context.TODO(), redisSts)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			redisDepl := newDeploymentWithSuffix("redis", "redis", cr)
+			err = r.triggerRollout(redisDepl, "redis.tls.cert.changed")
+			if err != nil {
+				return err
+			}
 		}
 
 		// Trigger rollout of API server

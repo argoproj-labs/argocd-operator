@@ -18,8 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"reflect"
 	"strings"
@@ -225,55 +223,6 @@ func getArgoRedisArgs(useTLS bool) []string {
 	}
 
 	return args
-}
-
-func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
-	var tlsSecretObj corev1.Secret
-	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "error looking up redis tls secret")
-		}
-		return false
-	}
-
-	secretOwnerRefs := tlsSecretObj.GetOwnerReferences()
-	if len(secretOwnerRefs) > 0 {
-		// OpenShift service CA makes the owner reference for the TLS secret to the
-		// service, which in turn is owned by the controller. This method performs
-		// a lookup of the controller through the intermediate owning service.
-		for _, secretOwner := range secretOwnerRefs {
-			if isOwnerOfInterest(secretOwner) {
-				key := client.ObjectKey{Name: secretOwner.Name, Namespace: tlsSecretObj.GetNamespace()}
-				svc := &corev1.Service{}
-
-				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
-					return false
-				}
-
-				// If there's an object of kind ArgoCD in the owner's list,
-				// this will be our reconciled object.
-				serviceOwnerRefs := svc.GetOwnerReferences()
-				for _, serviceOwner := range serviceOwnerRefs {
-					if serviceOwner.Kind == "ArgoCD" {
-						return true
-					}
-				}
-			}
-		}
-	} else {
-		// For secrets without owner (i.e. manually created), we apply some
-		// heuristics. This may not be as accurate (e.g. if the user made a
-		// typo in the resource's name), but should be good enough for now.
-		if _, ok := tlsSecretObj.Annotations[common.AnnotationName]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
@@ -895,6 +844,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 				Name:      "shared-socket",
 				MountPath: "/run/haproxy",
 			},
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/redis/tls",
+			},
 		},
 	}}
 
@@ -944,6 +897,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
 			},
 		},
 	}

@@ -46,6 +46,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -461,9 +462,12 @@ func getRedisConfigPath() string {
 
 // getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisConf() string {
+func getRedisConf(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
-	conf, err := loadTemplateFile(path, map[string]string{})
+	params := map[string]string{
+		"UseTLS": strconv.FormatBool(useTLSForRedis),
+	}
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis configuration")
 		return ""
@@ -538,10 +542,11 @@ func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
 
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
+func getRedisInitScript(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": nameWithSuffix("redis-ha", cr),
+		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
 	script, err := loadTemplateFile(path, vars)
@@ -554,10 +559,11 @@ func getRedisInitScript(cr *argoprojv1a1.ArgoCD) string {
 
 // getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD) string {
+func getRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": nameWithSuffix("redis-ha", cr),
+		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
 	script, err := loadTemplateFile(path, vars)
@@ -610,9 +616,12 @@ func getRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequiremen
 
 // getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf() string {
+func getRedisSentinelConf(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
-	conf, err := loadTemplateFile(path, map[string]string{})
+	params := map[string]string{
+		"UseTLS": strconv.FormatBool(useTLSForRedis),
+	}
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis sentinel configuration")
 		return ""
@@ -622,9 +631,12 @@ func getRedisSentinelConf() string {
 
 // getRedisLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisLivenessScript() string {
+func getRedisLivenessScript(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/redis_liveness.sh.tpl", getRedisConfigPath())
-	conf, err := loadTemplateFile(path, map[string]string{})
+	params := map[string]string{
+		"UseTLS": strconv.FormatBool(useTLSForRedis),
+	}
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis liveness script")
 		return ""
@@ -634,9 +646,12 @@ func getRedisLivenessScript() string {
 
 // getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisReadinessScript() string {
+func getRedisReadinessScript(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/redis_readiness.sh.tpl", getRedisConfigPath())
-	conf, err := loadTemplateFile(path, map[string]string{})
+	params := map[string]string{
+		"UseTLS": strconv.FormatBool(useTLSForRedis),
+	}
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis readiness script")
 		return ""
@@ -646,9 +661,12 @@ func getRedisReadinessScript() string {
 
 // getSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getSentinelLivenessScript() string {
+func getSentinelLivenessScript(useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/sentinel_liveness.sh.tpl", getRedisConfigPath())
-	conf, err := loadTemplateFile(path, map[string]string{})
+	params := map[string]string{
+		"UseTLS": strconv.FormatBool(useTLSForRedis),
+	}
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load sentinel liveness script")
 		return ""
@@ -725,6 +743,55 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD)
 	return nil
 }
 
+func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
+	var tlsSecretObj corev1.Secret
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "error looking up redis tls secret")
+		}
+		return false
+	}
+
+	secretOwnerRefs := tlsSecretObj.GetOwnerReferences()
+	if len(secretOwnerRefs) > 0 {
+		// OpenShift service CA makes the owner reference for the TLS secret to the
+		// service, which in turn is owned by the controller. This method performs
+		// a lookup of the controller through the intermediate owning service.
+		for _, secretOwner := range secretOwnerRefs {
+			if isOwnerOfInterest(secretOwner) {
+				key := client.ObjectKey{Name: secretOwner.Name, Namespace: tlsSecretObj.GetNamespace()}
+				svc := &corev1.Service{}
+
+				// Get the owning object of the secret
+				err := r.Client.Get(context.TODO(), key, svc)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
+					return false
+				}
+
+				// If there's an object of kind ArgoCD in the owner's list,
+				// this will be our reconciled object.
+				serviceOwnerRefs := svc.GetOwnerReferences()
+				for _, serviceOwner := range serviceOwnerRefs {
+					if serviceOwner.Kind == "ArgoCD" {
+						return true
+					}
+				}
+			}
+		}
+	} else {
+		// For secrets without owner (i.e. manually created), we apply some
+		// heuristics. This may not be as accurate (e.g. if the user made a
+		// typo in the resource's name), but should be good enough for now.
+		if _, ok := tlsSecretObj.Annotations[common.AnnotationName]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling status")
@@ -757,8 +824,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	useTLSForRedis := r.redisShouldUseTLS(cr)
+
 	log.Info("reconciling config maps")
-	if err := r.reconcileConfigMaps(cr); err != nil {
+	if err := r.reconcileConfigMaps(cr, useTLSForRedis); err != nil {
 		return err
 	}
 
@@ -766,8 +835,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileServices(cr); err != nil {
 		return err
 	}
-
-	useTLSForRedis := r.redisShouldUseTLS(cr)
 
 	log.Info("reconciling deployments")
 	if err := r.reconcileDeployments(cr, useTLSForRedis); err != nil {
@@ -826,7 +893,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileRedisTLSSecret(cr); err != nil {
+	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
 		return err
 	}
 

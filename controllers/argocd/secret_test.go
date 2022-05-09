@@ -273,7 +273,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 
 		r := makeReconciler(t, argocd, objs...)
 
-		err := r.reconcileRedisTLSSecret(argocd)
+		err := r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
@@ -306,7 +306,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		}
 
 		// Second run - no change
-		err = r.reconcileRedisTLSSecret(argocd)
+		err = r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}
@@ -347,7 +347,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		shasum = fmt.Sprintf("%x", sha256.Sum256(sumOver))
 
 		// Second run - no change
-		err = r.reconcileRedisTLSSecret(argocd)
+		err = r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {
 			t.Errorf("Error should be nil, but is %v", err)
 		}

@@ -211,6 +211,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 					MountPath: "/health",
 					Name:      "health",
 				},
+				{
+					Name:      common.ArgoCDRedisServerTLSSecretName,
+					MountPath: "/app/config/redis/tls",
+				},
 			},
 		},
 		{
@@ -269,6 +273,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 					MountPath: "/health",
 					Name:      "health",
 				},
+				{
+					Name:      common.ArgoCDRedisServerTLSSecretName,
+					MountPath: "/app/config/redis/tls",
+				},
 			},
 		},
 	}
@@ -307,6 +315,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			{
 				MountPath: "/data",
 				Name:      "data",
+			},
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/redis/tls",
 			},
 		},
 	}}
@@ -353,6 +365,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
 			},
 		},
 	}
