@@ -45,12 +45,6 @@ const (
 	// ArgoCDDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default admin password.
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
-	// ArgoCDDefaultApplicationSetImage is the Argo CD Application Set container image to use when not specified.
-	ArgoCDDefaultApplicationSetImage = "quay.io/argoproj/argocd-applicationset"
-
-	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
-	ArgoCDDefaultApplicationSetVersion = "v0.4.1"
-
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
 
@@ -58,7 +52,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:dd738f234fcdb0aac8631a0fd1aafbbcd86f936480b06e8377b033ef7a764f71" // v2.3.3
+	ArgoCDDefaultArgoVersion = "sha256:d8f845a1263dd6d01ee3073a5ba168d7522648e3" // v2.4.0-rc1
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32

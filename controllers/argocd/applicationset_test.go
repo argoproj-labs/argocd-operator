@@ -25,7 +25,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,8 +38,8 @@ import (
 func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
 	repoMounts := repoServerDefaultVolumeMounts()
 	ignoredMounts := map[string]bool{
-		"plugins": true,
-		"tmp":     true,
+		"plugins":                true,
+		"argocd-repo-server-tls": true,
 	}
 	mounts := make([]corev1.VolumeMount, len(repoMounts)-len(ignoredMounts), len(repoMounts)-len(ignoredMounts))
 	j := 0
@@ -56,9 +55,9 @@ func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
 func applicationSetDefaultVolumes() []corev1.Volume {
 	repoVolumes := repoServerDefaultVolumes()
 	ignoredVolumes := map[string]bool{
-		"var-files": true,
-		"plugins":   true,
-		"tmp":       true,
+		"var-files":              true,
+		"plugins":                true,
+		"argocd-repo-server-tls": true,
 	}
 	volumes := make([]corev1.Volume, len(repoVolumes)-len(ignoredVolumes), len(repoVolumes)-len(ignoredVolumes))
 	j := 0
@@ -99,21 +98,7 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a), "--loglevel", "info"},
-		Env: []corev1.EnvVar{{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		}},
-		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "argocd-applicationset-controller",
-		VolumeMounts:    applicationSetDefaultVolumeMounts(),
-	}}
+	want := []corev1.Container{applicationSetContainer(a)}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -157,12 +142,9 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 			},
 		},
 		{
-			Name: "argocd-repo-server-tls",
+			Name: "tmp",
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -305,31 +287,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []corev1.Container{{
-		Command: []string{"applicationset-controller", "--argocd-repo-server", getRepoServerAddress(a), "--loglevel", "info"},
-		Env: []corev1.EnvVar{{
-			Name: "NAMESPACE",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "metadata.namespace",
-				},
-			},
-		}},
-		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "argocd-applicationset-controller",
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceMemory: resourcev1.MustParse("1024Mi"),
-				corev1.ResourceCPU:    resourcev1.MustParse("1000m"),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceMemory: resourcev1.MustParse("2048Mi"),
-				corev1.ResourceCPU:    resourcev1.MustParse("2000m"),
-			},
-		},
-		VolumeMounts: applicationSetDefaultVolumeMounts(),
-	}}
+	containerWant := []corev1.Container{applicationSetContainer(a)}
 
 	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
@@ -354,7 +312,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name:                   "unspecified fields should use default",
 			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
-			expectedContainerImage: argoutil.CombineImageTag(common.ArgoCDDefaultApplicationSetImage, common.ArgoCDDefaultApplicationSetVersion),
+			expectedContainerImage: argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		},
 		{
 			name: "ensure that sha hashes are formatted correctly",
@@ -375,7 +333,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name:                   "verify env var substitution overrides default",
 			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
-			envVars:                map[string]string{common.ArgoCDApplicationSetEnvName: "custom-env-image"},
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
 			expectedContainerImage: "custom-env-image",
 		},
 
@@ -385,7 +343,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 				Image:   "custom-image",
 				Version: "custom-version",
 			},
-			envVars:                map[string]string{common.ArgoCDApplicationSetEnvName: "custom-env-image"},
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
 			expectedContainerImage: "custom-image:custom-version",
 		},
 	}
@@ -395,6 +353,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			for testEnvName, testEnvValue := range test.envVars {
 				os.Setenv(testEnvName, testEnvValue)
+				t.Cleanup(func() { os.Unsetenv(testEnvName) })
 			}
 
 			a := makeTestArgoCD()
@@ -415,7 +374,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 				deployment))
 
 			specImage := deployment.Spec.Template.Spec.Containers[0].Image
-			assert.Equal(t, specImage, test.expectedContainerImage)
+			assert.Equal(t, test.expectedContainerImage, specImage)
 
 		})
 	}
