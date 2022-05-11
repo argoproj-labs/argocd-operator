@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -99,6 +100,82 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 		Namespace: testNamespace,
 	}, deployment); err != nil {
 		t.Fatalf("failed to find the redis deployment: %#v\n", err)
+	}
+}
+
+func TestReconcileArgoCD_Reconcile_withRemoveManagedByLabelOnArgocdDeletionNotSet(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+	r := makeTestReconciler(t, a)
+
+	nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: a.Namespace,
+	}}
+	err := r.Client.Create(context.TODO(), nsArgocd)
+	assert.NoError(t, err)
+
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: "newNamespaceTest",
+		Labels: map[string]string{
+			common.ArgoCDManagedByLabel: a.Namespace,
+		}},
+	}
+	err = r.Client.Create(context.TODO(), ns)
+	assert.NoError(t, err)
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// Check if the managed-by label still exists in the new namespace
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
+	assert.Equal(t, ns.Labels[common.ArgoCDManagedByLabel], a.Namespace)
+}
+
+func TestReconcileArgoCD_Reconcile_withRemoveManagedByLabelOnArgocdDeletionTrue(t *testing.T) {
+	restoreEnv(t)
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+	r := makeTestReconciler(t, a)
+
+	os.Setenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION", "true")
+
+	nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: a.Namespace,
+	}}
+	err := r.Client.Create(context.TODO(), nsArgocd)
+	assert.NoError(t, err)
+
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: "newNamespaceTest",
+		Labels: map[string]string{
+			common.ArgoCDManagedByLabel: a.Namespace,
+		}},
+	}
+	err = r.Client.Create(context.TODO(), ns)
+	assert.NoError(t, err)
+	
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// Check if the managed-by label gets removed from the new namespace
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
+	if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
+		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDManagedByLabel, ns.Name)
 	}
 }
 
