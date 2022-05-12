@@ -4005,6 +4005,14 @@ spec:
                       - name
                       type: object
                     type: array
+                  extraCommandArgs:
+                    description: Extra Command arguments that would append to the
+                      Argo CD server command. ExtraCommandArgs will not be added,
+                      if one of these commands is already part of the server command
+                      with same or different value.
+                    items:
+                      type: string
+                    type: array
                   grpc:
                     description: GRPC defines the state for the Argo CD Server GRPC
                       options.
@@ -4353,6 +4361,9 @@ spec:
                   Argo CD Dex component are in a Ready state. Failed: At least one
                   of the  Argo CD Dex component Pods had a failure. Unknown: For some
                   reason the state of the Argo CD Dex component could not be obtained.'
+                type: string
+              host:
+                description: Host is the hostname of the Ingress.
                 type: string
               phase:
                 description: 'Phase is a simple, high-level summary of where the ArgoCD

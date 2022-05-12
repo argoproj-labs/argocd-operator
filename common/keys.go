@@ -130,6 +130,9 @@ const (
 	// ArgoCDKeyResourceInclusions is the configuration key for resource inclusions.
 	ArgoCDKeyResourceInclusions = "resource.inclusions"
 
+	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
+	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
+
 	// ArgoCDRepoImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.
 	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
@@ -151,6 +154,12 @@ const (
 
 	// ArgoCDKeyStatusBadgeEnabled is the configuration key for enabling the status badge.
 	ArgoCDKeyStatusBadgeEnabled = "statusbadge.enabled"
+
+	// ArgoCDKeyBannerContent is the configuration key for a banner message content.
+	ArgoCDKeyBannerContent = "ui.bannercontent"
+
+	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
+	ArgoCDKeyBannerURL = "ui.bannerurl"
 
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"

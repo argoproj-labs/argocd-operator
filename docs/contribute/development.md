@@ -79,16 +79,7 @@ make test
 
 Run the e2e tests.
 
-``` bash
-# In a separate terminal, run the operator locally
-ARGOCD_CLUSTER_CONFIG_NAMESPACES=argocd-e2e-cluster-config make install run
-
-# In a separate terminal, run the tests
-hack/test.sh
-```
-
-Note that the e2e tests for Redis HA mode require a cluster with at least three worker nodes.  A local three-worker node
-cluster can be created using [k3d](https://k3d.io/)
+Refer E2E test [guide](../e2e-test-guide.md) for the setup and execution.
 
 ```bash
 k3d cluster create --servers 3

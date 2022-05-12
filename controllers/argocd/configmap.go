@@ -178,6 +178,19 @@ func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
 	return re
 }
 
+// getResourceTrackingMethod will return the resource tracking method for the given ArgoCD.
+func getResourceTrackingMethod(cr *argoprojv1a1.ArgoCD) string {
+	rtm := argoprojv1a1.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
+	if rtm == argoprojv1a1.ResourceTrackingMethodInvalid {
+		log.Info(fmt.Sprintf("Found '%s' as resource tracking method, which is invalid. Using default 'label' method.", cr.Spec.ResourceTrackingMethod))
+	} else if cr.Spec.ResourceTrackingMethod != "" {
+		log.Info(fmt.Sprintf("Found '%s' as tracking method", cr.Spec.ResourceTrackingMethod))
+	} else {
+		log.Info("Using default resource tracking method 'label'")
+	}
+	return rtm.String()
+}
+
 // getInitialRepositories will return the initial repositories for the given ArgoCD.
 func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
 	repos := common.ArgoCDDefaultRepositories
@@ -340,6 +353,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	}
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
+	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
 	cm.Data[common.ArgoCDKeyRepositories] = getInitialRepositories(cr)
 	cm.Data[common.ArgoCDKeyRepositoryCredentials] = getRepositoryCredentials(cr)
 	cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
@@ -357,6 +371,15 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 				dexConfig = cfg
 			}
 			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+		}
+	}
+
+	if cr.Spec.Banner != nil {
+		if cr.Spec.Banner.Content != "" {
+			cm.Data[common.ArgoCDKeyBannerContent] = cr.Spec.Banner.Content
+			if cr.Spec.Banner.URL != "" {
+				cm.Data[common.ArgoCDKeyBannerURL] = cr.Spec.Banner.URL
+			}
 		}
 	}
 
@@ -476,6 +499,11 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 		changed = true
 	}
 
+	if cm.Data[common.ArgoCDKeyResourceTrackingMethod] != cr.Spec.ResourceTrackingMethod {
+		cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
+		changed = true
+	}
+
 	uri := r.getArgoServerURI(cr)
 	if cm.Data[common.ArgoCDKeyServerURL] != uri {
 		cm.Data[common.ArgoCDKeyServerURL] = uri
@@ -495,6 +523,26 @@ func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, c
 	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
 		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
 		changed = true
+	}
+
+	if cr.Spec.Banner != nil {
+		if cm.Data[common.ArgoCDKeyBannerContent] != fmt.Sprint(cr.Spec.Banner.Content) {
+			cm.Data[common.ArgoCDKeyBannerContent] = fmt.Sprint(cr.Spec.Banner.Content)
+			changed = true
+		}
+		if cm.Data[common.ArgoCDKeyBannerURL] != fmt.Sprint(cr.Spec.Banner.URL) {
+			cm.Data[common.ArgoCDKeyBannerURL] = fmt.Sprint(cr.Spec.Banner.URL)
+			changed = true
+		}
+	} else {
+		if _, ok := cm.Data[common.ArgoCDKeyBannerContent]; ok {
+			delete(cm.Data, common.ArgoCDKeyBannerContent)
+			changed = true
+		}
+		if _, ok := cm.Data[common.ArgoCDKeyBannerURL]; ok {
+			delete(cm.Data, common.ArgoCDKeyBannerURL)
+			changed = true
+		}
 	}
 
 	if changed {
@@ -680,8 +728,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 		"haproxy.cfg":     getRedisHAProxyConfig(cr),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
 		"init.sh":         getRedisInitScript(cr),
-		"redis.conf":      getRedisConf(cr),
-		"sentinel.conf":   getRedisSentinelConf(cr),
+		"redis.conf":      getRedisConf(),
+		"sentinel.conf":   getRedisSentinelConf(),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

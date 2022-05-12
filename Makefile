@@ -98,9 +98,6 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run -ldflags=$(LD_FLAGS) ./main.go
 
-run-openshift: manifests generate fmt vet ## Run a controller from your host.
-	REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run -ldflags=$(LD_FLAGS) ./main.go ./openshift.go
-
 docker-build: test ## Build docker image with the manager.
 	docker build --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} .
 
@@ -122,6 +119,12 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
+##@ E2E
+
+e2e: ## Run operator e2e tests
+	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml 
+
+all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.

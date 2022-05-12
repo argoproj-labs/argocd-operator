@@ -124,7 +124,7 @@ metadata:
           }
         }
       ]
-    capabilities: Auto Pilot
+    capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
@@ -580,6 +580,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceTrackingMethod defines how Argo CD should track resources
+          that it manages
+        displayName: Resource Tracking Method'
+        path: resourceTrackingMethod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
         displayName: Autoscale Enabled'
@@ -898,6 +905,18 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - oauth.openshift.io
+          resources:
+          - oauthclients
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - rbac.authorization.k8s.io
           resources:
           - '*'
@@ -915,6 +934,14 @@ spec:
           resources:
           - routes
           - routes/custom-host
+          verbs:
+          - '*'
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - templateconfigs
+          - templateinstances
+          - templates
           verbs:
           - '*'
         - apiGroups:
@@ -1047,5 +1074,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.1.0
+  replaces: argocd-operator.v0.3.0
   version: 0.4.0

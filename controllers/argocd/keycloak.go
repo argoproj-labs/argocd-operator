@@ -46,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -65,10 +66,6 @@ const (
 	keycloakClient = "argocd"
 	// Keycloak realm for Argo CD.
 	keycloakRealm = "argocd"
-	// Secret to authenticate argocd client.
-	argocdClientSecret = "admin"
-	// Secret to authenticate oAuthClient.
-	oAuthClientSecret = "admin"
 	// Identifier for Keycloak.
 	defaultKeycloakIdentifier = "keycloak"
 	// Identifier for TemplateInstance and Template.
@@ -84,11 +81,12 @@ const (
 )
 
 var (
-	privilegedMode bool  = false
-	graceTime      int64 = 75
-	portTLS        int32 = 8443
-	httpPort       int32 = 8080
-	controllerRef  bool  = true
+	// client secret for keycloak, argocd and openshift-v4 IdP.
+	oAuthClientSecret       = generateRandomString(8)
+	graceTime         int64 = 75
+	portTLS           int32 = 8443
+	httpPort          int32 = 8080
+	controllerRef     bool  = true
 )
 
 // KeycloakPostData defines the values required to update Keycloak Realm.
@@ -109,6 +107,49 @@ type oidcConfig struct {
 	ClientID       string   `json:"clientID"`
 	ClientSecret   string   `json:"clientSecret"`
 	RequestedScope []string `json:"requestedScopes"`
+}
+
+// KeycloakIdentityProviderMapper defines IdentityProvider Mappers
+// issue: https://github.com/keycloak/keycloak-operator/issues/471
+type KeycloakIdentityProviderMapper struct {
+	// Name
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Identity Provider Alias.
+	// +optional
+	IdentityProviderAlias string `json:"identityProviderAlias,omitempty"`
+	// Identity Provider Mapper.
+	// +optional
+	IdentityProviderMapper string `json:"identityProviderMapper,omitempty"`
+	// Identity Provider Mapper config.
+	// +optional
+	Config map[string]string `json:"config,omitempty"`
+}
+
+// CustomKeycloakAPIRealm is an extention type of KeycloakAPIRealm as is it does not
+// support IdentityProvider Mappers
+// issue: https://github.com/keycloak/keycloak-operator/issues/471
+type CustomKeycloakAPIRealm struct {
+	// Realm name.
+	Realm string `json:"realm"`
+	// Realm enabled flag.
+	// +optional
+	Enabled bool `json:"enabled"`
+	// Require SSL
+	// +optional
+	SslRequired string `json:"sslRequired,omitempty"`
+	// A set of Keycloak Clients.
+	// +optional
+	Clients []*keycloakv1alpha1.KeycloakAPIClient `json:"clients,omitempty"`
+	// Client scopes
+	// +optional
+	ClientScopes []keycloakv1alpha1.KeycloakClientScope `json:"clientScopes,omitempty"`
+	// A set of Identity Providers.
+	// +optional
+	IdentityProviders []*keycloakv1alpha1.KeycloakIdentityProvider `json:"identityProviders,omitempty"`
+	// KeycloakIdentityProviderMapper defines IdentityProvider Mappers
+	// issue: https://github.com/keycloak/keycloak-operator/issues/471
+	IdentityProviderMappers []*KeycloakIdentityProviderMapper `json:"identityProviderMappers,omitempty"`
 }
 
 // getKeycloakContainerImage will return the container image for the Keycloak.
@@ -211,21 +252,23 @@ func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 }
 
 func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+	envVars := []corev1.EnvVar{
+		{Name: "SSO_HOSTNAME", Value: "${SSO_HOSTNAME}"},
+		{Name: "DB_MIN_POOL_SIZE", Value: "${DB_MIN_POOL_SIZE}"},
+		{Name: "DB_MAX_POOL_SIZE", Value: "${DB_MAX_POOL_SIZE}"},
+		{Name: "DB_TX_ISOLATION", Value: "${DB_TX_ISOLATION}"},
+		{Name: "OPENSHIFT_DNS_PING_SERVICE_NAME", Value: "${APPLICATION_NAME}-ping"},
+		{Name: "OPENSHIFT_DNS_PING_SERVICE_PORT", Value: "8888"},
+		{Name: "X509_CA_BUNDLE", Value: "/var/run/configmaps/service-ca/service-ca.crt /var/run/secrets/kubernetes.io/serviceaccount/*.crt"},
+		{Name: "SSO_ADMIN_USERNAME", Value: "${SSO_ADMIN_USERNAME}"},
+		{Name: "SSO_ADMIN_PASSWORD", Value: "${SSO_ADMIN_PASSWORD}"},
+		{Name: "SSO_REALM", Value: "${SSO_REALM}"},
+		{Name: "SSO_SERVICE_USERNAME", Value: "${SSO_SERVICE_USERNAME}"},
+		{Name: "SSO_SERVICE_PASSWORD", Value: "${SSO_SERVICE_PASSWORD}"},
+	}
+
 	return corev1.Container{
-		Env: []corev1.EnvVar{
-			{Name: "SSO_HOSTNAME", Value: "${SSO_HOSTNAME}"},
-			{Name: "DB_MIN_POOL_SIZE", Value: "${DB_MIN_POOL_SIZE}"},
-			{Name: "DB_MAX_POOL_SIZE", Value: "${DB_MAX_POOL_SIZE}"},
-			{Name: "DB_TX_ISOLATION", Value: "${DB_TX_ISOLATION}"},
-			{Name: "OPENSHIFT_DNS_PING_SERVICE_NAME", Value: "${APPLICATION_NAME}-ping"},
-			{Name: "OPENSHIFT_DNS_PING_SERVICE_PORT", Value: "8888"},
-			{Name: "X509_CA_BUNDLE", Value: "/var/run/configmaps/service-ca/service-ca.crt /var/run/secrets/kubernetes.io/serviceaccount/*.crt"},
-			{Name: "SSO_ADMIN_USERNAME", Value: "${SSO_ADMIN_USERNAME}"},
-			{Name: "SSO_ADMIN_PASSWORD", Value: "${SSO_ADMIN_PASSWORD}"},
-			{Name: "SSO_REALM", Value: "${SSO_REALM}"},
-			{Name: "SSO_SERVICE_USERNAME", Value: "${SSO_SERVICE_USERNAME}"},
-			{Name: "SSO_SERVICE_PASSWORD", Value: "${SSO_SERVICE_PASSWORD}"},
-		},
+		Env:             proxyEnvVars(envVars...),
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
@@ -513,7 +556,7 @@ func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 	pathType := networkingv1.PathTypeImplementationSpecific
 
 	// annotations
-	atns := getDefaultIngressAnnotations(cr)
+	atns := getDefaultIngressAnnotations()
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
@@ -828,7 +871,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (
 // creates a keycloak realm configuration which when posted to keycloak using http client creates a keycloak realm.
 func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 
-	ks := &keycloakv1alpha1.KeycloakAPIRealm{
+	ks := &CustomKeycloakAPIRealm{
 		Realm:       keycloakRealm,
 		Enabled:     true,
 		SslRequired: "external",
@@ -839,7 +882,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				RootURL:                 cfg.ArgoCDURL,
 				AdminURL:                cfg.ArgoCDURL,
 				ClientAuthenticatorType: "client-secret",
-				Secret:                  argocdClientSecret,
+				Secret:                  oAuthClientSecret,
 				RedirectUris: []string{fmt.Sprintf("%s/%s",
 					cfg.ArgoCDURL, "auth/callback")},
 				WebOrigins: []string{cfg.ArgoCDURL},
@@ -862,13 +905,15 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 					{
 						Name:           "groups",
 						Protocol:       "openid-connect",
-						ProtocolMapper: "oidc-group-membership-mapper",
+						ProtocolMapper: "oidc-usermodel-attribute-mapper",
 						Config: map[string]string{
-							"full.path":            "false",
+							"aggregate.attrs":      "false",
+							"multivalued":          "true",
+							"userinfo.token.claim": "true",
+							"user.attribute":       "groups",
 							"id.token.claim":       "true",
 							"access.token.claim":   "true",
 							"claim.name":           "groups",
-							"userinfo.token.claim": "true",
 						},
 					},
 				},
@@ -892,22 +937,48 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 					},
 				},
 			},
+			{
+				Name:     "profile",
+				Protocol: "openid-connect",
+				Attributes: map[string]string{
+					"include.in.token.scope":    "true",
+					"display.on.consent.screen": "true",
+				},
+			},
 		},
 	}
 
 	// Add OpenShift-v4 as Identity Provider only for OpenShift environment.
 	// No Identity Provider is configured by default for non-openshift environments.
 	if IsTemplateAPIAvailable() {
+		baseURL := "https://kubernetes.default.svc.cluster.local"
+		if isProxyCluster() {
+			baseURL = getOpenShiftAPIURL()
+		}
+
 		ks.IdentityProviders = []*keycloakv1alpha1.KeycloakIdentityProvider{
 			{
 				Alias:       "openshift-v4",
 				DisplayName: "Login with OpenShift",
 				ProviderID:  "openshift-v4",
 				Config: map[string]string{
-					"baseUrl":      "https://kubernetes.default.svc.cluster.local",
+					"baseUrl":      baseURL,
 					"clientSecret": oAuthClientSecret,
 					"clientId":     getOAuthClient(cfg.ArgoNamespace),
 					"defaultScope": "user:full",
+					"syncMode":     "FORCE",
+				},
+			},
+		}
+		ks.IdentityProviderMappers = []*KeycloakIdentityProviderMapper{
+			{
+				Name:                   "groups",
+				IdentityProviderAlias:  "openshift-v4",
+				IdentityProviderMapper: "openshift-v4-user-attribute-mapper",
+				Config: map[string]string{
+					"syncMode":      "INHERIT",
+					"jsonField":     "groups",
+					"userAttribute": "groups",
 				},
 			},
 		}
@@ -965,7 +1036,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 		return err
 	}
 
-	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(argocdClientSecret)
+	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(oAuthClientSecret)
 	err = r.Client.Update(context.TODO(), argoCDSecret)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
@@ -1119,6 +1190,30 @@ func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	err = deleteOAuthClient(cr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Delete OpenShift OAuthClient
+func deleteOAuthClient(cr *argoprojv1a1.ArgoCD) error {
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
+	}
+
+	// We use the foreground propagation policy to ensure that the garbage
+	// collector removes all instantiated objects before the TemplateInstance
+	// itself disappears.
+	foreground := metav1.DeletePropagationForeground
+	deleteOptions := metav1.DeleteOptions{PropagationPolicy: &foreground}
+
 	// Delete OAuthClient created for keycloak.
 	oauth, err := oauthclient.NewForConfig(cfg)
 	if err != nil {
@@ -1130,9 +1225,17 @@ func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 		cr.Name, cr.Namespace))
 
 	oa := getOAuthClient(cr.Namespace)
-	err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
-	if err != nil {
-		return err
+
+	// TODO: Remove the oauth.OAuthClients().Get and proceed with delete once the issue is resolved.
+	// OAuthClient configuration does not get deleted from previous instances occasionally.
+	// It is safe to verify if OAuthClient exists and perform delete.
+	// https://github.com/openshift/client-go/issues/209
+	_, err = oauth.OAuthClients().Get(context.TODO(), oa, metav1.GetOptions{})
+	if err == nil {
+		err = oauth.OAuthClients().Delete(context.TODO(), oa, deleteOptions)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1222,6 +1325,20 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
+	} else {
+		// Handle Image upgrades
+		desiredImage := getKeycloakContainerImage(cr)
+		if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
+			existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				return r.Client.Update(context.TODO(), existingDC)
+			})
+
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
@@ -1248,9 +1365,26 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 			log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
 				cr.Name, cr.Namespace))
 
+			// TODO: Remove the deleteOAuthClient invocation once the issue is resolved.
+			// OAuthClient configuration does not get deleted from previous instances occasionally.
+			// It is safe to delete before updating the OIDC config.
+			// https://github.com/openshift/client-go/issues/209
+			err = deleteOAuthClient(cr)
+			if err != nil {
+				return err
+			}
+
 			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+			if err != nil {
+				return err
+			}
+
 			existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			err = r.Client.Update(context.TODO(), existingDC)
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				return r.Client.Update(context.TODO(), existingDC)
+			})
+
 			if err != nil {
 				return err
 			}
@@ -1288,6 +1422,20 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
+	} else {
+		// Handle Image upgrades
+		desiredImage := getKeycloakContainerImage(cr)
+		if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredImage {
+			existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredImage
+
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				return r.Client.Update(context.TODO(), existingDeployment)
+			})
+
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.

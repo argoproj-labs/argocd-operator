@@ -49,7 +49,7 @@ const (
 	ArgoCDDefaultApplicationSetImage = "quay.io/argoproj/argocd-applicationset"
 
 	// ArgoCDDefaultApplicationSetVersion is the Argo CD Application Set image tag to use when not specified.
-	ArgoCDDefaultApplicationSetVersion = "v0.2.0"
+	ArgoCDDefaultApplicationSetVersion = "v0.4.1"
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
 	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
@@ -58,7 +58,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:358c244c96313ca3bf9f588dc870d8123fc22ffa5c231c57da10f77b8d671c66" // v2.2.2
+	ArgoCDDefaultArgoVersion = "sha256:dd738f234fcdb0aac8631a0fd1aafbbcd86f936480b06e8377b033ef7a764f71" // v2.3.3
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -103,17 +103,20 @@ const (
 	// ArgoCDDefaultDexHTTPPort is the default HTTP listen port for Dex.
 	ArgoCDDefaultDexHTTPPort = 5556
 
+	// ArgoCDDefaultDexMetricsPort is the default Metrics listen port for Dex.
+	ArgoCDDefaultDexMetricsPort = 5558
+
 	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
 
 	// ArgoCDDefaultDexVersion is the Dex container image tag to use when not specified.
-	ArgoCDDefaultDexVersion = "sha256:6b3cc1c385fbc7542244614e4432f2546c619b7850d44d2379c598309a06bed8" // v2.30.0
+	ArgoCDDefaultDexVersion = "sha256:d5f887574312f606c61e7e188cfb11ddb33ff3bf4bd9f06e6b1458efca75f604" // v2.30.3
 
 	// ArgoCDDefaultExportJobImage is the export job container image to use when not specified.
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:9ad77892e9c83ccdc63e12344f68ce52ab06bbbff0a033beacdaf37077b76e28" // 0.2.0
+	ArgoCDDefaultExportJobVersion = "sha256:5d1ff8e42f6b8027cd0515e497e79149ae9f061c3db748dfd7748f7fac45de6b" // 0.3.0
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -173,15 +176,15 @@ const (
 	ArgoCDKeycloakImage = "quay.io/keycloak/keycloak"
 
 	// ArgoCDKeycloakVersion is the default Keycloak version used for the non-openshift platform when not specified.
-	// Version: 9.0.3
-	ArgoCDKeycloakVersion = "sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf"
+	// Version: 15.0.2
+	ArgoCDKeycloakVersion = "sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9"
 
 	// ArgoCDKeycloakImageForOpenShift is the default Keycloak Image used for the OpenShift platform when not specified.
-	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso74-openshift-rhel8"
+	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8"
 
 	// ArgoCDKeycloakVersionForOpenShift is the default Keycloak version used for the OpenShift platform when not specified.
-	// Version: 7.4.0
-	ArgoCDKeycloakVersionForOpenShift = "sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc"
+	// Version: 7.5.1
+	ArgoCDKeycloakVersionForOpenShift = "sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3"
 
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""

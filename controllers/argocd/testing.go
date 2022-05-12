@@ -53,7 +53,7 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
-	cl := fake.NewFakeClientWithScheme(s, objs...)
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,
@@ -75,7 +75,7 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForKeycloak(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
+func makeTestArgoCDForKeycloak() *argoprojv1alpha1.ArgoCD {
 	a := &argoprojv1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
@@ -91,9 +91,6 @@ func makeTestArgoCDForKeycloak(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 				},
 			},
 		},
-	}
-	for _, o := range opts {
-		o(a)
 	}
 	return a
 }
@@ -205,19 +202,12 @@ func makeTestPolicyRules() []v1.PolicyRule {
 	}
 }
 
-func assertNoError(t *testing.T, err error) {
-	t.Helper()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
 	return func(a *argoprojv1alpha1.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
 		assert.NoError(t, err)
-		cert, err := argoutil.NewSelfSignedCACertificate(key)
+		cert, err := argoutil.NewSelfSignedCACertificate(a.Name, key)
 		assert.NoError(t, err)
 		encoded := argoutil.EncodeCertificatePEM(cert)
 
@@ -300,4 +290,17 @@ func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
 	r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, *ns)
 
 	return r.Client.Create(context.TODO(), ns)
+}
+
+func merge(base map[string]string, diff map[string]string) map[string]string {
+	result := make(map[string]string)
+
+	for k, v := range base {
+		result[k] = v
+	}
+	for k, v := range diff {
+		result[k] = v
+	}
+
+	return result
 }

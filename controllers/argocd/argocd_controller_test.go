@@ -145,11 +145,11 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 		},
 		{
 			fmt.Sprintf("ClusterRoleBinding %s", common.ArgoCDApplicationControllerComponent),
-			newClusterRoleBinding(common.ArgoCDApplicationControllerComponent, a),
+			newClusterRoleBinding(a),
 		},
 		{
 			fmt.Sprintf("ClusterRoleBinding %s", common.ArgoCDServerComponent),
-			newClusterRoleBinding(common.ArgoCDServerComponent, a),
+			newClusterRoleBinding(a),
 		},
 	}
 

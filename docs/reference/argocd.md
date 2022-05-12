@@ -38,12 +38,14 @@ Name | Default | Description
 [**ResourceCustomizations**](#resource-customizations) | [Empty] | Customize resource behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
+[**ResourceTrackingMethod**](#resource-tracking-method) | `label` | The resource tracking method Argo CD should use.
 [**Server**](#server-options) | [Object] | Argo CD Server configuration options.
 [**SSO**](#single-sign-on-options) | [Object] | Single sign-on options.
 [**StatusBadgeEnabled**](#status-badge-enabled) | `true` | Enable application status badge feature.
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
 [**Version**](#version) | v2.2.2 (SHA) | The tag to use with the container image for all Argo CD components.
+[**Banner**](#banner) | [Object] | Add a UI banner message.
 
 ## Application Instance Label Key
 
@@ -963,6 +965,37 @@ spec:
       - https://192.168.0.20
 ```
 
+## Resource Tracking Method
+
+You can configure which 
+[resource tracking method](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/#choosing-a-tracking-method)
+Argo CD should use to keep track of the resources it manages.
+
+Valid values are:
+
+* `label` - Track resources using a label
+* `annotation` - Track resources using an annotation
+* `annotation+label` - Track resources using both, an annotation and a label
+
+The default is to use `label` as tracking method.
+
+When this value is changed, existing managed resources will re-sync to apply the new tracking method.
+
+### Resource Tracking Method
+
+The following example sets the resource tracking method to `annotation+label`
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: resource-tracking-method
+spec:
+  resourceTrackingMethod: annotation+label
+```
+
 ## Server Options
 
 The following properties are available for configuring the Argo CD Server component.
@@ -970,6 +1003,7 @@ The following properties are available for configuring the Argo CD Server compon
 Name | Default | Description
 --- | --- | ---
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+[ExtraCommandArgs](#server-command-arguments) | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
 [Ingress](#server-ingress-options) | [Object] | Ingress configuration for the Argo CD Server component.
@@ -990,6 +1024,32 @@ Name | Default | Description
 --- | --- | ---
 Enabled | false | Toggle Autoscaling support globally for the Argo CD server component.
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
+
+### Server Command Arguments
+
+Allows a user to pass arguments to Argo CD Server command.
+
+Name | Default | Description
+--- | --- | ---
+ExtraCommandArgs | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
+
+**Note**: ExtraCommandArgs will not be added, if one of these commands is already part of the server command with same or different value.
+
+### Server Command Arguments Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: server
+spec:
+  server:
+    extraCommandArgs:
+      - --rootpath
+      - /argocd
+```
 
 ### Server GRPC Options
 
@@ -1058,6 +1118,9 @@ spec:
           kind: Deployment
           name: example-argocd-server
         targetCPUUtilizationPercentage: 50
+    extraCommandArgs:
+      - --rootpath
+      - /argocd
     grpc:
       host: example-argocd-grpc
       ingress: false
@@ -1104,11 +1167,11 @@ The following properties are available for configuring the Single sign-on compon
 
 Name | Default | Description
 --- | --- | ---
-Image | `registry.redhat.io/rh-sso-7/sso74-openshift-rhel8` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
+Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | `sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc` | The tag to use with the keycloak container image.
+Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
 
 ### Single sign-on Example
 
@@ -1217,4 +1280,29 @@ metadata:
     example: version
 spec:
   version: v1.7.7
+```
+
+## Banner
+
+The following properties are available for configuring a [UI banner message](https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners). 
+
+Name | Default | Description
+--- | --- | ---
+Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
+BAnner.URL.SecretName | [Empty] | The banner message link URL (optional).
+
+### Banner Example
+The following example enables a UI banner with message content and URL.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: version
+spec:
+  banner:
+    content: "Custom Styles - Banners"
+    url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
 ```

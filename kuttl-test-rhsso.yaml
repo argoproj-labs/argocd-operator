@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+- ./tests/e2e-rhsso/
+timeout: 180
+startKIND: false
+namespace: argocd-e2e-rhsso
+commands:
+- command: kubectl create ns argocd-e2e-rhsso
+  ignoreFailure: true
+

@@ -128,7 +128,7 @@ func (r *ReconcileArgoCD) reconcileStatusSSOConfig(cr *argoprojv1a1.ArgoCD) erro
 
 // reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
-	phase := "Unknown"
+	var phase string
 
 	if cr.Status.ApplicationController == "Running" && cr.Status.Redis == "Running" && cr.Status.Repo == "Running" && cr.Status.Server == "Running" {
 		phase = "Available"

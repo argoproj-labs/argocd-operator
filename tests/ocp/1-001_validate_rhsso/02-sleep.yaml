@@ -1,0 +1,5 @@
+# wait for operator to create a new keycloak realm and update OIDC configuration.
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 60

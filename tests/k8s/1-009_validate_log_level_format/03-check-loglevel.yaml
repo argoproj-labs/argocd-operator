@@ -1,0 +1,21 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 15
+- script: |
+    set -e
+    for wl in deployment/argocd-server deployment/argocd-repo-server statefulset/argocd-application-controller; do
+      wlCommand=$(kubectl get -n $NAMESPACE $wl -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
+      level="debug"
+      format="json"
+      if ! echo "$wlCommand" | grep -qPz -- "--loglevel\\n$level(\$|\\n)"; then
+        echo "logLevel was not set correctly for $wl"
+        echo "CWD: $wlCommand"
+        exit 1
+      fi
+      if ! echo "$wlCommand" | grep -qPz -- "--logformat\\n$format(\$|\\n)"; then
+        echo "logFormat was not set correctly for $wl"
+        echo "CWD: $wlCommand"
+        exit 1
+      fi
+    done

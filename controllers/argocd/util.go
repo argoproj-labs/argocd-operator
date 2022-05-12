@@ -17,6 +17,8 @@ package argocd
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -38,6 +40,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -183,18 +186,6 @@ func getArgoRepoResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	}
 
 	return resources
-}
-
-// getArgoRepoInitContainers will return the initContainers for the Argo CD Repo server container.
-func getArgoRepoInitContainers(cr *argoprojv1a1.ArgoCD) []corev1.Container {
-	initContainers := []corev1.Container{}
-
-	// Allow override of initContianers from CR
-	if cr.Spec.Repo.InitContainers != nil {
-		initContainers = cr.Spec.Repo.InitContainers
-	}
-
-	return initContainers
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
@@ -456,7 +447,7 @@ func getRedisConfigPath() string {
 
 // getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisConf(cr *argoprojv1a1.ArgoCD) string {
+func getRedisConf() string {
 	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
@@ -605,7 +596,7 @@ func getRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequiremen
 
 // getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf(cr *argoprojv1a1.ArgoCD) string {
+func getRedisSentinelConf() string {
 	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
 	conf, err := loadTemplateFile(path, map[string]string{})
 	if err != nil {
@@ -728,7 +719,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	log.Info("reconciling roles")
-	if _, err := r.reconcileRoles(cr); err != nil {
+	if err := r.reconcileRoles(cr); err != nil {
 		return err
 	}
 
@@ -1054,15 +1045,6 @@ func setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretM
 	return bldr
 }
 
-// withClusterLabels will add the given labels to the labels for the cluster and return the result.
-func withClusterLabels(cr *argoprojv1a1.ArgoCD, addLabels map[string]string) map[string]string {
-	labels := argoutil.LabelsForCluster(cr)
-	for key, val := range addLabels {
-		labels[key] = val
-	}
-	return labels
-}
-
 // boolPtr returns a pointer to val
 func boolPtr(val bool) *bool {
 	return &val
@@ -1129,7 +1111,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 					if err != nil {
 						return false
 					}
-					if err := deleteRBACsForNamespace(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 					} else {
 						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
@@ -1151,7 +1133,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 				if err != nil {
 					return false
 				}
-				if err := deleteRBACsForNamespace(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
 					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
 				} else {
 					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
@@ -1188,7 +1170,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
-func deleteRBACsForNamespace(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
+func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
 
 	// List all the roles created for ArgoCD using the label selector
@@ -1314,4 +1296,91 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
 	r.ManagedNamespaces = namespaces
 	return nil
+}
+
+func isProxyCluster() bool {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "failed to get k8s config")
+	}
+
+	// Initialize config client.
+	configClient, err := configv1client.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "failed to initialize openshift config client")
+		return false
+	}
+
+	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "failed to get proxy configuration")
+		return false
+	}
+
+	if proxy.Spec.HTTPSProxy != "" {
+		log.Info("proxy configuration detected")
+		return true
+	}
+
+	return false
+}
+
+func getOpenShiftAPIURL() string {
+	k8s, err := initK8sClient()
+	if err != nil {
+		log.Error(err, "failed to initialize k8s client")
+	}
+
+	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "")
+	}
+
+	var cf string
+	if v, ok := cm.Data["console-config.yaml"]; ok {
+		cf = v
+	}
+
+	data := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(cf), data)
+	if err != nil {
+		log.Error(err, "")
+	}
+
+	var apiURL interface{}
+	var out string
+	if c, ok := data["clusterInfo"]; ok {
+		ci, _ := c.(map[interface{}]interface{})
+
+		apiURL = ci["masterPublicURL"]
+		out = fmt.Sprintf("%v", apiURL)
+	}
+
+	return out
+}
+
+// generateRandomBytes returns a securely generated random bytes.
+func generateRandomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Error(err, "")
+	}
+	return b
+}
+
+// generateRandomString returns a securely generated random string.
+func generateRandomString(s int) string {
+	b := generateRandomBytes(s)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+// contains returns true if a string is part of the given slice.
+func contains(s []string, g string) bool {
+	for _, a := range s {
+		if a == g {
+			return true
+		}
+	}
+	return false
 }

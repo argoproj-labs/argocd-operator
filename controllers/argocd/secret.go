@@ -73,11 +73,6 @@ func nowBytes() []byte {
 	return []byte(time.Now().UTC().Format(time.RFC3339))
 }
 
-// nowDefault is a shortcut function to return the current date/time in the default format.
-func nowDefault() string {
-	return time.Now().UTC().Format("01022006-150406-MST")
-}
-
 // nowNano returns a string with the current UTC time as epoch in nanoseconds
 func nowNano() string {
 	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
@@ -92,7 +87,7 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 		return nil, err
 	}
 
-	cert, err := argoutil.NewSelfSignedCACertificate(key)
+	cert, err := argoutil.NewSelfSignedCACertificate(cr.Name, key)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +161,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
-		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
+		return r.reconcileExistingArgoSecret(secret, clusterSecret, tlsSecret)
 	}
 
 	// Secret not found, create it...
@@ -295,7 +290,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
-func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+func (r *ReconcileArgoCD) reconcileExistingArgoSecret(secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
 	if hasArgoAdminPasswordChanged(secret, clusterSecret) {
@@ -447,12 +442,12 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 	}
 	for _, s := range clusterSecrets.Items {
 		// check if cluster secret with default server address exists
-		// update the list of namespaces if value differs.
 		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
+			// if the cluster belongs to cluster config namespace,
+			// remove all namespaces from cluster secret,
+			// else update the list of namespaces if value differs.
 			if clusterConfigInstance {
-				if err := r.Client.Delete(context.TODO(), &s); err != nil {
-					return err
-				}
+				delete(s.Data, "namespaces")
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
@@ -462,8 +457,8 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 				}
 				sort.Strings(ns)
 				s.Data["namespaces"] = []byte(strings.Join(ns, ","))
-				return r.Client.Update(context.TODO(), &s)
 			}
+			return r.Client.Update(context.TODO(), &s)
 		}
 	}
 

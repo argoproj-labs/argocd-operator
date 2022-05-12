@@ -37,7 +37,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledRole.Rules = policyRuleForRedisHa(a)
+	reconciledRole.Rules = policyRuleForRedisHa()
 	assert.NoError(t, r.Client.Update(context.TODO(), reconciledRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
@@ -57,17 +57,16 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	// only 1 role for the Argo CD instance namespace will be created
 	expectedNumberOfRoles := 1
 	// check no dexServer role is created for the new namespace with managed-by label
-	workloadIdentifier := dexServer
+	workloadIdentifier := common.ArgoCDDexServerComponent
 	expectedRoleNamespace := a.Namespace
 	expectedDexServerRules := policyRuleForDexServer()
 	dexRoles, err := r.reconcileRole(workloadIdentifier, expectedDexServerRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
 	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
-	
 	// check no redisHa role is created for the new namespace with managed-by label
-	workloadIdentifier = redisHa
-	expectedRedisHaRules := policyRuleForRedisHa(a)
+	workloadIdentifier = common.ArgoCDRedisHAComponent
+	expectedRedisHaRules := policyRuleForRedisHa()
 	redisHaRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
@@ -81,10 +80,10 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	rules := policyRuleForDexServer()
-	role := newRole(dexServer, rules, a)
+	role := newRole(common.ArgoCDDexServerComponent, rules, a)
 
 	// Dex is enabled
-	_, err := r.reconcileRole(dexServer, rules, a)
+	_, err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
 	assert.NoError(t, err)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role))
 	assert.Equal(t, rules, role.Rules)
@@ -93,7 +92,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 	os.Setenv("DISABLE_DEX", "true")
 	defer os.Unsetenv("DISABLE_DEX")
 
-	_, err = r.reconcileRole(dexServer, rules, a)
+	_, err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
 	assert.NoError(t, err)
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: a.Namespace}, role), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
@@ -127,7 +126,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledClusterRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledClusterRole.Rules = policyRuleForRedisHa(a)
+	reconciledClusterRole.Rules = policyRuleForRedisHa()
 	assert.NoError(t, r.Client.Update(context.TODO(), reconciledClusterRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
@@ -154,7 +153,7 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	Register(testRoleHook)
 
-	roles, err := r.reconcileRole(applicationController, []v1.PolicyRule{}, a)
+	roles, err := r.reconcileRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, a)
 	role := roles[0]
 	assert.NoError(t, err)
 	assert.Equal(t, role.Rules, testRules())

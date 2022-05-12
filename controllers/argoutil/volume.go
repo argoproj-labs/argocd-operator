@@ -15,13 +15,9 @@
 package argoutil
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )
@@ -37,20 +33,6 @@ func DefaultPVCResources() corev1.ResourceRequirements {
 			"storage": capacity,
 		},
 	}
-}
-
-// FetchPersistentVolumes will return the list of PersistentVolumes that match the given labels.
-func FetchPersistentVolumes(cli client.Client, labelz map[string]string, volumes *[]corev1.PersistentVolume) error {
-	opts := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelz),
-	}
-
-	list := &corev1.PersistentVolumeList{}
-	if err := cli.List(context.TODO(), list, opts); err != nil {
-		return err
-	}
-	volumes = &list.Items
-	return nil
 }
 
 // NewPersistentVolumeClaim returns a new PersistentVolumeClaim instance for the ObjectMeta resource.

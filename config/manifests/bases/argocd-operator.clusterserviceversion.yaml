@@ -3,7 +3,7 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: '[]'
-    capabilities: Auto Pilot
+    capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
@@ -457,6 +457,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceTrackingMethod defines how Argo CD should track resources
+          that it manages
+        displayName: Resource Tracking Method'
+        path: resourceTrackingMethod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
         displayName: Autoscale Enabled'
@@ -660,5 +667,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.1.0
-  version: 0.2.0
+  replaces: argocd-operator.v0.3.0
+  version: 0.0.0

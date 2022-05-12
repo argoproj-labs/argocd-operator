@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"os"
 	"reflect"
 	"strings"
@@ -470,7 +471,7 @@ func TestDeleteRBACsForNamespace(t *testing.T) {
 	assert.NoError(t, err)
 
 	// run deleteRBACsForNamespace
-	assert.NoError(t, deleteRBACsForNamespace(a.Namespace, testNameSpace, testClient))
+	assert.NoError(t, deleteRBACsForNamespace(testNameSpace, testClient))
 
 	// role with the label should be deleted
 	_, err = testClient.RbacV1().Roles(testNameSpace).Get(context.TODO(), role.Name, metav1.GetOptions{})
@@ -626,11 +627,26 @@ func TestSetManagedNamespaces(t *testing.T) {
 	}
 }
 
+func TestGenerateRandomString(t *testing.T) {
+
+	// verify the creation of unique strings
+	s1 := generateRandomString(20)
+	s2 := generateRandomString(20)
+	assert.NotEqual(t, s1, s2)
+
+	// verify length
+	a, _ := b64.URLEncoding.DecodeString(s1)
+	assert.Len(t, a, 20)
+
+	b, _ := b64.URLEncoding.DecodeString(s2)
+	assert.Len(t, b, 20)
+}
+
 func generateEncodedPEM(t *testing.T, host string) []byte {
 	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 
-	cert, err := argoutil.NewSelfSignedCACertificate(key)
+	cert, err := argoutil.NewSelfSignedCACertificate("foo", key)
 	assert.NoError(t, err)
 
 	encoded := argoutil.EncodeCertificatePEM(cert)

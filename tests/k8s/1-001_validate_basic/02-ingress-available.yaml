@@ -1,0 +1,46 @@
+# Delete previous cluster
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1alpha1
+  kind: ArgoCD
+  name: example-argocd
+commands:
+  # Sleep to allow resources to be completely deleted
+  - command: sleep 30s
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: ingress
+spec:
+  server:
+    grpc:
+      ingress:
+        enabled: true
+    ingress:
+      enabled: true
+    insecure: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-argocd-server
+spec:
+  rules:
+  - host: argocd
+    http:
+      paths:
+      - backend:
+          service:
+            name: argocd-server
+            port:
+              name: http
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - argocd
+    secretName: argocd-secret

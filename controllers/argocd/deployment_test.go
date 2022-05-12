@@ -422,7 +422,84 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 		Namespace: testNamespace,
 	}, deployment)
 	assert.NoError(t, err)
-	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "test-init-container")
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[1].Name, "test-init-container")
+}
+
+func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	d := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+					InitContainers: []corev1.Container{},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, d)
+
+	err := r.reconcileRepoDeployment(a)
+	assert.NoError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
+}
+func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	d := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "unknown",
+							Command: []string{"testing-ic"},
+							Image:   "test-image-ic",
+						},
+					},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, a, d)
+
+	err := r.reconcileRepoDeployment(a)
+	assert.NoError(t, err)
+	deployment := &appsv1.Deployment{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-repo-server",
+		Namespace: testNamespace,
+	}, deployment)
+	assert.NoError(t, err)
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
@@ -642,6 +719,12 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 							Image:   "test-image",
 						},
 					},
+					InitContainers: []corev1.Container{
+						{
+							Command: []string{"testing"},
+							Image:   "test-image",
+						},
+					},
 				},
 			},
 		},
@@ -658,8 +741,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NoError(t, err)
 
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 5)
-	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 5)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 8)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 7)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -799,6 +882,16 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"/shared/argocd-dex",
 					"rundex",
 				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz/live",
+							Port: intstr.FromInt(5558),
+						},
+					},
+					InitialDelaySeconds: 60,
+					PeriodSeconds:       30,
+				},
 				Ports: []corev1.ContainerPort{
 					{
 						Name:          "http",
@@ -807,6 +900,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					{
 						Name:          "grpc",
 						ContainerPort: 5557,
+					},
+					{
+						Name:          "metrics",
+						ContainerPort: 5558,
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
@@ -877,6 +974,16 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"/shared/argocd-dex",
 					"rundex",
 				},
+				LivenessProbe: &corev1.Probe{
+					Handler: corev1.Handler{
+						HTTPGet: &corev1.HTTPGetAction{
+							Path: "/healthz/live",
+							Port: intstr.FromInt(5558),
+						},
+					},
+					InitialDelaySeconds: 60,
+					PeriodSeconds:       30,
+				},
 				Ports: []corev1.ContainerPort{
 					{
 						Name:          "http",
@@ -885,6 +992,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					{
 						Name:          "grpc",
 						ContainerPort: 5557,
+					},
+					{
+						Name:          "metrics",
+						ContainerPort: 5558,
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
@@ -964,6 +1075,109 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
+}
+
+func TestArgoCDServerDeploymentCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	baseCommand := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	// When a single command argument is passed
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+	}
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd := append(baseCommand, "--rootpath", "/argocd")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When multiple command arguments are passed
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd = append(cmd, "--foo", "bar", "test")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When one of the ExtraCommandArgs already exists in cmd with same or different value
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// Remove all the command arguments that were added.
+	a.Spec.Server.ExtraCommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
+
+func TestArgoCDServerCommand_isMergable(t *testing.T) {
+	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	extraCMDArgs := []string{"--extra-path", "/"}
+	assert.NoError(t, isMergable(extraCMDArgs, cmd))
+
+	cmd = []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	extraCMDArgs = []string{"--server", "bar.com"}
+	assert.Error(t, isMergable(extraCMDArgs, cmd))
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
@@ -1335,12 +1549,30 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "var-files",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "plugins",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -1354,7 +1586,9 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "tls-certs", MountPath: "/app/config/tls"},
 		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
+		{Name: "tmp", MountPath: "/tmp"},
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
+		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
 	}
 	return mounts
 }

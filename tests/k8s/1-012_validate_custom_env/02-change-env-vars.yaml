@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  server:
+    env:
+    - name: FOO
+      value: bar
+  repo:
+    env:
+    - name: FOO
+      value: bar
+  controller:
+    env:
+    - name: FOO
+      value: bar

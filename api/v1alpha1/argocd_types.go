@@ -379,6 +379,9 @@ type ArgoCDRepoSpec struct {
 
 	// InitContainers defines the list of initialization containers for the repo server deployment
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+
+	// SidecarContainers defines the list of sidecar containers for the repo server deployment
+	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -464,6 +467,11 @@ type ArgoCDServerSpec struct {
 
 	// Env lets you specify environment for API server pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Extra Command arguments that would append to the Argo CD server command.
+	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
+	// with same or different value.
+	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
@@ -613,6 +621,10 @@ type ArgoCDSpec struct {
 	// reconciliation process.
 	ResourceInclusions string `json:"resourceInclusions,omitempty"`
 
+	// ResourceTrackingMethod defines how Argo CD should track resources that it manages
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Tracking Method'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ResourceTrackingMethod string `json:"resourceTrackingMethod,omitempty"`
+
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
@@ -634,6 +646,9 @@ type ArgoCDSpec struct {
 	// Version is the tag to use with the ArgoCD container image for all ArgoCD components.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// Banner defines an additional banner to be displayed in Argo CD UI
+	Banner *Banner `json:"banner,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD
@@ -707,6 +722,15 @@ type ArgoCDStatus struct {
 	Host string `json:"host,omitempty"`
 }
 
+// Banner defines an additional banner message to be displayed in Argo CD UI
+// https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners
+type Banner struct {
+	// Content defines the banner message content to display
+	Content string `json:"content"`
+	// URL defines an optional URL to be used as banner message link
+	URL string `json:"url,omitempty"`
+}
+
 // ArgoCDTLSSpec defines the TLS options for ArgCD.
 type ArgoCDTLSSpec struct {
 	// CA defines the CA options.
@@ -756,4 +780,49 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	} else {
 		return common.ArgoCDDefaultApplicationInstanceLabelKey
 	}
+}
+
+// ResourceTrackingMethod represents the Argo CD resource tracking method to use
+type ResourceTrackingMethod int
+
+const (
+	ResourceTrackingMethodInvalid            ResourceTrackingMethod = -1
+	ResourceTrackingMethodLabel              ResourceTrackingMethod = 0
+	ResourceTrackingMethodAnnotation         ResourceTrackingMethod = 1
+	ResourceTrackingMethodAnnotationAndLabel ResourceTrackingMethod = 2
+)
+
+const (
+	stringResourceTrackingMethodLabel              string = "label"
+	stringResourceTrackingMethodAnnotation         string = "annotation"
+	stringResourceTrackingMethodAnnotationAndLabel string = "annotation+label"
+)
+
+// String returns the string representation for a ResourceTrackingMethod
+func (r ResourceTrackingMethod) String() string {
+	switch r {
+	case ResourceTrackingMethodLabel:
+		return stringResourceTrackingMethodLabel
+	case ResourceTrackingMethodAnnotation:
+		return stringResourceTrackingMethodAnnotation
+	case ResourceTrackingMethodAnnotationAndLabel:
+		return stringResourceTrackingMethodAnnotationAndLabel
+	}
+
+	// Default is to use label
+	return stringResourceTrackingMethodLabel
+}
+
+// ParseResourceTrackingMethod parses a string into a resource tracking method
+func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
+	switch name {
+	case stringResourceTrackingMethodLabel, "":
+		return ResourceTrackingMethodLabel
+	case stringResourceTrackingMethodAnnotation:
+		return ResourceTrackingMethodAnnotation
+	case stringResourceTrackingMethodAnnotationAndLabel:
+		return ResourceTrackingMethodAnnotationAndLabel
+	}
+
+	return ResourceTrackingMethodInvalid
 }
