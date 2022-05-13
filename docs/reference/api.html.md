@@ -1,4 +1,4 @@
-# API Documentaion
+# API Documentation
 
 <p>Packages:</p>
 <ul>
