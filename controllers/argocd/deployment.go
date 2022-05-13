@@ -1293,7 +1293,7 @@ func isDexDisabled() bool {
 	return false
 }
 
-func removeManagedByLabelOnArgoCDDeletion() bool {
+func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
 		return strings.ToLower(v) == "true"
 	}
