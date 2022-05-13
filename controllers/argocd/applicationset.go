@@ -36,7 +36,8 @@ import (
 func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, "applicationset-controller")
+	cmd = append(cmd, "entrypoint.sh")
+	cmd = append(cmd, "argocd-applicationset-controller")
 
 	cmd = append(cmd, "--argocd-repo-server")
 	cmd = append(cmd, getRepoServerAddress(cr))
@@ -122,58 +123,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 			},
 		},
 		{
-			Name: "argocd-repo-server-tls",
+			Name: "tmp",
 			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
 
-	// Global proxy env vars go first
-	appSetEnv := []corev1.EnvVar{{
-		Name: "NAMESPACE",
-		ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{
-				FieldPath: "metadata.namespace",
-			},
-		},
-	}}
-	// Environment specified in the CR take precedence over everything else
-	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
-
-	podSpec.Containers = []corev1.Container{{
-		Command:         getArgoApplicationSetCommand(cr),
-		Env:             appSetEnv,
-		Image:           getApplicationSetContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "argocd-applicationset-controller",
-		Resources:       getApplicationSetResources(cr),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			},
-			{
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "gpg-keys",
-				MountPath: "/app/config/gpg/source",
-			},
-			{
-				Name:      "gpg-keyring",
-				MountPath: "/app/config/gpg/keys",
-			},
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/reposerver/tls",
-			},
-		},
-	}}
+	podSpec.Containers = []corev1.Container{
+		applicationSetContainer(cr),
+	}
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
@@ -208,6 +167,71 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	}
 	return r.Client.Create(context.TODO(), deploy)
 
+}
+
+func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+	// Global proxy env vars go first
+	appSetEnv := []corev1.EnvVar{{
+		Name: "NAMESPACE",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.namespace",
+			},
+		},
+	}}
+	// Environment specified in the CR take precedence over everything else
+	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
+
+	return corev1.Container{
+		Command:         getArgoApplicationSetCommand(cr),
+		Env:             appSetEnv,
+		Image:           getApplicationSetContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "argocd-applicationset-controller",
+		Resources:       getApplicationSetResources(cr),
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "ssh-known-hosts",
+				MountPath: "/app/config/ssh",
+			},
+			{
+				Name:      "tls-certs",
+				MountPath: "/app/config/tls",
+			},
+			{
+				Name:      "gpg-keys",
+				MountPath: "/app/config/gpg/source",
+			},
+			{
+				Name:      "gpg-keyring",
+				MountPath: "/app/config/gpg/keys",
+			},
+			{
+				Name:      "tmp",
+				MountPath: "/tmp",
+			},
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: 7000,
+				Name:          "webhook",
+			},
+			{
+				ContainerPort: 8000,
+				Name:          "metrics",
+			},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			AllowPrivilegeEscalation: boolPtr(false),
+			ReadOnlyRootFilesystem:   boolPtr(true),
+			RunAsNonRoot:             boolPtr(true),
+		},
+	}
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
@@ -398,16 +422,16 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 
 	// If spec is empty, use the defaults
 	if img == "" {
-		img = common.ArgoCDDefaultApplicationSetImage
+		img = common.ArgoCDDefaultArgoImage
 		defaultImg = true
 	}
 	if tag == "" {
-		tag = common.ArgoCDDefaultApplicationSetVersion
+		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
 
 	// If an env var is specified then use that, but don't override the spec values (if they are present)
-	if e := os.Getenv(common.ArgoCDApplicationSetEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
