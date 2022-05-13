@@ -38,3 +38,19 @@ spec:
           - name: SERVER_CLUSTER_ROLE
             value: custom-server-role
 ```
+
+
+When an target Argo CD instance gets deleted, namespaces with the `argocd.argoproj.io/managed-by` label of that Argo CD instance's namespace will keep the label. Users can remove the `argocd.argoproj.io/managed-by` label value on Argo CD deletion by setting the environment variable `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` to `true` in the Subscription.
+
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: argocd-operator
+  namespace: argocd
+spec:
+  config:
+    env:
+    - name: REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION
+      value: "true"
+```
