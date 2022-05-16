@@ -704,6 +704,11 @@ spec:
                       by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
+                  replicas:
+                    description: Replicas defines the number of replicas to run for
+                      notifications-controller
+                    format: int32
+                    type: integer
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for Argo CD Notifications.

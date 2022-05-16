@@ -273,6 +273,9 @@ type ArgoCDList struct {
 // ArgoCDNotifications defines whether the Argo CD Notifications controller should be installed.
 type ArgoCDNotifications struct {
 
+	// Replicas defines the number of replicas to run for notifications-controller
+	Replicas *int32 `json:"replicas,omitempty"`
+
 	// Enabled defines whether argocd-notifications controller should be deployed or not
 	Enabled bool `json:"enabled"`
 
