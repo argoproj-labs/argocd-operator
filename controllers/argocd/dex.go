@@ -182,7 +182,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		Name:            "dex",
 		Env:             proxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz/live",
 					Port: intstr.FromInt(common.ArgoCDDefaultDexMetricsPort),

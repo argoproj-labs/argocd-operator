@@ -384,7 +384,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"rundex",
 				},
 				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/healthz/live",
 							Port: intstr.FromInt(5558),
@@ -457,7 +457,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"rundex",
 				},
 				LivenessProbe: &corev1.Probe{
-					Handler: corev1.Handler{
+					ProbeHandler: corev1.ProbeHandler{
 						HTTPGet: &corev1.HTTPGetAction{
 							Path: "/healthz/live",
 							Port: intstr.FromInt(5558),
