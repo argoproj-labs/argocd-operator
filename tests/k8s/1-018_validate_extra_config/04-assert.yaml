@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  admin.enabled: "true"
+  dex.config: |
+    connectors:
+      - type: github
+        id: github
+        name: github-using-first-class
+        config:
+          clientID: first-class
+          clientSecret: $dex.github.clientSecret
+          orgs:
+          - name: first-class

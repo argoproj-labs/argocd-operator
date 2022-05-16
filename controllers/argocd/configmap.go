@@ -75,7 +75,11 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
 	if len(cr.Spec.Dex.Config) > 0 {
-		config = cr.Spec.Dex.Config
+		if cr.Spec.ExtraConfig["dex.config"] != "" {
+			config = cr.Spec.ExtraConfig["dex.config"]
+		} else {
+			config = cr.Spec.Dex.Config
+		}
 	}
 	return config
 }
@@ -387,7 +391,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	existingCM := &corev1.ConfigMap{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
 		if cr.Spec.SSO == nil {
-			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
+			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
 		}
