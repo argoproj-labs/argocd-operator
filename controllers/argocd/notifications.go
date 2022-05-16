@@ -222,8 +222,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 			if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 				return err
 			}
-		}
-		if !reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
+		} else if !reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
 			existingRoleBinding.Subjects = desiredRoleBinding.Subjects
 			if err := controllerutil.SetControllerReference(cr, existingRoleBinding, r.Scheme); err != nil {
 				return err
@@ -374,16 +373,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 		if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 			existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.NodeSelector, desiredDeployment.Spec.Template.Spec.NodeSelector) {
-			existingDeployment.Spec.Template.Spec.NodeSelector = desiredDeployment.Spec.Template.Spec.NodeSelector
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Tolerations, desiredDeployment.Spec.Template.Spec.Tolerations) {
-			existingDeployment.Spec.Template.Spec.Tolerations = desiredDeployment.Spec.Template.Spec.Tolerations
 			deploymentChanged = true
 		}
 

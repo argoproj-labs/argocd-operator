@@ -282,10 +282,10 @@ type ArgoCDNotifications struct {
 	// Version is the Argo CD Notifications image tag. (optional)
 	Version string `json:"version,omitempty"`
 
-	// Resources defines the Compute Resources required by the container for ApplicationSet.
+	// Resources defines the Compute Resources required by the container for Argo CD Notifications.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
+	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 }
 
