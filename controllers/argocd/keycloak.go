@@ -273,7 +273,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
 			FailureThreshold: 3,
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
 						"/bin/bash",
@@ -293,7 +293,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 		},
 		ReadinessProbe: &corev1.Probe{
 			FailureThreshold: 10,
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
 						"/bin/bash",
@@ -667,7 +667,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 								{Name: "https", ContainerPort: portTLS},
 							},
 							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
+								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
 										Path: "/auth/realms/master",
 										Port: intstr.FromInt(int(httpPort)),
