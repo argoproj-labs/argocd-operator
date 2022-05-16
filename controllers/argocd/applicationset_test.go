@@ -38,8 +38,8 @@ import (
 func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
 	repoMounts := repoServerDefaultVolumeMounts()
 	ignoredMounts := map[string]bool{
-		"plugins":                true,
-		"argocd-repo-server-tls": true,
+		"plugins":                             true,
+		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
 	}
 	mounts := make([]corev1.VolumeMount, len(repoMounts)-len(ignoredMounts), len(repoMounts)-len(ignoredMounts))
@@ -56,16 +56,10 @@ func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
 func applicationSetDefaultVolumes() []corev1.Volume {
 	repoVolumes := repoServerDefaultVolumes()
 	ignoredVolumes := map[string]bool{
-<<<<<<< HEAD
-		"var-files":              true,
-		"plugins":                true,
-		"argocd-repo-server-tls": true,
-=======
 		"var-files":                           true,
 		"plugins":                             true,
-		"tmp":                                 true,
+		"argocd-repo-server-tls":              true,
 		common.ArgoCDRedisServerTLSSecretName: true,
->>>>>>> 40e37db (feat: secure communication with redis)
 	}
 	volumes := make([]corev1.Volume, len(repoVolumes)-len(ignoredVolumes), len(repoVolumes)-len(ignoredVolumes))
 	j := 0
