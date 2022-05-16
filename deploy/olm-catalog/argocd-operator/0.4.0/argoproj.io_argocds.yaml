@@ -699,12 +699,12 @@ spec:
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
-                      by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
+                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
-                      by the container for ApplicationSet.
+                      by the container for Argo CD Notifications.
                     properties:
                       limits:
                         additionalProperties:

@@ -102,6 +102,22 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
 		}
 		saExists = false
+
+		// SA doesn't exist and shouldn't, nothing to do here
+		if !cr.Spec.Notifications.Enabled {
+			return nil, nil
+		}
+
+		// SA doesn't exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+			return nil, err
+		}
+
+		log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
+		err := r.Client.Create(context.TODO(), sa)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if saExists {
@@ -110,23 +126,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 			log.Info(fmt.Sprintf("Deleting serviceaccount %s as notifications is disabled", sa.Name))
 			return nil, r.Client.Delete(context.TODO(), sa)
 		}
-		return sa, nil
-	}
-
-	// SA doesn't exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil, nil
-	}
-
-	// SA doesn't exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
-	err := r.Client.Create(context.TODO(), sa)
-	if err != nil {
-		return nil, err
 	}
 
 	return sa, nil
@@ -144,6 +143,22 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
 		}
 		roleExists = false
+
+		// role does not exist and shouldn't, nothing to do here
+		if !cr.Spec.Notifications.Enabled {
+			return nil, nil
+		}
+
+		// role does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredRole, r.Scheme); err != nil {
+			return nil, err
+		}
+
+		log.Info(fmt.Sprintf("Creating role %s", desiredRole.Name))
+		err := r.Client.Create(context.TODO(), desiredRole)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if roleExists {
@@ -161,22 +176,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 			}
 			return existingRole, r.Client.Update(context.TODO(), existingRole)
 		}
-	}
-
-	// role does not exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil, nil
-	}
-
-	// role does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredRole, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	log.Info(fmt.Sprintf("Creating role %s", desiredRole.Name))
-	err := r.Client.Create(context.TODO(), desiredRole)
-	if err != nil {
-		return nil, err
 	}
 
 	return desiredRole, nil
@@ -207,6 +206,19 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", desiredRoleBinding.Name, err)
 		}
 		roleBindingExists = false
+
+		// roleBinding does not exist and shouldn't, nothing to do here
+		if !cr.Spec.Notifications.Enabled {
+			return nil
+		}
+
+		// roleBinding does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredRoleBinding, r.Scheme); err != nil {
+			return err
+		}
+
+		log.Info(fmt.Sprintf("Creating role %s", desiredRoleBinding.Name))
+		return r.Client.Create(context.TODO(), desiredRoleBinding)
 	}
 
 	if roleBindingExists {
@@ -231,18 +243,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 		}
 	}
 
-	// roleBinding does not exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil
-	}
-
-	// roleBinding does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredRoleBinding, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info(fmt.Sprintf("Creating role %s", desiredRoleBinding.Name))
-	return r.Client.Create(context.TODO(), desiredRoleBinding)
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
@@ -318,6 +319,19 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 			return fmt.Errorf("failed to get the deployment associated with %s : %s", existingDeployment.Name, err)
 		}
 		deploymentExists = false
+
+		// deployment does not exist and shouldn't, nothing to do here
+		if !cr.Spec.Notifications.Enabled {
+			return nil
+		}
+
+		// deployment does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
+			return err
+		}
+
+		log.Info(fmt.Sprintf("Creating deployment %s", desiredDeployment.Name))
+		return r.Client.Create(context.TODO(), desiredDeployment)
 	}
 
 	if deploymentExists {
@@ -380,20 +394,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 			return r.Client.Update(context.TODO(), existingDeployment)
 		}
 	}
-
-	// deployment does not exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil
-	}
-
-	// deployment does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info(fmt.Sprintf("Creating deployment %s", desiredDeployment.Name))
-	return r.Client.Create(context.TODO(), desiredDeployment)
-
+	return nil
 }
 
 func getNotificationsCommand() []string {
