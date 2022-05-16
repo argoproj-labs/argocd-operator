@@ -40,7 +40,7 @@ spec:
 ```
 
 
-When an target Argo CD instance gets deleted, namespaces with the `argocd.argoproj.io/managed-by` label of that Argo CD instance's namespace will keep the label. Users can remove the `argocd.argoproj.io/managed-by` label value on Argo CD deletion by setting the environment variable `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` to `true` in the Subscription.
+When an Argo CD instance is deleted, namespaces managed by that instance (via the `argocd.argoproj.io/managed-by` label ) will retain the label by default. Users can change this behavior by setting the environment variable `REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION` to `true` in the Subscription.
 
 ```yaml
 apiVersion: operators.coreos.com/v1alpha1
