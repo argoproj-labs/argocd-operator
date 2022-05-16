@@ -150,7 +150,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		Resources:  corev1.ResourceRequirements{},
 		WorkingDir: "/app",
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),

@@ -310,7 +310,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 		Name:            common.ArgoCDNotificationsControllerComponent,
 		Resources:       getNotificationsResources(cr),
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),
