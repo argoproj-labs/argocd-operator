@@ -165,7 +165,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			Image:           getRedisHAContainerImage(cr),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: []string{
 							"sh",
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				Name:          "redis",
 			}},
 			ReadinessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: []string{
 							"sh",
@@ -223,7 +223,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 			Image:           getRedisHAContainerImage(cr),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			LivenessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: []string{
 							"sh",
@@ -244,7 +244,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				Name:          "sentinel",
 			}},
 			ReadinessProbe: &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					Exec: &corev1.ExecAction{
 						Command: []string{
 							"sh",
@@ -405,7 +405,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-application-controller",
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz",
 					Port: intstr.FromInt(8082),
@@ -421,7 +421,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 		},
 		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path: "/healthz",
 					Port: intstr.FromInt(8082),
