@@ -6,7 +6,7 @@ If you find a security related bug in Argo CD Operator, we kindly ask you for re
 disclosure and for giving us appropriate time to react, analyze and develop a
 fix to mitigate the found security vulnerability.
 
-Please report vulnerabilities by e-mail to the following address:
+Please report vulnerabilities via e-mail to the following address:
 
 * argocd-operator-security@redhat.com
 
