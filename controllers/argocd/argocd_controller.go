@@ -93,8 +93,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
-			if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
-				return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
+			if isRemoveManagedByLabelOnArgoCDDeletion() {
+				if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
+					return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
+				}
 			}
 
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
