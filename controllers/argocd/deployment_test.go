@@ -1059,7 +1059,6 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 			"argocd-repo-server",
 			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
 			"--redis-use-tls",
-			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
 			"--redis-insecure-skip-tls-verify",
 			"--loglevel", "info",
 			"--logformat", "text",
