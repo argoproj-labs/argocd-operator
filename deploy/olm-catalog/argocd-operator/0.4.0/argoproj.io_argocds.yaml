@@ -345,6 +345,16 @@ spec:
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean
+              extraConfig:
+                additionalProperties:
+                  type: string
+                description: "ExtraConfig can be used to add fields to Argo CD configmap
+                  that are not supported by Argo CD CRD. \n Note: ExtraConfig takes
+                  precedence over Argo CD CRD. For example, A user sets `argocd.Spec.DisableAdmin`
+                  = true and also `a.Spec.ExtraConfig[\"admin.enabled\"]` = true.
+                  In this case, operator updates Argo CD Configmap as follows -> argocd-cm.Data[\"admin.enabled\"]
+                  = true."
+                type: object
               gaAnonymizeUsers:
                 description: GAAnonymizeUsers toggles user IDs being hashed before
                   sending to google analytics.

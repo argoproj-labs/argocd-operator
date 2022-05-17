@@ -791,6 +791,13 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 	}
 	in.Controller.DeepCopyInto(&out.Controller)
 	in.Dex.DeepCopyInto(&out.Dex)
+	if in.ExtraConfig != nil {
+		in, out := &in.ExtraConfig, &out.ExtraConfig
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	in.Grafana.DeepCopyInto(&out.Grafana)
 	in.HA.DeepCopyInto(&out.HA)
 	if in.Import != nil {
