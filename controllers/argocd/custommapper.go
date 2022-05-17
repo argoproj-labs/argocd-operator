@@ -35,6 +35,8 @@ func (r *ReconcileArgoCD) clusterResourceMapper(o client.Object) []reconcile.Req
 	return result
 }
 
+// isSecretOfInterest returns true if the name of the given secret matches one of the
+// well-known tls secrets used to secure communication amongst the Argo CD components.
 func isSecretOfInterest(o client.Object) bool {
 	if strings.HasSuffix(o.GetName(), "-repo-server-tls") {
 		return true
@@ -45,6 +47,9 @@ func isSecretOfInterest(o client.Object) bool {
 	return false
 }
 
+// isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
+// may have been made the owner of the tls secret created by the OpenShift service CA, used
+// to secure communication amongst the Argo CD components.
 func isOwnerOfInterest(owner v1.OwnerReference) bool {
 	if owner.Kind != "Service" {
 		return false

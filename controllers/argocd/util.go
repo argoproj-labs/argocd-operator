@@ -113,9 +113,10 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis
 
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
-		cmd = append(cmd, "--redis-ca-certificate", "/app/config/controller/tls/redis/tls.crt")
 		if isRedisTLSVerificationDisabled(cr) {
 			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+		} else {
+			cmd = append(cmd, "--redis-ca-certificate", "/app/config/controller/tls/redis/tls.crt")
 		}
 	}
 
