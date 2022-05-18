@@ -1153,6 +1153,13 @@ func caseInsensitiveGetenv(s string) (string, string) {
 	return "", ""
 }
 
+func isRemoveManagedByLabelOnArgoCDDeletion() bool {
+	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
+		return strings.ToLower(v) == "true"
+	}
+	return false
+}
+
 // to update nodeSelector and tolerations in reconciler
 func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {

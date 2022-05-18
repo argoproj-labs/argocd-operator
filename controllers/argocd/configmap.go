@@ -76,7 +76,9 @@ func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
 
 	// Allow override of config from CR
-	if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
+	if cr.Spec.ExtraConfig["dex.config"] != "" {
+		config = cr.Spec.ExtraConfig["dex.config"]
+	} else if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
 		config = cr.Spec.Dex.Config
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && len(cr.Spec.SSO.Dex.Config) > 0 {
 		config = cr.Spec.SSO.Dex.Config
@@ -324,23 +326,8 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 
-		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider`
-		// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
-		if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-			// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
-			(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
-			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-				return err
-			}
-		}
-		return r.reconcileExistingArgoConfigMap(cm, cr)
-	}
-
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
+	cm.Data = make(map[string]string)
 
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
@@ -401,141 +388,37 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		}
 	}
 
+	if len(cr.Spec.ExtraConfig) > 0 {
+		for k, v := range cr.Spec.ExtraConfig {
+			cm.Data[k] = v
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), cm)
-}
 
-func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
-	changed := false
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
 
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
-
-	if cm.Data[common.ArgoCDKeyAdminEnabled] == fmt.Sprintf("%t", cr.Spec.DisableAdmin) {
-		cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] != cr.Spec.ApplicationInstanceLabelKey {
-		cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = cr.Spec.ApplicationInstanceLabelKey
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyConfigManagementPlugins] != cr.Spec.ConfigManagementPlugins {
-		cm.Data[common.ArgoCDKeyConfigManagementPlugins] = cr.Spec.ConfigManagementPlugins
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyGATrackingID] != cr.Spec.GATrackingID {
-		cm.Data[common.ArgoCDKeyGATrackingID] = cr.Spec.GATrackingID
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyGAAnonymizeUsers] != fmt.Sprint(cr.Spec.GAAnonymizeUsers) {
-		cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyHelpChatURL] != cr.Spec.HelpChatURL {
-		cm.Data[common.ArgoCDKeyHelpChatURL] = cr.Spec.HelpChatURL
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyHelpChatText] != cr.Spec.HelpChatText {
-		cm.Data[common.ArgoCDKeyHelpChatText] = cr.Spec.HelpChatText
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyKustomizeBuildOptions] != cr.Spec.KustomizeBuildOptions {
-		cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = cr.Spec.KustomizeBuildOptions
-		changed = true
-	}
-
-	if len(cr.Spec.KustomizeVersions) > 0 {
-		for _, kv := range cr.Spec.KustomizeVersions {
-			if cm.Data["kustomize.version"+kv.Version] != kv.Path {
-				cm.Data["kustomize.version."+kv.Version] = kv.Path
-				changed = true
+		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider`
+		// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
+		if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
+			// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
+			(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
+			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
+				return err
 			}
 		}
-	}
 
-	if cr.Spec.SSO == nil {
-		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
-			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
-			changed = true
+		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			return r.Client.Update(context.TODO(), existingCM)
 		}
+		return nil // Do nothing as there is no change in the configmap.
 	}
+	return r.Client.Create(context.TODO(), cm)
 
-	if cm.Data[common.ArgoCDKeyResourceCustomizations] != cr.Spec.ResourceCustomizations {
-		cm.Data[common.ArgoCDKeyResourceCustomizations] = cr.Spec.ResourceCustomizations
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceExclusions] != cr.Spec.ResourceExclusions {
-		cm.Data[common.ArgoCDKeyResourceExclusions] = cr.Spec.ResourceExclusions
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceInclusions] != cr.Spec.ResourceInclusions {
-		cm.Data[common.ArgoCDKeyResourceInclusions] = cr.Spec.ResourceInclusions
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceTrackingMethod] != cr.Spec.ResourceTrackingMethod {
-		cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
-		changed = true
-	}
-
-	uri := r.getArgoServerURI(cr)
-	if cm.Data[common.ArgoCDKeyServerURL] != uri {
-		cm.Data[common.ArgoCDKeyServerURL] = uri
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyStatusBadgeEnabled] != fmt.Sprint(cr.Spec.StatusBadgeEnabled) {
-		cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] != fmt.Sprint(cr.Spec.UsersAnonymousEnabled) {
-		cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
-		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
-		changed = true
-	}
-
-	if cr.Spec.Banner != nil {
-		if cm.Data[common.ArgoCDKeyBannerContent] != fmt.Sprint(cr.Spec.Banner.Content) {
-			cm.Data[common.ArgoCDKeyBannerContent] = fmt.Sprint(cr.Spec.Banner.Content)
-			changed = true
-		}
-		if cm.Data[common.ArgoCDKeyBannerURL] != fmt.Sprint(cr.Spec.Banner.URL) {
-			cm.Data[common.ArgoCDKeyBannerURL] = fmt.Sprint(cr.Spec.Banner.URL)
-			changed = true
-		}
-	} else {
-		if _, ok := cm.Data[common.ArgoCDKeyBannerContent]; ok {
-			delete(cm.Data, common.ArgoCDKeyBannerContent)
-			changed = true
-		}
-		if _, ok := cm.Data[common.ArgoCDKeyBannerURL]; ok {
-			delete(cm.Data, common.ArgoCDKeyBannerURL)
-			changed = true
-		}
-	}
-
-	if changed {
-		return r.Client.Update(context.TODO(), cm) // TODO: Reload Argo CD server after ConfigMap change (which properties)?
-	}
-
-	return nil // Nothing changed, no update needed...
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
