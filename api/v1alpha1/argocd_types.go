@@ -327,6 +327,14 @@ type ArgoCDRedisSpec struct {
 	// Version is the Redis container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// DisableTLSVerification defines whether redis server API should be accessed using strict TLS validation
+	DisableTLSVerification bool `json:"disableTLSVerification,omitempty"`
+
+	// AutoTLS specifies the method to use for automatic TLS configuration for the redis server
+	// The value specified here can currently be:
+	// - openshift - Use the OpenShift service CA to request TLS config
+	AutoTLS string `json:"autotls,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -726,6 +734,9 @@ type ArgoCDStatus struct {
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
 
+	// RedisTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-operator-redis-tls secret.
+	RedisTLSChecksum string `json:"redisTLSChecksum,omitempty"`
+
 	// Host is the hostname of the Ingress.
 	Host string `json:"host,omitempty"`
 }
@@ -777,6 +788,12 @@ func (s *ArgoCDServerSpec) WantsAutoTLS() bool {
 // WantsAutoTLS returns true if the repository server configuration has set
 // the autoTLS toggle to a supported provider.
 func (r *ArgoCDRepoSpec) WantsAutoTLS() bool {
+	return r.AutoTLS == "openshift"
+}
+
+// WantsAutoTLS returns true if the redis server configuration has set
+// the autoTLS toggle to a supported provider.
+func (r *ArgoCDRedisSpec) WantsAutoTLS() bool {
 	return r.AutoTLS == "openshift"
 }
 

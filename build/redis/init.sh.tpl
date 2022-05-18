@@ -1,24 +1,29 @@
 echo "$(date) Start..."
 HOSTNAME="$(cat /proc/sys/kernel/hostname)"
 INDEX="${HOSTNAME##*-}"
-SENTINEL_PORT=26379
+SENTINEL_PORT={{- if eq .UseTLS "false" -}}26379{{- else -}}0{{- end }}
 MASTER=''
 MASTER_GROUP="argocd"
 QUORUM="2"
 REDIS_CONF=/data/conf/redis.conf
+{{- if eq .UseTLS "false"}}
 REDIS_PORT=6379
 REDIS_TLS_PORT=
+{{- else}}
+REDIS_PORT=0
+REDIS_TLS_PORT=6379
+{{- end}}
 SENTINEL_CONF=/data/conf/sentinel.conf
-SENTINEL_TLS_PORT=
+SENTINEL_TLS_PORT={{- if eq .UseTLS "true" -}}26379{{- end }}
 SERVICE={{.ServiceName}}
-SENTINEL_TLS_REPLICATION_ENABLED=false
-REDIS_TLS_REPLICATION_ENABLED=false
+SENTINEL_TLS_REPLICATION_ENABLED={{.UseTLS}}
+REDIS_TLS_REPLICATION_ENABLED={{.UseTLS}}
 set -eu
 
 sentinel_get_master() {
 set +e
     if [ "$SENTINEL_PORT" -eq 0 ]; then
-        redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /tls-certs/ca.crt --cert /tls-certs/redis.crt --key /tls-certs/redis.key sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
+        redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /app/config/redis/tls/tls.crt sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
         grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
     else
         redis-cli -h "${SERVICE}" -p "${SENTINEL_PORT}"  sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
@@ -128,7 +133,7 @@ setup_defaults() {
 redis_ping() {
 set +e
     if [ "$REDIS_PORT" -eq 0 ]; then
-        redis-cli -h "${MASTER}" -p "${REDIS_TLS_PORT}"  --tls --cacert /tls-certs/ca.crt --cert /tls-certs/redis.crt --key /tls-certs/redis.key ping
+        redis-cli -h "${MASTER}" -p "${REDIS_TLS_PORT}"  --tls --cacert /app/config/redis/tls/tls.crt ping
     else
         redis-cli -h "${MASTER}" -p "${REDIS_PORT}" ping
     fi
@@ -165,7 +170,7 @@ find_master() {
         if [ "$SENTINEL_PORT" -eq 0 ]; then
             echo "  on sentinel (${SERVICE}:${SENTINEL_TLS_PORT}), sentinel grp (${MASTER_GROUP})"
             echo "  $(date).."
-            if redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /tls-certs/ca.crt --cert /tls-certs/redis.crt --key /tls-certs/redis.key sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE' ; then
+            if redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /app/config/redis/tls/tls.crt sentinel failover "${MASTER_GROUP}" | grep -q 'NOGOODSLAVE' ; then
                 echo "  $(date) Failover returned with 'NOGOODSLAVE'"
                 echo "Setting defaults for this pod.."
                 setup_defaults
