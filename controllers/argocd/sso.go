@@ -163,12 +163,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`, `.spec.sso.dex`
 
-			if !isDexDisabled() && isDisableDexSet {
-				// DISABLE_DEX is true when `.spec.sso.provider` is set to dex ==> conflict
-				err = errors.New("illegal sso configuration")
-				errMsg = "cannot set DISABLE_DEX to false when requested SSO provider is keycloak"
-				isError = true
-			} else if (cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
+			if (cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
 				(cr.Spec.SSO.Version != "" && cr.Spec.SSO.Keycloak.Version != "" && cr.Spec.SSO.Version != cr.Spec.SSO.Keycloak.Version) ||
 				(cr.Spec.SSO.VerifyTLS != nil && cr.Spec.SSO.Keycloak.VerifyTLS != nil && cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) ||
 				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources) {

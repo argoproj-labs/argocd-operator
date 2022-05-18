@@ -274,20 +274,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			Err:           errors.New("multiple sso configuration"),
 		},
 		{
-			name: "sso provider keycloak + `DISABLE_DEX`",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argov1alpha1.SSOProviderTypeKeycloak,
-				}
-			}),
-			setEnvVarFunc: func(s string) {
-				os.Setenv("DISABLE_DEX", s)
-			},
-			envVar:  "false",
-			wantErr: true,
-			Err:     errors.New("illegal sso configuration"),
-		},
-		{
 			name: "sso provider keycloak + `.spec.sso` + `.spec.sso.keycloak",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
