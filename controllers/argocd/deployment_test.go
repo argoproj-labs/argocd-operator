@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 			})
 			r := makeTestReconciler(t, a)
 
-			err := r.reconcileRepoDeployment(a)
+			err := r.reconcileRepoDeployment(a, false)
 			assert.NoError(t, err)
 
 			deployment := &appsv1.Deployment{}
@@ -116,7 +117,7 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 			})
 			r := makeTestReconciler(t, a)
 
-			err := r.reconcileServerDeployment(a)
+			err := r.reconcileServerDeployment(a, false)
 			assert.NoError(t, err)
 
 			deployment := &appsv1.Deployment{}
@@ -157,7 +158,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 
 		r := makeTestReconciler(t, lglv)
 
-		err := r.reconcileRepoDeployment(lglv)
+		err := r.reconcileRepoDeployment(lglv, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -191,7 +192,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 		a := makeTestArgoCD()
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -216,7 +217,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 		})
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -246,7 +247,7 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		a.Spec.Repo.ExecTimeout = &timeout
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileServerDeployment(a)
+		err := r.reconcileServerDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -280,7 +281,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		a.Spec.Repo.ExecTimeout = &timeout
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -302,7 +303,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		a.Spec.Repo.ExecTimeout = &timeout
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -328,7 +329,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -345,7 +346,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		a := makeTestArgoCD()
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 		deployment := &appsv1.Deployment{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -365,7 +366,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		a := makeTestArgoCD()
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 
 		deployment := &appsv1.Deployment{}
@@ -389,7 +390,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		})
 		r := makeTestReconciler(t, a)
 
-		err := r.reconcileRepoDeployment(a)
+		err := r.reconcileRepoDeployment(a, false)
 		assert.NoError(t, err)
 
 		deployment := &appsv1.Deployment{}
@@ -413,7 +414,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	err := r.reconcileRepoDeployment(a)
+	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
@@ -449,7 +450,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testin
 	}
 	r := makeTestReconciler(t, a, d)
 
-	err := r.reconcileRepoDeployment(a)
+	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -490,7 +491,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *test
 	}
 	r := makeTestReconciler(t, a, d)
 
-	err := r.reconcileRepoDeployment(a)
+	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -507,7 +508,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	err := r.reconcileRepoDeployment(a)
+	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
@@ -518,7 +519,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 	assert.NoError(t, err)
 
 	deployment.Spec.Template.Spec.Containers[0].Command[6] = "debug"
-	err = r.reconcileRepoDeployment(a)
+	err = r.reconcileRepoDeployment(a, false)
 
 	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
 }
@@ -538,7 +539,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	err := r.reconcileDeployments(a)
+	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
 	err = r.reconcileDexDeployment(a)
 	assert.NoError(t, err)
@@ -561,7 +562,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 		a.Spec.Grafana.Enabled = true
 	})
 	r := makeTestReconciler(t, a)
-	err := r.reconcileDeployments(a)
+	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
 
 	err = r.reconcileDexDeployment(a)
@@ -577,7 +578,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 
 	logf.SetLogger(ZapLogger(true))
 
-	err = r.reconcileDeployments(a)
+	err = r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
 	err = r.reconcileDexDeployment(a)
 	assert.NoError(t, err)
@@ -600,7 +601,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	err := r.reconcileDeployments(a)
+	err := r.reconcileDeployments(a, false)
 	assert.NoError(t, err)
 
 	assertDeploymentHasProxyVars(t, r.Client, "argocd-redis-ha-haproxy")
@@ -672,7 +673,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}
 	r := makeTestReconciler(t, a, d)
 
-	err := r.reconcileRepoDeployment(a)
+	err := r.reconcileRepoDeployment(a, false)
 	assert.NoError(t, err)
 
 	deployment := &appsv1.Deployment{}
@@ -682,8 +683,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 	}, deployment)
 	assert.NoError(t, err)
 
-	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 8)
-	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 7)
+	assert.Len(t, deployment.Spec.Template.Spec.Volumes, 9)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, 8)
 }
 
 func Test_proxyEnvVars(t *testing.T) {
@@ -731,7 +732,7 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 		}
 	}))
 	r := makeTestReconciler(t, a)
-	err := r.reconcileRepoDeployment(a) //can use other deployments as well
+	err := r.reconcileRepoDeployment(a, false) //can use other deployments as well
 	assert.NoError(t, err)
 	deployment := &appsv1.Deployment{}
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -772,11 +773,69 @@ func deploymentDefaultTolerations() []corev1.Toleration {
 	return toleration
 }
 
+func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
+	t.Run("with DisableTLSVerification = false (the default)", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD()
+		r := makeTestReconciler(t, a)
+		assert.NoError(t, r.reconcileRepoDeployment(a, true))
+
+		deployment := &appsv1.Deployment{}
+		assert.NoError(t, r.Client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: a.Namespace,
+			},
+			deployment))
+
+		wantCmd := []string{
+			"uid_entrypoint.sh",
+			"argocd-repo-server",
+			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis-use-tls",
+			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
+			"--loglevel", "info",
+			"--logformat", "text",
+		}
+		assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+	})
+
+	t.Run("with DisableTLSVerification = true", func(t *testing.T) {
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(cd *argoprojv1alpha1.ArgoCD) {
+			cd.Spec.Redis.DisableTLSVerification = true
+		})
+		r := makeTestReconciler(t, a)
+		assert.NoError(t, r.reconcileRepoDeployment(a, true))
+
+		deployment := &appsv1.Deployment{}
+		assert.NoError(t, r.Client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: a.Namespace,
+			},
+			deployment))
+
+		wantCmd := []string{
+			"uid_entrypoint.sh",
+			"argocd-repo-server",
+			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis-use-tls",
+			"--redis-insecure-skip-tls-verify",
+			"--loglevel", "info",
+			"--logformat", "text",
+		}
+		assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+	})
+}
+
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Client.Get(
@@ -839,6 +898,35 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
+
+	assert.NoError(t, r.reconcileServerDeployment(a, true))
+	deployment = &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+	wantCmd := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--redis-use-tls",
+		"--redis-ca-certificate",
+		"/app/config/server/tls/redis/tls.crt",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
 func TestArgoCDServerDeploymentCommand(t *testing.T) {
@@ -868,7 +956,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	}
 
 	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -890,7 +978,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"test",
 	}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -908,7 +996,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -922,7 +1010,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	// Remove all the command arguments that were added.
 	a.Spec.Server.ExtraCommandArgs = []string{}
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -951,7 +1039,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	})
 	r := makeTestReconciler(t, a)
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Client.Get(
@@ -1022,12 +1110,12 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	a = makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Server.Insecure = true
 	})
-	assert.NoError(t, r.reconcileServerDeployment(a))
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
 
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.Client.Get(
@@ -1093,6 +1181,48 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
+func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	want := []string{
+		"--save",
+		"",
+		"--appendonly", "no",
+	}
+
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	got := d.Spec.Template.Spec.Containers[0].Args
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+	}
+}
+
+func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	want := []string{
+		"--save", "",
+		"--appendonly", "no",
+		"--tls-port", "6379",
+		"--port", "0",
+		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
+		"--tls-key-file", "/app/config/redis/tls/tls.key",
+		"--tls-auth-clients", "no",
+	}
+
+	assert.NoError(t, r.reconcileRedisDeployment(cr, true))
+	d := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+	got := d.Spec.Template.Spec.Containers[0].Args
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
+	}
+}
+
 func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
@@ -1101,7 +1231,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	defer resetHooks()()
 	Register(testDeploymentHook)
 
-	assert.NoError(t, r.reconcileRedisDeployment(cr))
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 	d := &appsv1.Deployment{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
@@ -1115,7 +1245,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	defer resetHooks()()
 	Register(testErrorHook)
 
-	assert.Error(t, r.reconcileRedisDeployment(cr), "this is a test error")
+	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
 func restoreEnv(t *testing.T) {
@@ -1328,6 +1458,15 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
 			Name: "var-files",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
@@ -1352,6 +1491,7 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
 		{Name: "tmp", MountPath: "/tmp"},
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
+		{Name: common.ArgoCDRedisServerTLSSecretName, MountPath: "/app/config/reposerver/tls/redis"},
 		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
 	}
 	return mounts
@@ -1368,7 +1508,8 @@ func serverDefaultVolumes() []corev1.Volume {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			Name: "tls-certs",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -1377,11 +1518,21 @@ func serverDefaultVolumes() []corev1.Volume {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
 			},
@@ -1401,6 +1552,9 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		}, {
 			Name:      "argocd-repo-server-tls",
 			MountPath: "/app/config/server/tls",
+		}, {
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/server/tls/redis",
 		},
 	}
 	return mounts

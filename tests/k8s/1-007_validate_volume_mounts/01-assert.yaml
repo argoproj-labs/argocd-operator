@@ -24,6 +24,8 @@ spec:
           name: tls-certs
         - mountPath: /app/config/server/tls
           name: argocd-repo-server-tls
+        - mountPath: /app/config/server/tls/redis
+          name: argocd-operator-redis-tls
       volumes:
       - configMap:
           defaultMode: 420
@@ -38,6 +40,11 @@ spec:
           defaultMode: 420
           optional: true
           secretName: argocd-repo-server-tls
+      - name: argocd-operator-redis-tls
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: argocd-operator-redis-tls
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -60,6 +67,8 @@ spec:
           name: tmp
         - mountPath: /app/config/reposerver/tls
           name: argocd-repo-server-tls
+        - mountPath: /app/config/reposerver/tls/redis
+          name: argocd-operator-redis-tls
         - mountPath: /home/argocd/cmp-server/plugins
           name: plugins
       volumes:
@@ -84,6 +93,11 @@ spec:
           defaultMode: 420
           optional: true
           secretName: argocd-repo-server-tls
+      - name: argocd-operator-redis-tls
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: argocd-operator-redis-tls
       - emptyDir: {}
         name: var-files
       - emptyDir: {}
@@ -100,10 +114,16 @@ spec:
       - volumeMounts: 
         - mountPath: /app/config/controller/tls
           name: argocd-repo-server-tls
+        - mountPath: /app/config/controller/tls/redis
+          name: argocd-operator-redis-tls
       volumes:
       - name: argocd-repo-server-tls
         secret:
           defaultMode: 420
           optional: true
           secretName: argocd-repo-server-tls
-    
+      - name: argocd-operator-redis-tls
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: argocd-operator-redis-tls

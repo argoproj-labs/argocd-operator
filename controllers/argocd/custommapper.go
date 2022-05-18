@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -34,13 +35,40 @@ func (r *ReconcileArgoCD) clusterResourceMapper(o client.Object) []reconcile.Req
 	return result
 }
 
+// isSecretOfInterest returns true if the name of the given secret matches one of the
+// well-known tls secrets used to secure communication amongst the Argo CD components.
+func isSecretOfInterest(o client.Object) bool {
+	if strings.HasSuffix(o.GetName(), "-repo-server-tls") {
+		return true
+	}
+	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
+		return true
+	}
+	return false
+}
+
+// isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
+// may have been made the owner of the tls secret created by the OpenShift service CA, used
+// to secure communication amongst the Argo CD components.
+func isOwnerOfInterest(owner v1.OwnerReference) bool {
+	if owner.Kind != "Service" {
+		return false
+	}
+	if strings.HasSuffix(owner.Name, "-repo-server") {
+		return true
+	}
+	if strings.HasSuffix(owner.Name, "-redis") {
+		return true
+	}
+	return false
+}
+
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
 // ArgoCD object that we want to reconcile.
 func (r *ReconcileArgoCD) tlsSecretMapper(o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
-	// The secret must end with '-repo-server-tls'
-	if !strings.HasSuffix(o.GetName(), "-repo-server-tls") {
+	if !isSecretOfInterest(o) {
 		return result
 	}
 	namespacedArgoCDObject := client.ObjectKey{}
@@ -51,7 +79,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(o client.Object) []reconcile.Request {
 		// service, which in turn is owned by the controller. This method performs
 		// a lookup of the controller through the intermediate owning service.
 		for _, secretOwner := range secretOwnerRefs {
-			if secretOwner.Kind == "Service" && strings.HasSuffix(secretOwner.Name, "-repo-server") {
+			if isOwnerOfInterest(secretOwner) {
 				key := client.ObjectKey{Name: secretOwner.Name, Namespace: o.GetNamespace()}
 				svc := &corev1.Service{}
 

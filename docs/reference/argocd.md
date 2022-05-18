@@ -784,6 +784,8 @@ The following properties are available for configuring the Redis component.
 
 Name | Default | Description
 --- | --- | ---
+AutoTLS | "" | Provider to use for creating the redis server's TLS certificate (one of: `openshift`). Currently only available for OpenShift.
+DisableTLSVerification | false | defines whether the redis server should be accessed using strict TLS validation
 Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDIS_IMAGE` environment variable.
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
@@ -804,6 +806,8 @@ spec:
     image: redis
     resources: {}
     version: "5.0.3"
+    disableTLSVerification: false
+    autotls: ""
 ```
 
 ## Repo Options

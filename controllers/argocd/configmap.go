@@ -267,12 +267,12 @@ func newConfigMapWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.Conf
 }
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
-func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRedisConfiguration(cr); err != nil {
+	if err := r.reconcileRedisConfiguration(cr, useTLSForRedis); err != nil {
 		return err
 	}
 
@@ -541,18 +541,18 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 }
 
 // reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
+func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	if err := r.reconcileRedisHAConfigMap(cr, useTLSForRedis); err != nil {
 		return err
 	}
-	if err := r.reconcileRedisHAHealthConfigMap(cr); err != nil {
+	if err := r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis); err != nil {
 		return err
 	}
 	return nil
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -567,9 +567,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoC
 	}
 
 	cm.Data = map[string]string{
-		"redis_liveness.sh":    getRedisLivenessScript(),
-		"redis_readiness.sh":   getRedisReadinessScript(),
-		"sentinel_liveness.sh": getSentinelLivenessScript(),
+		"redis_liveness.sh":    getRedisLivenessScript(useTLSForRedis),
+		"redis_readiness.sh":   getRedisReadinessScript(useTLSForRedis),
+		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -579,7 +579,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoC
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -594,17 +594,37 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 	}
 
 	cm.Data = map[string]string{
-		"haproxy.cfg":     getRedisHAProxyConfig(cr),
+		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
-		"init.sh":         getRedisInitScript(cr),
-		"redis.conf":      getRedisConf(),
-		"sentinel.conf":   getRedisSentinelConf(),
+		"init.sh":         getRedisInitScript(cr, useTLSForRedis),
+		"redis.conf":      getRedisConf(useTLSForRedis),
+		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis)
 }
 
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
