@@ -260,6 +260,7 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	// For OpenShift Container Platform.
+	os.Setenv(common.ArgoCDKeycloakImageEnvName, "")
 	templateAPIFound = true
 	defer removeTemplateAPI()
 
@@ -268,10 +269,10 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 		Provider: "keycloak",
 	}
 	kc := getKeycloakContainer(a)
-	assert.Equal(t, kc.Image,
-		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
-	assert.Equal(t, kc.ImagePullPolicy, corev1.PullAlways)
-	assert.Equal(t, kc.Name, "${APPLICATION_NAME}")
+	assert.Equal(t,
+		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3", kc.Image)
+	assert.Equal(t, corev1.PullAlways, kc.ImagePullPolicy)
+	assert.Equal(t, "${APPLICATION_NAME}", kc.Name)
 }
 
 func TestKeycloakResources(t *testing.T) {

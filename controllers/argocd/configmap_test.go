@@ -297,18 +297,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
-	setEnvVarFunc := func(envVar string) {
-		os.Setenv("DISABLE_DEX", envVar)
-	}
-	updateCrSpecFunc := func(cr *argoprojv1alpha1.ArgoCD) {
-		cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-			Provider: v1alpha1.SSOProviderTypeDex,
-			Dex: &v1alpha1.ArgoCDDexSpec{
-				OpenShiftOAuth: true,
-			},
-		}
-	}
-
 	tests := []struct {
 		name             string
 		setEnvVarFunc    func(string)
@@ -317,18 +305,31 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 		restoreEnvFunc   func(t *testing.T)
 	}{
 		{
-			name:             "dex config using .spec.dex + disable_dex",
-			setEnvVarFunc:    setEnvVarFunc,
+			name: "dex config using .spec.dex + disable_dex",
+			setEnvVarFunc: func(envVar string) {
+				os.Setenv("DISABLE_DEX", envVar)
+			},
 			envVar:           "false",
 			updateCrSpecFunc: nil,
-			restoreEnvFunc:   restoreEnv,
+			restoreEnvFunc: func(*testing.T) {
+				os.Unsetenv("DISABLE_DEX")
+			},
 		},
 		{
-			name:             "dex config using .spec.sso.provider=dex + .spec.sso.dex",
-			setEnvVarFunc:    nil,
-			envVar:           "",
-			updateCrSpecFunc: updateCrSpecFunc,
-			restoreEnvFunc:   restoreEnv,
+			name:          "dex config using .spec.sso.provider=dex + .spec.sso.dex",
+			setEnvVarFunc: nil,
+			envVar:        "",
+			updateCrSpecFunc: func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: v1alpha1.SSOProviderTypeDex,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			},
+			restoreEnvFunc: func(*testing.T) {
+				os.Unsetenv("DISABLE_DEX")
+			},
 		},
 	}
 
