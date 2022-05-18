@@ -106,23 +106,23 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
 	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
-	
+
 	tests := []struct {
-		testName									string
-		nsName										string
-		isRemoveManagedByLabelOnArgoCDDeletionSet	bool
-		}{
-			{
-				testName: 									"Without REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION set",
-				nsName:										"newNamespaceTest1",
-				isRemoveManagedByLabelOnArgoCDDeletionSet: 	false,
-			},
-			{
-				testName: 									"With REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION set",
-				nsName:										"newNamespaceTest2",
-				isRemoveManagedByLabelOnArgoCDDeletionSet: 	true,
-			},
-		}
+		testName                                  string
+		nsName                                    string
+		isRemoveManagedByLabelOnArgoCDDeletionSet bool
+	}{
+		{
+			testName: "Without REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION set",
+			nsName:   "newNamespaceTest1",
+			isRemoveManagedByLabelOnArgoCDDeletionSet: false,
+		},
+		{
+			testName: "With REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION set",
+			nsName:   "newNamespaceTest2",
+			isRemoveManagedByLabelOnArgoCDDeletionSet: true,
+		},
+	}
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
@@ -135,10 +135,10 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			err := r.Client.Create(context.TODO(), nsArgocd)
 			assert.NoError(t, err)
 
-			if (test.isRemoveManagedByLabelOnArgoCDDeletionSet) {
+			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
 				os.Setenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION", "true")
 			}
-		
+
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: test.nsName,
 				Labels: map[string]string{
@@ -147,19 +147,19 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			}
 			err = r.Client.Create(context.TODO(), ns)
 			assert.NoError(t, err)
-			
+
 			req := reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      a.Name,
 					Namespace: a.Namespace,
 				},
 			}
-		
+
 			_, err = r.Reconcile(context.TODO(), req)
 			assert.NoError(t, err)
-		
+
 			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
-			if (test.isRemoveManagedByLabelOnArgoCDDeletionSet) {
+			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
 				// Check if the managed-by label gets removed from the new namespace
 				if _, ok := ns.Labels[common.ArgoCDManagedByLabel]; ok {
 					t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDManagedByLabel, ns.Name)
