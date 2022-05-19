@@ -98,13 +98,13 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 	}
 
 	log.Info("reconciling notifications role")
-	role, err := r.reconcileNotificationsRole(cr)
+	_, err := r.reconcileNotificationsRole(cr)
 	if err != nil {
 		return err
 	}
 
 	log.Info("reconciling notifications serviceaccount")
-	sa, err = r.reconcileNotificationsServiceAccount(cr)
+	_, err = r.reconcileNotificationsServiceAccount(cr)
 	if err != nil {
 		return err
 	}
