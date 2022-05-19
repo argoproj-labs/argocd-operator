@@ -370,6 +370,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 		deploymentChanged = true
 	}
 
+	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
+		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
+		deploymentChanged = true
+	}
+
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
 		deploymentChanged = true
