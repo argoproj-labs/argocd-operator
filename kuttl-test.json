@@ -1,0 +1,24 @@
+{
+   "name": "",
+   "tests": 1,
+   "failures": 0,
+   "time": "10.159",
+   "testsuite": [
+     {
+       "tests": 1,
+       "failures": 0,
+       "timestamp": "2022-05-19T15:35:46.172594441-04:00",
+       "time": "7.881",
+       "name": "./tests/k8s",
+       "testcase": [
+         {
+           "classname": "k8s",
+           "name": "1-018_validate_extra_config",
+           "timestamp": "2022-05-19T15:35:46.173886149-04:00",
+           "time": "7.880",
+           "assertions": 6
+         }
+       ]
+     }
+   ]
+ }

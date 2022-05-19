@@ -136,7 +136,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
 	if reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth ||
-		(cr.Spec.SSO == nil || reflect.DeepEqual(cr.Spec.SSO.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.SSO.Dex.OpenShiftOAuth) {
+		(cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		return nil // OpenShift OAuth not enabled, move along...
 	}
 

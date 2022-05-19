@@ -163,10 +163,10 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`, `.spec.sso.dex`
 
-			if (cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
+			if (cr.Spec.SSO.Keycloak != nil) && ((cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
 				(cr.Spec.SSO.Version != "" && cr.Spec.SSO.Keycloak.Version != "" && cr.Spec.SSO.Version != cr.Spec.SSO.Keycloak.Version) ||
 				(cr.Spec.SSO.VerifyTLS != nil && cr.Spec.SSO.Keycloak.VerifyTLS != nil && cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) ||
-				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources) {
+				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources)) {
 				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
 				// ==> conflict
 				err = errors.New("illegal sso configuration")
