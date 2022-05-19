@@ -270,6 +270,28 @@ type ArgoCDList struct {
 	Items           []ArgoCD `json:"items"`
 }
 
+// ArgoCDNotifications defines whether the Argo CD Notifications controller should be installed.
+type ArgoCDNotifications struct {
+
+	// Replicas defines the number of replicas to run for notifications-controller
+	Replicas *int32 `json:"replicas,omitempty"`
+
+	// Enabled defines whether argocd-notifications controller should be deployed or not
+	Enabled bool `json:"enabled"`
+
+	// Image is the Argo CD Notifications image (optional)
+	Image string `json:"image,omitempty"`
+
+	// Version is the Argo CD Notifications image tag. (optional)
+	Version string `json:"version,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Argo CD Notifications.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+}
+
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.
 type ArgoCDPrometheusSpec struct {
 	// Enabled will toggle Prometheus support globally for ArgoCD.
@@ -610,6 +632,9 @@ type ArgoCDSpec struct {
 	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
 	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`
 
+	// Notifications defines whether the Argo CD Notifications controller should be installed.
+	Notifications ArgoCDNotifications `json:"notifications,omitempty"`
+
 	// Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
 
@@ -687,6 +712,15 @@ type ArgoCDStatus struct {
 	// Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Dex",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Dex string `json:"dex,omitempty"`
+
+	// NotificationsController is a simple, high-level summary of where the Argo CD notifications controller component is in its lifecycle.
+	// There are five possible NotificationsController values:
+	// Pending: The Argo CD notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD notifications controller component are in a Ready state.
+	// Failed: At least one of the  Argo CD notifications controller component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD notifications controller component could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="NotificationsController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	NotificationsController string `json:"notificationsController,omitempty"`
 
 	// SSOConfig defines the status of SSO configuration.
 	// Success: Only one SSO provider is configured in CR.
