@@ -285,9 +285,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) erro
 // reconcileRedisService will ensure that the Service for Redis is present.
 func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis", "redis", cr)
+
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+			return r.Client.Update(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
+
+	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis", cr),

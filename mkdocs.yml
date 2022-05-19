@@ -28,6 +28,7 @@ nav:
   - Usage: 
     - Basics: usage/basics.md
     - Export: usage/export.md
+    - ExtraConfig: usage/extra-config.md
     - High Availability: usage/ha.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md

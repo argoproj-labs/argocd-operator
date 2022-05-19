@@ -427,7 +427,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		cr := makeTestArgoCD(tt.opts...)
-		cmd := getArgoApplicationControllerCommand(cr)
+		cmd := getArgoApplicationControllerCommand(cr, false)
 
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
@@ -625,6 +625,34 @@ func TestSetManagedNamespaces(t *testing.T) {
 			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
 		}
 	}
+}
+
+func TestGetRedisConf(t *testing.T) {
+	s1 := getRedisConf(true)
+	//assert.Equal(t, "", s1)
+
+	s1 = getRedisConf(false)
+	//assert.Equal(t, "", s1)
+
+	s1 = getRedisSentinelConf(true)
+	//assert.Equal(t, "", s1)
+
+	s1 = getRedisSentinelConf(false)
+	//assert.Equal(t, "", s1)
+
+	a := makeTestArgoCD()
+
+	s1 = getRedisInitScript(a, true)
+	//assert.Equal(t, "", s1)
+
+	s1 = getRedisLivenessScript(false)
+	//assert.Equal(t, "", s1)
+
+	s1 = getRedisReadinessScript(true)
+	//assert.Equal(t, "", s1)
+
+	s1 = getSentinelLivenessScript(true)
+	assert.Equal(t, "", s1)
 }
 
 func TestGenerateRandomString(t *testing.T) {

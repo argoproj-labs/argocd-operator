@@ -9,6 +9,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -43,9 +44,12 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	a.Spec.Notifications.Enabled = false
 	_, err = r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
-	role := &rbacv1.Role{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, role)
-	assertNotFound(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, testRole)
+	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
@@ -70,9 +74,13 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	a.Spec.Notifications.Enabled = false
 	_, err = r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
-	sa := &corev1.ServiceAccount{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, sa)
-	assertNotFound(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, testSa)
+	assert.True(t, errors.IsNotFound(err))
+
 }
 
 func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
@@ -101,11 +109,14 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
 
 	a.Spec.Notifications.Enabled = false
-	assert.NoError(t, r.reconcileNotificationsRoleBinding(a, role, sa))
-	roleBinding = &rbacv1.RoleBinding{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, roleBinding)
-	assertNotFound(t, err)
+	err = r.reconcileNotificationsRoleBinding(a, role, sa)
+	assert.NoError(t, err)
 
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, roleBinding)
+	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestReconcileNotifications_CreateDeployments(t *testing.T) {
@@ -201,11 +212,14 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	}
 
 	a.Spec.Notifications.Enabled = false
-	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
-	deployment = &appsv1.Deployment{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name + "-notifications-controller", Namespace: a.Namespace}, deployment)
-	assertNotFound(t, err)
+	err := r.reconcileNotificationsDeployment(a, &sa)
+	assert.NoError(t, err)
 
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, deployment)
+	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {

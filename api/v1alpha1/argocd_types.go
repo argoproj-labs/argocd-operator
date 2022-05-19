@@ -273,6 +273,9 @@ type ArgoCDList struct {
 // ArgoCDNotifications defines whether the Argo CD Notifications controller should be installed.
 type ArgoCDNotifications struct {
 
+	// Replicas defines the number of replicas to run for notifications-controller
+	Replicas *int32 `json:"replicas,omitempty"`
+
 	// Enabled defines whether argocd-notifications controller should be deployed or not
 	Enabled bool `json:"enabled"`
 
@@ -282,10 +285,10 @@ type ArgoCDNotifications struct {
 	// Version is the Argo CD Notifications image tag. (optional)
 	Version string `json:"version,omitempty"`
 
-	// Resources defines the Compute Resources required by the container for ApplicationSet.
+	// Resources defines the Compute Resources required by the container for Argo CD Notifications.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
-	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
+	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 }
 
@@ -346,6 +349,14 @@ type ArgoCDRedisSpec struct {
 	// Version is the Redis container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// DisableTLSVerification defines whether redis server API should be accessed using strict TLS validation
+	DisableTLSVerification bool `json:"disableTLSVerification,omitempty"`
+
+	// AutoTLS specifies the method to use for automatic TLS configuration for the redis server
+	// The value specified here can currently be:
+	// - openshift - Use the OpenShift service CA to request TLS config
+	AutoTLS string `json:"autotls,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -563,6 +574,14 @@ type ArgoCDSpec struct {
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
 
+	// ExtraConfig can be used to add fields to Argo CD configmap that are not supported by Argo CD CRD.
+	//
+	// Note: ExtraConfig takes precedence over Argo CD CRD.
+	// For example, A user sets `argocd.Spec.DisableAdmin` = true and also
+	// `a.Spec.ExtraConfig["admin.enabled"]` = true. In this case, operator updates
+	// Argo CD Configmap as follows -> argocd-cm.Data["admin.enabled"] = true.
+	ExtraConfig map[string]string `json:"extraConfig,omitempty"`
+
 	// GATrackingID is the google analytics tracking ID to use.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Google Analytics Tracking ID'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	GATrackingID string `json:"gaTrackingID,omitempty"`
@@ -749,6 +768,9 @@ type ArgoCDStatus struct {
 	// RepoTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-repo-server-tls secret.
 	RepoTLSChecksum string `json:"repoTLSChecksum,omitempty"`
 
+	// RedisTLSChecksum contains the SHA256 checksum of the latest known state of tls.crt and tls.key in the argocd-operator-redis-tls secret.
+	RedisTLSChecksum string `json:"redisTLSChecksum,omitempty"`
+
 	// Host is the hostname of the Ingress.
 	Host string `json:"host,omitempty"`
 }
@@ -800,6 +822,12 @@ func (s *ArgoCDServerSpec) WantsAutoTLS() bool {
 // WantsAutoTLS returns true if the repository server configuration has set
 // the autoTLS toggle to a supported provider.
 func (r *ArgoCDRepoSpec) WantsAutoTLS() bool {
+	return r.AutoTLS == "openshift"
+}
+
+// WantsAutoTLS returns true if the redis server configuration has set
+// the autoTLS toggle to a supported provider.
+func (r *ArgoCDRedisSpec) WantsAutoTLS() bool {
 	return r.AutoTLS == "openshift"
 }
 

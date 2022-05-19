@@ -232,10 +232,12 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 
 	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Running"
-	} else {
-		if cr.Spec.Notifications.Enabled {
-			status = "Unknown"
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
 		}
 	}
 

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -74,7 +75,11 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
 	if len(cr.Spec.Dex.Config) > 0 {
-		config = cr.Spec.Dex.Config
+		if cr.Spec.ExtraConfig["dex.config"] != "" {
+			config = cr.Spec.ExtraConfig["dex.config"]
+		} else {
+			config = cr.Spec.Dex.Config
+		}
 	}
 	return config
 }
@@ -260,12 +265,12 @@ func newConfigMapWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.Conf
 }
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
-func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileRedisConfiguration(cr); err != nil {
+	if err := r.reconcileRedisConfiguration(cr, useTLSForRedis); err != nil {
 		return err
 	}
 
@@ -319,18 +324,8 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if cr.Spec.SSO == nil {
-			if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-				return err
-			}
-		}
-		return r.reconcileExistingArgoConfigMap(cm, cr)
-	}
 
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
+	cm.Data = make(map[string]string)
 
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
@@ -383,10 +378,32 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		}
 	}
 
+	if len(cr.Spec.ExtraConfig) > 0 {
+		for k, v := range cr.Spec.ExtraConfig {
+			cm.Data[k] = v
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
+
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		if cr.Spec.SSO == nil {
+			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
+				return err
+			}
+		}
+
+		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			return r.Client.Update(context.TODO(), existingCM)
+		}
+		return nil // Do nothing as there is no change in the configmap.
+	}
 	return r.Client.Create(context.TODO(), cm)
+
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
@@ -419,137 +436,6 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
-}
-
-func (r *ReconcileArgoCD) reconcileExistingArgoConfigMap(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
-	changed := false
-
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
-
-	if cm.Data[common.ArgoCDKeyAdminEnabled] == fmt.Sprintf("%t", cr.Spec.DisableAdmin) {
-		cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] != cr.Spec.ApplicationInstanceLabelKey {
-		cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = cr.Spec.ApplicationInstanceLabelKey
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyConfigManagementPlugins] != cr.Spec.ConfigManagementPlugins {
-		cm.Data[common.ArgoCDKeyConfigManagementPlugins] = cr.Spec.ConfigManagementPlugins
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyGATrackingID] != cr.Spec.GATrackingID {
-		cm.Data[common.ArgoCDKeyGATrackingID] = cr.Spec.GATrackingID
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyGAAnonymizeUsers] != fmt.Sprint(cr.Spec.GAAnonymizeUsers) {
-		cm.Data[common.ArgoCDKeyGAAnonymizeUsers] = fmt.Sprint(cr.Spec.GAAnonymizeUsers)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyHelpChatURL] != cr.Spec.HelpChatURL {
-		cm.Data[common.ArgoCDKeyHelpChatURL] = cr.Spec.HelpChatURL
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyHelpChatText] != cr.Spec.HelpChatText {
-		cm.Data[common.ArgoCDKeyHelpChatText] = cr.Spec.HelpChatText
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyKustomizeBuildOptions] != cr.Spec.KustomizeBuildOptions {
-		cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = cr.Spec.KustomizeBuildOptions
-		changed = true
-	}
-
-	if len(cr.Spec.KustomizeVersions) > 0 {
-		for _, kv := range cr.Spec.KustomizeVersions {
-			if cm.Data["kustomize.version"+kv.Version] != kv.Path {
-				cm.Data["kustomize.version."+kv.Version] = kv.Path
-				changed = true
-			}
-		}
-	}
-
-	if cr.Spec.SSO == nil {
-		if cm.Data[common.ArgoCDKeyOIDCConfig] != cr.Spec.OIDCConfig {
-			cm.Data[common.ArgoCDKeyOIDCConfig] = cr.Spec.OIDCConfig
-			changed = true
-		}
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceCustomizations] != cr.Spec.ResourceCustomizations {
-		cm.Data[common.ArgoCDKeyResourceCustomizations] = cr.Spec.ResourceCustomizations
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceExclusions] != cr.Spec.ResourceExclusions {
-		cm.Data[common.ArgoCDKeyResourceExclusions] = cr.Spec.ResourceExclusions
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceInclusions] != cr.Spec.ResourceInclusions {
-		cm.Data[common.ArgoCDKeyResourceInclusions] = cr.Spec.ResourceInclusions
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyResourceTrackingMethod] != cr.Spec.ResourceTrackingMethod {
-		cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
-		changed = true
-	}
-
-	uri := r.getArgoServerURI(cr)
-	if cm.Data[common.ArgoCDKeyServerURL] != uri {
-		cm.Data[common.ArgoCDKeyServerURL] = uri
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyStatusBadgeEnabled] != fmt.Sprint(cr.Spec.StatusBadgeEnabled) {
-		cm.Data[common.ArgoCDKeyStatusBadgeEnabled] = fmt.Sprint(cr.Spec.StatusBadgeEnabled)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] != fmt.Sprint(cr.Spec.UsersAnonymousEnabled) {
-		cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
-		changed = true
-	}
-
-	if cm.Data[common.ArgoCDKeyRepositoryCredentials] != cr.Spec.RepositoryCredentials {
-		cm.Data[common.ArgoCDKeyRepositoryCredentials] = cr.Spec.RepositoryCredentials
-		changed = true
-	}
-
-	if cr.Spec.Banner != nil {
-		if cm.Data[common.ArgoCDKeyBannerContent] != fmt.Sprint(cr.Spec.Banner.Content) {
-			cm.Data[common.ArgoCDKeyBannerContent] = fmt.Sprint(cr.Spec.Banner.Content)
-			changed = true
-		}
-		if cm.Data[common.ArgoCDKeyBannerURL] != fmt.Sprint(cr.Spec.Banner.URL) {
-			cm.Data[common.ArgoCDKeyBannerURL] = fmt.Sprint(cr.Spec.Banner.URL)
-			changed = true
-		}
-	} else {
-		if _, ok := cm.Data[common.ArgoCDKeyBannerContent]; ok {
-			delete(cm.Data, common.ArgoCDKeyBannerContent)
-			changed = true
-		}
-		if _, ok := cm.Data[common.ArgoCDKeyBannerURL]; ok {
-			delete(cm.Data, common.ArgoCDKeyBannerURL)
-			changed = true
-		}
-	}
-
-	if changed {
-		return r.Client.Update(context.TODO(), cm) // TODO: Reload Argo CD server after ConfigMap change (which properties)?
-	}
-
-	return nil // Nothing changed, no update needed...
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
@@ -672,18 +558,18 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 }
 
 // reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD) error {
-	if err := r.reconcileRedisHAConfigMap(cr); err != nil {
+func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	if err := r.reconcileRedisHAConfigMap(cr, useTLSForRedis); err != nil {
 		return err
 	}
-	if err := r.reconcileRedisHAHealthConfigMap(cr); err != nil {
+	if err := r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis); err != nil {
 		return err
 	}
 	return nil
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -698,9 +584,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoC
 	}
 
 	cm.Data = map[string]string{
-		"redis_liveness.sh":    getRedisLivenessScript(),
-		"redis_readiness.sh":   getRedisReadinessScript(),
-		"sentinel_liveness.sh": getSentinelLivenessScript(),
+		"redis_liveness.sh":    getRedisLivenessScript(useTLSForRedis),
+		"redis_readiness.sh":   getRedisReadinessScript(useTLSForRedis),
+		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -710,7 +596,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoC
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -725,17 +611,37 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoprojv1a1.ArgoCD) err
 	}
 
 	cm.Data = map[string]string{
-		"haproxy.cfg":     getRedisHAProxyConfig(cr),
+		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
-		"init.sh":         getRedisInitScript(cr),
-		"redis.conf":      getRedisConf(),
-		"sentinel.conf":   getRedisSentinelConf(),
+		"init.sh":         getRedisInitScript(cr, useTLSForRedis),
+		"redis.conf":      getRedisConf(useTLSForRedis),
+		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
 	return r.Client.Create(context.TODO(), cm)
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis)
 }
 
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.

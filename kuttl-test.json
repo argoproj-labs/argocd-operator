@@ -1,0 +1,196 @@
+{
+   "name": "",
+   "tests": 17,
+   "failures": 15,
+   "time": "4784.627",
+   "testsuite": [
+     {
+       "tests": 17,
+       "failures": 15,
+       "timestamp": "2022-05-18T16:31:53.164808449-04:00",
+       "time": "4782.335",
+       "name": "./tests/k8s",
+       "testcase": [
+         {
+           "classname": "k8s",
+           "name": "1-0017_validate_cmp",
+           "timestamp": "2022-05-18T16:31:53.173331631-04:00",
+           "time": "45.177",
+           "assertions": 3
+         },
+         {
+           "classname": "k8s",
+           "name": "1-010_validate_resource_limit_changes",
+           "timestamp": "2022-05-18T16:32:38.351945545-04:00",
+           "time": "33.682",
+           "assertions": 1
+         },
+         {
+           "classname": "k8s",
+           "name": "1-018_validate_extra_config",
+           "timestamp": "2022-05-18T16:33:12.035051119-04:00",
+           "time": "305.333",
+           "assertions": 5,
+           "failure": {
+             "text": "resource ConfigMap:kuttl-test-stirring-sunbird/argocd-cm: .data.dex.config: key is missing from map",
+             "message": "failed in step 4-create-dex-without-extraconfig"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-016_validate_keycloak",
+           "timestamp": "2022-05-18T16:38:17.369170167-04:00",
+           "time": "181.380",
+           "assertions": 4,
+           "failure": {
+             "text": "ingresses.networking.k8s.io \"keycloak\" not found",
+             "message": "failed in step 1-argocd-keycloak"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-015_validate_simultaneous_sso_config",
+           "timestamp": "2022-05-18T16:41:18.749763622-04:00",
+           "time": "301.574",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-proven-molly/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-014_validate_parallelism_limit",
+           "timestamp": "2022-05-18T16:46:20.326581924-04:00",
+           "time": "301.824",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-selected-oarfish/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-013_validate_controller_sharding",
+           "timestamp": "2022-05-18T16:51:22.151839391-04:00",
+           "time": "301.400",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-devoted-opossum/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-012_validate_custom_env",
+           "timestamp": "2022-05-18T16:56:23.552900178-04:00",
+           "time": "301.620",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-becoming-tick/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-011_validate_repo_exec_timeout",
+           "timestamp": "2022-05-18T17:01:25.173664106-04:00",
+           "time": "301.165",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-settled-hornet/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-006_validate-managed-by-chain",
+           "timestamp": "2022-05-18T17:06:26.343496574-04:00",
+           "time": "721.024",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-included-beetle/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-009_validate_log_level_format",
+           "timestamp": "2022-05-18T17:18:27.368589398-04:00",
+           "time": "301.159",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:kuttl-test-noted-minnow/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-008_validate_rolebindings",
+           "timestamp": "2022-05-18T17:23:28.530331789-04:00",
+           "time": "120.991",
+           "assertions": 4,
+           "failure": {
+             "text": "rolebindings.rbac.authorization.k8s.io \"argocd-argocd-server\" not found",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-007_validate_volume_mounts",
+           "timestamp": "2022-05-18T17:25:29.522120566-04:00",
+           "time": "120.980",
+           "assertions": 4,
+           "failure": {
+             "text": "statefulsets.apps \"argocd-application-controller\" not found",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-004_validate_namespace_scoped_install",
+           "timestamp": "2022-05-18T17:27:30.502535987-04:00",
+           "time": "121.054",
+           "assertions": 10,
+           "failure": {
+             "text": "statefulsets.apps \"argocd-application-controller\" not found",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-005_validate-custom-argocd-namespace",
+           "timestamp": "2022-05-18T17:29:31.558705137-04:00",
+           "time": "301.480",
+           "assertions": 1,
+           "failure": {
+             "text": "resource ArgoCD:test-1-8-custom/argocd: .status: key is missing from map",
+             "message": "failed in step 1-install"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-002_validate_cluster_config",
+           "timestamp": "2022-05-18T17:34:33.040145583-04:00",
+           "time": "300.864",
+           "assertions": 3,
+           "failure": {
+             "text": "clusterrolebindings.rbac.authorization.k8s.io \"example-argocd-argocd-e2e-cluster-config-argocd-server\" not found",
+             "message": "failed in step 1-cluster-role-binding"
+           }
+         },
+         {
+           "classname": "k8s",
+           "name": "1-001_validate_basic",
+           "timestamp": "2022-05-18T17:39:33.906812136-04:00",
+           "time": "721.593",
+           "assertions": 14,
+           "failure": {
+             "text": "rolebindings.rbac.authorization.k8s.io \"example-argocd-argocd-dex-server\" not found",
+             "message": "failed in step 1-basic"
+           }
+         }
+       ]
+     }
+   ]
+ }

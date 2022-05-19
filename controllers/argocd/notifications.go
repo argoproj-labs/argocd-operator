@@ -38,11 +38,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.Argo
 		return err
 	}
 
-	log.Info("reconciling notifications deployment")
-	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
-		return err
-	}
-
 	log.Info("reconciling notifications configmap")
 	if err := r.reconcileNotificationsConfigMap(cr); err != nil {
 		return err
@@ -50,6 +45,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.Argo
 
 	log.Info("reconciling notifications secret")
 	if err := r.reconcileNotificationsSecret(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications deployment")
+	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
 		return err
 	}
 
@@ -82,20 +82,8 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 		return err
 	}
 
-	log.Info("reconciling notifications role binding")
-	if err := r.reconcileNotificationsRoleBinding(cr, role, sa); err != nil {
-		return err
-	}
-
-	log.Info("reconciling notifications serviceaccount")
-	_, err := r.reconcileNotificationsServiceAccount(cr)
-	if err != nil {
-		return err
-	}
-
-	log.Info("reconciling notifications role")
-	_, err = r.reconcileNotificationsRole(cr)
-	if err != nil {
+	log.Info("reconciling notifications secret")
+	if err := r.reconcileNotificationsSecret(cr); err != nil {
 		return err
 	}
 
@@ -104,8 +92,20 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 		return err
 	}
 
-	log.Info("reconciling notifications secret")
-	if err := r.reconcileNotificationsSecret(cr); err != nil {
+	log.Info("reconciling notifications role binding")
+	if err := r.reconcileNotificationsRoleBinding(cr, role, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications role")
+	role, err := r.reconcileNotificationsRole(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications serviceaccount")
+	sa, err = r.reconcileNotificationsServiceAccount(cr)
+	if err != nil {
 		return err
 	}
 
@@ -116,37 +116,32 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
 
-	saExists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
 		}
-		saExists = false
-	}
 
-	if saExists {
-		// SA exists but shouldn't, so it should be deleted
+		// SA doesn't exist and shouldn't, nothing to do here
 		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting serviceaccount %s as notifications is disabled", sa.Name))
-			return nil, r.Client.Delete(context.TODO(), sa)
+			return nil, nil
 		}
-		return sa, nil
+
+		// SA doesn't exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+			return nil, err
+		}
+
+		log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
+		err := r.Client.Create(context.TODO(), sa)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// SA doesn't exist and shouldn't, nothing to do here
+	// SA exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		return nil, nil
-	}
-
-	// SA doesn't exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
-	err := r.Client.Create(context.TODO(), sa)
-	if err != nil {
-		return nil, err
+		log.Info(fmt.Sprintf("Deleting serviceaccount %s as notifications is disabled", sa.Name))
+		return nil, r.Client.Delete(context.TODO(), sa)
 	}
 
 	return sa, nil
@@ -157,47 +152,43 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 	policyRules := policyRuleForNotificationsController()
 	desiredRole := newRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
 
-	roleExists := true
 	existingRole := &rbacv1.Role{}
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
 		}
-		log.Info(fmt.Sprintf("Role %s not found", desiredRole.Name))
-		roleExists = false
-	}
 
-	if roleExists {
-		// role exists but shouldn't, so it should be deleted
+		// role does not exist and shouldn't, nothing to do here
 		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting role %s as notifications is disabled", existingRole.Name))
-			return nil, r.Client.Delete(context.TODO(), existingRole)
+			return nil, nil
 		}
 
-		// role exists and should. Reconcile role if changed
-		if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
-			existingRole.Rules = desiredRole.Rules
-			if err := controllerutil.SetControllerReference(cr, existingRole, r.Scheme); err != nil {
-				return nil, err
-			}
-			return existingRole, r.Client.Update(context.TODO(), existingRole)
+		// role does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredRole, r.Scheme); err != nil {
+			return nil, err
 		}
+
+		log.Info(fmt.Sprintf("Creating role %s", desiredRole.Name))
+		err := r.Client.Create(context.TODO(), desiredRole)
+		if err != nil {
+			return nil, err
+		}
+		return desiredRole, nil
 	}
 
-	// role does not exist and shouldn't, nothing to do here
+	// role exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		return nil, nil
+		log.Info(fmt.Sprintf("Deleting role %s as notifications is disabled", existingRole.Name))
+		return nil, r.Client.Delete(context.TODO(), existingRole)
 	}
 
-	// role does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredRole, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	log.Info(fmt.Sprintf("Creating role %s", desiredRole.Name))
-	err := r.Client.Create(context.TODO(), desiredRole)
-	if err != nil {
-		return nil, err
+	// role exists and should. Reconcile role if changed
+	if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
+		existingRole.Rules = desiredRole.Rules
+		if err := controllerutil.SetControllerReference(cr, existingRole, r.Scheme); err != nil {
+			return nil, err
+		}
+		return existingRole, r.Client.Update(context.TODO(), existingRole)
 	}
 
 	return desiredRole, nil
@@ -221,50 +212,47 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 	}
 
 	// fetch existing rolebinding by name
-	roleBindingExists := true
 	existingRoleBinding := &rbacv1.RoleBinding{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredRoleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", desiredRoleBinding.Name, err)
 		}
-		roleBindingExists = false
-	}
 
-	if roleBindingExists {
-		// roleBinding exists but shouldn't, so it should be deleted
+		// roleBinding does not exist and shouldn't, nothing to do here
 		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting roleBinding %s as notifications is disabled", existingRoleBinding.Name))
-			return r.Client.Delete(context.TODO(), existingRoleBinding)
+			return nil
 		}
 
-		// roleBinding exists and should. Reconcile roleBinding if changed
-		if !reflect.DeepEqual(existingRoleBinding.RoleRef, desiredRoleBinding.RoleRef) {
-			// if the RoleRef changes, delete the existing role binding and create a new one
-			if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
-				return err
-			}
+		// roleBinding does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredRoleBinding, r.Scheme); err != nil {
+			return err
 		}
-		if !reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
-			existingRoleBinding.Subjects = desiredRoleBinding.Subjects
-			if err := controllerutil.SetControllerReference(cr, existingRoleBinding, r.Scheme); err != nil {
-				return err
-			}
-			return r.Client.Update(context.TODO(), existingRoleBinding)
-		}
+
+		log.Info(fmt.Sprintf("Creating role %s", desiredRoleBinding.Name))
+		return r.Client.Create(context.TODO(), desiredRoleBinding)
 	}
 
-	// roleBinding does not exist and shouldn't, nothing to do here
+	// roleBinding exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		return nil
+		log.Info(fmt.Sprintf("Deleting roleBinding %s as notifications is disabled", existingRoleBinding.Name))
+		return r.Client.Delete(context.TODO(), existingRoleBinding)
 	}
 
-	// roleBinding does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredRoleBinding, r.Scheme); err != nil {
-		return err
+	// roleBinding exists and should. Reconcile roleBinding if changed
+	if !reflect.DeepEqual(existingRoleBinding.RoleRef, desiredRoleBinding.RoleRef) {
+		// if the RoleRef changes, delete the existing role binding and create a new one
+		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+			return err
+		}
+	} else if !reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
+		existingRoleBinding.Subjects = desiredRoleBinding.Subjects
+		if err := controllerutil.SetControllerReference(cr, existingRoleBinding, r.Scheme); err != nil {
+			return err
+		}
+		return r.Client.Update(context.TODO(), existingRoleBinding)
 	}
 
-	log.Info(fmt.Sprintf("Creating role %s", desiredRoleBinding.Name))
-	return r.Client.Create(context.TODO(), desiredRoleBinding)
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
@@ -274,6 +262,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 	desiredDeployment.Spec.Strategy = appsv1.DeploymentStrategy{
 		Type: appsv1.RecreateDeploymentStrategyType,
+	}
+
+	if replicas := getArgoCDNotificationsControllerReplicas(cr); replicas != nil {
+		desiredDeployment.Spec.Replicas = replicas
 	}
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
@@ -332,99 +324,87 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 	}}
 
 	// fetch existing deployment by name
-	deploymentExists := true
 	deploymentChanged := false
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the deployment associated with %s : %s", existingDeployment.Name, err)
 		}
-		deploymentExists = false
-	}
 
-	if deploymentExists {
-		// deployment exists but shouldn't, so it should be deleted
+		// deployment does not exist and shouldn't, nothing to do here
 		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting deployment %s as notifications is disabled", existingDeployment.Name))
-			return r.Client.Delete(context.TODO(), existingDeployment)
+			return nil
 		}
 
-		// deployment exists and should. Reconcile deployment if changed
-		updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
-
-		if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
-			existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
-			existingDeployment.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			deploymentChanged = true
+		// deployment does not exist but should, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
+			return err
 		}
 
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
-			existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
-			existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
-			existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
-			existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
-			existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
-			existingDeployment.Labels = desiredDeployment.Labels
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
-			existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
-			existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.NodeSelector, desiredDeployment.Spec.Template.Spec.NodeSelector) {
-			existingDeployment.Spec.Template.Spec.NodeSelector = desiredDeployment.Spec.Template.Spec.NodeSelector
-			deploymentChanged = true
-		}
-
-		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Tolerations, desiredDeployment.Spec.Template.Spec.Tolerations) {
-			existingDeployment.Spec.Template.Spec.Tolerations = desiredDeployment.Spec.Template.Spec.Tolerations
-			deploymentChanged = true
-		}
-
-		if deploymentChanged {
-			return r.Client.Update(context.TODO(), existingDeployment)
-		}
+		log.Info(fmt.Sprintf("Creating deployment %s", desiredDeployment.Name))
+		return r.Client.Create(context.TODO(), desiredDeployment)
 	}
 
-	// deployment does not exist and shouldn't, nothing to do here
+	// deployment exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		return nil
+		log.Info(fmt.Sprintf("Deleting deployment %s as notifications is disabled", existingDeployment.Name))
+		return r.Client.Delete(context.TODO(), existingDeployment)
 	}
 
-	// deployment does not exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
-		return err
+	// deployment exists and should. Reconcile deployment if changed
+	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
+
+	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
+		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
+		existingDeployment.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+		deploymentChanged = true
 	}
 
-	log.Info(fmt.Sprintf("Creating deployment %s", desiredDeployment.Name))
-	return r.Client.Create(context.TODO(), desiredDeployment)
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
+		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
+		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
+		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
+		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
+		existingDeployment.Labels = desiredDeployment.Labels
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
+		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
+		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
+		deploymentChanged = true
+	}
+
+	if deploymentChanged {
+		return r.Client.Update(context.TODO(), existingDeployment)
+	}
+
+	return nil
 
 }
 
@@ -527,7 +507,7 @@ func getNotificationsCommand() []string {
 	return cmd
 }
 
-// getNotificationsResources returns the ResourceRequirements for the Notifications container.
+// getNotificationsResources will return the ResourceRequirements for the Notifications container.
 func getNotificationsResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
@@ -1078,4 +1058,15 @@ teams:
   when: app.status.operationState.phase in ['Succeeded']`
 
 	return notificationsConfig
+}
+
+// getArgoCDNotificationsControllerReplicas will return the size value for the argocd-notifications-controller replica count if it
+// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
+// replicas value is < 0.
+func getArgoCDNotificationsControllerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+	if cr.Spec.Notifications.Replicas != nil && *cr.Spec.Notifications.Replicas >= 0 {
+		return cr.Spec.Notifications.Replicas
+	}
+
+	return nil
 }
