@@ -4,6 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+<<<<<<< HEAD
+=======
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+>>>>>>> 5c8492ada54102b867cfe57159ee90d1eb491913
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )

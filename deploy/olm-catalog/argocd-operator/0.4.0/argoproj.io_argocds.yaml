@@ -696,6 +696,60 @@ spec:
                       type: object
                     type: array
                 type: object
+              notifications:
+                description: Notifications defines whether the Argo CD Notifications
+                  controller should be installed.
+                properties:
+                  enabled:
+                    description: Enabled defines whether argocd-notifications controller
+                      should be deployed or not
+                    type: boolean
+                  image:
+                    description: Image is the Argo CD Notifications image (optional)
+                    type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel
+                      if not set.  Valid options are debug,info, error, and warn.
+                    type: string
+                  replicas:
+                    description: Replicas defines the number of replicas to run for
+                      notifications-controller
+                    format: int32
+                    type: integer
+                  resources:
+                    description: Resources defines the Compute Resources required
+                      by the container for Argo CD Notifications.
+                    properties:
+                      limits:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Limits describes the maximum amount of compute
+                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                      requests:
+                        additionalProperties:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        description: 'Requests describes the minimum amount of compute
+                          resources required. If Requests is omitted for a container,
+                          it defaults to Limits if that is explicitly specified, otherwise
+                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                        type: object
+                    type: object
+                  version:
+                    description: Version is the Argo CD Notifications image tag. (optional)
+                    type: string
+                required:
+                - enabled
+                type: object
               oidcConfig:
                 description: OIDCConfig is the OIDC configuration as an alternative
                   to dex.
@@ -5808,6 +5862,18 @@ spec:
                 type: string
               host:
                 description: Host is the hostname of the Ingress.
+                type: string
+              notificationsController:
+                description: 'NotificationsController is a simple, high-level summary
+                  of where the Argo CD notifications controller component is in its
+                  lifecycle. There are five possible NotificationsController values:
+                  Pending: The Argo CD notifications controller component has been
+                  accepted by the Kubernetes system, but one or more of the required
+                  resources have not been created. Running: All of the required Pods
+                  for the Argo CD notifications controller component are in a Ready
+                  state. Failed: At least one of the  Argo CD notifications controller
+                  component Pods had a failure. Unknown: For some reason the state
+                  of the Argo CD notifications controller component could not be obtained.'
                 type: string
               phase:
                 description: 'Phase is a simple, high-level summary of where the ArgoCD

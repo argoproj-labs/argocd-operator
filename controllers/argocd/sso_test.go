@@ -35,7 +35,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+<<<<<<< HEAD
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+=======
+>>>>>>> 5c8492ada54102b867cfe57159ee90d1eb491913
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 

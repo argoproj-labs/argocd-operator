@@ -147,6 +147,69 @@ func policyRuleForServer() []v1.PolicyRule {
 	}
 }
 
+func policyRuleForNotificationsController() []v1.PolicyRule {
+	return []v1.PolicyRule{
+
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"configmaps",
+				"secrets",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				"argocd-notifications-cm",
+			},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				"argocd-notifications-secret",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+	}
+}
+
 func policyRuleForServerClusterRole() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{

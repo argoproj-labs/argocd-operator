@@ -56,6 +56,10 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	if err := r.reconcileStatusNotifications(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -207,6 +211,32 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Server != status {
 		cr.Status.Server = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
+
+// reconcileStatusNotifications will ensure that the Notifications status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) error {
+	status := "Unknown"
+
+	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
+		}
+	}
+
+	if cr.Status.NotificationsController != status {
+		if !cr.Spec.Notifications.Enabled {
+			cr.Status.NotificationsController = ""
+		} else {
+			cr.Status.NotificationsController = status
+		}
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
