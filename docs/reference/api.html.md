@@ -229,6 +229,19 @@ string
 </tr>
 <tr>
 <td>
+<code>notifications</code></br>
+<em>
+<a href="#argoproj.io/v1alpha1.ArgoCDNotificationsSpec">
+ArgoCDNotificationsSpec
+</a>
+</em>
+</td>
+<td>
+<p>Notifications controls the desired state of Argo CD Notifications controller.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>oidcConfig</code></br>
 <em>
 string
@@ -1188,6 +1201,82 @@ port, 443. If multiple members of this list specify different hosts, they
 will be multiplexed on the same port according to the hostname specified
 through the SNI TLS extension, if the ingress controller fulfilling the
 ingress supports SNI.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDNotificationsSpec">ArgoCDNotificationsSpec
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+</p>
+<p>
+<p>ArgoCDNotificationsSpec defines the desired state for the Notifications controller component.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Enabled is the toggle that determines whether notifications controller should be started or not. </p>
+</td>
+</tr>
+<tr>
+<td>
+<code>image</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image is the Argo CD container image.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code></br>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Replicas determins the number of replicas for notifications controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the Compute Resources required by the container for Notifications controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Version is the Argo CD container image tag.</p>
 </td>
 </tr>
 </tbody>
