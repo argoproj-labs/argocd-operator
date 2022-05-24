@@ -2241,6 +2241,22 @@ Unknown: For some reason the state of the Argo CD Dex component could not be obt
 </tr>
 <tr>
 <td>
+<code>notifications</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Notifications is a simple, high-level summary of where the Argo CD Notifications controller component is in its lifecycle.
+There are five possible notifications values:
+Pending: The Argo CD Notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+Running: All of the required Pods for the Argo CD Notifications controller component are in a Ready state.
+Failed: At least one of the  Argo CD Notifications controller component Pods had a failure.
+Unknown: For some reason the state of the Argo CD Notifications controller component could not be obtained.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>phase</code></br>
 <em>
 string
