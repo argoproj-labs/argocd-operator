@@ -1,5 +1,4 @@
 # API Documentation
-
 <p>Packages:</p>
 <ul>
    <li>
@@ -333,6 +332,19 @@ Resource Types:
                   </td>
                   <td>
                      <p>Server defines the options for the ArgoCD Server component.</p>
+                  </td>
+               </tr>
+               <tr>
+                  <td>
+                     <code>sso</code></br>
+                     <em>
+                     <a href="#argoproj.io/v1alpha1.ArgoCDSSOSpec">
+                     ArgoCDSSOSpec
+                     </a>
+                     </em>
+                  </td>
+                  <td>
+                     <p>SSO defines the Single Sign-on configuration for Argo CD.</p>
                   </td>
                </tr>
                <tr>
@@ -1178,10 +1190,73 @@ Resource Types:
       </tr>
    </tbody>
 </table>
-<h3 id="argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</h3>
+<h3 id="argoproj.io/v1alpha1.ArgoCDKeycloakSpec">ArgoCDKeycloakSpec</h3>
 <p>
    (<em>Appears on:</em>
-   <a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+   <a href="#argoproj.io/v1alpha1.ArgoCDSSOSpec">ArgoCDSSOSpec</a>)
+</p>
+<p>
+<p>ArgoCDKeycloakSpec Keycloak contains the configuration for Argo CD keycloak authentication (previously found under cr.spec.sso)</p>
+</p>
+<table>
+   <thead>
+      <tr>
+         <th>Field</th>
+         <th>Description</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr>
+         <td>
+            <code>image</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>Image is the Keycloak container image.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>resources</code></br>
+            <em>
+               <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+                  Kubernetes core/v1.ResourceRequirements
+            </em>
+         </td>
+         <td>
+         <p> Resources defines the Compute Resources required by the container for Keycloak.</p>
+         </td>
+      </tr>
+      <tr>
+      <td>
+        <code>version</code></br>
+      <em>
+        string
+      </em>
+      </td>
+      <td>
+        <p>Version is the Keycloak container image tag.</p>
+      </td>
+      </tr>
+      <tr>
+      <td>
+        <code>verifyTLS</code></br>
+      <em>
+      bool
+      </em>
+      </td>
+      <td>
+      <p>VerifyTLS set to false disables strict TLS validation.</p>
+      </td>
+      </tr>
+   </tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
 </p>
 <p>
 <p>ArgoCDPrometheusSpec defines the desired state for the Prometheus component.</p>
@@ -2033,6 +2108,19 @@ Resource Types:
       </tr>
       <tr>
          <td>
+            <code>sso</code></br>
+            <em>
+            <a href="#argoproj.io/v1alpha1.ArgoCDSSOSpec">
+            ArgoCDSSOSpec
+            </a>
+            </em>
+         </td>
+         <td>
+            <p>SSO defines the Single Sign-on configuration for Argo CD.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
             <code>statusBadgeEnabled</code></br>
             <em>
             bool
@@ -2077,6 +2165,104 @@ Resource Types:
          </td>
          <td>
             <p>Version is the tag to use with the ArgoCD container image for all ArgoCD components.</p>
+         </td>
+      </tr>
+   </tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDSSOSpec">ArgoCDSSOSpec</h3>
+<p>
+   (<em>Appears on:</em>
+   <a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+</p>
+<p>
+<p>ArgoCDSSOSpec defines the Single Sign-on configuration for Argo CD.</p>
+</p>
+<table>
+   <thead>
+      <tr>
+         <th>Field</th>
+         <th>Description</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr>
+        <td>
+            <code>image</code></br>
+            <em>
+            string
+            </em>
+        </td>
+        <td>
+            <p>Image is the Keycloak container image.</p>
+        </td>
+        </tr>
+        <tr>
+        <td>
+            <code>resources</code></br>
+            <em>
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            Kubernetes core/v1.ResourceRequirements
+            </em>
+        </td>
+        <td>
+            <p> Resources defines the Compute Resources required by the container for Keycloak.</p>
+        </td>
+        </tr>
+        <tr>
+        <td>
+            <code>version</code></br>
+            <em>
+            string
+            </em>
+        </td>
+        <td>
+            <p>Version is the Keycloak container image tag.</p>
+        </td>
+        </tr>
+        <tr>
+        <td>
+            <code>verifyTLS</code></br>
+            <em>
+            bool
+            </em>
+        </td>
+        <td>
+            <p>VerifyTLS set to false disables strict TLS validation.</p>
+        </td>
+        </tr>
+      <tr>
+         <td>
+            <code>dex</code></br>
+            <em>
+            <a href="#argoproj.io/v1alpha1.ArgoCDDexSpec">
+            ArgoCDDexSpec
+            </em>
+         </td>
+         <td>
+            <p>Dex contains the configuration for Argo CD dex authentication (previously found under cr.spec.Dex)</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>keycloak</code></br>
+            <em>
+            <a href="#argoproj.io/v1alpha1.ArgoCDKeycloakSpec">
+            ArgoCDKeycloakSpec
+            </em>
+         </td>
+         <td>
+            <p>Keycloak contains the configuration for Argo CD keycloak authentication (previously found under cr.spec.sso)</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>provider</code></br>
+            <em>
+            SSOProviderType
+            </em>
+         </td>
+         <td>
+            <p>Provider installs and configures the given SSO Provider with Argo CD.
          </td>
       </tr>
    </tbody>
@@ -2196,6 +2382,22 @@ Resource Types:
                Running: All of the required Pods for the Argo CD server component are in a Ready state.
                Failed: At least one of the  Argo CD server component Pods had a failure.
                Unknown: For some reason the state of the Argo CD server component could not be obtained.
+            </p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>ssoConfig</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>ssoConfig is a simple, high-level summary of the status of SSO configuration for the Argo CD instance.
+               There are three possible server values:
+               Success: Only one SSO provider is configured in CR
+               Failed: SSO configuration is illegal or more than one SSO providers are configured in CR.
+               Unknown: For some reason the SSO configuration could not be obtained.
             </p>
          </td>
       </tr>
