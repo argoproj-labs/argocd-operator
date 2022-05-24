@@ -18,4 +18,5 @@ Security vulnerabilities will be disclosed via release notes. Release notes for 
 [GitHub Security Advisories](https://github.com/argoproj-labs/argocd-operator/security/advisories)
 feature to keep our community well informed, and will credit you for your findings (unless you prefer to stay anonymous, of course).
 
-**Note**: Please report the vulnerabilities related to Argo CD operator only. Please read Argo CD security [policy](https://github.com/argoproj/argo-cd/blob/master/SECURITY.md) if you would like to report any vulnerabilities related to Argo CD.
+!!! note 
+    Please report the vulnerabilities related to Argo CD operator only. Please read Argo CD security [policy](https://github.com/argoproj/argo-cd/blob/master/SECURITY.md) if you would like to report any vulnerabilities related to Argo CD.
