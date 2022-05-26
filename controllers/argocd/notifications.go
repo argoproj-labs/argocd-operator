@@ -257,7 +257,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 
 func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
 
-	var runAsNonRoot bool = true
 	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
 
 	desiredDeployment.Spec.Strategy = appsv1.DeploymentStrategy{
@@ -270,7 +269,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: &runAsNonRoot,
+		RunAsNonRoot: boolPtr(true),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: corev1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
 	podSpec.Volumes = []corev1.Volume{
@@ -307,6 +309,14 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 					Port: intstr.IntOrString{
 						IntVal: int32(9001),
 					},
+				},
+			},
+		},
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
 				},
 			},
 		},
