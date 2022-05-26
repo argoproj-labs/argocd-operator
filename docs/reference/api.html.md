@@ -29,7 +29,7 @@ Resource Types:
 <td>
 <code>metadata</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -488,7 +488,7 @@ ArgoCDApplicationControllerProcessorsSpec
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -646,7 +646,7 @@ bool
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -685,7 +685,7 @@ string
 <td>
 <code>metadata</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -926,7 +926,7 @@ string
 <td>
 <code>pvc</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaimspec-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaimspec-v1-core">
 Kubernetes core/v1.PersistentVolumeClaimSpec
 </a>
 </em>
@@ -1015,7 +1015,7 @@ ArgoCDIngressSpec
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -1259,7 +1259,7 @@ int32
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -1451,7 +1451,7 @@ string
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -1505,7 +1505,7 @@ bool
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -1635,7 +1635,7 @@ bool
 <td>
 <code>hpa</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#horizontalpodautoscalerspec-v1-autoscaling">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#horizontalpodautoscalerspec-v1-autoscaling">
 Kubernetes autoscaling/v1.HorizontalPodAutoscalerSpec
 </a>
 </em>
@@ -1710,7 +1710,7 @@ ArgoCDIngressSpec
 <td>
 <code>type</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicetype-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#servicetype-v1-core">
 Kubernetes core/v1.ServiceType
 </a>
 </em>
@@ -1803,7 +1803,7 @@ bool
 <td>
 <code>resources</code></br>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -2216,7 +2216,7 @@ string
 </td>
 <td>
 <p>ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
-There are five possible ApplicationController values:
+There are four possible ApplicationController values:
 Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
 Failed: At least one of the  Argo CD application controller component Pods had a failure.
@@ -2232,7 +2232,7 @@ string
 </td>
 <td>
 <p>Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
-There are five possible dex values:
+There are four possible dex values:
 Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
 Failed: At least one of the  Argo CD Dex component Pods had a failure.
@@ -2248,7 +2248,7 @@ string
 </td>
 <td>
 <p>Notifications is a simple, high-level summary of where the Argo CD Notifications controller component is in its lifecycle.
-There are five possible notifications values:
+There are four possible notifications values:
 Pending: The Argo CD Notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD Notifications controller component are in a Ready state.
 Failed: At least one of the  Argo CD Notifications controller component Pods had a failure.
@@ -2264,7 +2264,7 @@ string
 </td>
 <td>
 <p>Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
-There are five possible phase values:
+There are four possible phase values:
 Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Available: All of the resources for the ArgoCD are ready.
 Failed: At least one resource has experienced a failure.
@@ -2280,7 +2280,7 @@ string
 </td>
 <td>
 <p>Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
-There are five possible redis values:
+There are four possible redis values:
 Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
 Failed: At least one of the  Argo CD Redis component Pods had a failure.
@@ -2296,7 +2296,7 @@ string
 </td>
 <td>
 <p>Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
-There are five possible repo values:
+There are four possible repo values:
 Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
 Failed: At least one of the  Argo CD Repo component Pods had a failure.
@@ -2312,7 +2312,7 @@ string
 </td>
 <td>
 <p>Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
-There are five possible server values:
+There are four possible server values:
 Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 Running: All of the required Pods for the Argo CD server component are in a Ready state.
 Failed: At least one of the  Argo CD server component Pods had a failure.
