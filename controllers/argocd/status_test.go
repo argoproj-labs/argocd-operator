@@ -164,7 +164,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
-
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
