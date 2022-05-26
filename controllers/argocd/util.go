@@ -39,6 +39,7 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
@@ -1475,6 +1476,26 @@ func getOpenShiftAPIURL() string {
 	}
 
 	return out
+}
+
+// getClusterVersion returns the OpenShift Cluster version in which the operator is installed
+func getClusterVersion(client client.Client) (string, error) {
+	if !IsRouteAPIAvailable() {
+		return "", nil
+	}
+	clusterVersion := &configv1.ClusterVersion{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: "version"}, clusterVersion)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return clusterVersion.Status.Desired.Version, nil
+}
+
+func GetClusterVersion(client client.Client) (string, error) {
+	return getClusterVersion(client)
 }
 
 // generateRandomBytes returns a securely generated random bytes.
