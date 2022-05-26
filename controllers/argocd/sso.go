@@ -226,10 +226,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if err := r.reconcileKeycloakConfiguration(cr); err != nil {
 			return err
 		}
-	}
-
-	// dex
-	if (!isDexDisabled() && isDisableDexSet) || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider != "" && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex) {
+	} else if (!isDexDisabled() && isDisableDexSet) || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider != "" && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex) {
+		// dex
 
 		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
 		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
