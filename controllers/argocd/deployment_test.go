@@ -848,6 +848,11 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		},
 		deployment))
 	want := corev1.PodSpec{
+		SecurityContext: &corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -865,6 +870,15 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"-n",
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -907,6 +921,15 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						ContainerPort: 5558,
 					},
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},
 				ImagePullPolicy: corev1.PullAlways,
@@ -940,6 +963,11 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 		},
 		deployment))
 	want := corev1.PodSpec{
+		SecurityContext: &corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -957,6 +985,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"-n",
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -998,6 +1035,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name:          "metrics",
 						ContainerPort: 5558,
 					},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},
@@ -1126,10 +1172,24 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes:            serverDefaultVolumes(),
+		Volumes: serverDefaultVolumes(),
+		SecurityContext: &corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -1331,10 +1391,24 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes:            serverDefaultVolumes(),
+		Volumes: serverDefaultVolumes(),
+		SecurityContext: &corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -1407,10 +1481,24 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes:            serverDefaultVolumes(),
+		Volumes: serverDefaultVolumes(),
+		SecurityContext: &corev1.PodSecurityContext{
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+		},
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
