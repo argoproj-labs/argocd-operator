@@ -95,9 +95,18 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	}
 
 	for _, namespace := range r.ManagedNamespaces.Items {
-		// only create dexServer and redisHa rolebindings for the namespace where the argocd instance is deployed
-		if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
-			break
+		list := &argoprojv1a1.ArgoCDList{}
+		listOption := &client.ListOptions{Namespace: namespace.Name}
+		err := r.Client.List(context.TODO(), list, listOption)
+		if err != nil {
+			return err
+		}
+		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
+		if len(list.Items) > 0 {
+			// only create dexServer and redisHa rolebindings for the namespace where the argocd instance is deployed
+			if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
+				break
+			}
 		}
 		// get expected name
 		roleBinding := newRoleBindingWithname(name, cr)
@@ -105,7 +114,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 		// fetch existing rolebinding by name
 		existingRoleBinding := &v1.RoleBinding{}
-		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
 		roleBindingExists := true
 		if err != nil {
 			if !errors.IsNotFound(err) {
