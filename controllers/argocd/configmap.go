@@ -390,9 +390,16 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	existingCM := &corev1.ConfigMap{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		// This logic should be refactored as part of SSO Unification.
+		// https://github.com/argoproj-labs/argocd-operator/pull/646
+		// In future, Both Keycloak and Dex can be configured using `.spec.SSO`.
 		if cr.Spec.SSO == nil {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
+			}
+		} else {
+			if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+				cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 			}
 		}
 
