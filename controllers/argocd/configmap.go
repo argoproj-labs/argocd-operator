@@ -409,6 +409,8 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
+			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}
 
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
