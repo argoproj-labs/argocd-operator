@@ -398,7 +398,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 				return err
 			}
 		} else {
-			if cr.Spec.SSO.Provider == "keycloak" {
+			if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
 				cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 			}
 		}
