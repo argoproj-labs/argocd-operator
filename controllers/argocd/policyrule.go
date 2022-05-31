@@ -52,7 +52,7 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 		if err != nil {
 			log.Error(err, "couldn't get OpenShift version")
 		}
-		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10") > 0 {
+		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
 			resourceName = "nonroot-v2"
 		}
 		orules := v1.PolicyRule{
