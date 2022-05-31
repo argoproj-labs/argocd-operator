@@ -1494,10 +1494,6 @@ func getClusterVersion(client client.Client) (string, error) {
 	return clusterVersion.Status.Desired.Version, nil
 }
 
-func GetClusterVersion(client client.Client) (string, error) {
-	return getClusterVersion(client)
-}
-
 // generateRandomBytes returns a securely generated random bytes.
 func generateRandomBytes(n int) []byte {
 	b := make([]byte, n)
