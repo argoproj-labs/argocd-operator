@@ -39,6 +39,9 @@ const (
 	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
 	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
 
+	// ArgoCDApplicationSetControllerComponent is the name of the AppplicationSet controller control plane component
+	ArgoCDApplicationSetControllerComponent = "argocd-applicationset-controller"
+
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
 

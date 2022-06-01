@@ -222,6 +222,27 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 
 }
 
+func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	r := makeTestReconciler(t, a)
+	sa := corev1.ServiceAccount{}
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	a.Spec.ApplicationSet = nil
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+	checkdeployment := &appsv1.Deployment{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkdeployment))
+
+}
+
 func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -264,7 +285,6 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 
 	// Ensure the updated Deployment has the expected properties
 	checkExpectedDeploymentValues(t, deployment, &sa, a)
-
 }
 
 func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) {
@@ -403,6 +423,10 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	assert.Equal(t, sa.Name, retSa.Name)
 
 	appsetAssertExpectedLabels(t, &sa.ObjectMeta)
+	a.Spec.ApplicationSet = nil
+	retSa, err = r.reconcileApplicationSetServiceAccount(a)
+	assert.Error(t, err)
+	assert.Nil(t, retSa)
 }
 
 func TestReconcileApplicationSet_Role(t *testing.T) {
@@ -449,6 +473,11 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	sort.Strings(foundResources)
 
 	assert.Equal(t, expectedResources, foundResources)
+
+	a.Spec.ApplicationSet = nil
+	roleRet, err = r.reconcileApplicationSetRole(a)
+	assert.Error(t, err)
+	assert.Nil(t, roleRet)
 }
 
 func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
@@ -476,6 +505,9 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
 
+	a.Spec.ApplicationSet = nil
+	err = r.reconcileApplicationSetRoleBinding(a, role, sa)
+	assert.Error(t, err)
 }
 
 func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
