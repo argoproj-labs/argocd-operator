@@ -353,7 +353,6 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
-
 	// Find the token secret
 	var tokenSecret *corev1.ObjectReference
 	for _, saSecret := range sa.Secrets {
@@ -364,7 +363,25 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	if tokenSecret == nil {
-		return nil, errors.New("unable to locate ServiceAccount token for OAuth client secret")
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "argocd-dex-server-token-",
+				Namespace:    cr.Namespace,
+				Annotations: map[string]string{
+					corev1.ServiceAccountNameKey: sa.Name,
+				},
+			},
+			Type: corev1.SecretTypeServiceAccountToken,
+		}
+		err := r.Client.Create(context.TODO(), secret)
+		if err != nil {
+			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
+		}
+		tokenSecret := &corev1.ObjectReference{
+			Name:      secret.Name,
+			Namespace: cr.Namespace,
+		}
+		sa.Secrets = append(sa.Secrets, *tokenSecret)
 	}
 
 	// Fetch the secret to obtain the token
