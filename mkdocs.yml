@@ -39,6 +39,7 @@ nav:
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
     - Custom Roles: usage/custom_roles.md
+    - Cluster Config Argo CD: usage/cluster_scoped_argocd.md
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
