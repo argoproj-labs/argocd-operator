@@ -377,11 +377,15 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 		if err != nil {
 			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
 		}
-		tokenSecret := &corev1.ObjectReference{
+		tokenSecret = &corev1.ObjectReference{
 			Name:      secret.Name,
 			Namespace: cr.Namespace,
 		}
 		sa.Secrets = append(sa.Secrets, *tokenSecret)
+		err = r.Client.Update(context.TODO(), sa)
+		if err != nil {
+			return nil, errors.New("Failed to Add ServiceAccount token for OAuth client secret")
+		}
 	}
 
 	// Fetch the secret to obtain the token
