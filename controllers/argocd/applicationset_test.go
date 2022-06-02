@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -222,27 +223,6 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 
 }
 
-func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
-	r := makeTestReconciler(t, a)
-	sa := corev1.ServiceAccount{}
-	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
-
-	a.Spec.ApplicationSet = nil
-	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
-	checkdeployment := &appsv1.Deployment{}
-	assert.Error(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-applicationset-controller",
-			Namespace: a.Namespace,
-		},
-		checkdeployment))
-
-}
-
 func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -423,17 +403,13 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	assert.Equal(t, sa.Name, retSa.Name)
 
 	appsetAssertExpectedLabels(t, &sa.ObjectMeta)
-	a.Spec.ApplicationSet = nil
-	retSa, err = r.reconcileApplicationSetServiceAccount(a)
-	assert.Error(t, err)
-	assert.Nil(t, retSa)
 }
 
 func TestReconcileApplicationSet_Role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
-
 	roleRet, err := r.reconcileApplicationSetRole(a)
 	assert.NoError(t, err)
 
@@ -473,16 +449,12 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	sort.Strings(foundResources)
 
 	assert.Equal(t, expectedResources, foundResources)
-
-	a.Spec.ApplicationSet = nil
-	roleRet, err = r.reconcileApplicationSetRole(a)
-	assert.Error(t, err)
-	assert.Nil(t, roleRet)
 }
 
 func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
@@ -504,10 +476,6 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 
 	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
-
-	a.Spec.ApplicationSet = nil
-	err = r.reconcileApplicationSetRoleBinding(a, role, sa)
-	assert.Error(t, err)
 }
 
 func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
@@ -526,4 +494,48 @@ func unSetProxyEnvVars() {
 	os.Unsetenv("HTTPS_PROXY")
 	os.Unsetenv("HTTP_PROXY")
 	os.Unsetenv("NO_PROXY")
+}
+func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	r := makeTestReconciler(t, a)
+	a.Spec.ApplicationSet = nil
+	checkdeployment := &appsv1.Deployment{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkdeployment))
+	assert.Equal(t, checkdeployment.Name, "")
+	checkrole := &v1.Role{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkrole))
+	assert.Equal(t, checkrole.Name, "")
+
+	checksa := &corev1.ServiceAccount{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checksa))
+	assert.Equal(t, checksa.Name, "")
+	checkroleBinding := &v1.RoleBinding{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkroleBinding))
+	assert.Equal(t, checkroleBinding.Name, "")
 }
