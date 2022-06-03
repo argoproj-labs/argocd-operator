@@ -1502,7 +1502,7 @@ func getOpenShiftAPIURL() string {
 	return out
 }
 
-func addSeccompProfileForOpenShift411(client client.Client, podspec *corev1.PodSpec) {
+func AddSeccompProfileForOpenShift411(client client.Client, podspec *corev1.PodSpec) {
 	if !IsVersionAPIAvailable() {
 		return
 	}
