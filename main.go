@@ -151,8 +151,10 @@ func main() {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
+	}
 
-		// Also set up the scheme for openshift config because at this point we know we're on openshift
+	// Set up the scheme for openshift config if available
+	if argocd.IsVersionAPIAvailable() {
 		if err := configv1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)

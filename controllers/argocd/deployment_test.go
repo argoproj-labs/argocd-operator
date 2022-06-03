@@ -848,11 +848,6 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 		},
 		deployment))
 	want := corev1.PodSpec{
-		SecurityContext: &corev1.PodSecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -963,11 +958,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 		},
 		deployment))
 	want := corev1.PodSpec{
-		SecurityContext: &corev1.PodSecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
 		Volumes: []corev1.Volume{
 			{
 				Name: "static-files",
@@ -1184,12 +1174,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: serverDefaultVolumes(),
-		SecurityContext: &corev1.PodSecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -1403,12 +1388,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: serverDefaultVolumes(),
-		SecurityContext: &corev1.PodSecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 
@@ -1493,12 +1473,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
-		Volumes: serverDefaultVolumes(),
-		SecurityContext: &corev1.PodSecurityContext{
-			SeccompProfile: &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			},
-		},
+		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
 	}
 

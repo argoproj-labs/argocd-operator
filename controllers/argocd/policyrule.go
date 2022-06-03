@@ -45,7 +45,7 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 
 	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
 	// permissions to start
-	if IsRouteAPIAvailable() {
+	if IsVersionAPIAvailable() {
 		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
 		resourceName := "nonroot"
 		version, err := getClusterVersion(client)

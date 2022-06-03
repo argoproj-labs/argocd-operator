@@ -43,6 +43,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
+	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -61,6 +62,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+var (
+	versionAPIFound = false
+)
+
+// IsVersionAPIAvailable returns true if the version api is present
+func IsVersionAPIAvailable() bool {
+	return versionAPIFound
+}
+
+// verifyVersionAPI will verify that the template API is present.
+func verifyVersionAPI() error {
+	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	versionAPIFound = found
+	return nil
+}
 
 // DexConnector represents an authentication connector for Dex.
 type DexConnector struct {
@@ -726,6 +746,10 @@ func InspectCluster() error {
 	}
 
 	if err := verifyTemplateAPI(); err != nil {
+		return err
+	}
+
+	if err := verifyVersionAPI(); err != nil {
 		return err
 	}
 	return nil
@@ -1478,9 +1502,30 @@ func getOpenShiftAPIURL() string {
 	return out
 }
 
+func addSeccompProfileForOpenShift411(client client.Client, podspec *corev1.PodSpec) {
+	if !IsVersionAPIAvailable() {
+		return
+	}
+	version, err := getClusterVersion(client)
+	if err != nil {
+		log.Error(err, "couldn't get OpenShift version")
+	}
+	if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
+		if podspec.SecurityContext == nil {
+			podspec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+		if podspec.SecurityContext.SeccompProfile == nil {
+			podspec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+		}
+		if len(podspec.SecurityContext.SeccompProfile.Type) == 0 {
+			podspec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+		}
+	}
+}
+
 // getClusterVersion returns the OpenShift Cluster version in which the operator is installed
 func getClusterVersion(client client.Client) (string, error) {
-	if !IsRouteAPIAvailable() {
+	if !IsVersionAPIAvailable() {
 		return "", nil
 	}
 	clusterVersion := &configv1.ClusterVersion{}

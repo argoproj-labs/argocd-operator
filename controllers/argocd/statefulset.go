@@ -358,10 +358,8 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		FSGroup:      &fsGroup,
 		RunAsNonRoot: &runAsNonRoot,
 		RunAsUser:    &runAsUser,
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
 	}
+	addSeccompProfileForOpenShift411(r.Client, &ss.Spec.Template.Spec)
 
 	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
@@ -507,6 +505,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			Type: corev1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
+	addSeccompProfileForOpenShift411(r.Client, podSpec)
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
 	podSpec.Volumes = []corev1.Volume{
 		{

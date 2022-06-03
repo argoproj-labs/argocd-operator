@@ -270,10 +270,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
 		RunAsNonRoot: boolPtr(true),
-		SeccompProfile: &corev1.SeccompProfile{
-			Type: corev1.SeccompProfileTypeRuntimeDefault,
-		},
 	}
+	addSeccompProfileForOpenShift411(r.Client, podSpec)
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
 	podSpec.Volumes = []corev1.Volume{
 		{
