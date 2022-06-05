@@ -205,7 +205,7 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client c
 		RunAsGroup: &id,
 		FSGroup:    &id,
 	}
-	argocd.AddSeccompProfileForOpenShift411(client, &pod)
+	argocd.AddSeccompProfileForOpenShift(client, &pod)
 
 	return pod
 }

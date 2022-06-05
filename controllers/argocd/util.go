@@ -1193,6 +1193,10 @@ func boolPtr(val bool) *bool {
 	return &val
 }
 
+func int64Ptr(val int64) *int64 {
+	return &val
+}
+
 // triggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
 func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
@@ -1502,7 +1506,7 @@ func getOpenShiftAPIURL() string {
 	return out
 }
 
-func AddSeccompProfileForOpenShift411(client client.Client, podspec *corev1.PodSpec) {
+func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
 	if !IsVersionAPIAvailable() {
 		return
 	}
