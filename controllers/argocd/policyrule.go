@@ -3,8 +3,9 @@ package argocd
 import (
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"golang.org/x/mod/semver"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 
 	v1 "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
