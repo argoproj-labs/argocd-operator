@@ -29,9 +29,11 @@ import (
 )
 
 const (
-	ssoLegalUnknown string = "Unknown"
-	ssoLegalSuccess string = "Success"
-	ssoLegalFailed  string = "Failed"
+	ssoLegalUnknown          string = "Unknown"
+	ssoLegalSuccess          string = "Success"
+	ssoLegalFailed           string = "Failed"
+	illegalSSOConfiguration  string = "illegal SSO configuration: "
+	multipleSSOConfiguration string = "multiple SSO configuration: "
 )
 
 var (
@@ -97,12 +99,9 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 		errMsg := ""
 		var err error
-		// Only relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex` and `.spec.sso`
-		// No conflicts to be prevented here as all these fields can be configured individually to preserve existing behavior
-		// This will be fixed when backward compatibility no longer needs to be maintained
 
-		if (isDexDisabled() || !isDisableDexSet) && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && !cr.Spec.Dex.OpenShiftOAuth {
-			// No SSO configured
+		// no SSO configured, nothing to do here
+		if !useDex(cr) {
 			return nil
 		}
 
@@ -110,9 +109,10 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			// dex is enabled but no dexconfig supplied. This will cause health probe to fail as per
 			// https://github.com/argoproj-labs/argocd-operator/pull/615 ==> conflict
 			errMsg = "must suppy valid dex configuration when dex is enabled"
-			err = errors.New("illegal sso configuration")
+			err = errors.New(illegalSSOConfiguration + errMsg)
 			log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 			ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+			_ = r.reconcileStatusSSOConfig(cr)
 			return err
 		}
 	}
@@ -152,9 +152,10 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			}
 
 			if isError {
-				err = errors.New("illegal sso configuration")
+				err = errors.New(illegalSSOConfiguration + errMsg)
 				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
 				return err
 			}
 		}
@@ -169,19 +170,19 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources)) {
 				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
 				// ==> conflict
-				err = errors.New("illegal sso configuration")
 				errMsg = "cannot supply conflicting configuration in spec.sso when keycloak is configured through .spec.sso.keycloak"
+				err = errors.New(illegalSSOConfiguration + errMsg)
 				isError = true
 			} else if cr.Spec.SSO.Dex != nil {
 				// new dex spec fields are expressed when `.spec.sso.provider` is set to keycloak ==> conflict
-				err = errors.New("illegal sso configuration")
 				errMsg = "cannot supply dex configuration when requested SSO provider is keycloak"
+				err = errors.New(illegalSSOConfiguration + errMsg)
 				isError = true
 			} else if (!reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
 				// Keycloak configured as SSO provider, but dex config also present in argocd-cm. May cause both SSO providers to get
 				// configured if Dex pods happen to be running due to `DEX_DISABLED` being set to false ==> conflict
-				err = errors.New("multiple sso configuration")
 				errMsg = "multiple SSO providers configured simultaneously"
+				err = errors.New(multipleSSOConfiguration + errMsg)
 				isError = true
 			}
 			// (cannot check against presence of DISABLE_DEX as erroring out here would break current behavior)
@@ -189,6 +190,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			if isError {
 				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration deletected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
 				return err
 			}
 		}
@@ -201,9 +203,11 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				cr.Spec.SSO.Keycloak != nil {
 				// `.spec.sso.keycloak` expressed without specifying SSO provider ==> conflict
 
-				err := errors.New("illegal sso configuration")
+				errMsg = "Cannot specify SSO provider spec without specifying SSO provider type"
+				err = errors.New(illegalSSOConfiguration + errMsg)
 				log.Error(err, fmt.Sprintf("Cannot specify SSO provider spec without specifying SSO provider type for Argo CD %s in namespace %s.", cr.Name, cr.Namespace))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
 				return err
 			}
 		}
@@ -215,7 +219,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// reconcile resources based on enabled provider
 	// keycloak
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider != "" && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
 
 		// Trigger reconciliation of any Dex resources so they get deleted
 		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
@@ -226,9 +230,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if err := r.reconcileKeycloakConfiguration(cr); err != nil {
 			return err
 		}
-	} else if (!isDexDisabled() && isDisableDexSet) || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider != "" && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex) {
+	} else if useDex(cr) {
 		// dex
-
 		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
 		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
 			log.Error(err, "Unable to delete existing SSO configuration before configuring Dex")
@@ -240,6 +243,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	_ = r.reconcileStatusSSOConfig(cr)
+
 	return nil
 }
 
@@ -247,20 +252,36 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, old
 
 	log.Info("uninstalling existing SSO configuration")
 
-	if oldCr.Spec.SSO.Provider != "" && oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+	if oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
 		if err := deleteKeycloakConfiguration(newCr); err != nil {
 			log.Error(err, "Unable to delete existing keycloak configuration")
 			return err
 		}
-	}
-
-	if oldCr.Spec.SSO.Provider != "" && oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+	} else if oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
 		// Trigger reconciliation of Dex resources so they get deleted
-		if err := r.reconcileDexResources(newCr); err != nil {
+		if err := r.deleteDexResources(newCr); err != nil {
 			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
 			return err
 		}
 	}
 
+	_ = r.reconcileStatusSSOConfig(newCr)
 	return nil
+}
+
+// useDex determines whether Dex resources should be created and configured or not, with a focus on
+// backward compatibility and not introducing breaking changes to existing user workflows
+func useDex(cr *argoprojv1a1.ArgoCD) bool {
+	if cr.Spec.SSO != nil {
+		return cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex
+	}
+	if isDexDisabled() {
+		return false
+	}
+	// we don't care about the case where dex is enabled either explicitly through DISABLE_DEX (or implicitly due to the flag being unset)
+	// in terms of creation/deletion of resources unless there is existing configuration in place that must be honored
+	if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
+		return true
+	}
+	return false
 }

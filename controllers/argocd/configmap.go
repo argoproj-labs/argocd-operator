@@ -358,12 +358,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
 	// create dex config if dex is enabled either through DISABLE_DEX or through `.spec.sso`
-
-	// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
-	if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-		// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
-		(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
-
+	if useDex(cr) {
 		dexConfig := getDexConfig(cr)
 
 		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
@@ -401,11 +396,9 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	existingCM := &corev1.ConfigMap{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
 
-		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider`
-		// make sure old workloads not using DISABLE_DEX don't slip through here because their .spec.sso is nil
-		if !isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-			// make sure new workloads that don't set the env var isDisbaleDexSet are also appropriately screened
-			(!isDisableDexSet && (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex)) {
+		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider` or there is
+		// existing dex configuration
+		if useDex(cr) {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}

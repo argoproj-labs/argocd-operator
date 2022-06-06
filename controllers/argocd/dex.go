@@ -2,14 +2,17 @@ package argocd
 
 import (
 	"context"
-	"errors"
+	e "errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -44,7 +47,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	if tokenSecret == nil {
-		return nil, errors.New("unable to locate ServiceAccount token for OAuth client secret")
+		return nil, e.New("unable to locate ServiceAccount token for OAuth client secret")
 	}
 
 	// Fetch the secret to obtain the token
@@ -135,7 +138,9 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
-	if reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth ||
+
+	// if openShiftOAuth set to false in both `.spec.dex` and `.spec.sso.dex`, no need to configure it
+	if (reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth) &&
 		(cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		return nil // OpenShift OAuth not enabled, move along...
 	}
@@ -239,20 +244,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
-		// make sure old workloads using DISABLE_DEX=true don't slip through here because their .spec.sso is nil
-		if isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-			// make sure new workloads that don't set the env var isDisbaleDexSet also have their .spec.sso == nil in order to return from here
-			(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex)) {
-
-			// Don't delete dex deployment if dex configuration is present in argocd-cm. This is done to prevent a breaking change to users
-			// who may be using dex without setting DISABLE_DEX in their env
-			if (!reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
-				log.Info("Could not delete dex deployment due to existing dex configuration in argocd-cm configmap. Remove dexConfig to allow deletion of dex deployment")
-				return nil
-			}
-
-			log.Info("deleting the existing dex deployment because dex is disabled")
-			// Deployment exists but enabled flag has been set to false, delete the Deployment
+		// dex uninstallation requested
+		if !useDex(cr) {
+			log.Info("deleting the existing dex deployment because dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), existing)
 		}
 		changed := false
@@ -296,15 +290,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	// if (isDisableDexSet && isDexDisabled()) || (cr.Spec.SSO == nil) || (cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) {
-	// 	return nil
-	// }
-
-	// make sure old workloads using DISABLE_DEX=false don't slip through here because their .spec.sso is nil
-	if isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-		// make sure new workloads that don't set the env var isDisbaleDexSet also have their .spec.sso == nil in order to return from here
-		(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex)) {
-
+	// if Dex installation has not been requested, do nothing
+	if !useDex(cr) {
 		return nil
 	}
 
@@ -319,30 +306,16 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
-		// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
-		if isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-			// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
-			(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex)) {
-
-			// Don't delete dex service if dex configuration is present in argocd-cm. This is done to prevent a breaking change to users
-			// who may be using dex without setting DISABLE_DEX in their env
-			if (!reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
-				log.Info("Could not delete dex service due to existing dex configuration in argocd-cm configmap. Remove dexConfig to allow deletion of dex service")
-				return nil
-			}
-
-			// Service exists but enabled flag has been set to false, delete the Service
-			log.Info("deleting the existing Dex service because dex is not configured")
+		// dex uninstallation requested
+		if !useDex(cr) {
+			log.Info("deleting the existing Dex service because dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), svc)
 		}
 		return nil
 	}
 
-	// make sure old workloads using DISABLE_DEX don't slip through here because their .spec.sso is nil
-	if isDexDisabled() && isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex) ||
-		// make sure new workloads that don't set the env var DISABLE_DEX also have their .spec.sso == nil in order to return from here
-		(!isDisableDexSet && (cr.Spec.SSO == nil || cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex)) {
-
+	// if Dex installation has not been requested, do nothing
+	if !useDex(cr) {
 		return nil // Dex is disabled, do nothing
 	}
 
@@ -396,17 +369,6 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	// Reconcile dex config in argocd-cm (right after dex is disabled)-- Might seem like a duplicate call to the above line,
-	// but this is required for a one time trigger of reconcileDexConfiguration directly in case of a dex deletion event,
-	// since reconcileArgoConfigMap won't call reconcileDexConfiguration once dex has been disabled (to avoid reconciling on
-	// dexconfig unnecessarily when it isn't enabled)
-	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-			return err
-		}
-	}
-
 	if err := r.reconcileDexService(cr); err != nil {
 		return err
 	}
@@ -416,6 +378,70 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileStatusDex(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// The code to create/delete notifications resources is written within the reconciliation logic itself. However, these functions must be called
+// in the right order depending on whether resources are getting created or deleted. During creation we must create the role and sa first.
+// RoleBinding and deployment are dependent on these resouces. During deletion the order is reversed.
+// Deployment and RoleBinding must be deleted before the role and sa. deleteDexResources will only be called during
+// delete events, so we don't need to worry about duplicate, recurring reconciliation calls
+func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
+
+	sa := &corev1.ServiceAccount{}
+	role := &rbacv1.Role{}
+
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), sa); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), role); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	log.Info("reconciling dex deployment")
+	if err := r.reconcileDexDeployment(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusDex(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling dex service")
+	if err := r.reconcileDexService(cr); err != nil {
+		return err
+	}
+
+	// Reconcile dex config in argocd-cm (right after dex is disabled)
+	// this is required for a one time trigger of reconcileDexConfiguration directly in case of a dex deletion event,
+	// since reconcileArgoConfigMap won't call reconcileDexConfiguration once dex has been disabled (to avoid reconciling on
+	// dexconfig unnecessarily when it isn't enabled)
+	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
+			return err
+		}
+	}
+
+	log.Info("reconciling dex role binding")
+	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+		return fmt.Errorf("error reconciling roleBinding for %q: %w", common.ArgoCDDexServerComponent, err)
+	}
+
+	log.Info("reconciling dex role")
+	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling dex serviceaccount")
+	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
 		return err
 	}
 

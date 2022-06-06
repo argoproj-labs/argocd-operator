@@ -89,6 +89,9 @@ func TestReconcile_noTemplateInstance(t *testing.T) {
 func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	restoreEnvFunc := func() {
+		os.Unsetenv("DISABLE_DEX")
+	}
 	tests := []struct {
 		name          string
 		argoCD        *argov1alpha1.ArgoCD
@@ -105,31 +108,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name:   "DISABLE_DEX with no .spec.dex specified",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "false",
-			wantErr: true,
-			Err:     errors.New("illegal sso configuration"),
-		},
-		{
-			name: "DISABLE_DEX with .spec.dex specified but not configured",
-			argoCD: makeTestArgoCD(func(cr *argov1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-					Config:         "",
-				}
-			}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "false",
-			wantErr: true,
-			Err:     errors.New("illegal sso configuration"),
-		},
-		{
 			name: "sso provider dex + DISABLE_DEX",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
@@ -144,7 +122,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			},
 			envVar:  "true",
 			wantErr: true,
-			Err:     errors.New("illegal sso configuration"),
+			Err:     errors.New("illegal SSO configuration: cannot set DISABLE_DEX to true when dex is configured through .spec.sso"),
 		},
 		{
 			name: "sso provider dex + non empty, conflicting `.spec.dex` fields",
@@ -164,7 +142,24 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: cannot specify spec.Dex fields when dex is configured through .spec.sso"),
+		},
+		{
+			name: "sso provider dex + .spec.dex + DISABLE_DEX=false",
+			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: v1alpha1.SSOProviderTypeDex,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						Config: "test",
+					},
+				}
+				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{}
+			}),
+			setEnvVarFunc: func(s string) {
+				os.Setenv("DISABLE_DEX", s)
+			},
+			envVar:  "false",
+			wantErr: false,
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
@@ -176,7 +171,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: must suppy valid dex configuration when requested SSO provider is dex"),
 		},
 		{
 			name: "sso provider dex + `.spec.sso` fields provided",
@@ -193,7 +188,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: cannot supply keycloak configuration in spec.sso when requested SSO provider is dex"),
 		},
 		{
 			name: "sso provider dex + `.spec.sso.keycloak`",
@@ -204,12 +199,15 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 						Version: "test-image-version",
 					},
 					Provider: argov1alpha1.SSOProviderTypeDex,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						Config: "test",
+					},
 				}
 			}),
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"),
 		},
 		{
 			name: "DISABLE_DEX + `.spec.sso.keycloak`",
@@ -226,7 +224,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			},
 			envVar:  "false",
 			wantErr: true,
-			Err:     errors.New("illegal sso configuration"),
+			Err:     errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
 		},
 		{
 			name: "no conflicts - `.spec.dex` + `.spec.sso` fields",
@@ -271,7 +269,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("multiple sso configuration"),
+			Err:           errors.New("multiple SSO configuration: multiple SSO providers configured simultaneously"),
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso` + `.spec.sso.keycloak",
@@ -289,7 +287,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: cannot supply conflicting configuration in spec.sso when keycloak is configured through .spec.sso.keycloak"),
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",
@@ -305,7 +303,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: cannot supply dex configuration when requested SSO provider is keycloak"),
 		},
 		{
 			name: "sso provider missing but sso.dex/keycloak supplied",
@@ -323,7 +321,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal sso configuration"),
+			Err:           errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
 		},
 		{
 			name: "no conflict - no provider but .spec.sso fields supplied",
@@ -357,7 +355,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			restoreEnv(t)
+			restoreEnvFunc()
 			r := makeTestReconciler(t, test.argoCD)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
@@ -377,6 +375,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					t.Errorf("expected error but didn't get one")
 				}
 			}
+			restoreEnvFunc()
 		})
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
@@ -527,8 +528,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
 // environment propagated.
 func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
-	restoreEnv(t)
-	os.Setenv("DISABLE_DEX", "false")
+
 	os.Setenv("HTTP_PROXY", testHTTPProxy)
 	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
 	os.Setenv("no_proxy", testNoProxy)
@@ -536,6 +536,9 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
+		a.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+			Config: "test",
+		}
 	})
 	r := makeTestReconciler(t, a)
 
@@ -555,11 +558,20 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 // If the deployments already exist, they should be updated to reflect the new
 // environment variables.
 func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T) {
-	restoreEnv(t)
+	keys := []string{
+		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "no_proxy",
+		"DISABLE_DEX"}
+	for _, k := range keys {
+		os.Unsetenv(k)
+	}
 	logf.SetLogger(ZapLogger(true))
-	os.Setenv("DISABLE_DEX", "false")
+
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
+		a.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+			Config: "test",
+		}
 	})
 	r := makeTestReconciler(t, a)
 	err := r.reconcileDeployments(a, false)
@@ -832,6 +844,13 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
+	keys := []string{
+		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "no_proxy",
+		"DISABLE_DEX"}
+	for _, k := range keys {
+		os.Unsetenv(k)
+	}
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
