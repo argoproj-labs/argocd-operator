@@ -2,11 +2,11 @@ package argocd
 
 import (
 	"fmt"
-	v1 "k8s.io/api/rbac/v1"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"golang.org/x/mod/semver"
 
+	v1 "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

@@ -17,7 +17,6 @@ package argocdexport
 import (
 	"context"
 	"fmt"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +28,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
