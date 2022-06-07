@@ -284,3 +284,160 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	}
 	return r.Client.Update(context.TODO(), route)
 }
+
+// reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoprojv1a1.ArgoCD) error {
+	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "webhook")
+	route := newRouteWithSuffix(name, cr)
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if found {
+		if cr.Spec.ApplicationSet == nil {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
+		}
+	}
+
+	if cr.Spec.ApplicationSet == nil {
+		return nil // Route not enabled, move along...
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Server.Route.Annotations
+	}
+
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Server.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Server.Host) > 0 {
+		route.Spec.Host = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host
+	}
+
+	if cr.Spec.Server.Insecure {
+		// Disable TLS and rely on the cluster certificate.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("webhook"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationEdge,
+		}
+		route.Spec.Path = "/api/webhook"
+	} else {
+		// Server is using TLS configure passthrough.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("webhook"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationPassthrough,
+		}
+		route.Spec.Path = "/api/webhook"
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Server.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Server.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	if !found {
+		return r.Client.Create(context.TODO(), route)
+	}
+	return r.Client.Update(context.TODO(), route)
+}
+
+// reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerMetricsRoute(cr *argoprojv1a1.ArgoCD) error {
+	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "metrics")
+	route := newRouteWithSuffix(name, cr)
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	if found {
+		if cr.Spec.ApplicationSet == nil {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
+		}
+	}
+
+	if cr.Spec.ApplicationSet == nil {
+		return nil // Route not enabled, move along...
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Server.Route.Annotations
+	}
+
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Server.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Server.Host) > 0 {
+		route.Spec.Host = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host
+	}
+
+	if cr.Spec.Server.Insecure {
+		// Disable TLS and rely on the cluster certificate.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("metrics"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationEdge,
+		}
+
+	} else {
+		// Server is using TLS configure passthrough.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("metrics"),
+		}
+		route.Spec.TLS = &routev1.TLSConfig{
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			Termination:                   routev1.TLSTerminationPassthrough,
+		}
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Server.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Server.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	if !found {
+		return r.Client.Create(context.TODO(), route)
+	}
+	return r.Client.Update(context.TODO(), route)
+}

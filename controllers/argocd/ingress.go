@@ -384,3 +384,88 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 	}
 	return r.Client.Create(context.TODO(), ingress)
 }
+
+// reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv1a1.ArgoCD) error {
+	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if cr.Spec.ApplicationSet == nil {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if cr.Spec.ApplicationSet == nil {
+		return nil // Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := getDefaultIngressAnnotations()
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.Annotations) > 0 {
+		atns = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	pathType := networkingv1.PathTypeImplementationSpecific
+	// Add rules
+	ingress.Spec.Rules = []networkingv1.IngressRule{
+		{
+			Host: cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host,
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: "/api/webhook",
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "webhook",
+									},
+								},
+							},
+							PathType: &pathType,
+						},
+						{
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "metrics",
+									},
+								},
+							},
+							PathType: &pathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add default TLS options
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
+		{
+			Hosts: []string{
+				cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host,
+			},
+			SecretName: common.ArgoCDSecretName, // Todo change rhis
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}

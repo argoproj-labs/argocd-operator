@@ -44,6 +44,142 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  argoCDApplicationSetControllerServerSpec:
+                    description: ArgoCDApplicationSetServerSpec defines the options
+                      for the ArgoCD Server component.
+                    properties:
+                      host:
+                        description: Host is the hostname to use for Ingress/Route
+                          resources.
+                        type: string
+                      ingress:
+                        description: Ingress defines the desired state for an Ingress
+                          for the Application set webhook metricscomponent.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations is the map of annotations to
+                              apply to the Ingress.
+                            type: object
+                          enabled:
+                            description: Enabled will toggle the creation of the Ingress.
+                            type: boolean
+                          path:
+                            description: Path used for the Ingress resource.
+                            type: string
+                          tls:
+                            description: TLS configuration. Currently the Ingress
+                              only supports a single TLS port, 443. If multiple members
+                              of this list specify different hosts, they will be multiplexed
+                              on the same port according to the hostname specified
+                              through the SNI TLS extension, if the ingress controller
+                              fulfilling the ingress supports SNI.
+                            items:
+                              description: IngressTLS describes the transport layer
+                                security associated with an Ingress.
+                              properties:
+                                hosts:
+                                  description: Hosts are a list of hosts included
+                                    in the TLS certificate. The values in this list
+                                    must match the name/s used in the tlsSecret. Defaults
+                                    to the wildcard host setting for the loadbalancer
+                                    controller fulfilling this Ingress, if left unspecified.
+                                  items:
+                                    type: string
+                                  type: array
+                                  x-kubernetes-list-type: atomic
+                                secretName:
+                                  description: SecretName is the name of the secret
+                                    used to terminate TLS traffic on port 443. Field
+                                    is left optional to allow TLS routing based on
+                                    SNI hostname alone. If the SNI host in a listener
+                                    conflicts with the "Host" header field used by
+                                    an IngressRule, the SNI host is used for termination
+                                    and value of the Host header is used for routing.
+                                  type: string
+                              type: object
+                            type: array
+                        required:
+                        - enabled
+                        type: object
+                      insecure:
+                        description: Insecure toggles the insecure flag.
+                        type: boolean
+                      route:
+                        description: Route defines the desired state for an OpenShift
+                          Route for the Application set webhook metrics component.
+                        properties:
+                          annotations:
+                            additionalProperties:
+                              type: string
+                            description: Annotations is the map of annotations to
+                              use for the Route resource.
+                            type: object
+                          enabled:
+                            description: Enabled will toggle the creation of the OpenShift
+                              Route.
+                            type: boolean
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: Labels is the map of labels to use for the
+                              Route resource
+                            type: object
+                          path:
+                            description: Path the router watches for, to route traffic
+                              for to the service.
+                            type: string
+                          tls:
+                            description: TLS provides the ability to configure certificates
+                              and termination for the Route.
+                            properties:
+                              caCertificate:
+                                description: caCertificate provides the cert authority
+                                  certificate contents
+                                type: string
+                              certificate:
+                                description: certificate provides certificate contents
+                                type: string
+                              destinationCACertificate:
+                                description: destinationCACertificate provides the
+                                  contents of the ca certificate of the final destination.  When
+                                  using reencrypt termination this file should be
+                                  provided in order to have routers use it for health
+                                  checks on the secure connection. If this field is
+                                  not specified, the router may provide its own destination
+                                  CA and perform hostname validation using the short
+                                  service name (service.namespace.svc), which allows
+                                  infrastructure generated certificates to automatically
+                                  verify.
+                                type: string
+                              insecureEdgeTerminationPolicy:
+                                description: "insecureEdgeTerminationPolicy indicates
+                                  the desired behavior for insecure connections to
+                                  a route. While each router may make its own decisions
+                                  on which ports to expose, this is normally port
+                                  80. \n * Allow - traffic is sent to the server on
+                                  the insecure port (default) * Disable - no traffic
+                                  is allowed on the insecure port. * Redirect - clients
+                                  are redirected to the secure port."
+                                type: string
+                              key:
+                                description: key provides key file contents
+                                type: string
+                              termination:
+                                description: termination indicates termination type.
+                                type: string
+                            required:
+                            - termination
+                            type: object
+                          wildcardPolicy:
+                            description: WildcardPolicy if any for the route. Currently
+                              only 'Subdomain' or 'None' is allowed.
+                            type: string
+                        required:
+                        - enabled
+                        type: object
+                    type: object
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
