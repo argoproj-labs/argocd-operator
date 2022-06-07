@@ -145,23 +145,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			Err:           errors.New("illegal SSO configuration: cannot specify spec.Dex fields when dex is configured through .spec.sso"),
 		},
 		{
-			name: "sso provider dex + .spec.dex + DISABLE_DEX=false",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
-						Config: "test",
-					},
-				}
-				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{}
-			}),
-			setEnvVarFunc: func(s string) {
-				os.Setenv("DISABLE_DEX", s)
-			},
-			envVar:  "false",
-			wantErr: false,
-		},
-		{
 			name: "sso provider dex but no .spec.sso.dex provided",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
@@ -225,22 +208,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			envVar:  "false",
 			wantErr: true,
 			Err:     errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
-		},
-		{
-			name: "no conflicts - `.spec.dex` + `.spec.sso` fields",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Image:   "test-image",
-					Version: "test-image-version",
-				}
-				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{
-					Config:         "test-config",
-					OpenShiftOAuth: false,
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       false,
 		},
 		{
 			name: "no conflicts - `DISABLE_DEX` + `.spec.sso` fields",
