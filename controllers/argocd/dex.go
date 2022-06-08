@@ -405,16 +405,10 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	log.Info("reconciling dex deployment")
 	if err := r.reconcileDexDeployment(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileStatusDex(cr); err != nil {
-		return err
-	}
-
-	log.Info("reconciling dex service")
 	if err := r.reconcileDexService(cr); err != nil {
 		return err
 	}
@@ -430,18 +424,11 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	log.Info("reconciling dex role binding")
 	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", common.ArgoCDDexServerComponent, err)
 	}
 
-	log.Info("reconciling dex role")
-	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
-		return err
-	}
-
-	log.Info("reconciling dex serviceaccount")
-	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
+	if err := r.reconcileStatusDex(cr); err != nil {
 		return err
 	}
 

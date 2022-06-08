@@ -70,11 +70,6 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		}
 	}
 
-	// specialized handling for dex
-	if err := r.reconcileDexServiceAccount(cr); err != nil {
-		return err
-	}
-
 	return nil
 }
 
