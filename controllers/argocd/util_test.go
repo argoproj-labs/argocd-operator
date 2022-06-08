@@ -627,34 +627,6 @@ func TestSetManagedNamespaces(t *testing.T) {
 	}
 }
 
-func TestGetRedisConf(t *testing.T) {
-	s1 := getRedisConf(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisConf(false)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisSentinelConf(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisSentinelConf(false)
-	//assert.Equal(t, "", s1)
-
-	a := makeTestArgoCD()
-
-	s1 = getRedisInitScript(a, true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisLivenessScript(false)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisReadinessScript(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getSentinelLivenessScript(true)
-	assert.Equal(t, "", s1)
-}
-
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
