@@ -30,3 +30,4 @@ vendor/
 build/_output
 
 kubeconfig
+kuttl-test.json

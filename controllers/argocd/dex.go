@@ -348,11 +348,11 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 
 	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex role")
 	}
 
 	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", common.ArgoCDDexServerComponent, err)
+		log.Error(err, "error reconciling dex rolebinding")
 	}
 
 	if err := r.reconcileServiceAccountPermissions(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
@@ -361,24 +361,24 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 
 	// specialized handling for dex
 	if err := r.reconcileDexServiceAccount(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex serviceaccount")
 	}
 
 	// Reconcile dex config in argocd-cm, create dex config in argocd-cm if required (right after dex is enabled)
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling argocd-cm configmap")
 	}
 
 	if err := r.reconcileDexService(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex service")
 	}
 
 	if err := r.reconcileDexDeployment(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex deployment")
 	}
 
 	if err := r.reconcileStatusDex(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex status")
 	}
 
 	return nil
@@ -406,11 +406,11 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileDexDeployment(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex deployment")
 	}
 
 	if err := r.reconcileDexService(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex service")
 	}
 
 	// Reconcile dex config in argocd-cm (right after dex is disabled)
@@ -420,16 +420,16 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
-			return err
+			log.Error(err, "error reconciling dex configuration in configmap")
 		}
 	}
 
 	if err := r.reconcileRoleBinding(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", common.ArgoCDDexServerComponent, err)
+		log.Error(err, "error reconciling dex rolebinding")
 	}
 
 	if err := r.reconcileStatusDex(cr); err != nil {
-		return err
+		log.Error(err, "error reconciling dex status")
 	}
 
 	return nil
