@@ -682,7 +682,7 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 	return encoded
 }
 
-//sTestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
 func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()

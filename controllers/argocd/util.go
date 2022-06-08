@@ -384,7 +384,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 		sa.Secrets = append(sa.Secrets, *tokenSecret)
 		err = r.Client.Update(context.TODO(), sa)
 		if err != nil {
-			return nil, errors.New("Failed to Add ServiceAccount token for OAuth client secret")
+			return nil, errors.New("failed to add ServiceAccount token for OAuth client secret")
 		}
 	}
 
