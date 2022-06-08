@@ -693,4 +693,13 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = r.getDexOAuthClientSecret(a)
 	assert.NoError(t, err)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	tokenExists := false
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "dex-server-token") {
+			tokenExists = true
+		}
+	}
+	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }
