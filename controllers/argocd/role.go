@@ -69,7 +69,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 		return role, err
 	}
 
-	if _, err := r.reconcileRole(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
+	if _, err := r.reconcileRole(redisHa, policyRuleForRedisHa(r.client), cr); err != nil {
 		return role, err
 	}
 

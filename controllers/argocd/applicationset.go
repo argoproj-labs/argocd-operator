@@ -175,6 +175,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		},
 	}}
 
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
+
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		existingSpec := existing.Spec.Template.Spec
