@@ -38,9 +38,11 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
+	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -59,6 +61,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+var (
+	versionAPIFound = false
+)
+
+// IsVersionAPIAvailable returns true if the version api is present
+func IsVersionAPIAvailable() bool {
+	return versionAPIFound
+}
+
+// verifyVersionAPI will verify that the template API is present.
+func verifyVersionAPI() error {
+	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	versionAPIFound = found
+	return nil
+}
 
 // generateArgoAdminPassword will generate and return the admin password for Argo CD.
 func generateArgoAdminPassword() ([]byte, error) {
@@ -610,6 +631,10 @@ func InspectCluster() error {
 	if err := verifyTemplateAPI(); err != nil {
 		return err
 	}
+
+	if err := verifyVersionAPI(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1069,6 +1094,10 @@ func boolPtr(val bool) *bool {
 	return &val
 }
 
+func int64Ptr(val int64) *int64 {
+	return &val
+}
+
 // triggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
 func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
@@ -1376,6 +1405,43 @@ func getOpenShiftAPIURL() string {
 	}
 
 	return out
+}
+
+func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
+	if !IsVersionAPIAvailable() {
+		return
+	}
+	version, err := getClusterVersion(client)
+	if err != nil {
+		log.Error(err, "couldn't get OpenShift version")
+	}
+	if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
+		if podspec.SecurityContext == nil {
+			podspec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+		if podspec.SecurityContext.SeccompProfile == nil {
+			podspec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+		}
+		if len(podspec.SecurityContext.SeccompProfile.Type) == 0 {
+			podspec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+		}
+	}
+}
+
+// getClusterVersion returns the OpenShift Cluster version in which the operator is installed
+func getClusterVersion(client client.Client) (string, error) {
+	if !IsVersionAPIAvailable() {
+		return "", nil
+	}
+	clusterVersion := &configv1.ClusterVersion{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: "version"}, clusterVersion)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return clusterVersion.Status.Desired.Version, nil
 }
 
 // generateRandomBytes returns a securely generated random bytes.

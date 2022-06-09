@@ -177,6 +177,8 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
 			"/shared/argocd-dex",
@@ -209,6 +211,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			},
 		},
 		Resources: getDexResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -227,6 +238,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",

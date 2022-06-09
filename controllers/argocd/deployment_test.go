@@ -909,6 +909,15 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
@@ -1114,6 +1123,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
 		},
@@ -1189,6 +1207,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					},
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
