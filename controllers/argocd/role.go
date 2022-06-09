@@ -99,7 +99,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			roles = append(roles, role)
 
-			if name == common.ArgoCDDexServerComponent && !useDex(cr) {
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 
 				continue // Dex installation not requested, do nothing
 			}
@@ -119,7 +119,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		// Delete the existing default role if custom role is specified
 		// or if there is an existing Role created for Dex but dex is disabled or not configured
 		if customRole != "" ||
-			(name == common.ArgoCDDexServerComponent && !useDex(cr)) {
+			(name == common.ArgoCDDexServerComponent && !UseDex(cr)) {
 
 			log.Info("deleting the existing Dex role because dex is not configured")
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {

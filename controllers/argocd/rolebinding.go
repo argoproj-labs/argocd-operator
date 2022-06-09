@@ -112,7 +112,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
 
-			if name == common.ArgoCDDexServerComponent && !useDex(cr) {
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 				continue // Dex installation is not requested, do nothing
 			}
 
@@ -143,7 +143,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == common.ArgoCDDexServerComponent && !useDex(cr) {
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 				// Delete any existing RoleBinding created for Dex since dex uninstallation is requested
 				log.Info("deleting the existing Dex roleBinding because dex uninstallation is requested")
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {

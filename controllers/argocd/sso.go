@@ -101,7 +101,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		var err error
 
 		// no SSO configured, nothing to do here
-		if !useDex(cr) {
+		if !UseDex(cr) {
 			return nil
 		}
 
@@ -230,7 +230,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if err := r.reconcileKeycloakConfiguration(cr); err != nil {
 			return err
 		}
-	} else if useDex(cr) {
+	} else if UseDex(cr) {
 		// dex
 		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
 		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
@@ -269,9 +269,9 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, old
 	return nil
 }
 
-// useDex determines whether Dex resources should be created and configured or not, with a focus on
+// UseDex determines whether Dex resources should be created and configured or not, with a focus on
 // backward compatibility and not introducing breaking changes to existing user workflows
-func useDex(cr *argoprojv1a1.ArgoCD) bool {
+func UseDex(cr *argoprojv1a1.ArgoCD) bool {
 	if cr.Spec.SSO != nil {
 		return cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex
 	}

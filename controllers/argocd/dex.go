@@ -245,7 +245,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		// dex uninstallation requested
-		if !useDex(cr) {
+		if !UseDex(cr) {
 			log.Info("deleting the existing dex deployment because dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), existing)
 		}
@@ -291,7 +291,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	// if Dex installation has not been requested, do nothing
-	if !useDex(cr) {
+	if !UseDex(cr) {
 		return nil
 	}
 
@@ -307,7 +307,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
 		// dex uninstallation requested
-		if !useDex(cr) {
+		if !UseDex(cr) {
 			log.Info("deleting the existing Dex service because dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), svc)
 		}
@@ -315,7 +315,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	// if Dex installation has not been requested, do nothing
-	if !useDex(cr) {
+	if !UseDex(cr) {
 		return nil // Dex is disabled, do nothing
 	}
 

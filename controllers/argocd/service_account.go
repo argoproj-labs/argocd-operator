@@ -102,13 +102,13 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 			return nil, err
 		}
 
-		if name == common.ArgoCDDexServerComponent && !useDex(cr) {
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 			return sa, nil // Dex installation not requested, do nothing
 		}
 		exists = false
 	}
 	if exists {
-		if name == common.ArgoCDDexServerComponent && !useDex(cr) {
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 			// Delete any existing Service Account created for Dex since dex is disabled
 			log.Info("deleting the existing Dex service account because dex uninstallation requested")
 			return sa, r.Client.Delete(context.TODO(), sa)
