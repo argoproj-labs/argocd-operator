@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"gopkg.in/yaml.v2"
 
@@ -376,6 +377,10 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 		err := r.Client.Create(context.TODO(), secret)
 		if err != nil {
 			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
+		}
+		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
+		if err != nil {
+			return nil, err
 		}
 		tokenSecret = &corev1.ObjectReference{
 			Name:      secret.Name,
