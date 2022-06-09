@@ -60,6 +60,7 @@ func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.Ser
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) error {
+	params := getPolicyRuleList(r.Client)
 
 	if err := r.reconcileServiceAccountPermissions(common.ArgoCDServerComponent, policyRuleForServer(), cr); err != nil {
 		return err

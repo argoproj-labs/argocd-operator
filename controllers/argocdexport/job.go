@@ -28,6 +28,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -164,8 +165,12 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
 	}
 }
 
-func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.PodSpec {
+func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
+
+	boolPtr := func(value bool) *bool {
+		return &value
+	}
 
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
@@ -173,7 +178,16 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.P
 		Image:           getArgoExportContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
-		VolumeMounts:    getArgoExportVolumeMounts(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
+		VolumeMounts: getArgoExportVolumeMounts(),
 	}}
 
 	pod.RestartPolicy = corev1.RestartPolicyOnFailure
@@ -191,18 +205,19 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.P
 		RunAsGroup: &id,
 		FSGroup:    &id,
 	}
+	argocd.AddSeccompProfileForOpenShift(client, &pod)
 
 	return pod
 }
 
-func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string) corev1.PodTemplateSpec {
+func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client client.Client) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    common.DefaultLabels(cr.Name),
 		},
-		Spec: newExportPodSpec(cr, argocdName),
+		Spec: newExportPodSpec(cr, argocdName, client),
 	}
 }
 
@@ -231,7 +246,7 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) 
 		return err
 	}
 	job := newJob(cr)
-	job.Spec.Template = newPodTemplateSpec(cr, argocdName)
+	job.Spec.Template = newPodTemplateSpec(cr, argocdName, r.Client)
 
 	cj.Spec.JobTemplate.Spec = job.Spec
 
@@ -264,7 +279,7 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) erro
 	if err != nil {
 		return err
 	}
-	job.Spec.Template = newPodTemplateSpec(cr, argocdName)
+	job.Spec.Template = newPodTemplateSpec(cr, argocdName, r.Client)
 
 	if err := controllerutil.SetControllerReference(cr, job, r.Scheme); err != nil {
 		return err

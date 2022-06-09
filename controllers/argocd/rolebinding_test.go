@@ -62,8 +62,8 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 
 	// check no redisHa rolebinding is created for the new namespace with managed-by label
-	workloadIdentifier = redisHa
-	expectedRedisHaRules := policyRuleForRedisHa(a)
+	workloadIdentifier = common.ArgoCDRedisHAComponent
+	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }

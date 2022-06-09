@@ -132,7 +132,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.3.0
+  name: argocd-operator.v0.4.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -580,6 +580,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceTrackingMethod defines how Argo CD should track resources
+          that it manages
+        displayName: Resource Tracking Method'
+        path: resourceTrackingMethod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Enabled will toggle autoscaling support for the Argo CD Server
           component.
         displayName: Autoscale Enabled'
@@ -692,6 +699,19 @@ spec:
           For some reason the state of the Argo CD Dex component could not be obtained.'
         displayName: Dex
         path: dex
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'NotificationsController is a simple, high-level summary of where
+          the Argo CD notifications controller component is in its lifecycle. There
+          are five possible NotificationsController values: Pending: The Argo CD notifications
+          controller component has been accepted by the Kubernetes system, but one
+          or more of the required resources have not been created. Running: All of
+          the required Pods for the Argo CD notifications controller component are
+          in a Ready state. Failed: At least one of the  Argo CD notifications controller
+          component Pods had a failure. Unknown: For some reason the state of the
+          Argo CD notifications controller component could not be obtained.'
+        displayName: NotificationsController
+        path: notificationsController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Phase is a simple, high-level summary of where the ArgoCD is
@@ -994,7 +1014,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator@sha256:f6fc8c310ff6c86d9e0b5acbc16de7dc14d0f5dd813094e380d636482bccb090
+                image: quay.io/argoprojlabs/argocd-operator:v0.4.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1075,5 +1095,5 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.2.1
-  version: 0.3.0
+  replaces: argocd-operator.v0.3.0
+  version: 0.4.0

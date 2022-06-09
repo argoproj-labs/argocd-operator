@@ -132,6 +132,47 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		},
 	}
 
+	podSpec.Containers = []corev1.Container{
+		applicationSetContainer(cr),
+	}
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
+
+	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+
+		existingSpec := existing.Spec.Template.Spec
+
+		deploymentsDifferent := !reflect.DeepEqual(existingSpec.Containers[0], podSpec.Containers) ||
+			!reflect.DeepEqual(existingSpec.Volumes, podSpec.Volumes) ||
+			existingSpec.ServiceAccountName != podSpec.ServiceAccountName ||
+			!reflect.DeepEqual(existing.Labels, deploy.Labels) ||
+			!reflect.DeepEqual(existing.Spec.Template.Labels, deploy.Spec.Template.Labels) ||
+			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations)
+
+		// If the Deployment already exists, make sure the values we care about are up-to-date
+		if deploymentsDifferent {
+			existing.Spec.Template.Spec.Containers = podSpec.Containers
+			existing.Spec.Template.Spec.Volumes = podSpec.Volumes
+			existing.Spec.Template.Spec.ServiceAccountName = podSpec.ServiceAccountName
+			existing.Labels = deploy.Labels
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			existing.Spec.Selector = deploy.Spec.Selector
+			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+
+}
+
+func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",

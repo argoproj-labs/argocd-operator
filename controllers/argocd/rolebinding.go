@@ -75,8 +75,12 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 		return fmt.Errorf("error reconciling roleBinding for %q: %w", dexServer, err)
 	}
 
-	if err := r.reconcileRoleBinding(redisHa, policyRuleForRedisHa(cr), cr); err != nil {
-		return fmt.Errorf("error reconciling roleBinding for %q: %w", redisHa, err)
+	params := getPolicyRuleList(r.Client)
+
+	for _, param := range params {
+		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr); err != nil {
+			return fmt.Errorf("error reconciling roleBinding for %q: %w", param.name, err)
+		}
 	}
 
 	if err := r.reconcileRoleBinding(server, policyRuleForServer(), cr); err != nil {
