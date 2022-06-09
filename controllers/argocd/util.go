@@ -364,6 +364,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	if tokenSecret == nil {
+		// This change of creating secret for dex service account,is due to change of reduction of secret-based service account tokens in k8s v1.24 so from k8s v1.24 no default secret for service account is created, but for dex to work we need to provide token of secret used by dex service account as a oauth token, this change helps to achieve it, in long run we should see do dex really requires a secret or it manages to create one using TokenRequest API or may be change how dex is used or configured by operator
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "argocd-dex-server-token-",
