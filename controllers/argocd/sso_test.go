@@ -134,7 +134,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 						OpenShiftOAuth: true,
 					},
 				}
-				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					Config:         "non-empty-config",
 					OpenShiftOAuth: true,
 				}
@@ -229,7 +229,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argov1alpha1.SSOProviderTypeKeycloak,
 				}
-				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -308,7 +308,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argov1alpha1.SSOProviderTypeKeycloak,
 				}
-				ac.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			}),
@@ -387,12 +387,12 @@ func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 			unSetEnvVarFunc: func() {
 				os.Unsetenv("DISABLE_DEX")
 			},
-			wantEvents: []*corev1.Event{specDexEvent, disableDexEvent},
+			wantEvents: []*corev1.Event{disableDexEvent},
 		},
 		{
 			name: ".spec.dex in use",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.Dex = argov1alpha1.ArgoCDDexSpec{
+				ac.Spec.Dex = &argov1alpha1.ArgoCDDexSpec{
 					Config:  "",
 					Groups:  []string{},
 					Image:   "",
@@ -413,7 +413,7 @@ func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 			}),
 			envVar:        "",
 			setEnvVarFunc: nil,
-			wantEvents:    []*corev1.Event{specDexEvent, specSSOEvent},
+			wantEvents:    []*corev1.Event{specSSOEvent},
 		},
 	}
 

@@ -76,7 +76,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	if !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) {
 
 		// Emit event warning users about deprecation notice for `.spec.dex` users
 		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex configuration can be managed through `.spec.sso.dex`", "DeprecationNotice", cr.ObjectMeta)
@@ -140,8 +140,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				// new keycloak spec fields are expressed when `.spec.sso.provider` is set to dex ==> conflict
 				errMsg = "cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"
 				isError = true
-			} else if cr.Spec.Dex.Image != "" || cr.Spec.Dex.Config != "" || cr.Spec.Dex.Resources != nil || len(cr.Spec.Dex.Groups) != 0 ||
-				cr.Spec.Dex.Version != "" || cr.Spec.Dex.OpenShiftOAuth != cr.Spec.SSO.Dex.OpenShiftOAuth {
+			} else if cr.Spec.Dex != nil && (cr.Spec.Dex.Image != "" || cr.Spec.Dex.Config != "" || cr.Spec.Dex.Resources != nil || len(cr.Spec.Dex.Groups) != 0 ||
+				cr.Spec.Dex.Version != "" || cr.Spec.Dex.OpenShiftOAuth != cr.Spec.SSO.Dex.OpenShiftOAuth) {
 				// old dex spec fields are expressed when `.spec.sso.provider` is set to dex instead of using new `.spec.sso.dex` ==> conflict
 				errMsg = "cannot specify spec.Dex fields when dex is configured through .spec.sso"
 				isError = true
@@ -178,7 +178,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				errMsg = "cannot supply dex configuration when requested SSO provider is keycloak"
 				err = errors.New(illegalSSOConfiguration + errMsg)
 				isError = true
-			} else if (!reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
+			} else if (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
 				// Keycloak configured as SSO provider, but dex config also present in argocd-cm. May cause both SSO providers to get
 				// configured if Dex pods happen to be running due to `DEX_DISABLED` being set to false ==> conflict
 				errMsg = "multiple SSO providers configured simultaneously"
@@ -280,7 +280,7 @@ func UseDex(cr *argoprojv1a1.ArgoCD) bool {
 	}
 	// we don't care about the case where dex is enabled either explicitly through DISABLE_DEX (or implicitly due to the flag being unset)
 	// in terms of creation/deletion of resources unless there is existing configuration in place that must be honored
-	if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
 		return true
 	}
 	return false

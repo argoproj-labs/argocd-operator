@@ -850,7 +850,11 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.Controller.DeepCopyInto(&out.Controller)
-	in.Dex.DeepCopyInto(&out.Dex)
+	if in.Dex != nil {
+		in, out := &in.Dex, &out.Dex
+		*out = new(ArgoCDDexSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ExtraConfig != nil {
 		in, out := &in.ExtraConfig, &out.ExtraConfig
 		*out = make(map[string]string, len(*in))

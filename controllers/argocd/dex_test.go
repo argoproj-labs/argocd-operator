@@ -97,7 +97,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 		},
 		{
@@ -167,12 +169,14 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 				os.Setenv("DISABLE_DEX", envVar)
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantDeploymentDeleted: true,
 		},
@@ -229,7 +233,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -292,15 +296,17 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.Config = "test-config"
-				cr.Spec.Dex.Resources = &corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
-						corev1.ResourceCPU:    resourcev1.MustParse("250m"),
-					},
-					Limits: corev1.ResourceList{
-						corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
-						corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					Config: "test-config",
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
+							corev1.ResourceCPU:    resourcev1.MustParse("250m"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+							corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+						},
 					},
 				}
 			}),
@@ -541,7 +547,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.Image = "justatest"
 				cr.Spec.Version = "latest"
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					Image:   "testdex",
 					Version: "v0.0.1",
 				}
@@ -640,7 +646,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 				os.Unsetenv("DISABLE_DEX")
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			},
@@ -648,7 +654,9 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 				os.Setenv("DISABLE_DEX", envVar)
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantServiceDeleted: true,
 		},
@@ -702,7 +710,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -772,7 +780,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 				os.Unsetenv("DISABLE_DEX")
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			},
@@ -780,7 +788,9 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 				os.Setenv("DISABLE_DEX", envVar)
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantServiceAccountDeleted: true,
 		},
@@ -837,7 +847,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -905,7 +915,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				os.Unsetenv("DISABLE_DEX")
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			},
@@ -913,7 +923,9 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				os.Setenv("DISABLE_DEX", envVar)
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantRoleDeleted: true,
 		},
@@ -970,7 +982,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -1046,12 +1058,14 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 				os.Setenv("DISABLE_DEX", envVar)
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantRoleBindingDeleted: true,
 		},
@@ -1108,7 +1122,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),

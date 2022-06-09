@@ -593,7 +593,7 @@ type ArgoCDSpec struct {
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
 
 	// Dex defines the Dex server options for ArgoCD.
-	Dex ArgoCDDexSpec `json:"dex,omitempty"`
+	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`

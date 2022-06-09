@@ -67,7 +67,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 
 	// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
 	// openshift dex config
-	if len(desired) <= 0 && (!reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+	if len(desired) <= 0 && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
 		cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
@@ -106,7 +106,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 	groups := []string{}
 
 	// Allow override of groups from CR
-	if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Groups != nil {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Groups != nil {
 		groups = cr.Spec.Dex.Groups
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Groups != nil {
 		groups = cr.Spec.SSO.Dex.Groups
@@ -140,7 +140,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
 
 	// if openShiftOAuth set to false in both `.spec.dex` and `.spec.sso.dex`, no need to configure it
-	if (reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth) &&
+	if (cr.Spec.Dex == nil || reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth) &&
 		(cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		return nil // OpenShift OAuth not enabled, move along...
 	}
@@ -298,6 +298,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+
+	log.Info(fmt.Sprintf("creating deployment %s for Argo CD instance %s in namespace %s", deploy.Name, cr.Name, cr.Namespace))
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -340,6 +342,8 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
+
+	log.Info(fmt.Sprintf("creating service %s for Argo CD instance %s in namespace %s", svc.Name, cr.Name, cr.Namespace))
 	return r.Client.Create(context.TODO(), svc)
 }
 

@@ -364,7 +364,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 				}},
 			}
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {})
+			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: false,
+				}
+			})
 
 			secret := argoutil.NewSecretWithName(a, "token")
 			r := makeTestReconciler(t, a, sa, secret)
@@ -376,7 +380,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 			if test.updateCrSpecFunc != nil {
 				test.updateCrSpecFunc(a)
-				a.Spec.Dex = v1alpha1.ArgoCDDexSpec{}
+				a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
 			}
 			err := r.reconcileArgoConfigMap(a)
 			assert.NoError(t, err)
@@ -429,7 +433,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 				os.Unsetenv("DISABLE_DEX")
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: false,
+				}
 			}),
 		},
 		{
@@ -503,12 +509,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 				os.Unsetenv("DISABLE_DEX")
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantConfigRemoved: true,
 		},
@@ -521,12 +529,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 				os.Unsetenv("DISABLE_DEX")
 			},
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex.OpenShiftOAuth = true
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
 			}),
 			wantConfigRemoved: false,
 		},

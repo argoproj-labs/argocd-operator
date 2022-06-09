@@ -120,6 +120,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		return nil, err
 	}
 
+	log.Info(fmt.Sprintf("creating serviceaccount %s for Argo CD instance %s in namespace %s", sa.Name, cr.Name, cr.Namespace))
+
 	err := r.Client.Create(context.TODO(), sa)
 	if err != nil {
 		return nil, err

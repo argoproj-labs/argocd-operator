@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -46,8 +47,10 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex.Image = "testing/dex"
-			a.Spec.Dex.Version = "latest"
+			a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+				Image:   "testing/dex",
+				Version: "latest",
+			}
 		}},
 	},
 	{

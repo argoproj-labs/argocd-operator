@@ -72,20 +72,6 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 	return plugins
 }
 
-func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
-	config := common.ArgoCDDefaultDexConfig
-
-	// Allow override of config from CR
-	if cr.Spec.ExtraConfig["dex.config"] != "" {
-		config = cr.Spec.ExtraConfig["dex.config"]
-	} else if !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
-		config = cr.Spec.Dex.Config
-	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && len(cr.Spec.SSO.Dex.Config) > 0 {
-		config = cr.Spec.SSO.Dex.Config
-	}
-	return config
-}
-
 // getGATrackingID will return the google analytics tracking ID for the given Argo CD.
 func getGATrackingID(cr *argoprojv1a1.ArgoCD) string {
 	id := common.ArgoCDDefaultGATrackingID
@@ -363,7 +349,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
 		// openshift dex config
-		if dexConfig == "" && (!reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+		if dexConfig == "" && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
 			(cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth)) {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {

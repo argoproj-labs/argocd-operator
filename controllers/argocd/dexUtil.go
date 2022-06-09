@@ -36,7 +36,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := ""
 	tag := ""
 
-	if !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Image != "" {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Image != "" {
 		img = cr.Spec.Dex.Image
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Image != "" {
 		img = cr.Spec.SSO.Dex.Image
@@ -47,7 +47,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultImg = true
 	}
 
-	if !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Version != "" {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Version != "" {
 		tag = cr.Spec.Dex.Version
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Version != "" {
 		tag = cr.Spec.SSO.Dex.Version
@@ -80,14 +80,27 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := v1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Resources != nil {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Resources != nil {
 		resources = *cr.Spec.Dex.Resources
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Resources != nil {
-
 		resources = *cr.Spec.SSO.Dex.Resources
 	}
 
 	return resources
+}
+
+func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
+	config := common.ArgoCDDefaultDexConfig
+
+	// Allow override of config from CR
+	if cr.Spec.ExtraConfig["dex.config"] != "" {
+		config = cr.Spec.ExtraConfig["dex.config"]
+	} else if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
+		config = cr.Spec.Dex.Config
+	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && len(cr.Spec.SSO.Dex.Config) > 0 {
+		config = cr.Spec.SSO.Dex.Config
+	}
+	return config
 }
 
 func isDexDisabled() bool {

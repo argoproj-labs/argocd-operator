@@ -31,7 +31,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 		{
 			name: "only dex configured",
 			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.Dex = argoprojv1alpha1.ArgoCDDexSpec{
+				ac.Spec.Dex = &argoprojv1alpha1.ArgoCDDexSpec{
 					Resources:      makeTestDexResources(),
 					OpenShiftOAuth: true,
 				}
@@ -46,7 +46,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
 				}
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: false,
 				}
 			}),
@@ -60,7 +60,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
 				}
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
 					OpenShiftOAuth: true,
 				}
 			}),
@@ -72,7 +72,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 		{
 			name: "no sso configured",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = v1alpha1.ArgoCDDexSpec{}
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
 			}),
 			templateAPIfound: false,
 			wantSSOConfig:    "Unknown",
@@ -86,9 +86,9 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 			r := makeTestReconciler(t, test.argoCD)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			_ = r.reconcileSSO(test.argoCD)
+			err := r.reconcileSSO(test.argoCD)
 
-			err := r.reconcileStatusSSOConfig(test.argoCD)
+			err = r.reconcileStatusSSOConfig(test.argoCD)
 			if err != nil {
 				if !test.wantErr {
 					t.Errorf("Got unexpected error")
