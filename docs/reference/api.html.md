@@ -2202,7 +2202,7 @@ string
 <table>
 <thead>
 <tr>
-<th>Field</th>
+<th style="width:30%">Field</th>
 <th>Description</th>
 </tr>
 </thead>
