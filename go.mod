@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.18
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.3.3
+	github.com/argoproj/argo-cd/v2 v2.3.4
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.2.2
 	github.com/google/go-cmp v0.5.6
@@ -17,6 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/mod v0.5.1-0.20210830214625-1b1db11ec8f4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.1
 	k8s.io/apimachinery v0.23.1

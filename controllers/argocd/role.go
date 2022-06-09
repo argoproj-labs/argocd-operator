@@ -52,7 +52,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
 func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
-	params := getPolicyRuleList()
+	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
 		if _, err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
