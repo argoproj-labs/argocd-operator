@@ -735,6 +735,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	useTLSForRedis := r.redisShouldUseTLS(cr)
 
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling config maps")
 	if err := r.reconcileConfigMaps(cr, useTLSForRedis); err != nil {
 		return err
@@ -810,11 +815,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
-		return err
-	}
-
-	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
 		return err
 	}
 
@@ -975,7 +975,8 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			}
 
 			// trigger deletion of dex when dex configuration is removed from .spec.dex
-			if !reflect.DeepEqual(oldCR.Spec.Dex, newCR.Spec.Dex) && (newCR.Spec.Dex.Config == "" && !newCR.Spec.Dex.OpenShiftOAuth) {
+			if !reflect.DeepEqual(oldCR.Spec.Dex, newCR.Spec.Dex) && (newCR.Spec.Dex == nil ||
+				(newCR.Spec.Dex.Config == "" && !newCR.Spec.Dex.OpenShiftOAuth)) {
 				err := r.deleteDexResources(newCR)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
