@@ -105,7 +105,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			return nil
 		}
 
-		if (!isDexDisabled() && isDisableDexSet) && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && !cr.Spec.Dex.OpenShiftOAuth && cr.Spec.Dex.Config == "" {
+		if (!isDexDisabled() && isDisableDexSet) && cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && !cr.Spec.Dex.OpenShiftOAuth && cr.Spec.Dex.Config == "" {
 			// dex is enabled but no dexconfig supplied. This will cause health probe to fail as per
 			// https://github.com/argoproj-labs/argocd-operator/pull/615 ==> conflict
 			errMsg = "must suppy valid dex configuration when dex is enabled"
