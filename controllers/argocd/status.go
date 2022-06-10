@@ -36,6 +36,10 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	if err := r.reconcileStatusDex(cr); err != nil {
+		log.Error(err, "error reconciling dex status")
+	}
+
 	if err := r.reconcileStatusPhase(cr); err != nil {
 		return err
 	}

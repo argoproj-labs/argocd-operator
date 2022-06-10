@@ -703,6 +703,17 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+
+	// reconcile SSO first, because dex resources get reconciled through other function calls as well, not just through reconcileSSO (this is important
+	// so that dex resources can be appropriately cleaned up when DISABLE_DEX is set to true and the operator pod restarts but doesn't enter
+	// dex reconciliation again because dex is disabled, thus leaving hanging resources around if they are not also cleaned up in the main loop)
+	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
+	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
 		return err
@@ -734,11 +745,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	useTLSForRedis := r.redisShouldUseTLS(cr)
-
-	log.Info("reconciling SSO")
-	if err := r.reconcileSSO(cr); err != nil {
-		return err
-	}
 
 	log.Info("reconciling config maps")
 	if err := r.reconcileConfigMaps(cr, useTLSForRedis); err != nil {

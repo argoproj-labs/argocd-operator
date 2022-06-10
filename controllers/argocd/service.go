@@ -421,6 +421,10 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error 
 // reconcileServices will ensure that all Services are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 
+	if err := r.reconcileDexService(cr); err != nil {
+		log.Error(err, "error reconciling dex service")
+	}
+
 	err := r.reconcileGrafanaService(cr)
 	if err != nil {
 		return err
