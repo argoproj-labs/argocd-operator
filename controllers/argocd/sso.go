@@ -70,7 +70,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if env := os.Getenv("DISABLE_DEX"); env != "" {
 
 		// Emit event warning users about deprecation notice for `DISABLE_DEX` users
-		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex configuration can be managed through `.spec.sso.dex`", "DeprecationNotice", cr.ObjectMeta)
+		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex can be enabled/disabled through `.spec.sso`", "DeprecationNotice", cr.ObjectMeta)
 		if err != nil {
 			return err
 		}
@@ -143,7 +143,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			} else if cr.Spec.Dex != nil && (cr.Spec.Dex.Image != "" || cr.Spec.Dex.Config != "" || cr.Spec.Dex.Resources != nil || len(cr.Spec.Dex.Groups) != 0 ||
 				cr.Spec.Dex.Version != "" || cr.Spec.Dex.OpenShiftOAuth != cr.Spec.SSO.Dex.OpenShiftOAuth) {
 				// old dex spec fields are expressed when `.spec.sso.provider` is set to dex instead of using new `.spec.sso.dex` ==> conflict
-				errMsg = "cannot specify spec.Dex fields when dex is configured through .spec.sso"
+				errMsg = "cannot specify .spec.Dex fields when dex is configured through .spec.sso"
 				isError = true
 			} else if cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil {
 				// old keycloak spec fields expressed when `.spec.sso.provider` is set to dex ==> conflict
@@ -170,7 +170,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources)) {
 				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
 				// ==> conflict
-				errMsg = "cannot supply conflicting configuration in spec.sso when keycloak is configured through .spec.sso.keycloak"
+				errMsg = "cannot supply conflicting configuration in .spec.sso when keycloak is configured through .spec.sso.keycloak"
 				err = errors.New(illegalSSOConfiguration + errMsg)
 				isError = true
 			} else if cr.Spec.SSO.Dex != nil {
@@ -267,21 +267,4 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, old
 
 	_ = r.reconcileStatusSSOConfig(newCr)
 	return nil
-}
-
-// UseDex determines whether Dex resources should be created and configured or not, with a focus on
-// backward compatibility and not introducing breaking changes to existing user workflows
-func UseDex(cr *argoprojv1a1.ArgoCD) bool {
-	if cr.Spec.SSO != nil {
-		return cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex
-	}
-	if isDexDisabled() {
-		return false
-	}
-	// we don't care about the case where dex is enabled either explicitly through DISABLE_DEX (or implicitly due to the flag being unset)
-	// in terms of creation/deletion of resources unless there is existing configuration in place that must be honored
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
-		return true
-	}
-	return false
 }

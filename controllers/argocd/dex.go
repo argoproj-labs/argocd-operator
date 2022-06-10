@@ -31,6 +31,23 @@ type DexConnector struct {
 	Type   string                 `yaml:"type"`
 }
 
+// UseDex determines whether Dex resources should be created and configured or not, with a focus on
+// backward compatibility and not introducing breaking changes to existing user workflows
+func UseDex(cr *argoprojv1a1.ArgoCD) bool {
+	if cr.Spec.SSO != nil {
+		return cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex
+	}
+	if isDexDisabled() {
+		return false
+	}
+	// we don't care about the case where dex is enabled either explicitly through DISABLE_DEX (or implicitly due to the flag being unset)
+	// in terms of creation/deletion of resources unless there is existing configuration in place that must be honored
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
+		return true
+	}
+	return false
+}
+
 // getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
 func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
