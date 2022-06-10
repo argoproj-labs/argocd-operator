@@ -660,8 +660,11 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 // TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
 func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	a.Spec.Dex.OpenShiftOAuth = true
+	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+		ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+			OpenShiftOAuth: true,
+		}
+	})
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
