@@ -2,8 +2,10 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -15,41 +17,89 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestReconcileArgoCD_reconcileStatusSSOConfig_multi_sso_configured(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDForKeycloakWithDex()
 
-	templateAPIFound = true
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileStatusSSOConfig(a))
-	assert.Equal(t, a.Status.SSOConfig, "Failed")
-}
-func TestReconcileArgoCD_reconcileStatusSSOConfig_only_keycloak_configured(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDForKeycloak()
+	tests := []struct {
+		name             string
+		argoCD           *argoprojv1alpha1.ArgoCD
+		templateAPIfound bool
+		wantSSOConfig    string
+		wantErr          bool
+		Err              error
+	}{
+		{
+			name: "only dex configured",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.Dex = &argoprojv1alpha1.ArgoCDDexSpec{
+					Resources:      makeTestDexResources(),
+					OpenShiftOAuth: true,
+				}
+			}),
+			templateAPIfound: false,
+			wantSSOConfig:    "Success",
+			wantErr:          false,
+		},
+		{
+			name: "only keycloak configured",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
+				}
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: false,
+				}
+			}),
+			templateAPIfound: true,
+			wantSSOConfig:    "Success",
+			wantErr:          false,
+		},
+		{
+			name: "both dex and keycloak configured",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
+				}
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+					OpenShiftOAuth: true,
+				}
+			}),
+			templateAPIfound: true,
+			wantSSOConfig:    "Failed",
+			wantErr:          true,
+			Err:              errors.New("multiple SSO configuration"),
+		},
+		{
+			name: "no sso configured",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
+			}),
+			templateAPIfound: false,
+			wantSSOConfig:    "Unknown",
+			wantErr:          false,
+		},
+	}
 
-	templateAPIFound = true
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileStatusSSOConfig(a))
-	assert.Equal(t, a.Status.SSOConfig, "Success")
-}
-func TestReconcileArgoCD_reconcileStatusSSOConfig_only_dex_configured(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDWithResources()
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
 
-	templateAPIFound = true
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileStatusSSOConfig(a))
-	assert.Equal(t, a.Status.SSOConfig, "Success")
-}
-func TestReconcileArgoCD_reconcileStatusSSOConfig_no_sso_configured(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+			r := makeTestReconciler(t, test.argoCD)
+			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-	templateAPIFound = true
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, r.reconcileStatusSSOConfig(a))
-	assert.Equal(t, a.Status.SSOConfig, "Unknown")
+			err := r.reconcileSSO(test.argoCD)
+
+			err = r.reconcileStatusSSOConfig(test.argoCD)
+			if err != nil {
+				if !test.wantErr {
+					t.Errorf("Got unexpected error")
+				} else {
+					assert.Equal(t, test.Err, err)
+				}
+			}
+
+			assert.Equal(t, test.wantSSOConfig, test.argoCD.Status.SSOConfig)
+		})
+	}
 }
 
 func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {

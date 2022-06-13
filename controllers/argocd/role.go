@@ -98,8 +98,10 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				continue // skip creating default role if custom cluster role is provided
 			}
 			roles = append(roles, role)
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-				continue // Dex is disabled, do nothing
+
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+
+				continue // Dex installation not requested, do nothing
 			}
 
 			// Only set ownerReferences for roles in same namespace as ArgoCD CR
@@ -108,6 +110,8 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 					return nil, fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, role.Name, err)
 				}
 			}
+
+			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, cr.Namespace))
 			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return nil, err
 			}
@@ -115,8 +119,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 
 		// Delete the existing default role if custom role is specified
-		// or if there is an existing Role created for Dex
-		if customRole != "" || (name == common.ArgoCDDexServerComponent && isDexDisabled()) {
+		// or if there is an existing Role created for Dex but dex is disabled or not configured
+		if customRole != "" ||
+			(name == common.ArgoCDDexServerComponent && !UseDex(cr)) {
+
+			log.Info("deleting the existing Dex role because dex is not configured")
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}

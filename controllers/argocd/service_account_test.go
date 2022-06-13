@@ -25,8 +25,6 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
@@ -134,29 +132,6 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole).Error(), "not found")
-}
-
-func TestReconcileArgoCD_reconcileServiceAccount_dex_disabled(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	// Dex is enabled, creates a new Service Account for it
-	sa, err := r.reconcileServiceAccount(common.ArgoCDDexServerComponent, a)
-	assert.NoError(t, err)
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
-
-	//Disable dex, deletes any existing Service Account for it
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
-
-	sa, err = r.reconcileServiceAccount(common.ArgoCDDexServerComponent, a)
-	assert.NoError(t, err)
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa))
-	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: sa.Name, Namespace: a.Namespace}, sa).Error(), "not found")
 }
 
 func testRules() []v1.PolicyRule {

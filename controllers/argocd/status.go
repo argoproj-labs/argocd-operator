@@ -32,12 +32,12 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileStatusDex(cr); err != nil {
+	if err := r.reconcileStatusSSOConfig(cr); err != nil {
 		return err
 	}
 
-	if err := r.reconcileStatusSSOConfig(cr); err != nil {
-		return err
+	if err := r.reconcileStatusDex(cr); err != nil {
+		log.Error(err, "error reconciling dex status")
 	}
 
 	if err := r.reconcileStatusPhase(cr); err != nil {
@@ -113,15 +113,9 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusSSOConfig(cr *argoprojv1a1.ArgoCD) error {
-	status := "Unknown"
 
-	if cr.Spec.SSO != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) {
-		// set state to "Failed" when both keycloak and Dex are configured
-		status = "Failed"
-	} else if (cr.Spec.SSO != nil && reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) || (cr.Spec.SSO == nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{})) {
-		// set state to "Success" when only keycloak or only Dex is configured
-		status = "Success"
-	}
+	// set status to track ssoConfigLegalStatus so it is always up to date with latest ssoConfig situation
+	status := ssoConfigLegalStatus
 
 	if cr.Status.SSOConfig != status {
 		cr.Status.SSOConfig = status

@@ -52,9 +52,10 @@ func CombineImageTag(img string, tag string) string {
 }
 
 // CreateEvent will create a new Kubernetes Event with the given action, message, reason and involved uid.
-func CreateEvent(client client.Client, action string, message string, reason string, meta metav1.ObjectMeta) error {
+func CreateEvent(client client.Client, eventType, action, message, reason string, meta metav1.ObjectMeta) error {
 	event := newEvent(meta)
 	event.Action = action
+	event.Type = eventType
 	event.InvolvedObject = corev1.ObjectReference{
 		Name:      meta.Name,
 		Namespace: meta.Namespace,

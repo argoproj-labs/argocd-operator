@@ -19,7 +19,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -29,7 +28,6 @@ import (
 	"text/template"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"gopkg.in/yaml.v2"
 
@@ -81,14 +79,6 @@ func verifyVersionAPI() error {
 	}
 	versionAPIFound = found
 	return nil
-}
-
-// DexConnector represents an authentication connector for Dex.
-type DexConnector struct {
-	Config map[string]interface{} `yaml:"config,omitempty"`
-	ID     string                 `yaml:"id"`
-	Name   string                 `yaml:"name"`
-	Type   string                 `yaml:"type"`
 }
 
 // generateArgoAdminPassword will generate and return the admin password for Argo CD.
@@ -334,109 +324,6 @@ func getArgoControllerParellismLimit(cr *argoprojv1a1.ArgoCD) int32 {
 	return pl
 }
 
-// getDexContainerImage will return the container image for the Dex server.
-//
-// There are three possible options for configuring the image, and this is the
-// order of preference.
-//
-// 1. from the Spec, the spec.dex field has an image and version to use for
-// generating an image reference.
-// 2. from the Environment, this looks for the `ARGOCD_DEX_IMAGE` field and uses
-// that if the spec is not configured.
-// 3. the default is configured in common.ArgoCDDefaultDexVersion and
-// common.ArgoCDDefaultDexImage.
-func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Dex.Image
-	if img == "" {
-		img = common.ArgoCDDefaultDexImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Dex.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultDexVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
-func getDexOAuthClientID(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
-}
-
-// getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
-func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
-	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		return nil, err
-	}
-	// Find the token secret
-	var tokenSecret *corev1.ObjectReference
-	for _, saSecret := range sa.Secrets {
-		if strings.Contains(saSecret.Name, "token") {
-			tokenSecret = &saSecret
-			break
-		}
-	}
-
-	if tokenSecret == nil {
-		// This change of creating secret for dex service account,is due to change of reduction of secret-based service account tokens in k8s v1.24 so from k8s v1.24 no default secret for service account is created, but for dex to work we need to provide token of secret used by dex service account as a oauth token, this change helps to achieve it, in long run we should see do dex really requires a secret or it manages to create one using TokenRequest API or may be change how dex is used or configured by operator
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "argocd-dex-server-token-",
-				Namespace:    cr.Namespace,
-				Annotations: map[string]string{
-					corev1.ServiceAccountNameKey: sa.Name,
-				},
-			},
-			Type: corev1.SecretTypeServiceAccountToken,
-		}
-		err := r.Client.Create(context.TODO(), secret)
-		if err != nil {
-			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
-		}
-		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
-		if err != nil {
-			return nil, err
-		}
-		tokenSecret = &corev1.ObjectReference{
-			Name:      secret.Name,
-			Namespace: cr.Namespace,
-		}
-		sa.Secrets = append(sa.Secrets, *tokenSecret)
-		err = r.Client.Update(context.TODO(), sa)
-		if err != nil {
-			return nil, errors.New("failed to add ServiceAccount token for OAuth client secret")
-		}
-	}
-
-	// Fetch the secret to obtain the token
-	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
-		return nil, err
-	}
-
-	token := string(secret.Data["token"])
-	return &token, nil
-}
-
-// getDexResources will return the ResourceRequirements for the Dex container.
-func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Dex.Resources != nil {
-		resources = *cr.Spec.Dex.Resources
-	}
-
-	return resources
-}
-
 // getGrafanaContainerImage will return the container image for the Grafana server.
 func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	defaultTag, defaultImg := false, false
@@ -467,37 +354,6 @@ func getGrafanaResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	}
 
 	return resources
-}
-
-// getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
-func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
-	clientSecret, err := r.getDexOAuthClientSecret(cr)
-	if err != nil {
-		return "", err
-	}
-
-	connector := DexConnector{
-		Type: "openshift",
-		ID:   "openshift",
-		Name: "OpenShift",
-		Config: map[string]interface{}{
-			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
-			"clientID":     getDexOAuthClientID(cr),
-			"clientSecret": *clientSecret,
-			"redirectURI":  r.getDexOAuthRedirectURI(cr),
-			"insecureCA":   true, // TODO: Configure for openshift CA,
-			"groups":       cr.Spec.Dex.Groups,
-		},
-	}
-
-	connectors := make([]DexConnector, 0)
-	connectors = append(connectors, connector)
-
-	dex := make(map[string]interface{})
-	dex["connectors"] = connectors
-
-	bytes, err := yaml.Marshal(dex)
-	return string(bytes), err
 }
 
 // getRedisConfigPath will return the path for the Redis configuration templates.
@@ -847,6 +703,17 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+
+	// reconcile SSO first, because dex resources get reconciled through other function calls as well, not just through reconcileSSO (this is important
+	// so that dex resources can be appropriately cleaned up when DISABLE_DEX is set to true and the operator pod restarts but doesn't enter
+	// dex reconciliation again because dex is disabled, thus leaving hanging resources around if they are not also cleaned up in the main loop)
+	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
+	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
 		return err
@@ -955,13 +822,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
 		return err
-	}
-
-	if cr.Spec.SSO != nil {
-		log.Info("reconciling SSO")
-		if err := r.reconcileSSO(cr); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -1110,10 +970,31 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			if !ok {
 				return false
 			}
+
+			// Handle deletion of SSO from Argo CD custom resource
 			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
-				err := deleteSSOConfiguration(newCR)
+				err := r.deleteSSOConfiguration(newCR, oldCR)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+
+			// trigger deletion of dex when dex configuration is removed from .spec.dex
+			if !reflect.DeepEqual(oldCR.Spec.Dex, newCR.Spec.Dex) && (newCR.Spec.Dex == nil ||
+				(newCR.Spec.Dex.Config == "" && !newCR.Spec.Dex.OpenShiftOAuth)) {
+				err := r.deleteDexResources(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+
+			// Trigger reconciliation of SSO on update event
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
+				err := r.reconcileSSO(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))
 				}
 			}

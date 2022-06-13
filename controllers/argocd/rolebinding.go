@@ -111,9 +111,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 			}
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-				continue // Dex is disabled, do nothing
+
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+				continue // Dex installation is not requested, do nothing
 			}
+
 			roleBindingExists = false
 		}
 
@@ -141,8 +143,9 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 
 		if roleBindingExists {
-			if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-				// Delete any existing RoleBinding created for Dex
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+				// Delete any existing RoleBinding created for Dex since dex uninstallation is requested
+				log.Info("deleting the existing Dex roleBinding because dex uninstallation is requested")
 				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 					return err
 				}
@@ -172,6 +175,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
 			}
 		}
+
+		log.Info(fmt.Sprintf("creating rolebinding %s for Argo CD instance %s in namespace %s", roleBinding.Name, cr.Name, cr.Namespace))
 		if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
 			return err
 		}

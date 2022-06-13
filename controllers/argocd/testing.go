@@ -104,7 +104,7 @@ func makeTestArgoCDForKeycloakWithDex(opts ...argoCDOpt) *argoprojv1alpha1.ArgoC
 			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
 				Provider: "keycloak",
 			},
-			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+			Dex: &argoprojv1alpha1.ArgoCDDexSpec{
 				OpenShiftOAuth: true,
 				Resources:      makeTestDexResources(),
 			},
@@ -134,7 +134,7 @@ func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 			HA: argoprojv1alpha1.ArgoCDHASpec{
 				Resources: makeTestHAResources(),
 			},
-			Dex: argoprojv1alpha1.ArgoCDDexSpec{
+			Dex: &argoprojv1alpha1.ArgoCDDexSpec{
 				Resources: makeTestDexResources(),
 			},
 			Controller: argoprojv1alpha1.ArgoCDApplicationControllerSpec{
