@@ -5,6 +5,5 @@ metadata:
 spec:
   sso:
     provider: keycloak
-    verifyTLS: false
   dex:
-    openShiftOAuth: true
+    config: test

@@ -21,12 +21,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -70,18 +70,6 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 		plugins = cr.Spec.ConfigManagementPlugins
 	}
 	return plugins
-}
-
-func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
-	config := common.ArgoCDDefaultDexConfig
-	if len(cr.Spec.Dex.Config) > 0 {
-		if cr.Spec.ExtraConfig["dex.config"] != "" {
-			config = cr.Spec.ExtraConfig["dex.config"]
-		} else {
-			config = cr.Spec.Dex.Config
-		}
-	}
-	return config
 }
 
 // getGATrackingID will return the google analytics tracking ID for the given Argo CD.
@@ -355,18 +343,21 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	if !isDexDisabled() {
+	// create dex config if dex is enabled either through DISABLE_DEX or through `.spec.sso`
+	if UseDex(cr) {
 		dexConfig := getDexConfig(cr)
-		if cr.Spec.SSO == nil {
-			if dexConfig == "" && cr.Spec.Dex.OpenShiftOAuth {
-				cfg, err := r.getOpenShiftDexConfig(cr)
-				if err != nil {
-					return err
-				}
-				dexConfig = cfg
+
+		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
+		// openshift dex config
+		if dexConfig == "" && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+			(cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth)) {
+			cfg, err := r.getOpenShiftDexConfig(cr)
+			if err != nil {
+				return err
 			}
-			cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
+			dexConfig = cfg
 		}
+		cm.Data[common.ArgoCDKeyDexConfig] = dexConfig
 	}
 
 	if cr.Spec.Banner != nil {
@@ -390,10 +381,16 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	existingCM := &corev1.ConfigMap{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
-		if cr.Spec.SSO == nil {
+
+		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider` or there is
+		// existing dex configuration
+		if UseDex(cr) {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
+			// retain oidc.config during reconcilliation when keycloak is configured
+			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}
 
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
@@ -404,38 +401,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	}
 	return r.Client.Create(context.TODO(), cm)
 
-}
-
-// reconcileDexConfiguration will ensure that Dex is configured properly.
-func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
-	actual := cm.Data[common.ArgoCDKeyDexConfig]
-	desired := getDexConfig(cr)
-	if len(desired) <= 0 && cr.Spec.Dex.OpenShiftOAuth {
-		cfg, err := r.getOpenShiftDexConfig(cr)
-		if err != nil {
-			return err
-		}
-		desired = cfg
-	}
-
-	if actual != desired {
-		// Update ConfigMap with desired configuration.
-		cm.Data[common.ArgoCDKeyDexConfig] = desired
-		if err := r.Client.Update(context.TODO(), cm); err != nil {
-			return err
-		}
-
-		// Trigger rollout of Dex Deployment to pick up changes.
-		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
-			log.Info("unable to locate dex deployment")
-			return nil
-		}
-
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
-		return r.Client.Update(context.TODO(), deploy)
-	}
-	return nil
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.

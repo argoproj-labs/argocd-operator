@@ -15,17 +15,30 @@
 package argocd
 
 import (
-	e "errors"
+	"errors"
 	"fmt"
+	"os"
+	"reflect"
 
 	template "github.com/openshift/api/template/v1"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+const (
+	ssoLegalUnknown          string = "Unknown"
+	ssoLegalSuccess          string = "Success"
+	ssoLegalFailed           string = "Failed"
+	illegalSSOConfiguration  string = "illegal SSO configuration: "
+	multipleSSOConfiguration string = "multiple SSO configuration: "
+)
+
 var (
-	templateAPIFound = false
+	templateAPIFound     = false
+	ssoConfigLegalStatus string
 )
 
 // IsTemplateAPIAvailable returns true if the template API is present.
@@ -43,45 +56,215 @@ func verifyTemplateAPI() error {
 	return nil
 }
 
+// The purpose of reconcileSSO is to try and catch as many illegal configuration edge cases at the highest level (that can lead to conflicts)
+// as possible, that may arise from the operator supporting multiple SSO providers in a backwards-compatible way.
+// The operator must support both `.spec.dex` and `.spec.sso.dex` for dex, and `.spec.sso` fields and `.spec.sso.keycloak`
+// fields for keycloak. The operator must identify edge cases involving partial configurations of specs, spec mismatch with
+// active provider, contradicting configuration etc, and throw the appropriate errors.
 func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
-	if cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
-		if cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "" {
-			err := e.New("multiple SSO configuration")
-			log.Error(err, fmt.Sprintf("Installation of multiple SSO providers is not permitted. Please choose a single provider for Argo CD %s in namespace %s.",
-				cr.Name, cr.Namespace))
+
+	// reset ssoConfigLegalStatus at the beginning of each SSO reconciliation round
+	ssoConfigLegalStatus = ssoLegalUnknown
+
+	// Emit events warning users about deprecation notice for soon-to-be-deprecated fields in the CR
+	if env := os.Getenv("DISABLE_DEX"); env != "" {
+
+		// Emit event warning users about deprecation notice for `DISABLE_DEX` users
+		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex can be enabled/disabled through `.spec.sso`", "DeprecationNotice", cr.ObjectMeta)
+		if err != nil {
 			return err
 		}
+	}
 
-		// TemplateAPI is available, Install keycloak using openshift templates.
-		if IsTemplateAPIAvailable() {
-			err := r.reconcileKeycloakForOpenShift(cr)
-			if err != nil {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) {
+
+		// Emit event warning users about deprecation notice for `.spec.dex` users
+		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex configuration can be managed through `.spec.sso.dex`", "DeprecationNotice", cr.ObjectMeta)
+		if err != nil {
+			return err
+		}
+	}
+
+	if cr.Spec.SSO != nil && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil) {
+
+		// Emit event warning users about deprecation notice for `.spec.SSO` field users
+		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Keycloak configuration can be managed through `.spec.sso.keycloak`", "DeprecationNotice", cr.ObjectMeta)
+		if err != nil {
+			return err
+		}
+	}
+
+	// case 1
+	if cr.Spec.SSO == nil {
+
+		errMsg := ""
+		var err error
+
+		// no SSO configured, nothing to do here
+		if !UseDex(cr) {
+			return nil
+		}
+
+		if (!isDexDisabled() && isDisableDexSet) && cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && !cr.Spec.Dex.OpenShiftOAuth && cr.Spec.Dex.Config == "" {
+			// dex is enabled but no dexconfig supplied. This will cause health probe to fail as per
+			// https://github.com/argoproj-labs/argocd-operator/pull/615 ==> conflict
+			errMsg = "must suppy valid dex configuration when dex is enabled"
+			err = errors.New(illegalSSOConfiguration + errMsg)
+			log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
+			ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+			_ = r.reconcileStatusSSOConfig(cr)
+			return err
+		}
+	}
+
+	if cr.Spec.SSO != nil {
+
+		errMsg := ""
+		var err error
+		isError := false
+
+		// case 2
+		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex {
+			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`
+
+			if isDexDisabled() && isDisableDexSet {
+				// DISABLE_DEX is true when `.spec.sso.provider` is set to dex ==> conflict
+				errMsg = "cannot set DISABLE_DEX to true when dex is configured through .spec.sso"
+				isError = true
+			} else if cr.Spec.SSO.Dex == nil || (cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth && cr.Spec.SSO.Dex.Config == "") {
+				// sso provider specified as dex but no dexconfig supplied. This will cause health probe to fail as per
+				// https://github.com/argoproj-labs/argocd-operator/pull/615 ==> conflict
+				errMsg = "must suppy valid dex configuration when requested SSO provider is dex"
+				isError = true
+			} else if cr.Spec.SSO.Keycloak != nil {
+				// new keycloak spec fields are expressed when `.spec.sso.provider` is set to dex ==> conflict
+				errMsg = "cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"
+				isError = true
+			} else if cr.Spec.Dex != nil && (cr.Spec.Dex.Image != "" || cr.Spec.Dex.Config != "" || cr.Spec.Dex.Resources != nil || len(cr.Spec.Dex.Groups) != 0 ||
+				cr.Spec.Dex.Version != "" || cr.Spec.Dex.OpenShiftOAuth != cr.Spec.SSO.Dex.OpenShiftOAuth) {
+				// old dex spec fields are expressed when `.spec.sso.provider` is set to dex instead of using new `.spec.sso.dex` ==> conflict
+				errMsg = "cannot specify .spec.Dex fields when dex is configured through .spec.sso"
+				isError = true
+			} else if cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil {
+				// old keycloak spec fields expressed when `.spec.sso.provider` is set to dex ==> conflict
+				errMsg = "cannot supply keycloak configuration in spec.sso when requested SSO provider is dex"
+				isError = true
+			}
+
+			if isError {
+				err = errors.New(illegalSSOConfiguration + errMsg)
+				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
+				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
 				return err
 			}
-		} else {
-			err := r.reconcileKeycloak(cr)
-			if err != nil {
+		}
+
+		// case 3
+		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
+			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`, `.spec.sso.dex`
+
+			if (cr.Spec.SSO.Keycloak != nil) && ((cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
+				(cr.Spec.SSO.Version != "" && cr.Spec.SSO.Keycloak.Version != "" && cr.Spec.SSO.Version != cr.Spec.SSO.Keycloak.Version) ||
+				(cr.Spec.SSO.VerifyTLS != nil && cr.Spec.SSO.Keycloak.VerifyTLS != nil && cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) ||
+				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources)) {
+				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
+				// ==> conflict
+				errMsg = "cannot supply conflicting configuration in .spec.sso when keycloak is configured through .spec.sso.keycloak"
+				err = errors.New(illegalSSOConfiguration + errMsg)
+				isError = true
+			} else if cr.Spec.SSO.Dex != nil {
+				// new dex spec fields are expressed when `.spec.sso.provider` is set to keycloak ==> conflict
+				errMsg = "cannot supply dex configuration when requested SSO provider is keycloak"
+				err = errors.New(illegalSSOConfiguration + errMsg)
+				isError = true
+			} else if (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && (cr.Spec.Dex.OpenShiftOAuth || cr.Spec.Dex.Config != "")) {
+				// Keycloak configured as SSO provider, but dex config also present in argocd-cm. May cause both SSO providers to get
+				// configured if Dex pods happen to be running due to `DEX_DISABLED` being set to false ==> conflict
+				errMsg = "multiple SSO providers configured simultaneously"
+				err = errors.New(multipleSSOConfiguration + errMsg)
+				isError = true
+			}
+			// (cannot check against presence of DISABLE_DEX as erroring out here would break current behavior)
+
+			if isError {
+				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration deletected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
+				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
+				return err
+			}
+		}
+
+		// case 4
+		if cr.Spec.SSO.Provider == "" {
+
+			if cr.Spec.SSO.Dex != nil ||
+				// `.spec.sso.dex` expressed without specifying SSO provider ==> conflict
+				cr.Spec.SSO.Keycloak != nil {
+				// `.spec.sso.keycloak` expressed without specifying SSO provider ==> conflict
+
+				errMsg = "Cannot specify SSO provider spec without specifying SSO provider type"
+				err = errors.New(illegalSSOConfiguration + errMsg)
+				log.Error(err, fmt.Sprintf("Cannot specify SSO provider spec without specifying SSO provider type for Argo CD %s in namespace %s.", cr.Name, cr.Namespace))
+				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+				_ = r.reconcileStatusSSOConfig(cr)
 				return err
 			}
 		}
 	}
+
+	// control reaching this point means that none of the illegal config combinations were detected. SSO is configured legally
+	// set global indicator that SSO config has been successful
+	ssoConfigLegalStatus = ssoLegalSuccess
+
+	// reconcile resources based on enabled provider
+	// keycloak
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+
+		// Trigger reconciliation of any Dex resources so they get deleted
+		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
+			log.Error(err, "Unable to delete existing dex resources before configuring keycloak")
+			return err
+		}
+
+		if err := r.reconcileKeycloakConfiguration(cr); err != nil {
+			return err
+		}
+	} else if UseDex(cr) {
+		// dex
+		// Delete any lingering keycloak artifacts before Dex is configured as this is not handled by the reconcilliation loop
+		if err := deleteKeycloakConfiguration(cr); err != nil && !apiErrors.IsNotFound(err) {
+			log.Error(err, "Unable to delete existing SSO configuration before configuring Dex")
+			return err
+		}
+
+		if err := r.reconcileDexResources(cr); err != nil {
+			return err
+		}
+	}
+
+	_ = r.reconcileStatusSSOConfig(cr)
+
 	return nil
 }
 
-func deleteSSOConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, oldCr *argoprojv1a1.ArgoCD) error {
 
-	// If SSO is installed using OpenShift templates.
-	if IsTemplateAPIAvailable() {
-		err := deleteKeycloakConfigForOpenShift(cr)
-		if err != nil {
+	log.Info("uninstalling existing SSO configuration")
+
+	if oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		if err := deleteKeycloakConfiguration(newCr); err != nil {
+			log.Error(err, "Unable to delete existing keycloak configuration")
 			return err
 		}
-	} else {
-		err := deleteKeycloakConfigForK8s(cr)
-		if err != nil {
+	} else if oldCr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		// Trigger reconciliation of Dex resources so they get deleted
+		if err := r.deleteDexResources(newCr); err != nil {
+			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
 			return err
 		}
 	}
 
+	_ = r.reconcileStatusSSOConfig(newCr)
 	return nil
 }

@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/google/go-cmp/cmp"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -205,6 +206,7 @@ func makeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Obje
 	s := scheme.Scheme
 	s.AddKnownTypes(argov1alpha1.GroupVersion, acd)
 	routev1.Install(s)
+	configv1.Install(s)
 	cl := fake.NewFakeClient(objs...)
 	return &ReconcileArgoCD{
 		Client: cl,
