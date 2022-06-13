@@ -1233,7 +1233,7 @@ Name | Default | Description
 --- | --- | ---
 Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 [Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
-[Dex](#dex-options) | [Obeject] | Configuration options for Dex SSO provider
+[Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are Dex and keycloak.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
