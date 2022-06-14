@@ -8,6 +8,7 @@
 - [Uninstalling Dex](#uninstalling-dex)
     - [Using `.spec.sso`](#using-specsso)
     - [Using the DISABLE_DEX environment variable](#using-the-disable_dex-environment-variable-1)
+    - [Using `.spec.dex`](#using-specdex)
 
 ## Overview
 
@@ -45,7 +46,7 @@ spec:
 !!! warning 
     `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
 
-Until release v0.4.0 of Argo CD operator, Dex was installed by default for all the Argo CD instances created by the operator. However, v0.4.0 onward, users must explicitly set `DISABLE_DEX` to `false` if they want to continue using Dex through this environment variable. Further, It is now mandatory to specify `.spec.dex` either with OpenShift configuration through `openShiftOAuth: true` or valid custom configuration supplied through `.spec.dex.config`. Absence of either will result in an error due to failing health checks on Dex.
+Until release v0.4.0 of Argo CD operator, Dex resources were created by default unless the `DISABLE_DEX` environment variable was explicitly set to `true`. However, v0.4.0 onward, `DISBALE_DEX` being either unset, or set to `false` will not trigger creation of Dex resources, unless there is valid Dex configuration expressed through `.spec.dex`. Users can continue setting `DISABLE_DEX` to `true` to uninstall dex resources until v0.6.0. 
 
 !!! warning 
     `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.
@@ -150,10 +151,7 @@ spec:
 
 #### Using `.spec.sso`
 
-Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider 
-
-!!! note
-    Dex cannot be uninstalled if it is configured either with OpenShift configuration through `.spec.sso.dex.openShiftOAuth: true` or valid custom configuration supplied through `.spec.sso.dex.config`. Please remove any specified configuration to allow Dex to be uninstalled and its resources to be deleted from the cluster.
+Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider. 
 
 #### Using the DISABLE_DEX environment variable
 
@@ -167,8 +165,12 @@ spec:
       value: "true"
 ```
 
-!!! note
-    Dex cannot be uninstalled if it is configured either with OpenShift configuration through `.spec.dex.openShiftOAuth: true` or valid custom configuration supplied through `.spec.dex.config`. Please remove any specified configuration to allow Dex to be uninstalled and its resources to be deleted from the cluster.
-
 !!! warning 
     `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
+
+#### Using `.spec.dex`
+
+Dex can be uninstalled by either removing `.spec.dex` from the Argo CD CR, or ensuring `.spec.dex.config` is empty and `.spec.dex.openShiftOAuth` is set to `false`.
+
+!!! warning 
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.

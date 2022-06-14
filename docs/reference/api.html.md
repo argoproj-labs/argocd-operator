@@ -2239,7 +2239,7 @@ Resource Types:
             </em>
          </td>
          <td>
-            <p>Dex contains the configuration for Argo CD dex authentication (previously found under cr.spec.Dex)</p>
+            <p>Dex contains the configuration for Argo CD dex authentication</p>
          </td>
       </tr>
       <tr>
