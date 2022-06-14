@@ -1,12 +1,80 @@
 - [Overview](#overview)
+- [Installing & Configuring Dex](#installing--configuring-dex)
+    - [Using `.spec.sso.provider`](#using-specssoprovider)
+    - [Using the DISABLE_DEX environment variable](#using-the-disable_dex-environment-variable)
 - [Dex OpenShift OAuth Connector](#dex-openshift-oauth-connector)
     - [Role Mappings](#role-mappings)
 - [Dex GitHub Connector](#dex-github-connector)
-- [Disable DEX](#disable-dex)
+- [Uninstalling Dex](#uninstalling-dex)
+    - [Using `.spec.sso`](#using-specsso)
+    - [Using the DISABLE_DEX environment variable](#using-the-disable_dex-environment-variable-1)
+    - [Using `.spec.dex`](#using-specdex)
 
 ## Overview
 
 Dex can be used to delegate authentication to external identity providers like GitHub, SAML and others. SSO configuration of Argo CD requires updating the Argo CD CR with [Dex connector](https://dexidp.io/docs/connectors/) settings.
+
+
+## Installing & Configuring Dex
+
+#### Using `.spec.sso.provider`
+
+Dex configuration has moved to `.spec.sso` in release v0.4.0. Dex can be enabled by setting `.spec.sso.provider` to `dex` in the Argo CD CR. 
+
+!!! note
+    It is now mandatory to specify `.spec.sso.dex` either with OpenShift configuration through `openShiftOAuth: true` or valid custom configuration supplied through `.spec.sso.dex.config`. Absence of either will result in an error due to failing health checks on Dex. 
+
+!!! note
+    Specifying `.spec.sso.dex` without setting dex as the provider will result in an error. 
+
+An example of correctly configured dex would look as follows:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+```
+
+#### Using the DISABLE_DEX environment variable 
+
+!!! warning 
+    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
+
+Until release v0.4.0 of Argo CD operator, Dex resources were created by default unless the `DISABLE_DEX` environment variable was explicitly set to `true`. However, v0.4.0 onward, `DISBALE_DEX` being either unset, or set to `false` will not trigger creation of Dex resources, unless there is valid Dex configuration expressed through `.spec.dex`. Users can continue setting `DISABLE_DEX` to `true` to uninstall dex resources until v0.6.0. 
+
+!!! warning 
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.
+
+
+An example of correctly configured dex would look as follows:
+
+Set the `DISABLE_DEX` to `false` in the Subscription resource of the operator.
+
+```yaml
+spec:
+  config:
+    env:
+    - name: DISABLE_DEX
+      value: "false"
+```
+
+and supply `.spec.dex` with valid configuration
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  dex:
+    openShiftOAuth: true
+```
 
 ## Dex OpenShift OAuth Connector
 
@@ -79,11 +147,15 @@ spec:
             - name: dummy-org
 ```
 
-## Disable DEX
+## Uninstalling Dex 
 
-Dex is installed by default for all the Argo CD instances created by the operator. You can disable this behavior using the environmental variable `DISABLE_DEX` on the operator.
+#### Using `.spec.sso`
 
-Set the `DISABLE_DEX` to `true` in the Subscription resource of the operator.
+Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider. 
+
+#### Using the DISABLE_DEX environment variable
+
+Dex can be uninstalled by setting `DISABLE_DEX` to `true` in the Subscription resource of the operator.
 
 ```yaml
 spec:
@@ -92,3 +164,13 @@ spec:
     - name: DISABLE_DEX
       value: "true"
 ```
+
+!!! warning 
+    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
+
+#### Using `.spec.dex`
+
+Dex can be uninstalled by either removing `.spec.dex` from the Argo CD CR, or ensuring `.spec.dex.config` is empty and `.spec.dex.openShiftOAuth` is set to `false`.
+
+!!! warning 
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.

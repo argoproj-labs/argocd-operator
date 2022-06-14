@@ -12,7 +12,8 @@ Users can add dynamic entries to Argo CD configmap using `ExtraConfig` in Argocd
 
 When `ExtraConfig` is set, the entries specified are reconciled to the live Argo CD configmap. Users can specify arbitrary configmap entries with this `ExtraConfig`. This allows users to specify a new configuration even though the configuration is not supported by Argo CD CRD.
 
-**Note**: `ExtraConfig` takes precedence over Argo CD CRD.
+!!! note
+    `ExtraConfig` takes precedence over Argo CD CRD.
 
 ## Example
 

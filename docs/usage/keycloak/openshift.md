@@ -87,7 +87,8 @@ Click on **LOGIN VIA KEYCLOAK**. You will see two different options for login as
 
 You can create keycloak users by logging in to keycloak admin console using the Keycloak admin credentials.
 
-**NOTE:** Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
+!!! note
+    Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
 
 ## RBAC
 
