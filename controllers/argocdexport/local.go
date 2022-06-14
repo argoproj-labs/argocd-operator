@@ -71,5 +71,5 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) erro
 
 	// Create event
 	log.Info("creating new event")
-	return argoutil.CreateEvent(r.Client, "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta)
+	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta)
 }
