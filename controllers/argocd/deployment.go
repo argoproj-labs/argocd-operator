@@ -319,7 +319,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 		for _, arg := range extraArgs {
 			if len(arg) > 2 && arg[:2] == "--" {
 				if ok := contains(cmd, arg); ok {
-					err := errors.New("Duplicate argument error")
+					err := errors.New("duplicate argument error")
 					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
 					return err
 				}
@@ -389,12 +389,12 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
-	err := r.reconcileDexDeployment(cr)
-	if err != nil {
-		return err
+
+	if err := r.reconcileDexDeployment(cr); err != nil {
+		log.Error(err, "error reconciling dex deployment")
 	}
 
-	err = r.reconcileRedisDeployment(cr, useTLSForRedis)
+	err := r.reconcileRedisDeployment(cr, useTLSForRedis)
 	if err != nil {
 		return err
 	}
@@ -420,156 +420,6 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSFo
 	}
 
 	return nil
-}
-
-// reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
-func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
-	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
-
-	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command: []string{
-			"/shared/argocd-dex",
-			"rundex",
-		},
-		Image:           getDexContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "dex",
-		Env:             proxyEnvVars(),
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz/live",
-					Port: intstr.FromInt(common.ArgoCDDefaultDexMetricsPort),
-				},
-			},
-			InitialDelaySeconds: 60,
-			PeriodSeconds:       30,
-		},
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: common.ArgoCDDefaultDexHTTPPort,
-				Name:          "http",
-			}, {
-				ContainerPort: common.ArgoCDDefaultDexGRPCPort,
-				Name:          "grpc",
-			}, {
-				ContainerPort: common.ArgoCDDefaultDexMetricsPort,
-				Name:          "metrics",
-			},
-		},
-		Resources: getDexResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "static-files",
-			MountPath: "/shared",
-		}},
-	}}
-
-	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
-		Command: []string{
-			"cp",
-			"-n",
-			"/usr/local/bin/argocd",
-			"/shared/argocd-dex",
-		},
-		Env:             proxyEnvVars(),
-		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "copyutil",
-		Resources:       getDexResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "static-files",
-			MountPath: "/shared",
-		}},
-	}}
-
-	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
-		Name: "static-files",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}}
-	dexDisabled := isDexDisabled()
-	if dexDisabled {
-		log.Info("reconciling for dex, but dex is disabled")
-	}
-
-	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if dexDisabled {
-			log.Info("deleting the existing dex deployment because dex is disabled")
-			// Deployment exists but enabled flag has been set to false, delete the Deployment
-			return r.Client.Delete(context.TODO(), existing)
-		}
-		changed := false
-
-		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getDexContainerImage(cr)
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-
-		actualImage = existing.Spec.Template.Spec.InitContainers[0].Image
-		desiredImage = getArgoContainerImage(cr)
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-		updateNodePlacement(existing, deploy, &changed)
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
-			deploy.Spec.Template.Spec.Containers[0].Env) {
-			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			changed = true
-		}
-
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].Env,
-			deploy.Spec.Template.Spec.InitContainers[0].Env) {
-			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
-			changed = true
-		}
-
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
-			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			changed = true
-		}
-
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
-	if dexDisabled {
-		return nil
-	}
-
-	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), deploy)
 }
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
@@ -1481,13 +1331,6 @@ func caseInsensitiveGetenv(s string) (string, string) {
 		return ls, v
 	}
 	return "", ""
-}
-
-func isDexDisabled() bool {
-	if v := os.Getenv("DISABLE_DEX"); v != "" {
-		return strings.ToLower(v) == "true"
-	}
-	return false
 }
 
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {

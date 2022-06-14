@@ -29,12 +29,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-// getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
-func (r *ReconcileArgoCD) getDexOAuthRedirectURI(cr *argoprojv1a1.ArgoCD) string {
-	uri := r.getArgoServerURI(cr)
-	return uri + common.ArgoCDDefaultDexOAuthRedirectPath
-}
-
 // newServiceAccount returns a new ServiceAccount instance.
 func newServiceAccount(cr *argoprojv1a1.ArgoCD) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
@@ -76,46 +70,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 		}
 	}
 
-	// specialized handling for dex
-	if err := r.reconcileDexServiceAccount(cr); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-// reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
-func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
-	if !cr.Spec.Dex.OpenShiftOAuth {
-		return nil // OpenShift OAuth not enabled, move along...
-	}
-
-	log.Info("oauth enabled, configuring dex service account")
-	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		return err
-	}
-
-	// Get the OAuth redirect URI that should be used.
-	uri := r.getDexOAuthRedirectURI(cr)
-	log.Info(fmt.Sprintf("URI: %s", uri))
-
-	// Get the current redirect URI
-	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
-	if found && currentURI == uri {
-		return nil // Redirect URI annotation found and correct, move along...
-	}
-
-	log.Info(fmt.Sprintf("current URI: %s is not correct, should be: %s", currentURI, uri))
-	if len(ann) <= 0 {
-		ann = make(map[string]string)
-	}
-
-	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
-	sa.ObjectMeta.Annotations = ann
-
-	return r.Client.Update(context.TODO(), sa)
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
@@ -146,14 +101,16 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
-		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-			return sa, nil // Dex is disabled, do nothing
+
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+			return sa, nil // Dex installation not requested, do nothing
 		}
 		exists = false
 	}
 	if exists {
-		if name == common.ArgoCDDexServerComponent && isDexDisabled() {
-			// Delete any existing Service Account created for Dex
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+			// Delete any existing Service Account created for Dex since dex is disabled
+			log.Info("deleting the existing Dex service account because dex uninstallation requested")
 			return sa, r.Client.Delete(context.TODO(), sa)
 		}
 		return sa, nil
@@ -162,6 +119,8 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.
 	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
 		return nil, err
 	}
+
+	log.Info(fmt.Sprintf("creating serviceaccount %s for Argo CD instance %s in namespace %s", sa.Name, cr.Name, cr.Namespace))
 
 	err := r.Client.Create(context.TODO(), sa)
 	if err != nil {

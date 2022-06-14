@@ -158,6 +158,9 @@ spec:
 
 ## Dex Options
 
+!!! warning 
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.
+
 The following properties are available for configuring the Dex component.
 
 Name | Default | Description
@@ -171,7 +174,7 @@ Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 
 ### Dex Example
 
-The following example shows all properties set to the default values.
+The following examples show all properties set to the default values. Both configuration methods will be supported until v0.6.0
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -190,6 +193,30 @@ spec:
     resources: {}
     version: v2.21.0
 ```
+OR
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: dex
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: ""
+      groups:
+        - default
+      image: quay.io/dexidp/dex
+      openShiftOAuth: false
+      resources: {}
+      version: v2.21.0
+```
+
+Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
+
 
 ### Dex OpenShift OAuth Example
 
@@ -607,6 +634,35 @@ spec:
       my-git.org ssh-rsa AAAAB3NzaC...
       my-git.com ssh-rsa AAAAB3NzaC...
 ```
+
+## Keycloak Options
+
+The following properties are available for configuring Keycloak Single sign-on provider.
+
+Name | Default | Description
+--- | --- | ---
+Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
+Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
+VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
+Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
+
+### Keycloak Single sign-on Example
+
+The following example uses keycloak as Single sign-on option for Argo CD.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: status-badge-enabled
+spec:
+  sso:
+    provider: keycloak
+```
+
+Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
 
 ## Kustomize Build Options
 
@@ -1064,7 +1120,8 @@ Name | Default | Description
 --- | --- | ---
 ExtraCommandArgs | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 
-**Note**: ExtraCommandArgs will not be added, if one of these commands is already part of the server command with same or different value.
+!!! note
+    ExtraCommandArgs will not be added, if one of these commands is already part of the server command with same or different value.
 
 ### Server Command Arguments Example
 
@@ -1194,33 +1251,20 @@ spec:
 
 ## Single sign-on Options
 
+!!! warning
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.6.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
 The following properties are available for configuring the Single sign-on component.
 
 Name | Default | Description
 --- | --- | ---
 Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
-Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
+[Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
+[Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are Dex and keycloak.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
-
-### Single sign-on Example
-
-The following example uses keycloak as Single sign-on option for Argo CD.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: status-badge-enabled
-spec:
-  sso:
-    provider: keycloak
-```
-
-Please refer to the keycloak user guide to learn more about configuring keycloak as a Single sign-on provider.
 
 ## TLS Options
 

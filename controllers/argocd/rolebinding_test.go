@@ -68,32 +68,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }
 
-func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	rules := policyRuleForDexServer()
-	rb := newRoleBindingWithname(common.ArgoCDDexServerComponent, a)
-
-	// Dex is enabled, creates a role binding
-	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
-
-	// Disable Dex, deletes the existing role binding
-	os.Setenv("DISABLE_DEX", "true")
-	defer os.Unsetenv("DISABLE_DEX")
-
-	_, err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, a)
-	assert.NoError(t, err)
-	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDDexServerComponent, rules, a))
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb))
-	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: rb.Name, Namespace: a.Namespace}, rb).Error(), "not found")
-}
-
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
