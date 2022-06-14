@@ -73,6 +73,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 		return err
 	}
 
+	log.Info("reconciling applicationset service")
+	if err := r.reconcileApplicationSetService(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -458,6 +463,8 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 
 // reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
 func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
+	log.Info("reconciling applicationset service")
+
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil {
 		// if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {

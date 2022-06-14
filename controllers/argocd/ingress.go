@@ -88,6 +88,11 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcilePrometheusIngress(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileApplicationSetControllerIngress(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -389,14 +394,14 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
-		if cr.Spec.ApplicationSet == nil {
-			// Ingress exists but enabled flag has been set to false, delete the Ingress
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.Enabled {
 			return r.Client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if cr.Spec.ApplicationSet == nil {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.Enabled {
+		log.Info("not enabled")
 		return nil // Ingress not enabled, move along...
 	}
 
@@ -446,16 +451,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv
 					},
 				},
 			},
-		},
-	}
-
-	// Add default TLS options
-	ingress.Spec.TLS = []networkingv1.IngressTLS{
-		{
-			Hosts: []string{
-				cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host,
-			},
-			SecretName: common.ArgoCDSecretName, // Todo change rhis
 		},
 	}
 

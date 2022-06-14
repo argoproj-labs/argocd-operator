@@ -86,6 +86,15 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileServerRoute(cr); err != nil {
 		return err
 	}
+
+	if err := r.reconcileApplicationSetControllerMetricsRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileApplicationSetControllerWebhookRoute(cr); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -291,13 +300,13 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	route := newRouteWithSuffix(name, cr)
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
-		if cr.Spec.ApplicationSet == nil {
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
 	}
 
-	if cr.Spec.ApplicationSet == nil {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Enabled {
 		return nil // Route not enabled, move along...
 	}
 
@@ -329,7 +338,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationEdge,
 		}
-		route.Spec.Path = "/api/webhook"
 	} else {
 		// Server is using TLS configure passthrough.
 		route.Spec.Port = &routev1.RoutePort{
@@ -339,7 +347,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationPassthrough,
 		}
-		route.Spec.Path = "/api/webhook"
 	}
 
 	// Allow override of TLS options for the Route
@@ -348,7 +355,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
+	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
@@ -370,13 +377,13 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerMetricsRoute(cr *argo
 	route := newRouteWithSuffix(name, cr)
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
-		if cr.Spec.ApplicationSet == nil {
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
 	}
 
-	if cr.Spec.ApplicationSet == nil {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.Enabled {
 		return nil // Route not enabled, move along...
 	}
 
@@ -396,7 +403,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerMetricsRoute(cr *argo
 
 	// Allow override of the Host for the Route.
 	if len(cr.Spec.Server.Host) > 0 {
-		route.Spec.Host = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host
+		route.Spec.Host = getApplicationSetControllerServerHost(cr)
 	}
 
 	if cr.Spec.Server.Insecure {
@@ -421,12 +428,12 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerMetricsRoute(cr *argo
 	}
 
 	// Allow override of TLS options for the Route
-	if cr.Spec.Server.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Server.Route.TLS
+	if cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Route.TLS
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix(common.ArgoCDApplicationControllerComponent, cr)
+	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {

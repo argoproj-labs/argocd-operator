@@ -1502,3 +1502,12 @@ func contains(s []string, g string) bool {
 	}
 	return false
 }
+
+// getArgoServerHost will return the host for the given ArgoCD.
+func getApplicationSetControllerServerHost(cr *argoprojv1a1.ArgoCD) string {
+	host := cr.Name
+	if len(cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host) > 0 {
+		host = cr.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Host
+	}
+	return host
+}
