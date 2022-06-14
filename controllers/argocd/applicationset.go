@@ -134,6 +134,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	podSpec.Containers = []corev1.Container{
 		applicationSetContainer(cr),
 	}
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 

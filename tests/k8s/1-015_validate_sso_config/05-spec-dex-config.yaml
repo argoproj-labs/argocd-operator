@@ -4,4 +4,4 @@ metadata:
   name: argocd
 spec:
   dex:
-    openShiftOAuth: true
+    config: test-config
