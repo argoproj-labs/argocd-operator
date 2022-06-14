@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
@@ -13,11 +14,16 @@ import (
 func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	a.Spec.ApplicationSet.ApplicationSetControllerServerSpec.Ingress.Enabled = true
+	obj := v1alpha1.ArgoCDApplicationSet{
+		ApplicationSetControllerServerSpec: v1alpha1.ArgoCDApplicationSetControllerServerSpec{
+			Ingress: v1alpha1.ArgoCDIngressSpec{
+				Enabled: true,
+			},
+		},
+	}
+	a.Spec.ApplicationSet = &obj
 	r := makeTestReconciler(t, a)
-
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, a)
-
 	assert.NoError(t, r.reconcileApplicationSetControllerIngress(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}, ingress))
 }
