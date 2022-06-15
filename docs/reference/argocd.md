@@ -27,6 +27,7 @@ Name | Default | Description
 [**Import**](#import-options) | [Object] | Import configuration options.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
+[**Notifications**](#notifications-controller-options) | [Object] | Notifications controller configuration options.
 [**RepositoryCredentials**](#repository-credentials) | [Empty] | Git repository credential templates to configure Argo CD to use upon creation of the cluster.
 [**InitialSSHKnownHosts**](#initial-ssh-known-hosts) | [Default Argo CD Known Hosts] | Initial SSH Known Hosts for Argo CD to use upon creation of the cluster.
 [**KustomizeBuildOptions**](#kustomize-build-options) | [Empty] | The build options/parameters to use with `kustomize build`.
@@ -548,6 +549,32 @@ spec:
         key: password
     - type: git
       url: https://github.com/argoproj/argocd-example-apps.git
+```
+
+## Notifications Controller Options
+
+The following properties are available for configuring the Notifications controller component.
+
+Name | Default | Description
+--- | --- | ---
+Enabled | `false` | The toggle that determines whether notifications-controller should be started or not.  
+Image | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
+Version | *(recent Argo CD version)* | The tag to use with the Notifications container image.
+Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+
+### Notifications Controller Example
+
+The following example shows all properties set to the default values.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  notifications:
+    enabled: true
 ```
 
 ## Repository Credentials

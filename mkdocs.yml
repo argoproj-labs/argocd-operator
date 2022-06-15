@@ -28,6 +28,8 @@ nav:
     - Manual Installation: install/manual.md
   - Usage: 
     - Basics: usage/basics.md
+    - Config Management: usage/config_management_2.0.md
+    - Custom Tooling: usage/customization.md
     - Export: usage/export.md
     - ExtraConfig: usage/extra-config.md
     - High Availability: usage/ha.md
@@ -37,6 +39,7 @@ nav:
     - Keycloak: 
       - Kubernetes: usage/keycloak/kubernetes.md
       - OpenShift: usage/keycloak/openshift.md
+    - Notifications: usage/notifications.md
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
     - Custom Roles: usage/custom_roles.md

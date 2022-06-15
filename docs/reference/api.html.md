@@ -227,6 +227,19 @@ Resource Types:
                </tr>
                <tr>
                   <td>
+                     <code>notifications</code></br>
+                     <em>
+                     <a href="#argoproj.io/v1alpha1.ArgoCDNotificationsSpec">
+                     ArgoCDNotificationsSpec
+                     </a>
+                     </em>
+                  </td>
+                  <td>
+                     <p>Notifications controls the desired state of Argo CD Notifications controller.</p>
+                  </td>
+               </tr>
+               <tr>
+                  <td>
                      <code>oidcConfig</code></br>
                      <em>
                      string
@@ -484,7 +497,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -638,7 +651,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -676,7 +689,7 @@ Resource Types:
          <td>
             <code>metadata</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
             Kubernetes meta/v1.ObjectMeta
             </a>
             </em>
@@ -914,7 +927,7 @@ Resource Types:
          <td>
             <code>pvc</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaimspec-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaimspec-v1-core">
             Kubernetes core/v1.PersistentVolumeClaimSpec
             </a>
             </em>
@@ -1002,7 +1015,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -1190,6 +1203,83 @@ Resource Types:
       </tr>
    </tbody>
 </table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDNotificationsSpec">ArgoCDNotificationsSpec</h3>
+<p>
+   (<em>Appears on:</em>
+   <a href="#argoproj.io/v1alpha1.ArgoCDSpec">ArgoCDSpec</a>)
+</p>
+<p>
+<p>ArgoCDNotificationsSpec defines the desired state for the Notifications controller component.</p>
+</p>
+<table>
+   <thead>
+      <tr>
+         <th>Field</th>
+         <th>Description</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr>
+         <td>
+            <code>enabled</code></br>
+            <em>
+            bool
+            </em>
+         </td>
+         <td>
+            <p>Enabled is the toggle that determines whether notifications controller should be started or not. </p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>image</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>Image is the Argo CD container image.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>replicas</code></br>
+            <em>
+            int32
+            </em>
+         </td>
+         <td>
+            <p>Replicas determins the number of replicas for notifications controller.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>resources</code></br>
+            <em>
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
+            Kubernetes core/v1.ResourceRequirements
+            </a>
+            </em>
+         </td>
+         <td>
+            <p>Resources defines the Compute Resources required by the container for Notifications controller.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>version</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>Version is the Argo CD container image tag.</p>
+         </td>
+      </tr>
+   </tbody>
+</table>
+<h3 id="argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec</h3><h3 id="argoproj.io/v1alpha1.ArgoCDPrometheusSpec">ArgoCDPrometheusSpec
+</h3>
 <h3 id="argoproj.io/v1alpha1.ArgoCDKeycloakSpec">ArgoCDKeycloakSpec</h3>
 <p>
    (<em>Appears on:</em>
@@ -1423,7 +1513,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -1476,7 +1566,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -1604,7 +1694,7 @@ Resource Types:
          <td>
             <code>hpa</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#horizontalpodautoscalerspec-v1-autoscaling">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#horizontalpodautoscalerspec-v1-autoscaling">
             Kubernetes autoscaling/v1.HorizontalPodAutoscalerSpec
             </a>
             </em>
@@ -1677,7 +1767,7 @@ Resource Types:
          <td>
             <code>type</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicetype-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#servicetype-v1-core">
             Kubernetes core/v1.ServiceType
             </a>
             </em>
@@ -1769,7 +1859,7 @@ Resource Types:
          <td>
             <code>resources</code></br>
             <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
             Kubernetes core/v1.ResourceRequirements
             </a>
             </em>
@@ -2314,6 +2404,23 @@ Resource Types:
                Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
                Failed: At least one of the  Argo CD Dex component Pods had a failure.
                Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
+            </p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>notifications</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>Notifications is a simple, high-level summary of where the Argo CD Notifications controller component is in its lifecycle.
+               There are four possible notifications values:
+               Pending: The Argo CD Notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+               Running: All of the required Pods for the Argo CD Notifications controller component are in a Ready state.
+               Failed: At least one of the  Argo CD Notifications controller component Pods had a failure.
+               Unknown: For some reason the state of the Argo CD Notifications controller component could not be obtained.
             </p>
          </td>
       </tr>
