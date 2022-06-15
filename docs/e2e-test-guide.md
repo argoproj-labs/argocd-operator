@@ -15,7 +15,8 @@ The system executing the tests must have following tools installed:
 
 There should be a `kubeconfig` pointing to your cluster, user should have full admin privileges (i.e. `kubeadm`).
 
-**Note:** E2E tests utilize GNU Grep under the hood. Please make sure that you have the GNU compatible `grep` installed.
+!!! note 
+    E2E tests utilize GNU Grep under the hood. Please make sure that you have the GNU compatible `grep` installed.
 
 If you are on OSX you can install GNU compatible grep using the below command. The package is installed as `ggrep` by default. Please set this(ggrep) as an alias to `grep`.  
 
