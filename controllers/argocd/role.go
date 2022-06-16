@@ -78,9 +78,18 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
-		// only create dexServer and redisHa roles for the namespace where the argocd instance is deployed
-		if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
-			break
+		list := &argoprojv1a1.ArgoCDList{}
+		listOption := &client.ListOptions{Namespace: namespace.Name}
+		err := r.Client.List(context.TODO(), list, listOption)
+		if err != nil {
+			return nil, err
+		}
+		// only skip creation of dex and redisHa roles for namespaces that no argocd instance is deployed in
+		if len(list.Items) < 1 {
+			// only create dexServer and redisHa roles for the namespace where the argocd instance is deployed
+			if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
+				continue
+			}
 		}
 		customRole := getCustomRoleName(name)
 		role := newRole(name, policyRules, cr)
@@ -89,7 +98,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 		role.Namespace = namespace.Name
 		existingRole := v1.Role{}
-		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)

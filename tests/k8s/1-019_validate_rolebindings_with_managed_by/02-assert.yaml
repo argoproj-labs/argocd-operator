@@ -1,0 +1,95 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: example-argocd-argocd-application-controller
+  namespace: central-argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: example-argocd-argocd-server
+  namespace: central-argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: child-argocd-argocd-application-controller
+  namespace: argocd-1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: child-argocd-argocd-server
+  namespace: argocd-1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: child-argocd-argocd-dex-server
+  namespace: argocd-1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: child-argocd-argocd-redis-ha
+  namespace: argocd-1
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd-argocd-application-controller
+  namespace: central-argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd-argocd-application-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd-argocd-server
+  namespace: central-argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd-argocd-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: child-argocd-argocd-application-controller
+  namespace: argocd-1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: child-argocd-argocd-application-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: child-argocd-argocd-server
+  namespace: argocd-1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: child-argocd-argocd-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: child-argocd-argocd-dex-server
+  namespace: argocd-1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: child-argocd-argocd-dex-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: child-argocd-argocd-redis-ha
+  namespace: argocd-1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: child-argocd-argocd-redis-ha
