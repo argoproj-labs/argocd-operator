@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -402,6 +403,122 @@ func TestKeycloak_testServerCert(t *testing.T) {
 
 	_, err = r.getKCServerCert(a)
 	assert.NoError(t, err)
+}
+
+func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
+	tests := []struct {
+		name             string
+		argoCD           *v1alpha1.ArgoCD
+		desiredVerifyTLS bool
+	}{
+		{
+			name: ".spec.sso.verifyTLS & .spec.sso.keycloak.verifyTLS both nil",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoappv1.SSOProviderTypeKeycloak,
+				}
+			}),
+			desiredVerifyTLS: true,
+		},
+		{
+			name: ".spec.sso.verifyTLS nil, .spec.sso.keycloak.verifyTLS false",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoappv1.SSOProviderTypeKeycloak,
+					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+						VerifyTLS: boolPtr(false),
+					},
+				}
+			}),
+			desiredVerifyTLS: false,
+		},
+		{
+			name: ".spec.sso.verifyTLS false, .spec.sso.keycloak.verifyTLS nil",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider:  argoappv1.SSOProviderTypeKeycloak,
+					VerifyTLS: boolPtr(false),
+				}
+			}),
+			desiredVerifyTLS: false,
+		},
+		{
+			name: ".spec.sso.verifyTLS nil, .spec.sso.keycloak.verifyTLS true",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoappv1.SSOProviderTypeKeycloak,
+					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+						VerifyTLS: boolPtr(true),
+					},
+				}
+			}),
+			desiredVerifyTLS: true,
+		},
+		{
+			name: ".spec.sso.verifyTLS true, .spec.sso.keycloak.verifyTLS nil",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider:  argoappv1.SSOProviderTypeKeycloak,
+					VerifyTLS: boolPtr(true),
+				}
+			}),
+			desiredVerifyTLS: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			r := makeFakeReconciler(t, test.argoCD)
+
+			keycloakRoute := &routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      defaultKeycloakIdentifier,
+					Namespace: test.argoCD.Namespace,
+				},
+				Spec: routev1.RouteSpec{
+					Host: "test-host",
+				},
+			}
+			r.Client.Create(context.TODO(), keycloakRoute)
+
+			argoCDRoute := &routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%s", test.argoCD.Name, "server"),
+					Namespace: test.argoCD.Namespace,
+				},
+				Spec: routev1.RouteSpec{
+					Host: "test-argocd-host",
+				},
+			}
+			r.Client.Create(context.TODO(), argoCDRoute)
+
+			keycloakSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%s", defaultKeycloakIdentifier, "secret"),
+					Namespace: test.argoCD.Namespace,
+				},
+				Data: map[string][]byte{"SSO_USERNAME": []byte("username"), "SSO_PASSWORD": []byte("password")},
+			}
+			r.Client.Create(context.TODO(), keycloakSecret)
+
+			sslCertsSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      servingCertSecretName,
+					Namespace: test.argoCD.Namespace,
+				},
+				Data: map[string][]byte{
+					"tls.crt": []byte("asdasfsff"),
+				},
+			}
+			r.Client.Create(context.TODO(), sslCertsSecret)
+
+			keyCloakConfig, err := r.prepareKeycloakConfig(test.argoCD)
+			assert.NoError(t, err)
+
+			assert.Equal(t, test.desiredVerifyTLS, keyCloakConfig.VerifyTLS)
+		})
+	}
 }
 
 func TestKeycloak_NodeLabelSelector(t *testing.T) {
