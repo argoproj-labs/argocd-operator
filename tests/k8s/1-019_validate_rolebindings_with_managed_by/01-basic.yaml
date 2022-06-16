@@ -17,4 +17,8 @@ metadata:
   namespace: central-argocd
   labels:
     example: basic
-spec: {}
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: test-config

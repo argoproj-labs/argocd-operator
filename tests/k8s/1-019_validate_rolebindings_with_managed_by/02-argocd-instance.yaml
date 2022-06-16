@@ -3,4 +3,8 @@ kind: ArgoCD
 metadata:
   name: child-argocd
   namespace: argocd-1
-spec: {}
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: test-config
