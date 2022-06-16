@@ -142,7 +142,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot specify .spec.Dex fields when dex is configured through .spec.sso"),
+			Err:           errors.New("illegal SSO configuration: cannot specify .spec.Dex fields when dex is configured through .spec.sso.dex"),
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
@@ -244,9 +244,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argov1alpha1.SSOProviderTypeKeycloak,
 					Image:    "test-image",
-					Version:  "test-image-version",
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						Image:   "test-image-2",
 						Version: "test-image-version-2",
 					},
 				}
@@ -254,7 +252,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot supply conflicting configuration in .spec.sso when keycloak is configured through .spec.sso.keycloak"),
+			Err:           errors.New("illegal SSO configuration: cannot specify keycloak fields in .spec.sso when keycloak is configured through .spec.sso.keycloak"),
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",

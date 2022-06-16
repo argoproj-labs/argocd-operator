@@ -819,7 +819,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycl
 	}
 
 	// By default TLS Verification should be enabled.
-	if cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS || cr.Spec.SSO.Keycloak.VerifyTLS == nil || *cr.Spec.SSO.Keycloak.VerifyTLS {
+	if (cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS) && (cr.Spec.SSO.Keycloak == nil || (cr.Spec.SSO.Keycloak.VerifyTLS == nil || *cr.Spec.SSO.Keycloak.VerifyTLS)) {
 		tlsVerification = true
 	}
 

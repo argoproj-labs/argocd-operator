@@ -143,7 +143,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			} else if cr.Spec.Dex != nil && (cr.Spec.Dex.Image != "" || cr.Spec.Dex.Config != "" || cr.Spec.Dex.Resources != nil || len(cr.Spec.Dex.Groups) != 0 ||
 				cr.Spec.Dex.Version != "" || cr.Spec.Dex.OpenShiftOAuth != cr.Spec.SSO.Dex.OpenShiftOAuth) {
 				// old dex spec fields are expressed when `.spec.sso.provider` is set to dex instead of using new `.spec.sso.dex` ==> conflict
-				errMsg = "cannot specify .spec.Dex fields when dex is configured through .spec.sso"
+				errMsg = "cannot specify .spec.Dex fields when dex is configured through .spec.sso.dex"
 				isError = true
 			} else if cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil {
 				// old keycloak spec fields expressed when `.spec.sso.provider` is set to dex ==> conflict
@@ -164,13 +164,10 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`, `.spec.sso.dex`
 
-			if (cr.Spec.SSO.Keycloak != nil) && ((cr.Spec.SSO.Image != "" && cr.Spec.SSO.Keycloak.Image != "" && cr.Spec.SSO.Image != cr.Spec.SSO.Keycloak.Image) ||
-				(cr.Spec.SSO.Version != "" && cr.Spec.SSO.Keycloak.Version != "" && cr.Spec.SSO.Version != cr.Spec.SSO.Keycloak.Version) ||
-				(cr.Spec.SSO.VerifyTLS != nil && cr.Spec.SSO.Keycloak.VerifyTLS != nil && cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) ||
-				(cr.Spec.SSO.Resources != nil && cr.Spec.SSO.Keycloak.Resources != nil && cr.Spec.SSO.Resources != cr.Spec.SSO.Keycloak.Resources)) {
+			if (cr.Spec.SSO.Keycloak != nil) && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.Resources != nil || cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) {
 				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
 				// ==> conflict
-				errMsg = "cannot supply conflicting configuration in .spec.sso when keycloak is configured through .spec.sso.keycloak"
+				errMsg = "cannot specify keycloak fields in .spec.sso when keycloak is configured through .spec.sso.keycloak"
 				err = errors.New(illegalSSOConfiguration + errMsg)
 				isError = true
 			} else if cr.Spec.SSO.Dex != nil {
