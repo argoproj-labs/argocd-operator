@@ -421,7 +421,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
-			Host: cr.Spec.ApplicationSet.WebhookServerSpec.Host,
+			Host: getApplicationSetHTTPServerHost(cr),
 			IngressRuleValue: networkingv1.IngressRuleValue{
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
