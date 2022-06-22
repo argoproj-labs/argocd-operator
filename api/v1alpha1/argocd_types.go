@@ -132,7 +132,7 @@ type ArgoCDApplicationSet struct {
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
-	ApplicationSetControllerServerSpec ArgoCDApplicationSetControllerServerSpec `json:"argoCDApplicationSetControllerServerSpec,omitempty"`
+	WebhookServerSpec WebhookServerSpec `json:"webhookSpec,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -829,8 +829,8 @@ type SSHHostsSpec struct {
 	Keys string `json:"keys,omitempty"`
 }
 
-// ArgoCDApplicationSetServerSpec defines the options for the ArgoCD Server component.
-type ArgoCDApplicationSetControllerServerSpec struct {
+// WebhookServerSpec defines the options for the ApplicationSet Webhook Server component.
+type WebhookServerSpec struct {
 
 	// Host is the hostname to use for Ingress/Route resources.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Host",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}

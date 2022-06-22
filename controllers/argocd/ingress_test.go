@@ -15,7 +15,7 @@ func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	obj := v1alpha1.ArgoCDApplicationSet{
-		ApplicationSetControllerServerSpec: v1alpha1.ArgoCDApplicationSetControllerServerSpec{
+		HTTPServerSpec: v1alpha1.HTTPServerSpec{
 			Ingress: v1alpha1.ArgoCDIngressSpec{
 				Enabled: true,
 			},

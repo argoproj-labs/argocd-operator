@@ -468,9 +468,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil {
-		// if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
-		// 	return r.Client.Update(context.TODO(), svc)
-		// }
+
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
 			if err != nil {
