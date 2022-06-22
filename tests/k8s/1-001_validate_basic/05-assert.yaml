@@ -8,8 +8,9 @@ metadata:
   name: example-argocd-applicationset-controller
 status:
   readyReplicas: 1
-kind: ServiceAccount
+---
 apiVersion: v1
+kind: ServiceAccount
 metadata:
   name: example-argocd-applicationset-controller
 ---

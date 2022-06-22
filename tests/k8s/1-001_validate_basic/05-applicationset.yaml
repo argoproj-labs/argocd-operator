@@ -14,14 +14,8 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 spec:
-  rules:
-  - host: example-argocd
-    http:
-      paths:
-      - backend:
-          service:
-            name: example-argocd-applicationset-controller
-            port:
-              name: webhook
-        path: /api/webhook
-        pathType: ImplementationSpecific
+  applicationSet: 
+    webhookSpec:
+          ingress:
+            enabled: true
+
