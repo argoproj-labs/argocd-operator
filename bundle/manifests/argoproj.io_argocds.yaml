@@ -106,8 +106,8 @@ spec:
                 properties:
                   appSync:
                     description: "AppSync is used to control the sync frequency, by
-                      default the ArgoCD controller polls Git every 3m by default.
-                      \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
+                      default the ArgoCD controller polls Git every 3m. \n Set this
+                      to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
                   env:

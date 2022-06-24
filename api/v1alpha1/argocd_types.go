@@ -93,7 +93,7 @@ type ArgoCDApplicationControllerSpec struct {
 	ParallelismLimit int32 `json:"parallelismLimit,omitempty"`
 
 	// AppSync is used to control the sync frequency, by default the ArgoCD
-	// controller polls Git every 3m by default.
+	// controller polls Git every 3m.
 	//
 	// Set this to a duration, e.g. 10m or 600s to control the synchronisation
 	// frequency.
