@@ -939,6 +939,29 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
 }
 
+func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
+	// tests reconciler hook for redis deployment
+	cr := makeTestArgoCD()
+	r := makeTestReconciler(t, cr)
+
+	defer resetHooks()()
+	Register(testDeploymentHook)
+
+	// Verify redis deployment
+	assert.NoError(t, r.reconcileRedisDeployment(cr))
+	existing := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
+
+	// Verify Image upgrade
+	os.Setenv("ARGOCD_REDIS_IMAGE", "docker.io/redis/redis:latest")
+	defer os.Unsetenv("ARGOCD_REDIS_IMAGE")
+	assert.NoError(t, r.reconcileRedisDeployment(cr))
+
+	newRedis := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
+	assert.Equal(t, newRedis.Spec.Template.Spec.Containers[0].Image, "docker.io/redis/redis:latest")
+}
+
 func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
