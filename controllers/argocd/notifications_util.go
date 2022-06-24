@@ -535,7 +535,7 @@ teams:
   - app-sync-status-unknown
   when: app.status.sync.status == 'Unknown'`
 
-	notificationsConfig["trigger.on-sync-succeeded"] = `-description: Application syncing has succeeded
+	notificationsConfig["trigger.on-sync-succeeded"] = `- description: Application syncing has succeeded
   send:
   - app-sync-succeeded
   when: app.status.operationState.phase in ['Succeeded']`
