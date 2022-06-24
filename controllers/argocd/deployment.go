@@ -614,7 +614,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 			return r.Client.Delete(context.TODO(), deploy)
 		}
 		changed := false
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
