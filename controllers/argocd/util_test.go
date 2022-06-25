@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	b64 "encoding/base64"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -59,11 +58,7 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDDexImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDDexImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
+			t.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
 		},
 	},
 	{
@@ -84,11 +79,7 @@ var imageTests = []struct {
 		imageFunc: getArgoContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
 		},
 	},
 	{
@@ -110,11 +101,7 @@ var imageTests = []struct {
 		imageFunc: getGrafanaContainerImage,
 		want:      grafanaTestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDGrafanaImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDGrafanaImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
+			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
 		},
 	},
 	{
@@ -136,11 +123,7 @@ var imageTests = []struct {
 		imageFunc: getRedisContainerImage,
 		want:      redisTestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDRedisImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDRedisImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
+			t.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
 		},
 	},
 	{
@@ -164,11 +147,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAContainerImage,
 		want:      redisHATestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDRedisHAImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDRedisHAImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
+			t.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
 		},
 	},
 	{
@@ -192,11 +171,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		pre: func(t *testing.T) {
-			old := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName)
-			t.Cleanup(func() {
-				os.Setenv(common.ArgoCDRedisHAProxyImageEnvName, old)
-			})
-			os.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
+			t.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
 		},
 	},
 }
