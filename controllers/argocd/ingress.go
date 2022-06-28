@@ -94,16 +94,16 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
 func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress)
+	if found {
 		if !cr.Spec.Server.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
 		}
-		return nil // Ingress found and enabled, do nothing
 	}
 
 	if !cr.Spec.Server.Ingress.Enabled {
-		return nil // Ingress not enabled, move along...
+		return nil // Ingress not found and not enabled, move along...
 	}
 
 	// Add annotations
@@ -162,7 +162,11 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
 		return err
 	}
-	return r.Client.Create(context.TODO(), ingress)
+
+	if !found {
+		return r.Client.Create(context.TODO(), ingress)
+	}
+	return r.Client.Update(context.TODO(), ingress)
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
