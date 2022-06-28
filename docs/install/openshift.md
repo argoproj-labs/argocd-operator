@@ -16,7 +16,7 @@ In addition to the console interface, the [Operator Install][olm_install] sectio
 
 ## Manual Install
 
-The following steps can be used to manually install the operator in an OpenShift 4.x environment with minimal overhead.
+The following steps can be used to manually install the operator in an OpenShift 4.x environment with minimal overhead. Note that these steps generates the manifests using kustomize.
 
 Several of the steps in this process require the `cluster-admin` ClusterRole or equivalent.
 
@@ -28,89 +28,54 @@ Once the cluster is up and running, log in as the `cluster-admin` user.
 oc login -u kubeadmin
 ```
 
-The following section outlines the steps necessary to deploy the ArgoCD Operator manually using standard Kubernetes manifests.
+!!! info
+    Make sure you download the source code from release section: https://github.com/argoproj-labs/argocd-operator/releases. Compiling from the source code cloned off main repo may not provide the most stable result.
 
 ### Namespace
 
-It is a good idea to create a new namespace for the operator.
-
-```bash
-oc new-project argocd
-```
-
-The remaining resources will now be created in the new namespace.
-
-### RBAC
-
-Provision the ServiceAccounts, Roles and RoleBindings to set up RBAC for the operator.
-
-NOTE: The ClusterRoleBindings defined in `deploy/role_binding.yaml` use the `argocd` namespace. You will need to update these if using a different namespace.
-
-```bash
-oc create -f deploy/service_account.yaml
-oc create -f deploy/role.yaml
-oc create -f deploy/role_binding.yaml
-```
-
-Argo CD needs several ClusterRole resources to function, however the ClusterRoles have been refined to read-only for the cluster resources.
-
-To enable full cluster admin access on OpenShift, run the following command. This step is optional.
-
-``` bash
-oc adm policy add-cluster-role-to-user cluster-admin -z argocd-application-controller -n argocd
-```
-
-### CRDs
-
-Add the Argo CD CRDs to the cluster.
-
-```bash
-oc create -f deploy/argo-cd
-```
-
-Add the Argo CD Operator CRDs to the cluster
-
-```bash
-oc create -f deploy/crds
-```
-
-There should be four CRDs present for Argo CD on the cluster.
-
-```bash
-oc get crd | grep argo
-```
-
-```bash
-NAME                       CREATED AT
-applications.argoproj.io   2019-11-09T06:36:59Z
-appprojects.argoproj.io    2019-11-09T06:36:59Z
-argocdexports.argoproj.io  2019-11-09T06:37:06Z
-argocds.argoproj.io        2019-11-09T06:37:06Z
-```
+By default, the operator is installed into the `argocd-operator-system` namespace. To modify this, update the
+value of the `namespace` specified in the `config/default/kustomization.yaml` file. 
 
 ### Deploy Operator
 
-Provision the operator using a Deployment manifest.
+Deploy the operator. This will create all the necessary resources, including the namespace. For running the make command you need to install go-lang package on your system.
 
 ```bash
-oc create -f deploy/operator.yaml
+make deploy
 ```
 
-An operator Pod should start and enter a `Running` state after a few seconds.
+If you want to use your own custom operator container image, you can specify the image name using the `IMG` variable.
 
 ```bash
-oc get pods
+make deploy IMG=quay.io/my-org/argocd-operator:latest
+```
+
+The operator pod should start and enter a `Running` state after a few seconds.
+
+```bash
+oc get pods -n <argocd-operator-system>
 ```
 
 ```bash
-NAME                              READY   STATUS    RESTARTS   AGE
-argocd-operator-758dd86fb-sx8qj   1/1     Running   0          75s
+NAME                                                  READY   STATUS    RESTARTS   AGE
+argocd-operator-controller-manager-6c449c6998-ts95w   2/2     Running   0          33s
 ```
-
+!!! info
+    If you see `Error: container's runAsUser breaks non-root policy`, means container wants to have admin privilege. run `oc adm policy add-scc-to-user privileged -z default -n argocd-operator-system` to enable admin on the namespace and change the following line in deployment resource: `runAsNonRoot: false`. This is a quick fix to make it running, this is not a suggested approach for *production*.
+    
 ## Usage 
 
 Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage] 
 documentation to learn how to create new `ArgoCD` resources.
 
-[olm_install]:./olm.md#operator-install
+## Cleanup 
+
+To remove the operator from the cluster, run the following comand. This will remove all resources that were created,
+including the namespace.
+```bash
+make undeploy
+```
+
+
+
 [docs_usage]:../usage/basics.md
