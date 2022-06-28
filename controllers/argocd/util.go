@@ -1027,30 +1027,30 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
-	repoDeployment := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
-			if !ok {
-				return false
-			}
-			oldCR, ok := e.ObjectOld.(*argoprojv1a1.ArgoCD)
-			if !ok {
-				return false
-			}
-			if (oldCR.Spec.Repo.ServiceAccount != newCR.Spec.Repo.ServiceAccount) || (!oldCR.Spec.Repo.MountSAToken && newCR.Spec.Repo.MountSAToken) {
-				useTLSForRedis := r.redisShouldUseTLS(newCR)
-				err := r.reconcileRepoDeployment(newCR, useTLSForRedis)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-			return true
-		},
-	}
+	// repoDeployment := predicate.Funcs{
+	// 	UpdateFunc: func(e event.UpdateEvent) bool {
+	// 		newCR, ok := e.ObjectNew.(*argoprojv1a1.ArgoCD)
+	// 		if !ok {
+	// 			return false
+	// 		}
+	// 		oldCR, ok := e.ObjectOld.(*argoprojv1a1.ArgoCD)
+	// 		if !ok {
+	// 			return false
+	// 		}
+	// 		if (oldCR.Spec.Repo.ServiceAccount != newCR.Spec.Repo.ServiceAccount) || (!oldCR.Spec.Repo.MountSAToken && newCR.Spec.Repo.MountSAToken) {
+	// 			useTLSForRedis := r.redisShouldUseTLS(newCR)
+	// 			err := r.reconcileRepoDeployment(newCR, useTLSForRedis)
+	// 			if err != nil {
+	// 				log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
+	// 					newCR.Name, newCR.Namespace))
+	// 			}
+	// 		}
+	// 		return true
+	// 	},
+	// }
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred, repoDeployment))
+	bldr.For(&argoprojv1a1.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
