@@ -835,7 +835,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
-	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+	version, err := getClusterVersion(r.Client)
+	if err != nil {
+		log.Error(err, "error getting cluster version")
+	}
+	if err := applyReconcilerHook(cr, deploy, version); err != nil {
 		return err
 	}
 
