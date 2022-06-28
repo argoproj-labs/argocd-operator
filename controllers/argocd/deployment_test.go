@@ -1645,7 +1645,7 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 		},
 		{
 			name:           "change Service Account and mountSAToken",
-			mountSAToken:   false,
+			mountSAToken:   true,
 			serviceAccount: "argocd-argocd-server",
 		},
 	}
@@ -1675,7 +1675,7 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 				Namespace: testNamespace,
 			}, deployment)
 			assert.NoError(t, err)
-			assert.Equal(t, test.mountSAToken, deployment.Spec.Template.Spec.AutomountServiceAccountToken)
+			assert.Equal(t, &test.mountSAToken, deployment.Spec.Template.Spec.AutomountServiceAccountToken)
 			assert.Equal(t, test.serviceAccount, deployment.Spec.Template.Spec.ServiceAccountName)
 		})
 	}
