@@ -53,7 +53,7 @@ make deploy IMG=quay.io/my-org/argocd-operator:latest
 The operator pod should start and enter a `Running` state after a few seconds.
 
 ```bash
-oc get pods -n argocd-operator-system
+oc get pods -n <argocd-operator-system>
 ```
 
 ```bash
