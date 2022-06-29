@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+# patches the subscription to change sso provider to keycloak
+- script: |
+    kubectl patch -n $NAMESPACE argocd/argocd --type='json' -p='[{"op": "remove", "path": "/spec/dex/config"}]'
+- script: sleep 10

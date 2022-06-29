@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -70,6 +71,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 
 	log.Info("reconciling applicationset deployments")
 	if err := r.reconcileApplicationSetDeployment(cr, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset service")
+	if err := r.reconcileApplicationSetService(cr); err != nil {
 		return err
 	}
 
@@ -134,6 +140,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 	podSpec.Containers = []corev1.Container{
 		applicationSetContainer(cr),
 	}
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if cr.Spec.ApplicationSet == nil {
@@ -511,4 +518,50 @@ func (r *ReconcileArgoCD) deleteApplicationSetResources(cr *argoprojv1a1.ArgoCD)
 	}
 
 	return nil
+}
+
+// reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
+func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
+	log.Info("reconciling applicationset service")
+
+	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
+	if cr.Spec.ApplicationSet == nil {
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
+			if err != nil {
+				return err
+			}
+			log.Info(fmt.Sprintf("Deleting applicationset controller service %s as applicationset is disabled", svc.Name))
+			err = r.Delete(context.TODO(), svc)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			return nil // Service found, do nothing
+		}
+	}
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "webhook",
+			Port:       7000,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(7000),
+		}, {
+			Name:       "metrics",
+			Port:       8080,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(8080),
+		},
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
 }

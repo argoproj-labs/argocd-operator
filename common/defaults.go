@@ -30,7 +30,10 @@ const (
 	// ArgoCDServerComponent is the name of the Dex server control plane component
 	ArgoCDServerComponent = "argocd-server"
 
-	// ArgoCDRedisHAComponent is the name of the Redis control plane component
+	// ArgoCDRedisComponent is the name of the Redis control plane component
+	ArgoCDRedisComponent = "argocd-redis"
+
+	// ArgoCDRedisHAComponent is the name of the Redis HA control plane component
 	ArgoCDRedisHAComponent = "argocd-redis-ha"
 
 	// ArgoCDDexServerComponent is the name of the Dex server control plane component
@@ -41,6 +44,8 @@ const (
 
 	// ArgoCDApplicationSetControllerComponent is the name of the AppplicationSet controller control plane component
 	ArgoCDApplicationSetControllerComponent = "argocd-applicationset-controller"
+	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component
+	ArgoCDOperatorGrafanaComponent = "argocd-grafana"
 
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
@@ -58,7 +63,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:e8f78f3217012b52c482f5d38c162391cdc5dbfb5a1402667454bde8126700bf" // v2.4.0-rc2
+	ArgoCDDefaultArgoVersion = "sha256:390f86e5f9dd9bb82a11d75ce6e1f7591d521a5690bf1c55ac266e2456a2aac6" // v2.4.0
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32

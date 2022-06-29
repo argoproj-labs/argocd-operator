@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -46,8 +48,10 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex.Image = "testing/dex"
-			a.Spec.Dex.Version = "latest"
+			a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+				Image:   "testing/dex",
+				Version: "latest",
+			}
 		}},
 	},
 	{
@@ -627,34 +631,6 @@ func TestSetManagedNamespaces(t *testing.T) {
 	}
 }
 
-func TestGetRedisConf(t *testing.T) {
-	s1 := getRedisConf(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisConf(false)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisSentinelConf(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisSentinelConf(false)
-	//assert.Equal(t, "", s1)
-
-	a := makeTestArgoCD()
-
-	s1 = getRedisInitScript(a, true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisLivenessScript(false)
-	//assert.Equal(t, "", s1)
-
-	s1 = getRedisReadinessScript(true)
-	//assert.Equal(t, "", s1)
-
-	s1 = getSentinelLivenessScript(true)
-	assert.Equal(t, "", s1)
-}
-
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
@@ -679,4 +655,29 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 
 	encoded := argoutil.EncodeCertificatePEM(cert)
 	return encoded
+}
+
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+		ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+			OpenShiftOAuth: true,
+		}
+	})
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+	_, err = r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	tokenExists := false
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "dex-server-token") {
+			tokenExists = true
+		}
+	}
+	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }

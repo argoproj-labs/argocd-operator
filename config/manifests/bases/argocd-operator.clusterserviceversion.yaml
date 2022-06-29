@@ -175,6 +175,34 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: applicationSet.webhookSpec.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: applicationSet.webhookSpec.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Insecure toggles the insecure flag.
+        displayName: Insecure
+        path: applicationSet.webhookSpec.insecure
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: applicationSet.webhookSpec.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
@@ -533,6 +561,38 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Config is the dex connector configuration.
+        displayName: Configuration
+        path: sso.dex.config
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Dex container image.
+        displayName: Image
+        path: sso.dex.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
+          Dex server.
+        displayName: OpenShift OAuth Enabled'
+        path: sso.dex.openShiftOAuth
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for Dex.
+        displayName: Resource Requirements'
+        path: sso.dex.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Version is the Dex container image tag.
+        displayName: Version
+        path: sso.dex.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: StatusBadgeEnabled toggles application status badge feature.
         displayName: Status Badge Enabled'
         path: statusBadgeEnabled
@@ -638,9 +698,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'SSOConfig defines the status of SSO configuration. Success:
-          Only one SSO provider is configured in CR. Failed: More than one SSO providers
-          are configure in CR. Unknown: For some reason the SSO configuration could
-          not be obtained.'
+          Only one SSO provider is configured in CR. Failed: SSO configuration is
+          illegal or more than one SSO providers are configured in CR. Unknown: For
+          some reason the SSO configuration could not be obtained.'
         displayName: SSOConfig
         path: ssoConfig
         x-descriptors:

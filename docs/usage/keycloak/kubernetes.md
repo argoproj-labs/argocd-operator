@@ -45,7 +45,11 @@ spec:
     insecure: true
 ```
 
-**NOTE**: If you test the operator locally using `make run`, please add `verifyTLS: false` to the `.spec.sso` field.
+!!! warning
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.6.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
+!!! note
+    If you test the operator locally using `make run`, please add `.spec.sso.verifyTLS: false`, or `.spec.sso.keycloak.verifyTLS: false` to your Argo CD CR. Specifying conflicting information in both specs will result in errors. 
 
 ## Create
 
@@ -61,7 +65,8 @@ Create a new Argo CD Instance in the `argocd` namespace using the provided examp
 kubectl create -n argocd -f examples/argocd-keycloak-k8s.yaml
 ```
 
-**NOTE**: `verifyTLS` option should be set to `true` if you want to enable strict TLS validation in production. If you are running operator on your machine using `operator-sdk run local`, `verifyTLS` should be set to `false`.
+!!! note
+    `verifyTLS` option should be set to `true` if you want to enable strict TLS validation in production. If you are running operator on your machine using `operator-sdk run local`, `verifyTLS` should be set to `false`.
 
 ## Keycloak Instance
 
@@ -115,7 +120,8 @@ Click on **LOGIN VIA KEYCLOAK**.
 
 You can [create keycloak users](https://www.keycloak.org/docs/latest/getting_started/#creating-a-user) by logging in to keycloak admin console using the Keycloak admin credentials and Keycloak Ingress URL.
 
-**NOTE:** Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
+!!! note
+    Keycloak instance takes 2-3 minutes to be up and running. You will see the option **LOGIN VIA KEYCLOAK** only after the keycloak instance is up.
 
 ## RBAC
 

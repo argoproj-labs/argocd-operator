@@ -131,6 +131,8 @@ type ArgoCDApplicationSet struct {
 
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	WebhookServerSpec WebhookServerSpec `json:"webhookSpec,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -259,6 +261,21 @@ type ArgoCDIngressSpec struct {
 	// ingress supports SNI.
 	// +optional
 	TLS []networkingv1.IngressTLS `json:"tls,omitempty"`
+}
+
+// ArgoCDKeycloakSpec defines the desired state for the Keycloak component.
+type ArgoCDKeycloakSpec struct {
+	// Image is the Keycloak container image.
+	Image string `json:"image,omitempty"`
+
+	// Resources defines the Compute Resources required by the container for Keycloak.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// Version is the Keycloak container image tag.
+	Version string `json:"version,omitempty"`
+
+	// VerifyTLS set to false disables strict TLS validation.
+	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -518,6 +535,9 @@ const (
 	// SSOProviderTypeKeycloak means keycloak will be Installed and Integrated with Argo CD. A new realm with name argocd
 	// will be created in this keycloak. This realm will have a client with name argocd that uses OpenShift v4 as Identity Provider.
 	SSOProviderTypeKeycloak SSOProviderType = "keycloak"
+
+	// SSOProviderTypeDex means dex will be Installed and Integrated with Argo CD.
+	SSOProviderTypeDex SSOProviderType = "dex"
 )
 
 // ArgoCDSSOSpec defines SSO provider.
@@ -532,6 +552,12 @@ type ArgoCDSSOSpec struct {
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 	// Version is the SSO container image tag.
 	Version string `json:"version,omitempty"`
+
+	// Dex contains the configuration for Argo CD dex authentication
+	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
+
+	// Keycloak contains the configuration for Argo CD keycloak authentication
+	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
@@ -569,7 +595,7 @@ type ArgoCDSpec struct {
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
 
 	// Dex defines the Dex server options for ArgoCD.
-	Dex ArgoCDDexSpec `json:"dex,omitempty"`
+	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
@@ -724,7 +750,7 @@ type ArgoCDStatus struct {
 
 	// SSOConfig defines the status of SSO configuration.
 	// Success: Only one SSO provider is configured in CR.
-	// Failed: More than one SSO providers are configure in CR.
+	// Failed: SSO configuration is illegal or more than one SSO providers are configured in CR.
 	// Unknown: For some reason the SSO configuration could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="SSOConfig",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	SSOConfig string `json:"ssoConfig,omitempty"`
@@ -801,6 +827,24 @@ type SSHHostsSpec struct {
 	// Keys describes a custom set of SSH Known Hosts that you would like to
 	// have included in your ArgoCD server.
 	Keys string `json:"keys,omitempty"`
+}
+
+// WebhookServerSpec defines the options for the ApplicationSet Webhook Server component.
+type WebhookServerSpec struct {
+
+	// Host is the hostname to use for Ingress/Route resources.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Host",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}
+	Host string `json:"host,omitempty"`
+
+	// Ingress defines the desired state for an Ingress for the Application set webhook metricscomponent.
+	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
+
+	// Insecure toggles the insecure flag.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Insecure",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
+	Insecure bool `json:"insecure,omitempty"`
+
+	// Route defines the desired state for an OpenShift Route for the Application set webhook metrics component.
+	Route ArgoCDRouteSpec `json:"route,omitempty"`
 }
 
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
