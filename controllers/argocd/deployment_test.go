@@ -19,6 +19,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -1627,4 +1628,55 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		},
 	}
 	return mounts
+}
+
+func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name           string
+		mountSAToken   bool
+		serviceAccount string
+	}{
+		{
+			name:           "default Deployment",
+			mountSAToken:   false,
+			serviceAccount: "default",
+		},
+		{
+			name:           "change Service Account and mountSAToken",
+			mountSAToken:   true,
+			serviceAccount: "argocd-argocd-server",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Repo.MountSAToken = test.mountSAToken
+				a.Spec.Repo.ServiceAccount = test.serviceAccount
+			})
+			r := makeTestReconciler(t, a)
+			sa := &corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      test.serviceAccount,
+					Namespace: a.Namespace,
+					Labels:    argoutil.LabelsForCluster(a),
+				},
+			}
+			r.Client.Create(context.TODO(), sa)
+			err := r.reconcileRepoDeployment(a, false)
+			assert.NoError(t, err)
+
+			deployment := &appsv1.Deployment{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: testNamespace,
+			}, deployment)
+			assert.NoError(t, err)
+			assert.Equal(t, &test.mountSAToken, deployment.Spec.Template.Spec.AutomountServiceAccountToken)
+			assert.Equal(t, test.serviceAccount, deployment.Spec.Template.Spec.ServiceAccountName)
+		})
+	}
 }
