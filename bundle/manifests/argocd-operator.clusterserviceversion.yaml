@@ -1066,6 +1066,11 @@ spec:
                 resources: {}
                 securityContext:
                   allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: argocd-operator-controller-manager
