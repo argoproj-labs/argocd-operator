@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,15 +128,13 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 	}
 
-	assert.NoError(t, os.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role"))
-	defer os.Unsetenv(common.ArgoCDControllerClusterRoleEnvName)
+	t.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role")
 	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDApplicationControllerComponent, p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-application-controller")
 	checkForUpdatedRoleRef(t, "custom-controller-role", expectedName)
 
-	assert.NoError(t, os.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role"))
-	defer os.Unsetenv(common.ArgoCDServerClusterRoleEnvName)
+	t.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role")
 	assert.NoError(t, r.reconcileRoleBinding("argocd-server", p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-server")

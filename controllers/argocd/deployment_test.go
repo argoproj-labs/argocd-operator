@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -530,9 +529,9 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 // environment propagated.
 func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 
-	os.Setenv("HTTP_PROXY", testHTTPProxy)
-	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
-	os.Setenv("no_proxy", testNoProxy)
+	t.Setenv("HTTP_PROXY", testHTTPProxy)
+	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	t.Setenv("no_proxy", testNoProxy)
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
@@ -559,13 +558,6 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 // If the deployments already exist, they should be updated to reflect the new
 // environment variables.
 func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T) {
-	keys := []string{
-		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
-		"http_proxy", "https_proxy", "no_proxy",
-		"DISABLE_DEX"}
-	for _, k := range keys {
-		os.Unsetenv(k)
-	}
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
@@ -585,9 +577,9 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 		refuteDeploymentHasProxyVars(t, r.Client, v)
 	}
 
-	os.Setenv("HTTP_PROXY", testHTTPProxy)
-	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
-	os.Setenv("no_proxy", testNoProxy)
+	t.Setenv("HTTP_PROXY", testHTTPProxy)
+	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	t.Setenv("no_proxy", testNoProxy)
 
 	logf.SetLogger(ZapLogger(true))
 
@@ -603,10 +595,9 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 
 // TODO: This should be subsumed into testing of the HA setup.
 func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
-	restoreEnv(t)
-	os.Setenv("HTTP_PROXY", testHTTPProxy)
-	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
-	os.Setenv("no_proxy", testNoProxy)
+	t.Setenv("HTTP_PROXY", testHTTPProxy)
+	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	t.Setenv("no_proxy", testNoProxy)
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
@@ -621,10 +612,9 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing.T) {
-	restoreEnv(t)
-	os.Setenv("HTTP_PROXY", testHTTPProxy)
-	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
-	os.Setenv("no_proxy", testNoProxy)
+	t.Setenv("HTTP_PROXY", testHTTPProxy)
+	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	t.Setenv("no_proxy", testNoProxy)
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDWithResources(func(a *argoprojv1alpha1.ArgoCD) {
@@ -701,10 +691,9 @@ func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.
 }
 
 func Test_proxyEnvVars(t *testing.T) {
-	restoreEnv(t)
-	os.Setenv("HTTP_PROXY", testHTTPProxy)
-	os.Setenv("HTTPS_PROXY", testHTTPSProxy)
-	os.Setenv("no_proxy", testNoProxy)
+	t.Setenv("HTTP_PROXY", testHTTPProxy)
+	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
+	t.Setenv("no_proxy", testNoProxy)
 	envTests := []struct {
 		vars []corev1.EnvVar
 		want []corev1.EnvVar
@@ -845,13 +834,6 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 }
 
 func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
-	keys := []string{
-		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
-		"http_proxy", "https_proxy", "no_proxy",
-		"DISABLE_DEX"}
-	for _, k := range keys {
-		os.Unsetenv(k)
-	}
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -1298,8 +1280,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
 
 	// Verify Image upgrade
-	os.Setenv("ARGOCD_REDIS_IMAGE", "docker.io/redis/redis:latest")
-	defer os.Unsetenv("ARGOCD_REDIS_IMAGE")
+	t.Setenv("ARGOCD_REDIS_IMAGE", "docker.io/redis/redis:latest")
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
 
 	newRedis := &appsv1.Deployment{}
@@ -1316,22 +1297,6 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	Register(testErrorHook)
 
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
-}
-
-func restoreEnv(t *testing.T) {
-	keys := []string{
-		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
-		"http_proxy", "https_proxy", "no_proxy",
-		"DISABLE_DEX"}
-	env := map[string]string{}
-	for _, v := range keys {
-		env[v] = os.Getenv(v)
-	}
-	t.Cleanup(func() {
-		for k, v := range env {
-			os.Setenv(k, v)
-		}
-	})
 }
 
 func operationProcessors(n int32) argoCDOpt {

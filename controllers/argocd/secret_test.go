@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -411,8 +410,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
