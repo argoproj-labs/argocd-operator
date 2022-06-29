@@ -478,7 +478,7 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 	obj.Labels["app.kubernetes.io/component"] = "controller"
 }
 
-//deleteApplicationSetResources ... Triggers reconcillation of application set resources,logic for deletion of applicationset is in reconcile methods this method triggers the cleanup of resources using the reconcilation logic as CR changes
+//deleteApplicationSetResources Triggers reconciliation of application set resources,logic for deletion of applicationset is in reconcile methods this method triggers the cleanup of resources using the reconcilation logic as CR changes
 func (r *ReconcileArgoCD) deleteApplicationSetResources(cr *argoprojv1a1.ArgoCD) error {
 
 	sa := &corev1.ServiceAccount{}
