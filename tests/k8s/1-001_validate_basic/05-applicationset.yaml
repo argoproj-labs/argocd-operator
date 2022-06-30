@@ -16,6 +16,5 @@ metadata:
 spec:
   applicationSet: 
     webhookSpec:
-          ingress:
-            enabled: true
-
+     ingress:
+       enabled: true

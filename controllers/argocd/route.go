@@ -296,23 +296,23 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	route := newRouteWithSuffix(name, cr)
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
-		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServerSpec.Route.Enabled {
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
 	}
 
-	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServerSpec.Route.Enabled {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 		return nil // Route not enabled, move along...
 	}
 
 	// Allow override of the Annotations for the Route.
-	if len(cr.Spec.ApplicationSet.WebhookServerSpec.Route.Annotations) > 0 {
+	if len(cr.Spec.ApplicationSet.WebhookServer.Route.Annotations) > 0 {
 		route.Annotations = cr.Spec.Server.Route.Annotations
 	}
 
 	// Allow override of the Labels for the Route.
-	if len(cr.Spec.ApplicationSet.WebhookServerSpec.Route.Labels) > 0 {
+	if len(cr.Spec.ApplicationSet.WebhookServer.Route.Labels) > 0 {
 		labels := route.Labels
 		for key, val := range cr.Spec.Server.Route.Labels {
 			labels[key] = val
@@ -322,7 +322,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 
 	// Allow override of the Host for the Route.
 	if len(cr.Spec.Server.Host) > 0 {
-		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServerSpec.Host
+		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 
 	if cr.Spec.Server.Insecure {
