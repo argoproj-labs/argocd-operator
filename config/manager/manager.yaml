@@ -32,7 +32,12 @@ spec:
         image: controller:latest
         name: manager
         securityContext:
+          capabilities:
+             drop:
+             - ALL
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true 
+          runAsNonRoot: true
         livenessProbe:
           httpGet:
             path: /healthz
