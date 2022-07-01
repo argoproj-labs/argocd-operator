@@ -93,7 +93,7 @@ spec:
                         type: string
                       ingress:
                         description: Ingress defines the desired state for an Ingress
-                          for the Application set webhook metricscomponent.
+                          for the Application set webhook component.
                         properties:
                           annotations:
                             additionalProperties:
@@ -142,12 +142,9 @@ spec:
                         required:
                         - enabled
                         type: object
-                      insecure:
-                        description: Insecure toggles the insecure flag.
-                        type: boolean
                       route:
                         description: Route defines the desired state for an OpenShift
-                          Route for the Application set webhook metrics component.
+                          Route for the Application set webhook component.
                         properties:
                           annotations:
                             additionalProperties:

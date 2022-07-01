@@ -315,12 +315,6 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Insecure toggles the insecure flag.
-        displayName: Insecure
-        path: applicationSet.webhookServer.insecure
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
-        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
         displayName: Route Enabled'
         path: applicationSet.webhookServer.route.enabled
