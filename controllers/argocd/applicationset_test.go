@@ -500,7 +500,21 @@ func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
+	sa := corev1.ServiceAccount{}
+
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
 	a.Spec.ApplicationSet = nil
+	r = makeTestReconciler(t, a)
 	checkdeployment := &appsv1.Deployment{}
 	assert.Error(t, r.Client.Get(
 		context.TODO(),
