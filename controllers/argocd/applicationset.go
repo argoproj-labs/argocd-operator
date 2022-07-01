@@ -74,6 +74,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 		return err
 	}
 
+	log.Info("reconciling applicationset ingress")
+	if err := r.reconcileApplicationSetControllerIngress(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset routes")
+	if err := r.reconcileApplicationSetControllerWebhookRoute(cr); err != nil {
+		return err
+	}
+
 	log.Info("reconciling applicationset service")
 	if err := r.reconcileApplicationSetService(cr); err != nil {
 		return err
