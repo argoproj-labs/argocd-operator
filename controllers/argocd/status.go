@@ -32,6 +32,10 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
+	if err := r.reconcileStatusApplicationSetController(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileStatusSSOConfig(cr); err != nil {
 		return err
 	}
@@ -311,4 +315,25 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 	return r.Client.Status().Update(context.TODO(), cr)
+}
+
+// reconcileStatusApplicationController will ensure that the ApplicationController Status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+	status := "Unknown"
+	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
+		}
+	}
+
+	if cr.Status.ApplicationSetController != status {
+		cr.Status.ApplicationSetController = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
 }

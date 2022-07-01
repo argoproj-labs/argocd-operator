@@ -231,3 +231,22 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
 }
+
+func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
+	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
+
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
+	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
+
+	a.Spec.ApplicationSet = nil
+	assert.NoError(t, r.deleteApplicationSetResources(a))
+	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
+	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
+}

@@ -147,16 +147,18 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		},
 	}
 
-	podSpec.Containers = []corev1.Container{
-		applicationSetContainer(cr),
-	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-
+	if cr.Spec.ApplicationSet != nil {
+		podSpec.Containers = []corev1.Container{
+			applicationSetContainer(cr),
+		}
+	}
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if cr.Spec.ApplicationSet == nil {
 			log.Info(fmt.Sprintf("Deleting Deployment %s as applicationset is disabled", existing.Name))
 			return r.Client.Delete(context.TODO(), existing)
 		}
+
 		existingSpec := existing.Spec.Template.Spec
 
 		deploymentsDifferent := !reflect.DeepEqual(existingSpec.Containers[0], podSpec.Containers) ||
