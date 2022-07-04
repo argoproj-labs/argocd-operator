@@ -15,7 +15,6 @@ metadata:
   name: example-argocd
 spec:
   applicationSet: 
-    webhookSpec:
-          ingress:
-            enabled: true
-
+    webhookServer:
+     ingress:
+       enabled: true

@@ -177,27 +177,21 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: Host is the hostname to use for Ingress/Route resources.
         displayName: Host
-        path: applicationSet.webhookSpec.host
+        path: applicationSet.webhookServer.host
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: Enabled will toggle the creation of the Ingress.
         displayName: Ingress Enabled'
-        path: applicationSet.webhookSpec.ingress.enabled
+        path: applicationSet.webhookServer.ingress.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: Insecure toggles the insecure flag.
-        displayName: Insecure
-        path: applicationSet.webhookSpec.insecure
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
-        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: Enabled will toggle the creation of the OpenShift Route.
         displayName: Route Enabled'
-        path: applicationSet.webhookSpec.route.enabled
+        path: applicationSet.webhookServer.route.enabled
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus

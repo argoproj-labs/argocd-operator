@@ -15,7 +15,7 @@ func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	obj := v1alpha1.ArgoCDApplicationSet{
-		WebhookServerSpec: v1alpha1.WebhookServerSpec{
+		WebhookServer: v1alpha1.WebhookServerSpec{
 			Ingress: v1alpha1.ArgoCDIngressSpec{
 				Enabled: true,
 			},

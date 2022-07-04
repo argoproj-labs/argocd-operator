@@ -132,7 +132,7 @@ type ArgoCDApplicationSet struct {
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
-	WebhookServerSpec WebhookServerSpec `json:"webhookSpec,omitempty"`
+	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -845,14 +845,10 @@ type WebhookServerSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Host",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}
 	Host string `json:"host,omitempty"`
 
-	// Ingress defines the desired state for an Ingress for the Application set webhook metricscomponent.
+	// Ingress defines the desired state for an Ingress for the Application set webhook component.
 	Ingress ArgoCDIngressSpec `json:"ingress,omitempty"`
 
-	// Insecure toggles the insecure flag.
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Insecure",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
-	Insecure bool `json:"insecure,omitempty"`
-
-	// Route defines the desired state for an OpenShift Route for the Application set webhook metrics component.
+	// Route defines the desired state for an OpenShift Route for the Application set webhook component.
 	Route ArgoCDRouteSpec `json:"route,omitempty"`
 }
 

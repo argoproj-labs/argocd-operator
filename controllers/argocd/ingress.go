@@ -394,13 +394,13 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
-		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.Enabled {
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
 			return r.Client.Delete(context.TODO(), ingress)
 		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
-	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.Enabled {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
 		log.Info("not enabled")
 		return nil // Ingress not enabled, move along...
 	}
@@ -411,8 +411,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
-	if len(cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.Annotations) > 0 {
-		atns = cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.Annotations
+	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations) > 0 {
+		atns = cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations
 	}
 
 	ingress.ObjectMeta.Annotations = atns
@@ -444,8 +444,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv
 	}
 
 	// Allow override of TLS options if specified
-	if len(cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.TLS) > 0 {
-		ingress.Spec.TLS = cr.Spec.ApplicationSet.WebhookServerSpec.Ingress.TLS
+	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.ApplicationSet.WebhookServer.Ingress.TLS
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
