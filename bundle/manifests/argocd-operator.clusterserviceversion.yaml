@@ -35,6 +35,16 @@ metadata:
             "name": "argocd-sample"
           },
           "spec": {
+            "applicationSet": {
+              "webhookServer": {
+                "ingress": {
+                  "enabled": false
+                },
+                "route": {
+                  "enabled": false
+                }
+              }
+            },
             "controller": {
               "resources": {
                 "limits": {
