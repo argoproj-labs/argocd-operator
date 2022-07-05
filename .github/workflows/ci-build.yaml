@@ -100,6 +100,7 @@ jobs:
           REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
       - name: Run tests
         run: |
+          set -o pipefail
           bash hack/test.sh 2>&1 | tee /tmp/e2e-test.log
       - name: Upload operator logs
         uses: actions/upload-artifact@v2
