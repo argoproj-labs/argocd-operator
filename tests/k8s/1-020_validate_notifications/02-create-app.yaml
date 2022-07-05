@@ -11,8 +11,6 @@ commands:
       name: my-app-2
       annotations:
         notifications.argoproj.io/subscribe.on-deleted.gmail: jdtest@testmail.com
-      finalizers:
-      - resources-finalizer.argocd.argoproj.io
     spec:
       destination:
         namespace: default
@@ -23,3 +21,4 @@ commands:
         repoURL: https://gitlab.com/ayush-sharma/example-assets.git
         targetRevision: HEAD
     EOF
+- script: sleep 5
