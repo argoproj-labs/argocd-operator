@@ -1,0 +1,25 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    set -e
+
+    cat << EOF | oc apply -f -
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: my-app-2
+      annotations:
+        notifications.argoproj.io/subscribe.on-deleted.gmail: jdtest@testmail.com
+      finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    spec:
+      destination:
+        namespace: default
+        server: https://kubernetes.default.svc
+      project: openshift-gitops
+      source:
+        path: argocd/my-apps/app-2
+        repoURL: https://gitlab.com/ayush-sharma/example-assets.git
+        targetRevision: HEAD
+    EOF
