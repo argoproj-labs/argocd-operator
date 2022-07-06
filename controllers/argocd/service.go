@@ -210,6 +210,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) 
 		return nil // Service found, do nothing
 	}
 
+	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
 	}
