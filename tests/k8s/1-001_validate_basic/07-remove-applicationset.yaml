@@ -3,5 +3,5 @@ kind: TestStep
 commands:
 # patches to disable applicationset
 - script: |
-    kubectl patch -n $NAMESPACE argocd/argocd --type='json' -p='[{"op": "remove", "path": "/spec/applicationSet"}]'
+    kubectl patch -n $NAMESPACE argocd/example-argocd --type='json' -p='[{"op": "remove", "path": "/spec/applicationSet"}]'
 - script: sleep 10
