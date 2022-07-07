@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -624,4 +625,52 @@ func TestSetManagedNamespaces(t *testing.T) {
 			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
 		}
 	}
+}
+
+func TestGenerateRandomString(t *testing.T) {
+
+	// verify the creation of unique strings
+	s1 := generateRandomString(20)
+	s2 := generateRandomString(20)
+	assert.NotEqual(t, s1, s2)
+
+	// verify length
+	a, _ := b64.URLEncoding.DecodeString(s1)
+	assert.Len(t, a, 20)
+
+	b, _ := b64.URLEncoding.DecodeString(s2)
+	assert.Len(t, b, 20)
+}
+
+func generateEncodedPEM(t *testing.T, host string) []byte {
+	key, err := argoutil.NewPrivateKey()
+	assert.NoError(t, err)
+
+	cert, err := argoutil.NewSelfSignedCACertificate("foo", key)
+	assert.NoError(t, err)
+
+	encoded := argoutil.EncodeCertificatePEM(cert)
+	return encoded
+}
+
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.Dex.OpenShiftOAuth = true
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+	_, err = r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	tokenExists := false
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "dex-server-token") {
+			tokenExists = true
+		}
+	}
+	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }
