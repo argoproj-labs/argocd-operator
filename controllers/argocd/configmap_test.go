@@ -59,7 +59,44 @@ func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileTLSCerts_withUpdate(t *testing.T) {
+func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, r.reconcileTLSCerts(a))
+
+	configMap := &corev1.ConfigMap{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      common.ArgoCDTLSCertsConfigMapName,
+			Namespace: a.Namespace,
+		},
+		configMap))
+
+	want := []string{"root-ca.example.com"}
+	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
+		t.Fatalf("got %#v, want %#v\n", k, want)
+	}
+
+	// update a new cert in argocd-tls-certs-cm
+	testPEM := generateEncodedPEM(t, "example.com")
+
+	configMap.Data["example.com"] = string(testPEM)
+	assert.NoError(t, r.Client.Update(context.TODO(), configMap))
+
+	// verify that a new reconciliation does not remove example.com from
+	// argocd-tls-certs-cm
+	assert.NoError(t, r.reconcileTLSCerts(a))
+
+	want = []string{"example.com", "root-ca.example.com"}
+	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
+		t.Fatalf("got %#v, want %#v\n", k, want)
+	}
+}
+
+func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -77,7 +114,9 @@ func TestReconcileArgoCD_reconcileTLSCerts_withUpdate(t *testing.T) {
 		},
 		configMap))
 
-	want := []string{"testing.example.com"}
+	// Any certs added to .spec.tls.intialCerts of Argo CD CR after the cluster creation
+	// should not affect the argocd-tls-certs-cm configmap.
+	want := []string{}
 	if k := stringMapKeys(configMap.Data); !reflect.DeepEqual(want, k) {
 		t.Fatalf("got %#v, want %#v\n", k, want)
 	}

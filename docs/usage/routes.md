@@ -120,4 +120,40 @@ spec:
         termination: reencrypt
         insecureEdgeTerminationPolicy: Redirect
 ```
+### Host for Route in Argo CD Status
 
+When setting up access to Argo CD via a Route, one can easily retrieve the hostname used for accessing the Argo CD installation through the ArgoCD Operand's `status` field. To expose the `host` field, run `kubectl edit argocd argocd` and then edit the Argo CD instance server to have route enabled as `true`, like so: 
+
+```yaml
+server:
+    autoscale:
+      enabled: false
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: true
+    service:
+      type: ""
+  tls:
+    ca: {}
+```
+If a route is found, your hostname can now be accessed by inspecting your Argo CD instance. It will look like the following: 
+
+```yaml
+status:
+  applicationController: Running
+  dex: Running
+  host: argocd-server-default.my-cluster-url.openshift.com
+  phase: Available
+  redis: Running
+  repo: Running
+  server: Running
+  ssoConfig: Unknown
+```
+
+If the status of the Route is pending, this will affect the overall status of the Operand by making it `Pending` instead of `Available`. Once the Route is available, the status of the Operand should change to `Available`.
+
+Note that Routes are specific to OpenShift clusters, so in non-OpenShift clusters enabling Route will yield no results.  

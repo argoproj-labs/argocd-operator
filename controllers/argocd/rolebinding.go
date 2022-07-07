@@ -100,6 +100,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	}
 
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// only create dexServer and redisHa rolebindings for the namespace where the argocd instance is deployed
+		if cr.ObjectMeta.Namespace != namespace.Name && (name == dexServer || name == redisHa) {
+			break
+		}
 		// get expected name
 		roleBinding := newRoleBindingWithname(name, cr)
 		roleBinding.Namespace = namespace.Name

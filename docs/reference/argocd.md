@@ -1104,11 +1104,11 @@ The following properties are available for configuring the Single sign-on compon
 
 Name | Default | Description
 --- | --- | ---
-Image | `registry.redhat.io/rh-sso-7/sso74-openshift-rhel8` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
+Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | `sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc` | The tag to use with the keycloak container image.
+Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
 
 ### Single sign-on Example
 
@@ -1155,6 +1155,28 @@ spec:
       configMapName: example-argocd-ca
       secretName: example-argocd-ca
     initialCerts: []
+```
+
+### IntialCerts Example
+
+Initial set of repository certificates to be configured in Argo CD upon creation of the cluster.
+
+This property maps directly to the data field in the argocd-tls-certs-cm ConfigMap. Updating this property after the cluster has been created has no affect and should be used only as a means to initialize the cluster with the value provided. Updating new certificates should then be made through the Argo CD web UI or CLI.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: intialCerts
+spec:
+  tls:
+    ca: {}
+    initialCerts:
+      test.example.com: |
+        -----BEGIN CERTIFICATE-----
+        -----END CERTIFICATE-----
 ```
 
 ## Users Anonymous Enabled

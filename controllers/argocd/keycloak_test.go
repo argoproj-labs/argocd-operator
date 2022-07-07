@@ -77,13 +77,15 @@ func TestKeycloakContainerImage(t *testing.T) {
 	// When both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are not set.
 	testImage := getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
-		"quay.io/keycloak/keycloak@sha256:828e92baa29aee2fdf30cca0e0aeefdf77ca458d6818ebbd08bf26f1c5c6a7cf")
+		"quay.io/keycloak/keycloak@sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9")
 
 	// For OpenShift Container Platform.
 	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	testImage = getKeycloakContainerImage(cr)
 	assert.Equal(t, testImage,
-		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
+		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
 
 	// When ENV variable is set.
 	err := os.Setenv(common.ArgoCDKeycloakImageEnvName, "envImage:latest")
@@ -102,6 +104,10 @@ func TestKeycloakContainerImage(t *testing.T) {
 }
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -114,6 +120,10 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -126,6 +136,10 @@ func TestNewKeycloakTemplate(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
@@ -154,13 +168,17 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 }
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
+	// For OpenShift Container Platform.
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
 	a := makeTestArgoCD()
 	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
 	kc := getKeycloakContainer(a)
 	assert.Equal(t, kc.Image,
-		"registry.redhat.io/rh-sso-7/sso74-openshift-rhel8@sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc")
+		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3")
 	assert.Equal(t, kc.ImagePullPolicy, corev1.PullAlways)
 	assert.Equal(t, kc.Name, "${APPLICATION_NAME}")
 }
@@ -257,4 +275,8 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, a.Spec.NodePlacement.NodeSelector)
 	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
+}
+
+func removeTemplateAPI() {
+	templateAPIFound = false
 }
