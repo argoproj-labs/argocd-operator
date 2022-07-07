@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -166,7 +167,16 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 	if !found {
 		return r.Client.Create(context.TODO(), ingress)
 	}
-	return r.Client.Update(context.TODO(), ingress)
+
+	existing := newIngressWithSuffix("server", cr)
+	if !reflect.DeepEqual(ingress.ObjectMeta.Annotations, existing.ObjectMeta.Annotations) {
+		return r.Client.Update(context.TODO(), ingress)
+	}
+
+	if !reflect.DeepEqual(ingress.Spec, existing.Spec) {
+		return r.Client.Update(context.TODO(), ingress)
+	}
+	return nil
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
