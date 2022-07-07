@@ -30,7 +30,7 @@ metadata:
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
-  name: argocd
+  name: example-argocd
 status:
   phase: Available
   redis: Running
