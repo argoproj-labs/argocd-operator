@@ -133,6 +133,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
 		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			if !cr.Spec.HA.Enabled {
+				return r.Client.Delete(context.TODO(), svc)
+			}
 			return nil // Service found, do nothing
 		}
 
@@ -160,6 +163,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 				TargetPort: intstr.FromString("sentinel"),
 			},
 		}
+		if !cr.Spec.HA.Enabled {
+			return nil //return as Ha is not enabled do nothing
+		}
 
 		if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 			return err
@@ -176,6 +182,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.HA.Enabled {
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -197,6 +206,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 		},
 	}
 
+	if !cr.Spec.HA.Enabled {
+		return nil //return as Ha is not enabled do nothing
+	}
+
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
@@ -207,6 +220,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+			return r.Client.Update(context.TODO(), svc)
+		}
+		if !cr.Spec.HA.Enabled {
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -225,6 +244,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) 
 		},
 	}
 
+	if !cr.Spec.HA.Enabled {
+		return nil //return as Ha is not enabled do nothing
+	}
+
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
@@ -233,6 +256,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) 
 
 // reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
 func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
+
 	if err := r.reconcileRedisHAAnnounceServices(cr); err != nil {
 		return err
 	}
@@ -255,7 +279,14 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
+		if cr.Spec.HA.Enabled {
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil //return as Ha is enabled do nothing
 	}
 
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
@@ -437,16 +468,14 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if cr.Spec.HA.Enabled {
-		err = r.reconcileRedisHAServices(cr)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = r.reconcileRedisService(cr)
-		if err != nil {
-			return err
-		}
+	err = r.reconcileRedisHAServices(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisService(cr)
+	if err != nil {
+		return err
 	}
 
 	err = r.reconcileRepoService(cr)
