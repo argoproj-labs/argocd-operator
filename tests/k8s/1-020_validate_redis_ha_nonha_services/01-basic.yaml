@@ -6,5 +6,4 @@ metadata:
     example: basic
 spec:
   ha:
-   enabled: true
-
+   enabled: false
