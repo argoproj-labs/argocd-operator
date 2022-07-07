@@ -8,14 +8,15 @@ commands:
     apiVersion: argoproj.io/v1alpha1
     kind: Application
     metadata:
-      name: my-app-2
+      name: my-app-3
+      namespace: $NAMESPACE
       annotations:
-        notifications.argoproj.io/subscribe.on-deleted.gmail: jdtest@testmail.com
+        "notifications.argoproj.io/subscribe.on-created.gmail": "jdfake@email.com"
     spec:
       destination:
-        namespace: default
+        namespace: $NAMESPACE
         server: https://kubernetes.default.svc
-      project: openshift-gitops
+      project: default
       source:
         path: argocd/my-apps/app-2
         repoURL: https://gitlab.com/ayush-sharma/example-assets.git

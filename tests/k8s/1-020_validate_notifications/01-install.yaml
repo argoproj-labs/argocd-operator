@@ -50,7 +50,7 @@ spec:
                       - linux
       containers:
         - name: smtp4dev
-          image: rishabhmishra131/smtplistener:latest
+          image: quay.io/jrao/smtplistener:latest
           ports:
             - containerPort: 80
-            - containerPort: 25
+            - containerPort: 2525
