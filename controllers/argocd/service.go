@@ -139,6 +139,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 			return nil // Service found, do nothing
 		}
 
+		if !cr.Spec.HA.Enabled {
+			return nil //return as Ha is not enabled do nothing
+		}
+
 		svc.ObjectMeta.Annotations = map[string]string{
 			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
 		}
@@ -163,9 +167,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 				TargetPort: intstr.FromString("sentinel"),
 			},
 		}
-		if !cr.Spec.HA.Enabled {
-			return nil //return as Ha is not enabled do nothing
-		}
 
 		if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 			return err
@@ -188,6 +189,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 		return nil // Service found, do nothing
 	}
 
+	if !cr.Spec.HA.Enabled {
+		return nil //return as Ha is not enabled do nothing
+	}
+
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 	}
@@ -206,10 +211,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 		},
 	}
 
-	if !cr.Spec.HA.Enabled {
-		return nil //return as Ha is not enabled do nothing
-	}
-
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
@@ -220,13 +221,19 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
-		}
+
 		if !cr.Spec.HA.Enabled {
 			return r.Client.Delete(context.TODO(), svc)
 		}
+
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+			return r.Client.Update(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil //return as Ha is not enabled do nothing
 	}
 
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
@@ -242,10 +249,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) 
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromString("redis"),
 		},
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil //return as Ha is not enabled do nothing
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
