@@ -95,7 +95,7 @@ func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T)
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRoleName}, reconcileClusterRole).Error(), "not found")
 
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	// objective is to verify if the right SA associations have happened.
 	assert.NoError(t, r.reconcileServiceAccountClusterPermissions(workloadIdentifier, testRules(), a))

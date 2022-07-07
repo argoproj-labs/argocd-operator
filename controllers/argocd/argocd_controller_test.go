@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -104,7 +103,6 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 }
 
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
-	restoreEnv(t)
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -136,7 +134,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			assert.NoError(t, err)
 
 			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
-				os.Setenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION", "true")
+				t.Setenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION", "true")
 			}
 
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
