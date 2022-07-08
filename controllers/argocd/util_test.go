@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -651,4 +652,26 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 
 	encoded := argoutil.EncodeCertificatePEM(cert)
 	return encoded
+}
+
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.Dex.OpenShiftOAuth = true
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, err)
+	_, err = r.getDexOAuthClientSecret(a)
+	assert.NoError(t, err)
+	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	tokenExists := false
+	for _, saSecret := range sa.Secrets {
+		if strings.Contains(saSecret.Name, "dex-server-token") {
+			tokenExists = true
+		}
+	}
+	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }

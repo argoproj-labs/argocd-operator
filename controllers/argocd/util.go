@@ -29,6 +29,7 @@ import (
 	"text/template"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"gopkg.in/yaml.v2"
 
@@ -349,7 +350,6 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
-
 	// Find the token secret
 	var tokenSecret *corev1.ObjectReference
 	for _, saSecret := range sa.Secrets {
@@ -360,7 +360,34 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 	}
 
 	if tokenSecret == nil {
-		return nil, errors.New("unable to locate ServiceAccount token for OAuth client secret")
+		// This change of creating secret for dex service account,is due to change of reduction of secret-based service account tokens in k8s v1.24 so from k8s v1.24 no default secret for service account is created, but for dex to work we need to provide token of secret used by dex service account as a oauth token, this change helps to achieve it, in long run we should see do dex really requires a secret or it manages to create one using TokenRequest API or may be change how dex is used or configured by operator
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "argocd-dex-server-token-",
+				Namespace:    cr.Namespace,
+				Annotations: map[string]string{
+					corev1.ServiceAccountNameKey: sa.Name,
+				},
+			},
+			Type: corev1.SecretTypeServiceAccountToken,
+		}
+		err := r.Client.Create(context.TODO(), secret)
+		if err != nil {
+			return nil, errors.New("unable to locate and create ServiceAccount token for OAuth client secret")
+		}
+		err = controllerutil.SetControllerReference(cr, secret, r.Scheme)
+		if err != nil {
+			return nil, err
+		}
+		tokenSecret = &corev1.ObjectReference{
+			Name:      secret.Name,
+			Namespace: cr.Namespace,
+		}
+		sa.Secrets = append(sa.Secrets, *tokenSecret)
+		err = r.Client.Update(context.TODO(), sa)
+		if err != nil {
+			return nil, errors.New("failed to add ServiceAccount token for OAuth client secret")
+		}
 	}
 
 	// Fetch the secret to obtain the token
