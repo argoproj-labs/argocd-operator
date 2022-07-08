@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis-ha
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis-ha-haproxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis-ha-announce-0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis-ha-announce-1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis-ha-announce-2
