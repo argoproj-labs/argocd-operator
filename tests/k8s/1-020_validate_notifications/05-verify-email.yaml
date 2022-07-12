@@ -2,6 +2,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
 - script: | 
+    #!/bin/bash
     set -e
     smtp4dev_pod=$(kubectl get pod -l=app=smtp4dev -o NAME -n $NAMESPACE)
     exit_code=$(kubectl -n $NAMESPACE exec --stdin --tty "${smtp4dev_pod}" -- /bin/bash \
