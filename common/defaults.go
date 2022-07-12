@@ -30,11 +30,17 @@ const (
 	// ArgoCDServerComponent is the name of the Dex server control plane component
 	ArgoCDServerComponent = "argocd-server"
 
+	// ArgoCDRedisComponent is the name of the Redis control plane component
+	ArgoCDRedisComponent = "argocd-redis"
+
 	// ArgoCDRedisHAComponent is the name of the Redis control plane component
 	ArgoCDRedisHAComponent = "argocd-redis-ha"
 
 	// ArgoCDDexServerComponent is the name of the Dex server control plane component
 	ArgoCDDexServerComponent = "argocd-dex-server"
+
+	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component
+	ArgoCDOperatorGrafanaComponent = "argocd-grafana"
 
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32

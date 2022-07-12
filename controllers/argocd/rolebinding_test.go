@@ -6,13 +6,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
@@ -63,7 +64,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 
 	// check no redisHa rolebinding is created for the new namespace with managed-by label
 	workloadIdentifier = redisHa
-	expectedRedisHaRules := policyRuleForRedisHa(a)
+	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }

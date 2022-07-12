@@ -17,6 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/mod v0.5.1-0.20210830214625-1b1db11ec8f4
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.23.0

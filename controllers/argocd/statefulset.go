@@ -185,6 +185,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				Name:          "redis",
 			}},
 			Resources: getRedisResources(cr),
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
@@ -215,6 +224,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				Name:          "sentinel",
 			}},
 			Resources: getRedisResources(cr),
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					MountPath: "/data",
@@ -249,6 +267,15 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Resources:       getRedisResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/readonly-config",
@@ -272,6 +299,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		RunAsUser:    &runAsUser,
 	}
 
+	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
 	ss.Spec.Template.Spec.Volumes = []corev1.Volume{
@@ -366,6 +394,15 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			PeriodSeconds:       10,
 		},
 		Resources: getArgoApplicationControllerResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "argocd-repo-server-tls",
@@ -373,6 +410,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 		},
 	}}
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
 	podSpec.Volumes = []corev1.Volume{
 		{
@@ -419,9 +457,18 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		log.Info("existing argocd export not found, skipping import")
 	} else {
 		podSpec.InitContainers = []corev1.Container{{
-			Command:         getArgoImportCommand(r.Client, cr),
-			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
-			Resources:       getArgoApplicationControllerResources(cr),
+			Command:   getArgoImportCommand(r.Client, cr),
+			Env:       proxyEnvVars(getArgoImportContainerEnv(export)...),
+			Resources: getArgoApplicationControllerResources(cr),
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+			},
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
