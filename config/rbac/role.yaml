@@ -88,6 +88,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - config.openshift.io
+  resources:
+  - clusterversions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - monitoring.coreos.com
   resources:
   - prometheuses

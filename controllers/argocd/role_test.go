@@ -37,7 +37,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledRole.Rules = policyRuleForRedisHa(a)
+	reconciledRole.Rules = policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.Client.Update(context.TODO(), reconciledRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
@@ -64,10 +64,10 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
 	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
-	
+
 	// check no redisHa role is created for the new namespace with managed-by label
 	workloadIdentifier = redisHa
-	expectedRedisHaRules := policyRuleForRedisHa(a)
+	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	redisHaRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
@@ -127,7 +127,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledClusterRole.Rules)
 
 	// update reconciledRole policy rules to RedisHa policy rules
-	reconciledClusterRole.Rules = policyRuleForRedisHa(a)
+	reconciledClusterRole.Rules = policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.Client.Update(context.TODO(), reconciledClusterRole))
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
