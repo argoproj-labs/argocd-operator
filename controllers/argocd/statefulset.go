@@ -472,7 +472,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				},
 				RunAsNonRoot: boolPtr(true),
 			},
-			VolumeMounts: getArgoImportVolumeMounts(),
+			VolumeMounts: getArgoImportVolumeMounts(export),
 		}}
 
 		podSpec.Volumes = getArgoImportVolumes(export)

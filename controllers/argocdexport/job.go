@@ -91,7 +91,7 @@ func getArgoExportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 }
 
 // getArgoExportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
-func getArgoExportVolumeMounts(cr *argoprojv1a1.ArgoCDExport) []corev1.VolumeMount {
+func getArgoExportVolumeMounts() []corev1.VolumeMount {
 	mounts := make([]corev1.VolumeMount, 0)
 
 	mounts = append(mounts, corev1.VolumeMount{
