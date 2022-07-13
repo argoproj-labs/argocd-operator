@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+option go_package ="compressorclient/pb";
+
+package pb;
+
+service Compressor{
+	rpc Compress(CompressRequest) returns (CompressResponse) {}
+	rpc DeCompress(DeCompressRequest) returns (DeCompressResponse) {}
+	rpc MTACompress(MTACompressRequest) returns (MTACompressResponse) {}
+	rpc Health(CompressHealthRequest) returns (CompressHealthResponse) {}
+}
+
+message CompressRequest {
+	string compressAlgo = 1;
+	string data = 2;
+}
+
+message CompressResponse {
+	bool statusMessage = 1;
+	string err = 2;
+	string compressedData = 3;
+}
+
+message DeCompressRequest {
+	string compressAlgo = 1;
+	string compressedData = 2;
+}
+
+message DeCompressResponse {
+	bool statusMessage = 1;
+        string err = 2;
+        string data = 3;
+}
+
+message MTAHeader {
+	string replyTo = 1;
+	string recipient = 2;
+	string fromEmail = 3;
+	string xJob = 4;
+	string xDkimoptions = 5;
+	string xDelivery = 6;
+	string xFncid = 7;
+	string xAbuseReportsTo =8;
+	string xInjTime = 9;
+	string xTrafficType = 10;
+	string messageID = 11;
+	string xLDelivery = 12;
+	string xGDelivery = 13;
+	string xVirtualMta = 14;
+	string feedbackID = 15;
+	string xTags = 16;
+	string xMTATopic =17;
+	string XMTAPriority = 18;
+	string ReturnPath = 19;
+	string Subject = 20;
+	string ScheduleType = 21;
+	string Schedule = 22;
+	string FromHeader = 23;
+	string XInjIP = 24;
+	string TimeQueued = 25;
+	int32 RetryCount = 26;
+	string RetryAfter = 27;
+	int32 MaxRetryCount = 28;
+	string MailSize = 29;
+	string CustomHeader1 = 30;
+	string CustomHeader2 = 31;
+	string CustomHeader3 = 32;
+	string CustomHeader4 = 33;
+	string CustomHeader5 = 34;
+	string LastRetryTime = 35;
+	string QueueId = 36;
+}
+
+message MTACompressRequest {
+    string mtaCompressAlgo = 1;
+	MTAHeader headers = 2;
+    string mail = 10;
+} 
+
+
+message MTACompressResponse {
+	bool mtaSuccessMessage = 1;
+	string mtaErr = 10;                                                                                                                                            
+}
+
+message CompressHealthRequest{
+ 
+}
+ 
+message CompressHealthResponse{
+    bool active = 1;
+}   
