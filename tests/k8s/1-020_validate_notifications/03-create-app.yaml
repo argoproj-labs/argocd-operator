@@ -18,8 +18,8 @@ commands:
         server: https://kubernetes.default.svc
       project: default
       source:
-        path: argocd/my-apps/app-2
-        repoURL: https://gitlab.com/ayush-sharma/example-assets.git
+        repoURL: https://github.com/redhat-developer/gitops-operator
+        path: test/examples/nginx
         targetRevision: HEAD
     EOF
 - script: sleep 5
