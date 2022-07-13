@@ -25,7 +25,6 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "github.com/openshift/api/apps/v1"
-	configv1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
@@ -148,14 +147,6 @@ func main() {
 	// Setup Scheme for OpenShift Routes if available.
 	if argocd.IsRouteAPIAvailable() {
 		if err := routev1.Install(mgr.GetScheme()); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
-	}
-
-	// Set up the scheme for openshift config if available
-	if argocd.IsVersionAPIAvailable() {
-		if err := configv1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
