@@ -782,6 +782,15 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "static-files",
@@ -808,6 +817,15 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						Name:          "grpc",
 						ContainerPort: 5557,
 					},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},
@@ -860,6 +878,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"/usr/local/bin/argocd",
 					"/shared/argocd-dex",
 				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
+				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
 						Name:      "static-files",
@@ -886,6 +913,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 						Name:          "grpc",
 						ContainerPort: 5557,
 					},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},
@@ -955,6 +991,15 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					},
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1028,6 +1073,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					},
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1104,6 +1158,15 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					},
 					InitialDelaySeconds: 3,
 					PeriodSeconds:       30,
+				},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: boolPtr(false),
+					Capabilities: &corev1.Capabilities{
+						Drop: []corev1.Capability{
+							"ALL",
+						},
+					},
+					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},

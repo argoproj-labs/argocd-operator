@@ -1,9 +1,12 @@
 package argocd
 
 import (
-	v1 "k8s.io/api/rbac/v1"
+	"fmt"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"golang.org/x/mod/semver"
+
+	v1 "k8s.io/api/rbac/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func policyRuleForApplicationController() []v1.PolicyRule {
@@ -23,7 +26,7 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForRedisHa(cr *argoprojv1alpha1.ArgoCD) []v1.PolicyRule {
+func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 
 	rules := []v1.PolicyRule{
 		{
@@ -39,9 +42,9 @@ func policyRuleForRedisHa(cr *argoprojv1alpha1.ArgoCD) []v1.PolicyRule {
 		},
 	}
 
-	if err := applyReconcilerHook(cr, &rules, "policyRuleForRedisHa"); err != nil {
-		log.Error(err, "error from reconcile hook")
-	}
+	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
+	// permissions to start
+	rules = appendOpenShiftNonRootSCC(rules, client)
 
 	return rules
 }
@@ -158,4 +161,34 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 		},
 	}
+}
+
+func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
+	if IsVersionAPIAvailable() {
+		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
+		resourceName := "nonroot"
+		version, err := getClusterVersion(client)
+		if err != nil {
+			log.Error(err, "couldn't get OpenShift version")
+		}
+		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
+			resourceName = "nonroot-v2"
+		}
+		orules := v1.PolicyRule{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				resourceName,
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		}
+		rules = append(rules, orules)
+	}
+	return rules
 }

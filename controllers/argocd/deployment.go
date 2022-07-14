@@ -355,6 +355,9 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD) error {
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
 			"/shared/argocd-dex",
@@ -374,6 +377,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			},
 		},
 		Resources: getDexResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -392,6 +404,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
 			MountPath: "/shared",
@@ -472,6 +493,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
@@ -483,6 +505,16 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 		},
 		Env:       proxyEnvVars(),
 		Resources: getGrafanaResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(472),
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "grafana-config",
@@ -500,6 +532,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 		},
 	}}
 
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-grafana")
 	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
 			Name: "grafana-config",
@@ -591,6 +624,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
+
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args: []string{
 			"--save",
@@ -607,7 +643,17 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 			},
 		},
 		Resources: getRedisResources(cr),
-		Env:       proxyEnvVars(),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(999),
+		},
+		Env: proxyEnvVars(),
 	}}
 
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
@@ -735,6 +781,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 			},
 		},
 		Resources: getRedisHAProxyResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "data",
@@ -759,6 +814,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
 		Resources:       getRedisHAProxyResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "config-volume",
@@ -796,6 +859,13 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 			},
 		},
 	}
+
+	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+		RunAsNonRoot: boolPtr(true),
+		RunAsUser:    int64Ptr(1000),
+		FSGroup:      int64Ptr(1000),
+	}
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
@@ -893,7 +963,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD) error
 			InitialDelaySeconds: 5,
 			PeriodSeconds:       10,
 		},
-		Resources:    getArgoRepoResources(cr),
+		Resources: getArgoRepoResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: repoServerVolumeMounts,
 	}}
 
@@ -1018,6 +1097,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr),
 		Image:           getArgoContainerImage(cr),
@@ -1052,6 +1132,15 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD) err
 			PeriodSeconds:       30,
 		},
 		Resources: getArgoServerResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      "ssh-known-hosts",
