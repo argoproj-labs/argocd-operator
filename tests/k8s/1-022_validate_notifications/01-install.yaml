@@ -50,7 +50,7 @@ spec:
                       - linux
       containers:
         - name: smtp4dev
-          image: quay.io/jrao/smtplistener:multiarch
+          image: quay.io/argoprojlabs/argocd-notifications-e2e-smtplistener:multiarch
           ports:
             - containerPort: 80
             - containerPort: 2525
