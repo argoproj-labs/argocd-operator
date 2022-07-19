@@ -50,6 +50,7 @@ func (r *ReconcileArgoCD) reconcileTrustCert(cr *argoprojv1a1.ArgoCD) error {
 			if err := r.Client.Delete(context.TODO(), actual); err != nil {
 				return err
 			}
+			return nil
 		}
 
 		// Check if actual and desired Cert have changes
