@@ -1,0 +1,8 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: | 
+    set -e 
+  
+    kubectl delete -n $NAMESPACE application.argoproj.io my-app-3
+- script: sleep 5
