@@ -558,6 +558,15 @@ type ArgoCDSSOSpec struct {
 	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
 }
 
+// ArgoCDTrustCerts defines trusted certificates
+type ArgoCDTrustCerts struct {
+	// Enabled defines whether trusted certificates be enabled on the ArgoCD components.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Certificate value
+	Cert string `json:"cert,omitempty"`
+}
+
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
 type KustomizeVersionSpec struct {
 	// Version is a configured kustomize version in the format of vX.Y.Z
@@ -714,6 +723,9 @@ type ArgoCDSpec struct {
 
 	// Banner defines an additional banner to be displayed in Argo CD UI
 	Banner *Banner `json:"banner,omitempty"`
+
+	// TrustCerts define cetrificates that will be added to the trusted into ArgoCD pods
+	TrustCerts ArgoCDTrustCerts `json:"trustCerts,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD

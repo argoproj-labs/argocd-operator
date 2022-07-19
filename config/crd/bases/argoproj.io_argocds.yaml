@@ -5828,6 +5828,18 @@ spec:
                       HTTPS.
                     type: object
                 type: object
+              trustCerts:
+                description: TrustCerts define cetrificates that will be added to
+                  the trusted into ArgoCD pods
+                properties:
+                  cert:
+                    description: Certificate value
+                    type: string
+                  enabled:
+                    description: Enabled defines whether trusted certificates be enabled
+                      on the ArgoCD components.
+                    type: boolean
+                type: object
               usersAnonymousEnabled:
                 description: UsersAnonymousEnabled toggles anonymous user access.
                   The anonymous users get default role permissions specified argocd-rbac-cm.

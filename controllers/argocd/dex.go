@@ -306,6 +306,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		},
 	}}
 
+	// Add Trust Cert data to dex Deployment
+	addTrustCertData(cr, deploy)
+
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
