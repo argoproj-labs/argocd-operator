@@ -4,7 +4,7 @@ commands:
 - script: |
     set -e
 
-    cat << EOF | oc apply -f -
+    cat << EOF | kubectl apply -f -
     apiVersion: argoproj.io/v1alpha1
     kind: Application
     metadata:
