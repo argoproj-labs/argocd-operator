@@ -966,7 +966,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 	// Add OpenShift-v4 as Identity Provider only for OpenShift environment.
 	// No Identity Provider is configured by default for non-openshift environments.
 	if IsTemplateAPIAvailable() {
-		baseURL := "https://kubernetes.default.svc.cluster.local"
+		baseURL := "https://kubernetes.default"
 		if isProxyCluster() {
 			baseURL = getOpenShiftAPIURL()
 		}

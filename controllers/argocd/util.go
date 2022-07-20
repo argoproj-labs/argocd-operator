@@ -614,7 +614,7 @@ func nameWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) string {
 // fqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
 // given port.
 func fqdnServiceRef(service string, port int, cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
+	return fmt.Sprintf("%s.%s:%d", nameWithSuffix(service, cr), cr.Namespace, port)
 }
 
 // InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
