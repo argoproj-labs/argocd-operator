@@ -249,6 +249,9 @@ type ArgoCDIngressSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Ingress Enabled'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana","urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus","urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
 	Enabled bool `json:"enabled"`
 
+	// IngressClassName for the Ingress resource.
+	IngressClassName *string `json:"ingressClassName,omitempty"`
+
 	// Path used for the Ingress resource.
 	Path string `json:"path,omitempty"`
 

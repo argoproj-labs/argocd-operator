@@ -407,6 +407,11 @@ func (in *ArgoCDIngressSpec) DeepCopyInto(out *ArgoCDIngressSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.IngressClassName != nil {
+		in, out := &in.IngressClassName, &out.IngressClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = make([]networkingv1.IngressTLS, len(*in))
