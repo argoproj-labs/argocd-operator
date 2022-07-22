@@ -131,11 +131,29 @@ func TestReconcileArgoCD_reconcileRedisHaProxyDeployment(t *testing.T) {
 	testDeployment := makeTestDeployment()
 
 	testDeployment.ObjectMeta.Name = a.Name + "-redis-ha-haproxy"
+	testDeployment.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{},
+	}
 	want := append(getCommandForRedhatRedisHaProxy(), testDeployment.Spec.Template.Spec.Containers[0].Command...)
+	wantc := corev1.Capabilities{
+		Add: []corev1.Capability{
+			"NET_BIND_SERVICE",
+		},
+	}
 
-	assert.NoError(t, reconcilerHook(a, testDeployment, ""))
+	assert.NoError(t, reconcilerHook(a, testDeployment, "4.11.0"))
 	assert.Equal(t, testDeployment.Spec.Template.Spec.Containers[0].Command, want)
 	assert.Equal(t, 0, len(testDeployment.Spec.Template.Spec.Containers[0].Args))
+	assert.Equal(t, wantc, *testDeployment.Spec.Template.Spec.Containers[0].SecurityContext.Capabilities)
+
+	testDeployment = makeTestDeployment()
+	testDeployment.ObjectMeta.Name = a.Name + "-redis-ha-haproxy"
+	testDeployment.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{},
+	}
+
+	assert.NoError(t, reconcilerHook(a, testDeployment, "4.10.0"))
+	assert.Nil(t, testDeployment.Spec.Template.Spec.Containers[0].SecurityContext.Capabilities)
 
 	testDeployment = makeTestDeployment()
 	testDeployment.ObjectMeta.Name = a.Name + "-" + "not-redis-ha-haproxy"
