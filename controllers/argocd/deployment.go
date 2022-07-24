@@ -642,6 +642,8 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD) erro
 		Env: proxyEnvVars(),
 	}}
 
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis")
+
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
 	}

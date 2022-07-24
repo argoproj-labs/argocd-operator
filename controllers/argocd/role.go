@@ -19,6 +19,7 @@ import (
 const (
 	applicationController = "argocd-application-controller"
 	server                = "argocd-server"
+	redis                 = "argocd-redis"
 	redisHa               = "argocd-redis-ha"
 	dexServer             = "argocd-dex-server"
 )
@@ -66,6 +67,10 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) (role *v1.Role
 	}
 
 	if _, err := r.reconcileRole(server, policyRuleForServer(), cr); err != nil {
+		return role, err
+	}
+
+	if _, err := r.reconcileRole(redis, policyRuleForRedis(r.Client), cr); err != nil {
 		return role, err
 	}
 
