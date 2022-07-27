@@ -367,6 +367,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-application-controller",
+<<<<<<< HEAD
 		LivenessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -378,6 +379,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			PeriodSeconds:       10,
 		},
 		Env: controllerEnv,
+=======
+		Env:             controllerEnv,
+>>>>>>> e423064 (fix: remove liveness probe from application controller statefulset (#742))
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 8082,
