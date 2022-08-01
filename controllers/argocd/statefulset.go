@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"time"
 
+	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,10 +72,14 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 					common.ArgoCDKeyName: name,
 				},
 			},
+			Spec: corev1.PodSpec{
+				NodeSelector: common.DefaultNodeSelector(),
+			},
 		},
 	}
 	if cr.Spec.NodePlacement != nil {
-		ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		maps.Copy(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		//ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	ss.Spec.ServiceName = name

@@ -315,3 +315,10 @@ func DefaultAnnotations(name string, namespace string) map[string]string {
 		AnnotationNamespace: namespace,
 	}
 }
+
+// DefaultNodeSelector returns the defult nodeSelector for ArgoCD workloads
+func DefaultNodeSelector() map[string]string {
+	return map[string]string{
+		"kubernetes.io/os": "linux",
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -743,7 +744,10 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	}, deployment)
 	assert.NoError(t, err)
 
-	if diff := cmp.Diff(deploymentDefaultNodeSelector(), deployment.Spec.Template.Spec.NodeSelector); diff != "" {
+	nSelectors := deploymentDefaultNodeSelector()
+	maps.Copy(nSelectors, common.DefaultNodeSelector())
+
+	if diff := cmp.Diff(nSelectors, deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)
 	}
 	if diff := cmp.Diff(deploymentDefaultTolerations(), deployment.Spec.Template.Spec.Tolerations); diff != "" {
@@ -906,6 +910,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		},
 		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
+		NodeSelector:       common.DefaultNodeSelector(),
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
@@ -1120,6 +1125,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 		},
 		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
+		NodeSelector:       common.DefaultNodeSelector(),
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
@@ -1205,6 +1211,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 		},
 		Volumes:            serverDefaultVolumes(),
 		ServiceAccountName: "argocd-argocd-server",
+		NodeSelector:       common.DefaultNodeSelector(),
 	}
 
 	assert.Equal(t, want, deployment.Spec.Template.Spec)

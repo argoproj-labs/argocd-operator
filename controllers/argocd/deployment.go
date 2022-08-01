@@ -26,6 +26,7 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"golang.org/x/exp/maps"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -372,11 +373,15 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 					common.ArgoCDKeyName: name,
 				},
 			},
+			Spec: corev1.PodSpec{
+				NodeSelector: common.DefaultNodeSelector(),
+			},
 		},
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		maps.Copy(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		//deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
 		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	return deploy
