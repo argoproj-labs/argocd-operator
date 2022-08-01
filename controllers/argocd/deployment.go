@@ -381,7 +381,6 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 
 	if cr.Spec.NodePlacement != nil {
 		maps.Copy(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
-		//deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
 		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	return deploy

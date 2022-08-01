@@ -79,7 +79,6 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 	}
 	if cr.Spec.NodePlacement != nil {
 		maps.Copy(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
-		//ss.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	ss.Spec.ServiceName = name

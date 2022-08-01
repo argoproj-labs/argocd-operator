@@ -421,7 +421,6 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 
 	if cr.Spec.NodePlacement != nil {
 		maps.Copy(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
-		//dc.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
 		dc.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 
