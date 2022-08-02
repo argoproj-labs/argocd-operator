@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/exp/maps"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -745,7 +744,7 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	assert.NoError(t, err)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	maps.Copy(nSelectors, common.DefaultNodeSelector())
+	nSelectors = mapCopy(nSelectors, common.DefaultNodeSelector())
 
 	if diff := cmp.Diff(nSelectors, deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)

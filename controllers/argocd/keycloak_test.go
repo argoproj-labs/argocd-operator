@@ -22,7 +22,6 @@ import (
 	appsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -524,7 +523,7 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	maps.Copy(nSelectors, common.DefaultNodeSelector())
+	nSelectors = mapCopy(nSelectors, common.DefaultNodeSelector())
 	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, nSelectors)
 	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
 }

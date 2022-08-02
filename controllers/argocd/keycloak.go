@@ -25,7 +25,6 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"golang.org/x/exp/maps"
 
 	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
@@ -420,7 +419,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		maps.Copy(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		dc.Spec.Template.Spec.NodeSelector = mapCopy(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		dc.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 
