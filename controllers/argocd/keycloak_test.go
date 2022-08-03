@@ -30,6 +30,7 @@ import (
 	argoappv1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 var (
@@ -523,7 +524,7 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	nSelectors = mapCopy(nSelectors, common.DefaultNodeSelector())
+	nSelectors = argoutil.AppendStringMap(nSelectors, common.DefaultNodeSelector())
 	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, nSelectors)
 	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
 }

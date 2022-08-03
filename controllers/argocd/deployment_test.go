@@ -744,7 +744,7 @@ func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
 	assert.NoError(t, err)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	nSelectors = mapCopy(nSelectors, common.DefaultNodeSelector())
+	nSelectors = argoutil.AppendStringMap(nSelectors, common.DefaultNodeSelector())
 
 	if diff := cmp.Diff(nSelectors, deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)

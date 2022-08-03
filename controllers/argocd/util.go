@@ -1476,11 +1476,3 @@ func contains(s []string, g string) bool {
 	}
 	return false
 }
-
-// mapCopy returns a map that copies the keys of source map and adds then to destination map
-func mapCopy(src map[string]string, dst map[string]string) map[string]string {
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
-}
