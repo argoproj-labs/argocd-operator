@@ -75,7 +75,7 @@ The following properties are available for configuring the ApplicationSet contro
 
 Name | Default | Description
 --- | --- | ---
-Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
+Image | `quay.io/argoproj/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
