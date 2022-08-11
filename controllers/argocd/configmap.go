@@ -511,7 +511,7 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 
 	// Default Policy Matcher Mode
 	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
-		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.PolicyMatcherMode
+		cm.Data[common.ArgoCDPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
 		changed = true
 	}
 
