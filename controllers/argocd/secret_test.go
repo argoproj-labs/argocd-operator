@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
@@ -205,6 +205,45 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		}
 
 	})
+
+}
+
+func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
+	argocd := &v1alpha1.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+	}
+
+	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+	r := makeTestReconciler(t, argocd)
+	r.Client.Create(context.TODO(), clusterSecret)
+	r.Client.Create(context.TODO(), tlsSecret)
+	err := r.reconcileArgoSecret(argocd)
+
+	assert.NoError(t, err)
+
+	testSecret := &corev1.Secret{}
+	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	assert.NoError(t, secretErr)
+
+	// if you remove the secret.Data it should come back, including the secretKey
+	testSecret.Data = nil
+	r.Client.Update(context.TODO(), testSecret)
+
+	_ = r.reconcileExistingArgoSecret(testSecret, clusterSecret, tlsSecret)
+	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+
+	if testSecret.Data == nil {
+		t.Errorf("Expected data for data.server but got nothing")
+	}
+
+	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
+		t.Errorf("Expected data for data.server.secretKey but got nothing")
+	}
 
 }
 
@@ -411,8 +450,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
 
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-	defer os.Unsetenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")
+	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")

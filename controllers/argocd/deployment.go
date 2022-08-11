@@ -614,7 +614,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 			return r.Client.Delete(context.TODO(), deploy)
 		}
 		changed := false
-		actualImage := deploy.Spec.Template.Spec.Containers[0].Image
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
@@ -835,7 +835,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
-	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+	version, err := getClusterVersion(r.Client)
+	if err != nil {
+		log.Error(err, "error getting cluster version")
+	}
+	if err := applyReconcilerHook(cr, deploy, version); err != nil {
 		return err
 	}
 
@@ -1119,10 +1123,22 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			changed = true
 		}
+
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
 			changed = true
 		}
+
+		if deploy.Spec.Template.Spec.AutomountServiceAccountToken != existing.Spec.Template.Spec.AutomountServiceAccountToken {
+			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
+			changed = true
+		}
+
+		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
+			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
+			changed = true
+		}
+
 		if changed {
 			return r.Client.Update(context.TODO(), existing)
 		}
