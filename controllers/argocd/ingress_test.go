@@ -5,14 +5,12 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) {

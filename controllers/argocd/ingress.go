@@ -407,7 +407,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv
 	}
 
 	// Add annotations
-	atns := getDefaultIngressAnnotations()
+	atns := make(map[string]string)
 	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
 	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
