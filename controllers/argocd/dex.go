@@ -229,10 +229,9 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			"/shared/argocd-dex",
 			"rundex",
 		},
-		Image:           getDexContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Name:            "dex",
-		Env:             proxyEnvVars(),
+		Image: getDexContainerImage(cr),
+		Name:  "dex",
+		Env:   proxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{

@@ -120,9 +120,39 @@ make bundle-push BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest
 Build and push the development catalog image.
 Override the name of the catalog image by specifying the `CATALOG_IMG` variable.
 Specify the bundle image to include using the `BUNDLE_IMG` variable
+
 ``` bash
 make catalog-build BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 make catalog-push CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
+```
+
+### Build and Verify Argo CD Operator Docs
+
+**Note**: Please note that you need to have `Python3` Installed as a prerequisite.
+
+Create a Python Virtual Environment. This is not mandatory, you can continue without creating a Virtual Environment as well.
+
+```bash
+python3 -m venv doc
+```
+
+Get into the virtual environment, if you have created one using the above step.
+
+```bash
+source doc/bin/activate
+```
+
+Install the required Python libraries
+
+```bash
+pip3 install mkdocs
+pip3 install mkdocs-material
+```
+
+Start the `mkdocs` server locally to verify the UI changes.
+
+```bash
+mkdocs serve
 ```
 
 ### Default Argo CD Version

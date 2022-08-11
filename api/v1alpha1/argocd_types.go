@@ -93,7 +93,7 @@ type ArgoCDApplicationControllerSpec struct {
 	ParallelismLimit int32 `json:"parallelismLimit,omitempty"`
 
 	// AppSync is used to control the sync frequency, by default the ArgoCD
-	// controller polls Git every 3m by default.
+	// controller polls Git every 3m.
 	//
 	// Set this to a duration, e.g. 10m or 600s to control the synchronisation
 	// frequency.
@@ -250,6 +250,9 @@ type ArgoCDIngressSpec struct {
 	// Enabled will toggle the creation of the Ingress.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Ingress Enabled'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana","urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus","urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:booleanSwitch"}
 	Enabled bool `json:"enabled"`
+
+	// IngressClassName for the Ingress resource.
+	IngressClassName *string `json:"ingressClassName,omitempty"`
 
 	// Path used for the Ingress resource.
 	Path string `json:"path,omitempty"`

@@ -293,16 +293,24 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 func (r *ReconcileArgoCD) reconcileExistingArgoSecret(secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
+	if secret.Data == nil {
+		secret.Data = make(map[string][]byte)
+	}
+
+	if secret.Data[common.ArgoCDKeyServerSecretKey] == nil {
+		sessionKey, err := generateArgoServerSessionKey()
+		if err != nil {
+			return err
+		}
+		secret.Data[common.ArgoCDKeyServerSecretKey] = sessionKey
+	}
+
 	if hasArgoAdminPasswordChanged(secret, clusterSecret) {
 		pwBytes, ok := clusterSecret.Data[common.ArgoCDKeyAdminPassword]
 		if ok {
 			hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
 			if err != nil {
 				return err
-			}
-
-			if secret.Data == nil {
-				secret.Data = make(map[string][]byte)
 			}
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
