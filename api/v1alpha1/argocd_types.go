@@ -352,6 +352,10 @@ type ArgoCDRBACSpec struct {
 	// If omitted, defaults to: '[groups]'.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Scopes",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC","urn:alm:descriptor:com.tectonic.ui:text"}
 	Scopes *string `json:"scopes,omitempty"`
+
+	// PolicyMatcherMode configures the matchers function mode for casbin.
+	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
+	PolicyMatcherMode *string `json:"policyMatcherMode,omitempty"`
 }
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
