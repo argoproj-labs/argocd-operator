@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -175,4 +177,62 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatal(err)
 	}
+}
+
+// This test validates the behavior of the operator reconciliation when a managed namespace is not properly terminated
+// or remains terminating may be because of some resources in the namespace not getting deleted.
+func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
+
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	// Create a managed namespace
+	assert.NoError(t, createNamespace(r, "managedNS", a.Namespace))
+
+	workloadIdentifier := "x"
+	expectedRules := policyRuleForApplicationController()
+	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	reconciledRole := &v1.Role{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+
+	// Check if roles are created for the new namespace as well
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+
+	// Create a configmap with an invalid finalizer in the "managedNS".
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummy",
+			Namespace: "managedNS",
+			Finalizers: []string{
+				"nonexistent.finalizer/dummy",
+			},
+		},
+	}
+	assert.NoError(t, r.Client.Create(
+		context.TODO(), configMap))
+
+	// Delete the newNamespaceTest ns.
+	// Verify that operator should not reconcile back to create the roles in terminating ns.
+	newNS := &corev1.Namespace{}
+	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	r.Client.Delete(context.TODO(), newNS)
+
+	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	// Create another managed namespace
+	assert.NoError(t, createNamespace(r, "managedNS2", a.Namespace))
+
+	// Check if roles are created for the new namespace as well
+	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
