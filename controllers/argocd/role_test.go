@@ -223,8 +223,16 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
 	r.Client.Delete(context.TODO(), newNS)
 
+	// Verify that the namespace exists and is in terminating state.
+	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	assert.NotEqual(t, newNS.DeletionTimestamp, nil)
+
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
+
+	// Verify that the roles are deleted
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole)
+	assert.ErrorContains(t, err, "not found")
 
 	// Create another managed namespace
 	assert.NoError(t, createNamespace(r, "managedNS2", a.Namespace))
