@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"os"
 	"sort"
 	"testing"
 
@@ -171,8 +170,7 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	// Proxy Env vars
-	setProxyEnvVars()
-	defer unSetProxyEnvVars()
+	setProxyEnvVars(t)
 
 	a := makeTestArgoCD()
 	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
@@ -354,8 +352,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			for testEnvName, testEnvValue := range test.envVars {
-				os.Setenv(testEnvName, testEnvValue)
-				t.Cleanup(func() { os.Unsetenv(testEnvName) })
+				t.Setenv(testEnvName, testEnvValue)
 			}
 
 			a := makeTestArgoCD()
@@ -484,16 +481,21 @@ func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
 	assert.Equal(t, meta.Labels["app.kubernetes.io/component"], "controller")
 }
 
-func setProxyEnvVars() {
-	os.Setenv("HTTPS_PROXY", "https://example.com")
-	os.Setenv("HTTP_PROXY", "http://example.com")
-	os.Setenv("NO_PROXY", ".cluster.local")
+func setProxyEnvVars(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "https://example.com")
+	t.Setenv("HTTP_PROXY", "http://example.com")
+	t.Setenv("NO_PROXY", ".cluster.local")
 }
 
-func unSetProxyEnvVars() {
-	os.Unsetenv("HTTPS_PROXY")
-	os.Unsetenv("HTTP_PROXY")
-	os.Unsetenv("NO_PROXY")
+func TestReconcileApplicationSet_Service(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	s := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
+
+	assert.NoError(t, r.reconcileApplicationSetService(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 }
 func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))

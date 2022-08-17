@@ -74,6 +74,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 		return err
 	}
 
+<<<<<<< HEAD
 	log.Info("reconciling applicationset ingress")
 	if err := r.reconcileApplicationSetControllerIngress(cr); err != nil {
 		return err
@@ -84,6 +85,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 		return err
 	}
 
+=======
+>>>>>>> master
 	log.Info("reconciling applicationset service")
 	if err := r.reconcileApplicationSetService(cr); err != nil {
 		return err

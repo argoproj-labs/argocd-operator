@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"errors"
-	"os"
 	"sort"
 	"testing"
 
@@ -89,14 +88,11 @@ func TestReconcile_noTemplateInstance(t *testing.T) {
 func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
-	restoreEnvFunc := func() {
-		os.Unsetenv("DISABLE_DEX")
-	}
 	tests := []struct {
 		name          string
 		argoCD        *argov1alpha1.ArgoCD
 		envVar        string
-		setEnvVarFunc func(string)
+		setEnvVarFunc func(*testing.T, string)
 		wantErr       bool
 		Err           error
 	}{
@@ -117,8 +113,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
+			setEnvVarFunc: func(t *testing.T, envVar string) {
+				t.Setenv("DISABLE_DEX", envVar)
 			},
 			envVar:  "true",
 			wantErr: true,
@@ -142,7 +138,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot specify .spec.Dex fields when dex is configured through .spec.sso"),
+			Err:           errors.New("illegal SSO configuration: cannot specify .spec.Dex fields when dex is configured through .spec.sso.dex"),
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
@@ -202,8 +198,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
+			setEnvVarFunc: func(t *testing.T, envVar string) {
+				t.Setenv("DISABLE_DEX", envVar)
 			},
 			envVar:  "false",
 			wantErr: true,
@@ -217,8 +213,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					Version: "test-image-version",
 				}
 			}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
+			setEnvVarFunc: func(t *testing.T, envVar string) {
+				t.Setenv("DISABLE_DEX", envVar)
 			},
 			envVar:  "true",
 			wantErr: false,
@@ -244,9 +240,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argov1alpha1.SSOProviderTypeKeycloak,
 					Image:    "test-image",
-					Version:  "test-image-version",
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						Image:   "test-image-2",
 						Version: "test-image-version-2",
 					},
 				}
@@ -254,7 +248,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot supply conflicting configuration in .spec.sso when keycloak is configured through .spec.sso.keycloak"),
+			Err:           errors.New("illegal SSO configuration: cannot specify keycloak fields in .spec.sso when keycloak is configured through .spec.sso.keycloak"),
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",
@@ -312,8 +306,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					OpenShiftOAuth: false,
 				}
 			}),
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
+			setEnvVarFunc: func(t *testing.T, envVar string) {
+				t.Setenv("DISABLE_DEX", envVar)
 			},
 			envVar:  "true",
 			wantErr: false,
@@ -322,12 +316,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			restoreEnvFunc()
 			r := makeTestReconciler(t, test.argoCD)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(test.envVar)
+				test.setEnvVarFunc(t, test.envVar)
 			}
 
 			err := r.reconcileSSO(test.argoCD)
@@ -342,7 +335,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					t.Errorf("expected error but didn't get one")
 				}
 			}
-			restoreEnvFunc()
 		})
 	}
 
@@ -370,22 +362,18 @@ func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		argoCD          *argov1alpha1.ArgoCD
-		envVar          string
-		setEnvVarFunc   func(string)
-		unSetEnvVarFunc func()
-		wantEvents      []*corev1.Event
+		name          string
+		argoCD        *argov1alpha1.ArgoCD
+		envVar        string
+		setEnvVarFunc func(*testing.T, string)
+		wantEvents    []*corev1.Event
 	}{
 		{
 			name:   "DISABLE_DEX env var in use",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
 			envVar: "true",
-			setEnvVarFunc: func(envVar string) {
-				os.Setenv("DISABLE_DEX", envVar)
-			},
-			unSetEnvVarFunc: func() {
-				os.Unsetenv("DISABLE_DEX")
+			setEnvVarFunc: func(t *testing.T, envVar string) {
+				t.Setenv("DISABLE_DEX", envVar)
 			},
 			wantEvents: []*corev1.Event{disableDexEvent},
 		},
@@ -422,8 +410,7 @@ func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 			r := makeFakeReconciler(t, test.argoCD)
 
 			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(test.envVar)
-				defer test.unSetEnvVarFunc()
+				test.setEnvVarFunc(t, test.envVar)
 			}
 			err := r.reconcileSSO(test.argoCD)
 			assert.NoError(t, err)

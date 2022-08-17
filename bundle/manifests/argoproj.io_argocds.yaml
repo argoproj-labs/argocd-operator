@@ -102,6 +102,9 @@ spec:
                           enabled:
                             description: Enabled will toggle the creation of the Ingress.
                             type: boolean
+                          ingressClassName:
+                            description: IngressClassName for the Ingress resource.
+                            type: string
                           path:
                             description: Path used for the Ingress resource.
                             type: string
@@ -239,8 +242,8 @@ spec:
                 properties:
                   appSync:
                     description: "AppSync is used to control the sync frequency, by
-                      default the ArgoCD controller polls Git every 3m by default.
-                      \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
+                      default the ArgoCD controller polls Git every 3m. \n Set this
+                      to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
                   env:
@@ -521,6 +524,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -911,6 +917,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -5572,6 +5581,9 @@ spec:
                           enabled:
                             description: Enabled will toggle the creation of the Ingress.
                             type: boolean
+                          ingressClassName:
+                            description: IngressClassName for the Ingress resource.
+                            type: string
                           path:
                             description: Path used for the Ingress resource.
                             type: string
@@ -5627,6 +5639,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
+                      ingressClassName:
+                        description: IngressClassName for the Ingress resource.
+                        type: string
                       path:
                         description: Path used for the Ingress resource.
                         type: string

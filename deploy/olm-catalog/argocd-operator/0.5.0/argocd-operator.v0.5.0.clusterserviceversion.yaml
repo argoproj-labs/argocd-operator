@@ -35,6 +35,7 @@ metadata:
             "name": "argocd-sample"
           },
           "spec": {
+<<<<<<< HEAD
             "applicationSet": {
               "webhookServer": {
                 "ingress": {
@@ -45,6 +46,8 @@ metadata:
                  }
                }
             },
+=======
+>>>>>>> master
             "controller": {
               "resources": {
                 "limits": {
@@ -145,7 +148,11 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
+<<<<<<< HEAD
   name: argocd-operator.v0.4.0
+=======
+  name: argocd-operator.v0.5.0
+>>>>>>> master
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -757,6 +764,7 @@ spec:
         path: applicationController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+<<<<<<< HEAD
       - description: 'ApplicationController is a simple, high-level summary of where
           the Argo CD application controller component is in its lifecycle. There
           are five possible ApplicationController values: Pending: The Argo CD application
@@ -770,6 +778,8 @@ spec:
         path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+=======
+>>>>>>> master
       - description: 'Dex is a simple, high-level summary of where the Argo CD Dex
           component is in its lifecycle. There are five possible dex values: Pending:
           The Argo CD Dex component has been accepted by the Kubernetes system, but
@@ -1064,12 +1074,20 @@ spec:
           replicas: 1
           selector:
             matchLabels:
+<<<<<<< HEAD
               control-plane: controller-manager
+=======
+              control-plane: argocd-operator
+>>>>>>> master
           strategy: {}
           template:
             metadata:
               labels:
+<<<<<<< HEAD
                 control-plane: controller-manager
+=======
+                control-plane: argocd-operator
+>>>>>>> master
             spec:
               containers:
               - args:
@@ -1094,7 +1112,11 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
+<<<<<<< HEAD
                 image: quay.io/argoprojlabs/argocd-operator:v0.4.0
+=======
+                image: quay.io/argoprojlabs/argocd-operator:v0.5.0
+>>>>>>> master
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1111,6 +1133,14 @@ spec:
                 resources: {}
                 securityContext:
                   allowPrivilegeEscalation: false
+<<<<<<< HEAD
+=======
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
+>>>>>>> master
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: argocd-operator-controller-manager
@@ -1176,4 +1206,8 @@ spec:
   provider:
     name: Argo CD Community
   replaces: argocd-operator.v0.3.0
+<<<<<<< HEAD
   version: 0.4.0
+=======
+  version: 0.5.0
+>>>>>>> master
