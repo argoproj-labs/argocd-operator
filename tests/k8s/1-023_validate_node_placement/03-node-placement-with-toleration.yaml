@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec:
+  nodePlacement:
+    nodeSelector:
+      key1: value1
+    tolerations: 
+    - key: key1
+      operator: Equal
+      value: value1
+      effect: NoSchedule
+         

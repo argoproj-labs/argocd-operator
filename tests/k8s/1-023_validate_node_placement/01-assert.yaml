@@ -1,0 +1,43 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-application-controller
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-redis
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-repo-server
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-server
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
