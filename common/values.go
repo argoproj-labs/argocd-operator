@@ -85,4 +85,7 @@ const (
 
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"
+
+	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
+	ApplicationSetServiceNameSuffix = "applicationset-controller"
 )

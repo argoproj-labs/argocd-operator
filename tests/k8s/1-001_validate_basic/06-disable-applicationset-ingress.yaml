@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+# patches to disable applicationset
+- script: |
+    kubectl patch --type=merge -n $NAMESPACE argocd/example-argocd --patch '{"spec":{"applicationSet":{"webhookServer":{"ingress":{"enabled":false}}}}}'
+- script: sleep 10

@@ -75,7 +75,7 @@ The following properties are available for configuring the ApplicationSet contro
 
 Name | Default | Description
 --- | --- | ---
-Image | `quay.io/argocdapplicationset/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
+Image | `quay.io/argoproj/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
@@ -333,6 +333,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -795,6 +796,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -1156,6 +1158,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 
@@ -1167,6 +1170,7 @@ Name | Default | Description
 --- | --- | ---
 Annotations | [Empty] | The map of annotations to use for the Ingress resource.
 Enabled | `false` | Toggle creation of an Ingress resource.
+IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
 Path | `/` | Path to use for Ingress resources.
 TLS | [Empty] | TLS configuration for the Ingress.
 

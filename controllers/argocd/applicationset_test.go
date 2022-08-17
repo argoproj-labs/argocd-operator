@@ -486,3 +486,14 @@ func setProxyEnvVars(t *testing.T) {
 	t.Setenv("HTTP_PROXY", "http://example.com")
 	t.Setenv("NO_PROXY", ".cluster.local")
 }
+
+func TestReconcileApplicationSet_Service(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	s := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
+
+	assert.NoError(t, r.reconcileApplicationSetService(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
+}

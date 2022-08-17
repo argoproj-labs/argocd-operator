@@ -301,6 +301,28 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: applicationSet.webhookServer.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: applicationSet.webhookServer.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: applicationSet.webhookServer.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
@@ -1049,7 +1071,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.4.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:cf8faa9867899ec78c37a9e72000138c7f24861f47057152e95b6addb39aedcd
                 livenessProbe:
                   httpGet:
                     path: /healthz
