@@ -1094,6 +1094,10 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 	}
 
 	// Update ArgoCD instance for OIDC Config with Keycloakrealm URL
+	rootCA := ""
+	if cr.Spec.SSO.Keycloak.RootCA != "" {
+		rootCA = cr.Spec.SSO.Keycloak.RootCA
+	}
 	o, err := yaml.Marshal(oidcConfig{
 		Name: "Keycloak",
 		Issuer: fmt.Sprintf("%s/auth/realms/%s",
@@ -1101,7 +1105,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 		ClientID:       keycloakClient,
 		ClientSecret:   "$oidc.keycloak.clientSecret",
 		RequestedScope: []string{"openid", "profile", "email", "groups"},
-		RootCA:         cr.Spec.SSO.Keycloak.RootCA,
+		RootCA:         rootCA,
 	})
 
 	if err != nil {
@@ -1395,16 +1399,15 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 	}
 
 	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
+	cfg, err := r.prepareKeycloakConfig(cr)
+	if err != nil {
+		return err
+	}
+
+	// keycloakRouteURL is used to update the OIDC configuration for ArgoCD.
+	keycloakRouteURL := cfg.KeycloakURL
 	if existingDC.Status.AvailableReplicas == expectedReplicas &&
 		existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
-
-		cfg, err := r.prepareKeycloakConfig(cr)
-		if err != nil {
-			return err
-		}
-
-		// keycloakRouteURL is used to update the OIDC configuration for ArgoCD.
-		keycloakRouteURL := cfg.KeycloakURL
 
 		// Create a keycloak realm and publish.
 		response, err := createRealm(cfg)
@@ -1441,14 +1444,14 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 			if err != nil {
 				return err
 			}
-
-			err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
-					cr.Name, cr.Namespace))
-				return err
-			}
 		}
+	}
+
+	err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
+			cr.Name, cr.Namespace))
+		return err
 	}
 
 	return nil

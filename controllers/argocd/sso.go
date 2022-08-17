@@ -85,7 +85,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	if cr.Spec.SSO != nil && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil) {
+	if cr.Spec.SSO != nil && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" ||
+		cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil) {
 
 		// Emit event warning users about deprecation notice for `.spec.SSO` field users
 		err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Keycloak configuration can be managed through `.spec.sso.keycloak`", "DeprecationNotice", cr.ObjectMeta)
@@ -164,7 +165,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		if cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `DISABLE_DEX`, `.spec.dex`, `.spec.sso` fields, `.spec.sso.keycloak`, `.spec.sso.dex`
 
-			if (cr.Spec.SSO.Keycloak != nil) && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" || cr.Spec.SSO.Resources != nil || cr.Spec.SSO.VerifyTLS != cr.Spec.SSO.Keycloak.VerifyTLS) {
+			if (cr.Spec.SSO.Keycloak != nil) && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" ||
+				cr.Spec.SSO.Resources != nil || cr.Spec.SSO.VerifyTLS != nil) {
 				// Keycloak specs expressed both in old `.spec.sso` fields as well as in `.spec.sso.keycloak` simultaneously and they don't match
 				// ==> conflict
 				errMsg = "cannot specify keycloak fields in .spec.sso when keycloak is configured through .spec.sso.keycloak"
