@@ -35,6 +35,16 @@ metadata:
             "name": "argocd-sample"
           },
           "spec": {
+            "applicationSet": {
+              "webhookServer": {
+                "ingress": {
+                   "enabled": false
+                 },
+                 "route": {
+                   "enabled": false
+                 }
+               }
+            },
             "controller": {
               "resources": {
                 "limits": {
@@ -301,6 +311,28 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: applicationSet.webhookServer.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: applicationSet.webhookServer.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: applicationSet.webhookServer.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
@@ -723,6 +755,19 @@ spec:
           Argo CD application controller component could not be obtained.'
         displayName: ApplicationController
         path: applicationController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'ApplicationController is a simple, high-level summary of where
+          the Argo CD application controller component is in its lifecycle. There
+          are five possible ApplicationController values: Pending: The Argo CD application
+          controller component has been accepted by the Kubernetes system, but one
+          or more of the required resources have not been created. Running: All of
+          the required Pods for the Argo CD application controller component are in
+          a Ready state. Failed: At least one of the  Argo CD application controller
+          component Pods had a failure. Unknown: For some reason the state of the
+          Argo CD application controller component could not be obtained.'
+        displayName: ApplicationController
+        path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Dex is a simple, high-level summary of where the Argo CD Dex
