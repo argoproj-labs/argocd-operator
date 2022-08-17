@@ -107,6 +107,7 @@ type oidcConfig struct {
 	ClientID       string   `json:"clientID"`
 	ClientSecret   string   `json:"clientSecret"`
 	RequestedScope []string `json:"requestedScopes"`
+	RootCA         string   `json:"rootCA,omitempty"`
 }
 
 // KeycloakIdentityProviderMapper defines IdentityProvider Mappers
@@ -1100,6 +1101,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRo
 		ClientID:       keycloakClient,
 		ClientSecret:   "$oidc.keycloak.clientSecret",
 		RequestedScope: []string{"openid", "profile", "email", "groups"},
+		RootCA:         cr.Spec.SSO.Keycloak.RootCA,
 	})
 
 	if err != nil {

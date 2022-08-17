@@ -272,6 +272,9 @@ type ArgoCDKeycloakSpec struct {
 	// Resources defines the Compute Resources required by the container for Keycloak.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 
+	// Custom root CA certificate for communicating with the Keycloak OIDC provider
+	RootCA string `json:"rootCA,omitempty"`
+
 	// Version is the Keycloak container image tag.
 	Version string `json:"version,omitempty"`
 
