@@ -102,12 +102,9 @@ spec:
                           enabled:
                             description: Enabled will toggle the creation of the Ingress.
                             type: boolean
-<<<<<<< HEAD
-=======
                           ingressClassName:
                             description: IngressClassName for the Ingress resource.
                             type: string
->>>>>>> master
                           path:
                             description: Path used for the Ingress resource.
                             type: string
@@ -245,13 +242,8 @@ spec:
                 properties:
                   appSync:
                     description: "AppSync is used to control the sync frequency, by
-<<<<<<< HEAD
-                      default the ArgoCD controller polls Git every 3m by default.
-                      \n Set this to a duration, e.g. 10m or 600s to control the synchronisation
-=======
                       default the ArgoCD controller polls Git every 3m. \n Set this
                       to a duration, e.g. 10m or 600s to control the synchronisation
->>>>>>> master
                       frequency."
                     type: string
                   env:
@@ -532,12 +524,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
-<<<<<<< HEAD
-=======
                       ingressClassName:
                         description: IngressClassName for the Ingress resource.
                         type: string
->>>>>>> master
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -928,12 +917,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
-<<<<<<< HEAD
-=======
                       ingressClassName:
                         description: IngressClassName for the Ingress resource.
                         type: string
->>>>>>> master
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -5595,12 +5581,9 @@ spec:
                           enabled:
                             description: Enabled will toggle the creation of the Ingress.
                             type: boolean
-<<<<<<< HEAD
-=======
                           ingressClassName:
                             description: IngressClassName for the Ingress resource.
                             type: string
->>>>>>> master
                           path:
                             description: Path used for the Ingress resource.
                             type: string
@@ -5656,12 +5639,9 @@ spec:
                       enabled:
                         description: Enabled will toggle the creation of the Ingress.
                         type: boolean
-<<<<<<< HEAD
-=======
                       ingressClassName:
                         description: IngressClassName for the Ingress resource.
                         type: string
->>>>>>> master
                       path:
                         description: Path used for the Ingress resource.
                         type: string
@@ -6018,7 +5998,6 @@ spec:
                   had a failure. Unknown: For some reason the state of the Argo CD
                   application controller component could not be obtained.'
                 type: string
-<<<<<<< HEAD
               applicationSetController:
                 description: 'ApplicationController is a simple, high-level summary
                   of where the Argo CD application controller component is in its
@@ -6031,8 +6010,6 @@ spec:
                   had a failure. Unknown: For some reason the state of the Argo CD
                   application controller component could not be obtained.'
                 type: string
-=======
->>>>>>> master
               dex:
                 description: 'Dex is a simple, high-level summary of where the Argo
                   CD Dex component is in its lifecycle. There are five possible dex
