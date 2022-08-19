@@ -1398,60 +1398,65 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 		}
 	}
 
-	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
-	cfg, err := r.prepareKeycloakConfig(cr)
-	if err != nil {
-		return err
-	}
+	if existingDC.Status.AvailableReplicas == expectedReplicas {
 
-	// keycloakRouteURL is used to update the OIDC configuration for ArgoCD.
-	keycloakRouteURL := cfg.KeycloakURL
-	if existingDC.Status.AvailableReplicas == expectedReplicas &&
-		existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
-
-		// Create a keycloak realm and publish.
-		response, err := createRealm(cfg)
+		cfg, err := r.prepareKeycloakConfig(cr)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
+			return err
+		}
+		// keycloakRouteURL is used to update the OIDC configuration for ArgoCD.
+		keycloakRouteURL := cfg.KeycloakURL
+
+		// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
+		if existingDC.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+
+			// Create a keycloak realm and publish.
+			response, err := createRealm(cfg)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
+					cr.Name, cr.Namespace))
+				return err
+			}
+
+			if response == successResponse {
+				log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
+					cr.Name, cr.Namespace))
+
+				// TODO: Remove the deleteOAuthClient invocation once the issue is resolved.
+				// OAuthClient configuration does not get deleted from previous instances occasionally.
+				// It is safe to delete before updating the OIDC config.
+				// https://github.com/openshift/client-go/issues/209
+				err = deleteOAuthClient(cr)
+				if err != nil {
+					return err
+				}
+
+				// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+				err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
+				if err != nil {
+					return err
+				}
+
+				existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
+				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+					return r.Client.Update(context.TODO(), existingDC)
+				})
+
+				if err != nil {
+					return err
+				}
+
+			}
+		}
+
+		// Updates OIDC Configuration in the argocd-cm when Keycloak is initially configured
+		// or when user requests to update the OIDC configuration through `.spec.sso.keycloak.rootCA`.
+		err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
 				cr.Name, cr.Namespace))
 			return err
 		}
-
-		if response == successResponse {
-			log.Info(fmt.Sprintf("Successfully created keycloak realm for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-
-			// TODO: Remove the deleteOAuthClient invocation once the issue is resolved.
-			// OAuthClient configuration does not get deleted from previous instances occasionally.
-			// It is safe to delete before updating the OIDC config.
-			// https://github.com/openshift/client-go/issues/209
-			err = deleteOAuthClient(cr)
-			if err != nil {
-				return err
-			}
-
-			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
-			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: existingDC.Name, Namespace: existingDC.Namespace}, existingDC)
-			if err != nil {
-				return err
-			}
-
-			existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-				return r.Client.Update(context.TODO(), existingDC)
-			})
-
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
 	}
 
 	return nil

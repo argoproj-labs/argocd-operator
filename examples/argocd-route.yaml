@@ -5,6 +5,10 @@ metadata:
   labels:
     example: route
 spec:
+  sso:
+   provider: keycloak
+   keycloak:
+     verifyTLS: false
   grafana:
     enabled: true
     route:
