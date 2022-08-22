@@ -4,8 +4,8 @@ commands:
 # verify OIDC config
 # verify issuer
 - script: |
-    issuer=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n argocd-e2e-rhsso | grep issuer | awk -F' ' '{print $2}')
-    keycloakRoute=$(kubectl get route keycloak -n argocd-e2e-rhsso -o jsonpath='{.spec.host}')
+    issuer=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep issuer | awk -F' ' '{print $2}')
+    keycloakRoute=$(kubectl get route keycloak -n $NAMESPACE -o jsonpath='{.spec.host}')
     if [[ "${issuer}" == "https://${keycloakRoute}/auth/realms/argocd" ]]; then 
       echo "issuer matched"
     else 
@@ -13,15 +13,16 @@ commands:
       echo "${issuer} not equals ${keycloakRoute}/auth/realms/argocd"
       exit 1
     fi  
-# verify oidc config name and clientid
+# verify oidc config name, clientid
 - script: | 
-    clientid=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n argocd-e2e-rhsso | grep clientid | awk -F' ' '{print $2}')
-    name=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n argocd-e2e-rhsso | grep name | awk -F' ' '{print $2}')
-    
-    if [[ "${clientid}" == "argocd" && "${name}" == "Keycloak" ]]; then 
-      echo "oidc name and clientid matched"
+    clientid=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep clientid | awk -F' ' '{print $2}')
+    name=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep name | awk -F' ' '{print $2}')
+    rootCA=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\.config}' -n $NAMESPACE | grep rootca | awk -F' ' '{print $2}')
+
+    if [[ "${clientid}" == "argocd" && "${name}" == "Keycloak" && "${rootCA}" == "'---BEGIN---END---'"  ]]; then 
+      echo "oidc name, clientid and rootCA matched"
     else 
-      echo "oidc name and clientid mismatched"
-      echo "${clientid} and ${name}"
+      echo "oidc name, clientid or rootCA mismatched"
+      echo "${clientid}, ${name} and ${rootCA}"
       exit 1
     fi

@@ -308,7 +308,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
 		ReadinessProbe: &corev1.Probe{
-			FailureThreshold: 10,
+			FailureThreshold: 20,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -1398,12 +1398,14 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 		}
 	}
 
+	// Proceed with the keycloak configuration only once the keycloak pod is up and running.
 	if existingDC.Status.AvailableReplicas == expectedReplicas {
 
 		cfg, err := r.prepareKeycloakConfig(cr)
 		if err != nil {
 			return err
 		}
+
 		// keycloakRouteURL is used to update the OIDC configuration for ArgoCD.
 		keycloakRouteURL := cfg.KeycloakURL
 
@@ -1499,9 +1501,8 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
-	if existingDeployment.Status.AvailableReplicas == expectedReplicas &&
-		existingDeployment.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+	// Proceed with the keycloak configuration only once the keycloak pod is up and running.
+	if existingDeployment.Status.AvailableReplicas == expectedReplicas {
 
 		cfg, err := r.prepareKeycloakConfigForK8s(cr)
 		if err != nil {
@@ -1511,25 +1512,30 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 		// kIngURL is used to update the OIDC configuration for ArgoCD.
 		kIngURL := cfg.KeycloakURL
 
-		// Create a keycloak realm and publish.
-		response, err := createRealm(cfg)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
-		}
-
-		if response == successResponse {
-			log.Info("Successfully created keycloak realm for ArgoCD %s in namespace %s")
-
-			// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
-			existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
-			err = r.Client.Update(context.TODO(), existingDeployment)
+		// If Keycloak deployment exists and a realm is already created for ArgoCD, Do not create a new one.
+		if existingDeployment.Annotations["argocd.argoproj.io/realm-created"] == "false" {
+			// Create a keycloak realm and publish.
+			response, err := createRealm(cfg)
 			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
+					cr.Name, cr.Namespace))
 				return err
+			}
+
+			if response == successResponse {
+				log.Info("Successfully created keycloak realm for ArgoCD %s in namespace %s")
+
+				// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
+				existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
+				err = r.Client.Update(context.TODO(), existingDeployment)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
+		// Updates OIDC Configuration in the argocd-cm when Keycloak is initially configured
+		// or when user requests to update the OIDC configuration through `.spec.sso.keycloak.rootCA`.
 		err = r.updateArgoCDConfiguration(cr, kIngURL)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
