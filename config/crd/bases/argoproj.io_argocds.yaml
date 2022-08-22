@@ -5484,8 +5484,57 @@ spec:
                 type: string
               resourceCustomizations:
                 description: 'ResourceCustomizations customizes resource behavior.
-                  Keys are in the form: group/Kind.'
+                  Keys are in the form: group/Kind. Please note that this is being
+                  deprecated in favor of ResourceCustomizationsNew.'
                 type: string
+              resourceCustomizationsNew:
+                description: ResourceCustomizationsNew is the preferred way to customize
+                  resource behavior.
+                properties:
+                  actions:
+                    description: Configuration to add custom actions. Keys are in
+                      the format <group_kind>.
+                    items:
+                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
+                      properties:
+                        customization:
+                          type: string
+                        group:
+                          type: string
+                        kind:
+                          type: string
+                      type: object
+                    type: array
+                  health:
+                    description: Configuration to add custom health checks. Keys are
+                      in the format <group_kind>.
+                    items:
+                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
+                      properties:
+                        customization:
+                          type: string
+                        group:
+                          type: string
+                        kind:
+                          type: string
+                      type: object
+                    type: array
+                  ignoreDifferences:
+                    description: Configuration to define customizations ignoring differences
+                      between live and desired states for all resources. Keys are
+                      in the format <group_kind>.
+                    items:
+                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
+                      properties:
+                        customization:
+                          type: string
+                        group:
+                          type: string
+                        kind:
+                          type: string
+                      type: object
+                    type: array
+                type: object
               resourceExclusions:
                 description: ResourceExclusions is used to completely ignore entire
                   classes of resource group/kinds.

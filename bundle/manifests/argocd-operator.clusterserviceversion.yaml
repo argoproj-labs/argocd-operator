@@ -592,7 +592,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       - description: 'ResourceCustomizations customizes resource behavior. Keys are
-          in the form: group/Kind.'
+          in the form: group/Kind. Please note that this is being deprecated in favor
+          of ResourceCustomizationsNew.'
         displayName: Resource Customizations'
         path: resourceCustomizations
         x-descriptors:

@@ -144,13 +144,42 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	return scopes
 }
 
-// getResourceCustomizations will return the resource customizations for the given ArgoCD.
+var (
+	ResourceCustomizationDeprecationWarningEmitted bool = false
+)
+
+// GetResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap. Please note that ResourceCustomizations are being deprecated in favor of ResourceCustomizationsNew.
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
 	if cr.Spec.ResourceCustomizations != "" {
 		rc = cr.Spec.ResourceCustomizations
 	}
+	log.Info("You are using an old format for ResourceCustomizations, please use the new format.")
 	return rc
+}
+
+// preferred way to add customizations with `resource.customizations`, subkeys options are `actions`, `health`, and `ignoreDifferences`
+func getNewResourceCustomizations(cr *argoprojv1a1.ArgoCD) map[string]string {
+	newRC := make(map[string]string)
+	if cr.Spec.ResourceCustomizationsNew != nil {
+		rcNew := cr.Spec.ResourceCustomizationsNew
+		for _, newHealthCustomization := range rcNew.Health {
+			subkey := "resource.customizations.health." + newHealthCustomization.Group + "_" + newHealthCustomization.Kind
+			subvalue := newHealthCustomization.Customization
+			newRC[subkey] = subvalue
+		}
+		for _, newActionsCustomization := range rcNew.Actions {
+			subkey := "resource.customizations.actions." + newActionsCustomization.Group + "_" + newActionsCustomization.Kind
+			subvalue := newActionsCustomization.Customization
+			newRC[subkey] = subvalue
+		}
+		for _, newIgnoreDiffsCustomization := range rcNew.IgnoreDifferences {
+			subkey := "resource.customizations.ignoreDifferences." + newIgnoreDiffsCustomization.Group + "_" + newIgnoreDiffsCustomization.Kind
+			subvalue := newIgnoreDiffsCustomization.Customization
+			newRC[subkey] = subvalue
+		}
+	}
+	return newRC
 }
 
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
@@ -331,9 +360,27 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
+
+	// new format with subkeys for ResourceCustomizations
+	if c := getNewResourceCustomizations(cr); c != nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	}
+
+	// old format of ResourceCustomizations, use should not be encouraged but is supported for now
 	if c := getResourceCustomizations(cr); c != "" {
+		// Emit event providing users with deprecation notice for ResourceCustomization
+		if !ResourceCustomizationDeprecationWarningEmitted {
+			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new format, ResourceCustomizationsNew, instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
+			ResourceCustomizationDeprecationWarningEmitted = true
+			if err != nil {
+				return err
+			}
+		}
 		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
 	}
+
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
