@@ -78,6 +78,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// Skip terminating namespaces.
+		if namespace.DeletionTimestamp != nil {
+			continue
+		}
+
 		list := &argoprojv1a1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err := r.Client.List(context.TODO(), list, listOption)

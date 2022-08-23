@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -65,6 +66,62 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+}
+
+// This test validates the behavior of the operator reconciliation when a managed namespace is not properly terminated
+// or remains terminating may be because of some resources in the namespace not getting deleted.
+func TestReconcileRoleBinding_for_Managed_Teminating_Namespace(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespace(r, "managedNS", a.Namespace))
+
+	// Verify role bindings are created for the new namespace with managed-by label
+	roleBinding := &rbacv1.RoleBinding{}
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	expectedRules := policyRuleForApplicationController()
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRules, a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS"}, roleBinding))
+
+	// Create a configmap with an invalid finalizer in the "managedNS".
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummy",
+			Namespace: "managedNS",
+			Finalizers: []string{
+				"nonexistent.finalizer/dummy",
+			},
+		},
+	}
+	assert.NoError(t, r.Client.Create(
+		context.TODO(), configMap))
+
+	// Delete the newNamespaceTest ns.
+	// Verify that operator should not reconcile back to create the roleBindings in terminating ns.
+	newNS := &corev1.Namespace{}
+	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	r.Client.Delete(context.TODO(), newNS)
+
+	// Verify that the namespace exists and is in terminating state.
+	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
+	assert.NotEqual(t, newNS.DeletionTimestamp, nil)
+
+	err := r.reconcileRoleBinding(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	// Verify that the role bindings are deleted
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding)
+	assert.ErrorContains(t, err, "not found")
+
+	// Create another managed namespace
+	assert.NoError(t, createNamespace(r, "managedNS2", a.Namespace))
+
+	// Check if roleBindings are created for the new namespace as well
+	err = r.reconcileRoleBinding(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding))
 }
 
 func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {

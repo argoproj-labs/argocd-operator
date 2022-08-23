@@ -95,6 +95,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	}
 
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// Skip terminating namespaces.
+		if namespace.DeletionTimestamp != nil {
+			continue
+		}
+
 		list := &argoprojv1a1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err := r.Client.List(context.TODO(), list, listOption)
