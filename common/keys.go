@@ -170,6 +170,10 @@ const (
 	// ArgoCDKeyTLSPrivateKey is the key for TLS private keys.
 	ArgoCDKeyTLSPrivateKey = corev1.TLSPrivateKeyKey
 
+	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
+	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
+	ArgoCDPolicyMatcherMode = "policy.matchMode"
+
 	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
 	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
 

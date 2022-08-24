@@ -842,6 +842,7 @@ Name | Default | Description
 --- | --- | ---
 DefaultPolicy | `role:readonly` | The `policy.default` property in the `argocd-rbac-cm` ConfigMap. The name of the default role which Argo CD will falls back to, when authorizing API requests.
 Policy | [Empty] | The `policy.csv` property in the `argocd-rbac-cm` ConfigMap. CSV data containing user-defined RBAC policies and role definitions.
+PolicyMatcherMode | `glob` | The `policy.matchMode` property in the `argocd-rbac-cm` ConfigMap. There are two options for this, 'glob' for glob matcher and 'regex' for regex matcher.
 Scopes | `[groups]` | The `scopes` property in the `argocd-rbac-cm` ConfigMap.  Controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
 
 ### RBAC Example
@@ -858,6 +859,7 @@ metadata:
 spec:
   rbac:
     defaultPolicy: 'role:readonly'
+    policyMatcherMode: 'glob'
     policy: |
       g, system:cluster-admins, role:admin
     scopes: '[groups]'
