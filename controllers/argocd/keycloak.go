@@ -407,6 +407,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 							},
 						},
 					},
+					NodeSelector: common.DefaultNodeSelector(),
 				},
 			},
 			Triggers: appsv1.DeploymentTriggerPolicies{
@@ -418,7 +419,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		dc.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		dc.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		dc.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 

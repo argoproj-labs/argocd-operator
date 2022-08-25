@@ -6,7 +6,7 @@ require (
 	github.com/argoproj/argo-cd/v2 v2.4.7
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.2.3
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/json-iterator/go v1.1.12
 	github.com/keycloak/keycloak-operator v0.0.0-20220104081708-ab17327be9e1
 	github.com/onsi/ginkgo v1.16.5
@@ -17,7 +17,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.7.1
-	golang.org/x/mod v0.5.1-0.20210830214625-1b1db11ec8f4
+	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.3
 	k8s.io/apimachinery v0.23.3

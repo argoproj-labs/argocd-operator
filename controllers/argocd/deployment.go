@@ -372,11 +372,14 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 					common.ArgoCDKeyName: name,
 				},
 			},
+			Spec: corev1.PodSpec{
+				NodeSelector: common.DefaultNodeSelector(),
+			},
 		},
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = cr.Spec.NodePlacement.NodeSelector
+		deploy.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	return deploy

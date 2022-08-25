@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-application-controller
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux 
+        key1: value1
+      tolerations: 
+      - key: key1
+        operator: Equal
+        value: value1
+        effect: NoSchedule  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-redis
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
+        key1: value1
+      tolerations: 
+      - key: key1
+        operator: Equal
+        value: value1
+        effect: NoSchedule  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-repo-server
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
+        key1: value1
+      tolerations: 
+      - key: key1
+        operator: Equal
+        value: value1
+        effect: NoSchedule  
+        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-server
+spec:
+  template:
+    spec:
+      nodeSelector: 
+        kubernetes.io/os: linux
+        key1: value1
+      tolerations: 
+      - key: key1
+        operator: Equal
+        value: value1
+        effect: NoSchedule  
