@@ -885,6 +885,14 @@ spec:
           verbs:
           - '*'
         - apiGroups:
+          - config.openshift.io
+          resources:
+          - clusterversions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - monitoring.coreos.com
           resources:
           - prometheuses
@@ -986,7 +994,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator@sha256:f6fc8c310ff6c86d9e0b5acbc16de7dc14d0f5dd813094e380d636482bccb090
+                image: quay.io/argoprojlabs/argocd-operator:v0.3.0
                 livenessProbe:
                   httpGet:
                     path: /healthz

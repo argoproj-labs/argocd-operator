@@ -19,6 +19,34 @@ spec:
      enabled: true
 ```
 
+If your keycloak is setup with a certificate which is not signed by one of the well known certificate authorities you can provide a custom certificate which will be used in verifying the Keycloak's TLS certificate when communicating with it.
+Add the rootCA to your Argo CD custom resource `.spec.sso.rootCA` field. The operator reconciles to this change and updates the `oidc.config` in `argocd-cm` configmap with the PEM encoded root certificate.
+
+!!! note
+    Argo CD server pod should be restarted after updating the `.spec.sso.rootCA`.
+
+Please refer to the below example:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec:
+  sso:
+    provider: keycloak
+    rootCA: |
+      ---- BEGIN CERTIFICATE ----
+      This is a dummy certificate
+      Please place this section with appropriate rootCA
+      ---- END CERTIFICATE ----
+  server:
+    route:
+      enabled: true
+```
+
 ## Create
 
 Create a new Argo CD Instance in the `argocd` namespace using the provided example.
