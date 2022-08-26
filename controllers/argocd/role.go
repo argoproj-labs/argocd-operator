@@ -96,6 +96,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// Skip terminating namespaces.
+		if namespace.DeletionTimestamp != nil {
+			continue
+		}
+
 		customRole := getCustomRoleName(name)
 		role := newRole(name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {

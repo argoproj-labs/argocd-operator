@@ -104,6 +104,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	}
 
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// Skip terminating namespaces.
+		if namespace.DeletionTimestamp != nil {
+			continue
+		}
+
 		// get expected name
 		roleBinding := newRoleBindingWithname(name, cr)
 		roleBinding.Namespace = namespace.Name
