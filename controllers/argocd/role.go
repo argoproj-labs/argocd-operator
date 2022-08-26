@@ -96,6 +96,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
+		// Skip terminating namespaces.
+		if namespace.DeletionTimestamp != nil {
+			continue
+		}
+
 		// only create dexServer and redisHa roles for the namespace where the argocd instance is deployed
 		if cr.ObjectMeta.Namespace != namespace.Name && (name == dexServer || name == redisHa) {
 			break
