@@ -490,6 +490,8 @@ type ArgoCDSSOSpec struct {
 	Provider SSOProviderType `json:"provider,omitempty"`
 	// Resources defines the Compute Resources required by the container for SSO.
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Custom root CA certificate for communicating with the Keycloak OIDC provider
+	RootCA string `json:"rootCA,omitempty"`
 	// VerifyTLS set to false disables strict TLS validation.
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 	// Version is the SSO container image tag.

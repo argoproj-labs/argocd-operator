@@ -1107,6 +1107,7 @@ Name | Default | Description
 Image | `registry.redhat.io/rh-sso-7/sso74-openshift-rhel8` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the only supported option is keycloak.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
+RootCA | "" | root CA certificate for communicating with the OIDC provider
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | `sha256:39d752173fc97c29373cd44477b48bcb078531def0a897ee81a60e8d1d0212cc` | The tag to use with the keycloak container image.
 

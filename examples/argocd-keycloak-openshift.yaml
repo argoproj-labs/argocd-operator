@@ -5,6 +5,7 @@ metadata:
 spec:
   sso:
     provider: keycloak
+    verifyTLS: false
   server:
     route:
       enabled: true
