@@ -132,7 +132,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.2.2
+  name: argocd-operator.v0.2.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -974,7 +974,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.2.2
+                image: quay.io/argoprojlabs/argocd-operator:v0.2.1
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1056,4 +1056,4 @@ spec:
   provider:
     name: Argo CD Community
   replaces: argocd-operator.v0.2.0
-  version: 0.2.2
+  version: 0.2.1

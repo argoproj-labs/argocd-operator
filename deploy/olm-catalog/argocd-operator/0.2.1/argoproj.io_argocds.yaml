@@ -4287,6 +4287,10 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  rootCA:
+                    description: Custom root CA certificate for communicating with
+                      the Keycloak OIDC provider
+                    type: string
                   verifyTLS:
                     description: VerifyTLS set to false disables strict TLS validation.
                     type: boolean
