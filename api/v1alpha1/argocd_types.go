@@ -494,6 +494,8 @@ type ArgoCDSSOSpec struct {
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
 	// Version is the SSO container image tag.
 	Version string `json:"version,omitempty"`
+	// Custom root CA certificate for communicating with the Keycloak OIDC provider
+	RootCA string `json:"rootCA,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.

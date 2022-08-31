@@ -11,6 +11,6 @@ configMapGenerator:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- digest: sha256:f6fc8c310ff6c86d9e0b5acbc16de7dc14d0f5dd813094e380d636482bccb090
-  name: controller
+- name: controller
   newName: quay.io/argoprojlabs/argocd-operator
+  newTag: v0.3.0
