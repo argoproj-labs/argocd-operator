@@ -7,10 +7,10 @@ kind: TestStep
 commands:
 - script: |
     # Set the needed parameter for the authorization
-    KEYCLOAK_URL=$(oc get route keycloak -n argocd-e2e-rhsso -o jsonpath='{.spec.host}')
+    KEYCLOAK_URL=$(oc get route keycloak -n $NAMESPACE -o jsonpath='{.spec.host}')
     tenant=argocd
-    USER=$(oc get secret keycloak-secret -n argocd-e2e-rhsso -o jsonpath='{.data.SSO_USERNAME}' | base64 --decode)
-    PASSWORD=$(oc get secret keycloak-secret -n argocd-e2e-rhsso -o jsonpath='{.data.SSO_PASSWORD}' | base64 --decode)
+    USER=$(oc get secret keycloak-secret -n $NAMESPACE -o jsonpath='{.data.SSO_USERNAME}' | base64 --decode)
+    PASSWORD=$(oc get secret keycloak-secret -n $NAMESPACE -o jsonpath='{.data.SSO_PASSWORD}' | base64 --decode)
     GRANT_TYPE=password
     CLIENT_ID=admin-cli
     
