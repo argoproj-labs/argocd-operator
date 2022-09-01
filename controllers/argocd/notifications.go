@@ -300,7 +300,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 	}
 
 	podSpec.Containers = []corev1.Container{{
-		Command:         getNotificationsCommand(),
+		Command:         getNotificationsCommand(cr),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            common.ArgoCDNotificationsControllerComponent,
@@ -523,10 +523,13 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) 
 	return nil
 }
 
-func getNotificationsCommand() []string {
+func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-notifications")
+
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
 
 	return cmd
 }
