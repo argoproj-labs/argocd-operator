@@ -558,7 +558,8 @@ The following properties are available for configuring the Notifications control
 
 Name | Default | Description
 --- | --- | ---
-Enabled | `false` | The toggle that determines whether notifications-controller should be started or not.  
+Enabled | `false` | The toggle that determines whether notifications-controller should be started or not.
+Env | [Empty] | Environment to set for the notifications workloads.
 Image | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
 Version | *(recent Argo CD version)* | The tag to use with the Notifications container image.
 Resources | [Empty] | The container compute resources.
