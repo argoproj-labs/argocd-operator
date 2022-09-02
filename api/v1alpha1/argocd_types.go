@@ -302,7 +302,7 @@ type ArgoCDNotifications struct {
 	// Enabled defines whether argocd-notifications controller should be deployed or not
 	Enabled bool `json:"enabled"`
 
-	// Env lets you specify environment for notifications pods
+	// Env let you specify environment variables for Notifications pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// Image is the Argo CD Notifications image (optional)

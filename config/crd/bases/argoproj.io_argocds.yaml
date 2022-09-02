@@ -846,7 +846,7 @@ spec:
                       should be deployed or not
                     type: boolean
                   env:
-                    description: Env lets you specify environment for notifications
+                    description: Env let you specify environment variables for Notifications
                       pods
                     items:
                       description: EnvVar represents an environment variable present
