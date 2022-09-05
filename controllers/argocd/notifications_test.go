@@ -281,3 +281,66 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-cm", Namespace: a.Namespace}, testCm)
 	assertNotFound(t, err)
 }
+
+func TestReconcileNotifications_testEnvVars(t *testing.T) {
+
+	envMap := []corev1.EnvVar{
+		{
+			Name:  "foo",
+			Value: "bar",
+		},
+	}
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.Env = envMap
+	})
+
+	r := makeTestReconciler(t, a)
+
+	sa := corev1.ServiceAccount{}
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(envMap, deployment.Spec.Template.Spec.Containers[0].Env); diff != "" {
+		t.Fatalf("failed to reconcile notifications-controller deployment env:\n%s", diff)
+	}
+
+	// Verify any manual updates to the env vars should be overridden by the operator.
+	unwantedEnv := []corev1.EnvVar{
+		{
+			Name:  "foo",
+			Value: "bar",
+		},
+		{
+			Name:  "ping",
+			Value: "pong",
+		},
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Env = unwantedEnv
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(envMap, deployment.Spec.Template.Spec.Containers[0].Env); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
+	}
+}
