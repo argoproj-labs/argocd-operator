@@ -8,6 +8,9 @@ RUN apt-get update && \
     apt-get install -y curl python3-pip && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Install the AWS CLI
+RUN pip3 install awscli
+
 # Install the Google Cloud SDK (CLI)
 RUN curl -sL https://sdk.cloud.google.com > /tmp/install.sh && \
     bash /tmp/install.sh --disable-prompts --install-dir=/home/argocd && \
