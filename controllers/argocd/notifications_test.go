@@ -144,7 +144,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
 	want := []corev1.Container{{
-		Command:         []string{"argocd-notifications"},
+		Command:         []string{"argocd-notifications", "--loglevel", "info"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
