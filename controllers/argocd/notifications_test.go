@@ -144,7 +144,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
 	want := []corev1.Container{{
-		Command:         []string{"argocd-notifications"},
+		Command:         []string{"argocd-notifications", "--loglevel", "info"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
@@ -341,6 +341,65 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 		deployment))
 
 	if diff := cmp.Diff(envMap, deployment.Spec.Template.Spec.Containers[0].Env); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
+	}
+}
+
+func TestReconcileNotifications_testLogLevel(t *testing.T) {
+
+	testLogLevel := "debug"
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+		a.Spec.Notifications.LogLevel = testLogLevel
+	})
+
+	r := makeTestReconciler(t, a)
+
+	sa := corev1.ServiceAccount{}
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedCMD := []string{
+		"argocd-notifications",
+		"--loglevel",
+		"debug",
+	}
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("failed to reconcile notifications-controller deployment logLevel:\n%s", diff)
+	}
+
+	// Verify any manual updates to the logLevel should be overridden by the operator.
+	unwantedCommand := []string{
+		"argocd-notifications",
+		"--logLevel",
+		"info",
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
 		t.Fatalf("operator failed to override the manual changes to notification controller:\n%s", diff)
 	}
 }
