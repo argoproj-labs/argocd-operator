@@ -319,7 +319,7 @@ The ID for the Service Principal that will be used to access Azure Storage.
 
 **azure.service.cert**
 
-The certificate for authenticating the Service Principal that will be used to access Azure Storage.
+The combination of certificate and private key for authenticating the Service Principal that will be used to access Azure Storage.
 
 **azure.storage.account**
 

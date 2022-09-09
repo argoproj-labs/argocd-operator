@@ -8,7 +8,8 @@ type: Opaque
 data:
   azure.container.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
   azure.service.id: c2VydmljZV9pZA==
-  azure.service.cert: c2VydmljZV9jZXJ0
+  azure.service.cert: |
+    # base64 encrypted combination of the client.crt and client.key of your generated certificate.
   azure.storage.account: c3RvcmFnZV9hY2NvdW50
   azure.tenant.id: dGVuYW50X2lk
 ---
