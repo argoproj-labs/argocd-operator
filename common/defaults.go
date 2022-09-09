@@ -164,10 +164,10 @@ const (
 	ArgoCDDefaultGrafanaVersion = "sha256:afef23a1b4cf159ec3180aac3ad693c10e560657313bfe3ec81f344ace6d2f05" // 6.7.2
 
 	// ArgoCDDefaultHelpChatURL is the default help chat URL.
-	ArgoCDDefaultHelpChatURL = "https://mycorp.slack.com/argo-cd"
+	ArgoCDDefaultHelpChatURL = ""
 
 	// ArgoCDDefaultHelpChatText is the default help chat text.
-	ArgoCDDefaultHelpChatText = "Chat now!"
+	ArgoCDDefaultHelpChatText = ""
 
 	// ArgoCDDefaultIngressPath is the path to use for the Ingress when not specified.
 	ArgoCDDefaultIngressPath = "/"
