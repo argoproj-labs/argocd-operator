@@ -61,7 +61,7 @@ push_aws () {
     echo "pushing argo-cd backup to aws"
     BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
     BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
-    aws s3 mb ${BACKUP_BUCKET_URI}
+    aws s3 mb ${BACKUP_BUCKET_URI} --region us-east-1
     aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
     aws s3 cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
 }

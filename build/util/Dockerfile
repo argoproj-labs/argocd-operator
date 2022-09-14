@@ -1,24 +1,43 @@
-# Argo CD v2.5.3
-FROM quay.io/argoproj/argocd@sha256:8283a9f06033c2377dc61b03daf4994a3ab961c53d79ed32b9aebadf79bb4858
+FROM quay.io/argoproj/argocd as argocd
+
+# Final Image
+FROM docker.io/library/ubuntu:22.04
 
 USER root
 
-# Ensure system dependencies are installed
-RUN apt-get update && \
-    apt-get install -y curl python3-pip && \
+ENV ARGOCD_USER_ID=999
+
+RUN groupadd -g $ARGOCD_USER_ID argocd && \
+    useradd -r -u $ARGOCD_USER_ID -g argocd argocd && \
+    mkdir -p /home/argocd && \
+    chown argocd:0 /home/argocd && \
+    chmod g=u /home/argocd && \
+    apt-get update && \
+    apt-get dist-upgrade -y && \
+    apt-get install -y \
+    git git-lfs tini curl python3-pip gpg tzdata && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install the AWS CLI
 RUN pip3 install awscli
+
+# Install the Microsoft Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install the Google Cloud SDK (CLI)
 RUN curl -sL https://sdk.cloud.google.com > /tmp/install.sh && \
     bash /tmp/install.sh --disable-prompts --install-dir=/home/argocd && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install the Microsoft Azure CLI
-RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ENV PATH="/usr/local/google-cloud-sdk/bin:${PATH}" 
+
+COPY entrypoint.sh /usr/local/bin/uid_entrypoint.sh
+RUN chmod +x /usr/local/bin/uid_entrypoint.sh
+
+# Install Argo CD CLI from argocd
+COPY --from=argocd /usr/local/bin/argocd /usr/local/bin/argocd
 
 # Copy util wrapper script
 COPY util.sh /usr/local/bin/argocd-operator-util
