@@ -7,7 +7,8 @@ metadata:
 spec:
   sso:
     provider: keycloak
-    verifyTLS: false
+    keycloak:
+     verifyTLS: false
   server:
     ingress:
       enabled: true
