@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -349,7 +348,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
 		// openshift dex config
-		if dexConfig == "" && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+		if dexConfig == "" && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &argoprojv1a1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
 			(cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth)) {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
@@ -388,7 +387,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
 			// retain oidc.config during reconcilliation when keycloak is configured
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}

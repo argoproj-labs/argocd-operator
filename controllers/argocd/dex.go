@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -35,14 +34,14 @@ type DexConnector struct {
 // backward compatibility and not introducing breaking changes to existing user workflows
 func UseDex(cr *argoprojv1a1.ArgoCD) bool {
 	if cr.Spec.SSO != nil {
-		return cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex
+		return cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex
 	}
 	if isDexDisabled() {
 		return false
 	}
 	// we don't care about the case where dex is enabled either explicitly through DISABLE_DEX (or implicitly due to the flag being unset)
 	// in terms of creation/deletion of resources unless there is existing configuration in place that must be honored
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) && (len(cr.Spec.Dex.Config) > 0 || cr.Spec.Dex.OpenShiftOAuth) {
 		return true
 	}
 	return false
@@ -112,7 +111,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 
 	// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
 	// openshift dex config
-	if len(desired) <= 0 && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
+	if len(desired) <= 0 && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &argoprojv1a1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
 		cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
@@ -151,7 +150,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 	groups := []string{}
 
 	// Allow override of groups from CR
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Groups != nil {
+	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, argoprojv1a1.ArgoCDDexSpec{}) && cr.Spec.Dex.Groups != nil {
 		groups = cr.Spec.Dex.Groups
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Groups != nil {
 		groups = cr.Spec.SSO.Dex.Groups
@@ -185,7 +184,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
 
 	// if openShiftOAuth set to false in both `.spec.dex` and `.spec.sso.dex`, no need to configure it
-	if (cr.Spec.Dex == nil || reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth) &&
+	if (cr.Spec.Dex == nil || reflect.DeepEqual(cr.Spec.Dex, &argoprojv1a1.ArgoCDDexSpec{}) || !cr.Spec.Dex.OpenShiftOAuth) &&
 		(cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth) {
 		return nil // OpenShift OAuth not enabled, move along...
 	}

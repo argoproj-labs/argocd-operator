@@ -349,6 +349,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
+
 	disableDexEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
 		Message: "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex can be enabled/disabled through `.spec.sso`",
