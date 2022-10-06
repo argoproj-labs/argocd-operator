@@ -945,7 +945,7 @@ The configuration to customize resource behavior. This property maps directly to
 
 ### Resource Customizations Example
 
-The following example defines a custom PV health check in the `argocd-cm` ConfigMap using the `ResourceCustomizations` property on the `ArgoCD` resource.
+The following example defines a custom PVC health check in the `argocd-cm` ConfigMap using the `ResourceCustomizations` property on the `ArgoCD` resource.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
