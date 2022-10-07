@@ -156,6 +156,22 @@ spec:
     resources: {}
 ```
 
+The following example shows how to set command line parameters using the env variable 
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    env:
+    - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
+      value: '120'    
+```
+
 ## Dex Options
 
 !!! warning 
