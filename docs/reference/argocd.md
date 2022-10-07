@@ -172,26 +172,6 @@ spec:
       value: '120'    
 ```
 
-[Refer for more details] (https://argo-cd.readthedocs.io/en/stable/operator-manual/server-commands/additional-configuration-method/) 
-
-If you want to use the config map (as mentioned in the link above) to set the cmd variables, you can add the following to the CR to refer to the environment variable value
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: controller
-spec:
-  controller:
-    env:
-    - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
-      valueFrom:
-        configMapKeyRef:
-          key: controller.repo.server.timeout.seconds
-          name: argocd-cmd-params-cm     
-```
 ## Dex Options
 
 !!! warning 
