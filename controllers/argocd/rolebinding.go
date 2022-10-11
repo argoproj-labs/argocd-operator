@@ -68,7 +68,6 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
 func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
-
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -195,6 +194,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -206,6 +206,11 @@ func getCustomRoleName(name string) string {
 		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
 	}
 	return ""
+}
+
+// Returns the name of the role for the supported namespaces for ArgoCDServer in the format of "SupportedNameSpace_SERVER_CLUSTER_ROLE"
+func getCustomRoleNameForSupportedNamespaces(name string, namespace string) string {
+	return fmt.Sprintf("%s_%s", namespace, common.ArgoCDServerClusterRoleEnvName)
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoprojv1a1.ArgoCD) error {

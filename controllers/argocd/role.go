@@ -30,6 +30,17 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 	}
 }
 
+func newRoleForSupportedNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
+	return &v1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getCustomRoleNameForSupportedNamespaces(name, namespace),
+			Namespace: namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+		Rules: rules,
+	}
+}
+
 func generateResourceName(argoComponentName string, cr *argoprojv1a1.ArgoCD) string {
 	return cr.Name + "-" + argoComponentName
 }
@@ -66,6 +77,13 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 		if _, err := r.reconcileClusterRole(clusterParam.name, clusterParam.policyRule, cr); err != nil {
 			return err
 		}
+	}
+
+	log.Info("reconciling roles for supported namespaces")
+	policyRuleForSupportedNamespaces := policyRuleForServerSupportedNamespaces()
+	// reconcile roles is supported namespaces for ArgoCD Server
+	if _, err := r.reconcileRoleForSupportedNamespaces(common.ArgoCDServerComponent, policyRuleForSupportedNamespaces, cr); err != nil {
+		return err
 	}
 
 	return nil
@@ -139,6 +157,49 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 			log.Info("deleting the existing Dex role because dex is not configured")
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		// if the Rules differ, update the Role
+		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+			existingRole.Rules = role.Rules
+			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
+				return nil, err
+			}
+		}
+		roles = append(roles, &existingRole)
+	}
+	return roles, nil
+}
+
+func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+	var roles []*v1.Role
+
+	// create policy rules for each supported namespace for ArgoCD Server
+	for _, namespace := range cr.Spec.Server.SourceNamespaces {
+
+		list := &argoprojv1a1.ArgoCDList{}
+		listOption := &client.ListOptions{Namespace: namespace}
+		err := r.Client.List(context.TODO(), list, listOption)
+		if err != nil {
+			return nil, err
+		}
+		role := newRoleForSupportedNamespaces(name, namespace, policyRules, cr)
+		if err := applyReconcilerHook(cr, role, ""); err != nil {
+			return nil, err
+		}
+		role.Namespace = namespace
+		existingRole := v1.Role{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace}, &existingRole)
+		if err != nil {
+			log.Info(err.Error())
+			if !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+			}
+			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
+			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return nil, err
 			}
 			continue

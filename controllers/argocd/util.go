@@ -136,6 +136,10 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
+	if cr.Spec.Controller.SourceNamespaces != nil && len(cr.Spec.Controller.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.Controller.SourceNamespaces, ",")))
+	}
+
 	if cr.Spec.Controller.AppSync != nil {
 		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
 	}

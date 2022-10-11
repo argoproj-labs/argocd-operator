@@ -105,6 +105,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// SourceNamespaces defines the namespaces application resources are allowed to be created in
+	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -532,6 +535,9 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
+	// SourceNamespaces defines the namespaces application resources are allowed to be created in
+	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
