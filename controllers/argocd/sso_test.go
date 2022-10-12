@@ -343,9 +343,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
-	SSOSpecDeprecationWarningEmitted = false
-	DexSpecDeprecationWarningEmitted = false
-	DisableDexDeprecationWarningEmitted = false
+	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
 	disableDexEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",

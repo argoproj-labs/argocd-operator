@@ -36,14 +36,22 @@ const (
 	multipleSSOConfiguration string = "multiple SSO configuration: "
 )
 
-var (
-	SSOSpecDeprecationWarningEmitted    bool = false
-	DexSpecDeprecationWarningEmitted    bool = false
-	DisableDexDeprecationWarningEmitted bool = false
+// DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
+// deprecation notice
+type DeprecationEventEmissionStatus struct {
+	SSOSpecDeprecationWarningEmitted    bool
+	DexSpecDeprecationWarningEmitted    bool
+	DisableDexDeprecationWarningEmitted bool
+}
 
+var (
 	templateAPIFound     = false
 	ssoConfigLegalStatus string
 )
+
+// map that stores the namespace that contains an Argo CD instance as key, and a DeprecationEventEmissionStatus struct as value, which is responsible for tracking which
+// events have been emitted for the instance in that particular namespace. This is temporary and can be removed in v0.0.6 once we have provided enough deprecation notice.
+var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
 // IsTemplateAPIAvailable returns true if the template API is present.
 func IsTemplateAPIAvailable() bool {
@@ -70,28 +78,41 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	// reset ssoConfigLegalStatus at the beginning of each SSO reconciliation round
 	ssoConfigLegalStatus = ssoLegalUnknown
 
-	// Emit events warning users about deprecation notice for soon-to-be-deprecated fields in the CR
+	// Emit events warning users about deprecation notice for soon-to-be-removed fields in the CR if being used
+
 	if env := os.Getenv("DISABLE_DEX"); env != "" {
-		// Emit event providing users with deprecation notice for `DISABLE_DEX` if not emitted already
-		if !DisableDexDeprecationWarningEmitted {
+		// Emit event for each instance providing users with deprecation notice for `DISABLE_DEX` if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.DisableDexDeprecationWarningEmitted {
 			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex can be enabled/disabled through `.spec.sso`", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			DisableDexDeprecationWarningEmitted = true
 			if err != nil {
 				return err
 			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{DisableDexDeprecationWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.DisableDexDeprecationWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
 		}
 
 	}
 
 	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) {
 
-		// Emit event providing users with deprecation notice for `.spec.dex` if not emitted already
-		if !DexSpecDeprecationWarningEmitted {
+		// Emit event for each instance providing users with deprecation notice for `.spec.dex` if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.DexSpecDeprecationWarningEmitted {
 			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex configuration can be managed through `.spec.sso.dex`", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			DexSpecDeprecationWarningEmitted = true
 			if err != nil {
 				return err
 			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{DexSpecDeprecationWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.DexSpecDeprecationWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
 		}
 
 	}
@@ -99,15 +120,20 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	if cr.Spec.SSO != nil && (cr.Spec.SSO.Image != "" || cr.Spec.SSO.Version != "" ||
 		cr.Spec.SSO.VerifyTLS != nil || cr.Spec.SSO.Resources != nil) {
 
-		// Emit event providing users with deprecation notice for `.spec.SSO` subfields if not emitted already
-		if !SSOSpecDeprecationWarningEmitted {
+		// Emit event for each instance providing users with deprecation notice for `.spec.SSO` subfields if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.SSOSpecDeprecationWarningEmitted {
 			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Keycloak configuration can be managed through `.spec.sso.keycloak`", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			SSOSpecDeprecationWarningEmitted = true
 			if err != nil {
 				return err
 			}
-		}
 
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{SSOSpecDeprecationWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.SSOSpecDeprecationWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
+		}
 	}
 
 	// case 1
