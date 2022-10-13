@@ -49,8 +49,9 @@ var (
 	ssoConfigLegalStatus string
 )
 
-// map that stores the namespace that contains an Argo CD instance as key, and a DeprecationEventEmissionStatus struct as value, which is responsible for tracking which
-// events have been emitted for the instance in that particular namespace. This is temporary and can be removed in v0.0.6 once we have provided enough deprecation notice.
+// DeprecationEventEmissionTracker map stores the namespace containing ArgoCD instance as key and DeprecationEventEmissionStatus as value,
+// where DeprecationEventEmissionStatus tracks the events that have been emitted for the instance in the particular namespace.
+// This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
 // IsTemplateAPIAvailable returns true if the template API is present.
