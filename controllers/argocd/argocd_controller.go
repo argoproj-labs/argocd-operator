@@ -103,6 +103,12 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
 				return reconcile.Result{}, err
 			}
+
+			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
+			// is created in the same namespace in the future, that instance is appropriately tracked
+			if _, ok := DeprecationEventEmissionTracker[argocd.Namespace]; ok {
+				delete(DeprecationEventEmissionTracker, argocd.Namespace)
+			}
 		}
 		return reconcile.Result{}, nil
 	}
