@@ -31,7 +31,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -863,12 +862,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t 
 	}
 }
 
-func TestReconcile_emitEventOnDeprecatedResourceCustomization(t *testing.T) {
+func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
-	ResourceCustomizationDeprecationWarningEmitted = false
+	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
-	resourceCustomizationEvent := &corev1.Event{
+	resourceCustomizationsEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
 		Message: "ResourceCustomizations is deprecated, please use the new format, ResourceCustomizationsNew, instead.",
 		Action:  "Deprecated",
@@ -876,15 +875,15 @@ func TestReconcile_emitEventOnDeprecatedResourceCustomization(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		argoCD     *argov1alpha1.ArgoCD
+		argoCD     *argoprojv1alpha1.ArgoCD
 		wantEvents []*corev1.Event
 	}{
 		{
 			name: "ResourceCustomizations used",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
 				ac.Spec.ResourceCustomizations = "testing: testing"
 			}),
-			wantEvents: []*corev1.Event{resourceCustomizationEvent},
+			wantEvents: []*corev1.Event{resourceCustomizationsEvent},
 		},
 	}
 	for _, test := range tests {
