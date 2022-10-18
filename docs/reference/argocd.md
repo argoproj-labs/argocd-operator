@@ -957,7 +957,10 @@ spec:
 
 ## Resource Customizations
 
-There are two ways to customize resource behavior: with subkeys (`resourceCustomizationsNew`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while `resourceCustomizationsNew` maps directly to the respective subkey in the `argocd-cm`. It is encouraged to use `resourceCustomizationsNew` over `resourceCustomizations`.
+There are two ways to customize resource behavior: with subkeys (`resourceCustomizationsNew`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while `resourceCustomizationsNew` maps directly to the respective subkey in the `argocd-cm`.
+
+!!! warning 
+    It is encouraged to use `resourceCustomizationsNew` over `resourceCustomizations`. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
 
 ### Resource Customizations (with subkeys) Example
 

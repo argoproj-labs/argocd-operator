@@ -144,17 +144,15 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	return scopes
 }
 
-var (
-	ResourceCustomizationDeprecationWarningEmitted bool = false
-)
-
 // GetResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap. Please note that ResourceCustomizations are being deprecated in favor of ResourceCustomizationsNew.
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
 	if cr.Spec.ResourceCustomizations != "" {
 		rc = cr.Spec.ResourceCustomizations
 	}
-	log.Info("You are using an old format for ResourceCustomizations, please use the new format.")
+
+	// TODO: change this to log.warn once it's available with zap logger
+	log.Info("[WARNING] You are using an old format for ResourceCustomizations, please use the new format.")
 	return rc
 }
 
@@ -370,13 +368,20 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	// old format of ResourceCustomizations, use should not be encouraged but is supported for now
 	if c := getResourceCustomizations(cr); c != "" {
-		// Emit event providing users with deprecation notice for ResourceCustomization
-		if !ResourceCustomizationDeprecationWarningEmitted {
+
+		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
 			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new format, ResourceCustomizationsNew, instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			ResourceCustomizationDeprecationWarningEmitted = true
 			if err != nil {
 				return err
 			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{ResourceCustomizationsDeprecationWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
 		}
 		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
 	}
