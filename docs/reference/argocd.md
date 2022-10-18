@@ -957,7 +957,125 @@ spec:
 
 ## Resource Customizations
 
-The configuration to customize resource behavior. This property maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap.
+There are two ways to customize resource behavior: with subkeys (`resourceCustomizationsNew`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while `resourceCustomizationsNew` maps directly to the respective subkey in the `argocd-cm`. It is encouraged to use `resourceCustomizationsNew` over `resourceCustomizations`.
+
+### Resource Customizations (with subkeys) Example
+
+Keys for `resourceCustomizationsNew` are in the form: `resource.customizations.ignoreDifferences.<group_kind>`, `resource.customizations.health.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. 
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: resource-customizations
+spec:
+  resourceCustomizationsNew:
+    health:
+      - group: certmanager.k8s.io
+        kind: Certificate
+        customization: |
+          hs = {}
+          if obj.status ~= nil then
+            if obj.status.conditions ~= nil then
+              for i, condition in ipairs(obj.status.conditions) do
+                if condition.type == "Ready" and condition.status == "False" then
+                  hs.status = "Degraded"
+                  hs.message = condition.message
+                  return hs
+                end
+                if condition.type == "Ready" and condition.status == "True" then
+                  hs.status = "Healthy"
+                  hs.message = condition.message
+                  return hs
+                end
+              end
+            end
+          end
+          hs.status = "Progressing"
+          hs.message = "Waiting for certificate"
+          return hs
+        actions:
+        - group: apps
+          kind: Deployment
+          customization: |
+            discovery.lua: |
+              actions = {}
+              actions["restart"] = {}
+              return actions
+            definitions:
+              - name: restart
+                # Lua Script to modify the obj
+                action.lua: |
+                  local os = require("os")
+                  if obj.spec.template.metadata == nil then
+                      obj.spec.template.metadata = {}
+                  end
+                  if obj.spec.template.metadata.annotations == nil then
+                      obj.spec.template.metadata.annotations = {}
+                  end
+                  obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+                  return obj
+        ignoreDifferences:
+        - group: admissionregistration.k8s.io
+          kind: MutatingWebhookConfiguration
+          customization: |
+          	jsonPointers: |
+            - /webhooks/0/clientConfig/caBundle
+```
+ After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+
+```
+resource.customizations.actions.apps_Deployment:
+----
+discovery.lua: |
+  actions = {}
+  actions["restart"] = {}
+  return actions
+definitions:
+  - name: restart
+    # Lua Script to modify the obj
+    action.lua: |
+      local os = require("os")
+      if obj.spec.template.metadata == nil then
+          obj.spec.template.metadata = {}
+      end
+      if obj.spec.template.metadata.annotations == nil then
+          obj.spec.template.metadata.annotations = {}
+      end
+      obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+      return obj
+
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration
+----
+jsonPointers: |
+- /webhooks/0/clientConfig/caBundle
+
+resource.customizations.health.certmanager.k8s.io_Certificate:
+----
+hs = {}
+if obj.status ~= nil then
+  if obj.status.conditions ~= nil then
+    for i, condition in ipairs(obj.status.conditions) do
+      if condition.type == "Ready" and condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.type == "Ready" and condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+end
+hs.status = "Progressing"
+hs.message = "Waiting for certificate"
+return hs
+
+```
 
 ### Resource Customizations Example
 
