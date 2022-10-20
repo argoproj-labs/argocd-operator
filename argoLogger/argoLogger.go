@@ -38,20 +38,20 @@ func LoggerWithoutContext() *argoLogger {
 
 var zapLog *zap.Logger
 
-func (aLog *argoLogger) Info(message string, fields ...argoField) {
-	aLog.z.Info(message, getZapFields(fields...)...)
+func (l *argoLogger) Info(message string, fields ...argoField) {
+	l.z.Info(message, getZapFields(fields...)...)
 }
 
-func (aLog *argoLogger) Debug(message string, fields ...argoField) {
-	aLog.z.Debug(message, getZapFields(fields...)...)
+func (l *argoLogger) Debug(message string, fields ...argoField) {
+	l.z.Debug(message, getZapFields(fields...)...)
 }
 
-func (aLog *argoLogger) Error(message string, fields ...argoField) {
-	aLog.z.Error(message, getZapFields(fields...)...)
+func (l *argoLogger) Error(message string, fields ...argoField) {
+	l.z.Error(message, getZapFields(fields...)...)
 }
 
-func (aLog *argoLogger) Fatal(message string, fields ...argoField) {
-	aLog.z.Fatal(message, getZapFields(fields...)...)
+func (l *argoLogger) Fatal(message string, fields ...argoField) {
+	l.z.Fatal(message, getZapFields(fields...)...)
 }
 
 func getZapFields(fields ...argoField) []zapcore.Field {
