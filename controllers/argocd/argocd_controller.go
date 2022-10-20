@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/argoLogger"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -72,9 +73,11 @@ var log = logr.Log.WithName("controller_argocd")
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := logr.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
-	reqLogger.Info("Reconciling ArgoCD")
-
+	//reqLogger := logr.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
+	// reqLogger.Info("Reconciling ArgoCD")
+	reqLogger := argoLogger.LoggerFromContext(ctx)
+	argoLogger.ContextWithLogger(ctx, reqLogger)
+	reqLogger.Info("Reconciling from ArgoCD")
 	argocd := &argoproj.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {

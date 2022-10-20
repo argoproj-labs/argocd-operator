@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/argoproj-labs/argocd-operator/argoLogger"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
@@ -89,7 +90,7 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
+	argoLogger.Init()
 	printVersion()
 
 	// Inspect cluster to verify availability of extra features
