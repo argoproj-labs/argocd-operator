@@ -4,7 +4,7 @@ A Kubernetes operator for managing Argo CD clusters.
 
 ## Overview
 
-The Argo CD Operator manages the full lifecycle for [Argo CD](https://argoproj.github.io/argo-cd/) and it's
+The Argo CD Operator manages the full lifecycle for [Argo CD](https://argoproj.github.io/argo-cd/) and its
 components. The operator's goal is to automate the tasks required when operating an Argo CD cluster.
 
 Beyond installation, the operator helps to automate the process of upgrading, backing up and restoring as needed and
