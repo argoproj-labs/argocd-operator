@@ -33,7 +33,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 func newRoleForSupportedNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getCustomRoleNameForSupportedNamespaces(name, namespace),
+			Name:      getRoleNameForSupportedNamespaces(cr.GetNamespace(), namespace),
 			Namespace: namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
@@ -83,6 +83,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	policyRuleForSupportedNamespaces := policyRuleForServerSupportedNamespaces()
 	// reconcile roles is supported namespaces for ArgoCD Server
 	if _, err := r.reconcileRoleForSupportedNamespaces(common.ArgoCDServerComponent, policyRuleForSupportedNamespaces, cr); err != nil {
+		log.Info(err.Error())
 		return err
 	}
 
@@ -180,19 +181,27 @@ func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, polic
 	// create policy rules for each supported namespace for ArgoCD Server
 	for _, namespace := range cr.Spec.Server.SourceNamespaces {
 
-		list := &argoprojv1a1.ArgoCDList{}
-		listOption := &client.ListOptions{Namespace: namespace}
-		err := r.Client.List(context.TODO(), list, listOption)
-		if err != nil {
-			return nil, err
+		managedNamespace := false
+		// do not reconcile roles for namespaces already containing managed-by label
+		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
+		for _, ns := range r.ManagedNamespaces.Items {
+			if ns.Name == namespace {
+				managedNamespace = true
+				break
+			}
 		}
+		if managedNamespace {
+			continue
+		}
+		log.Info(fmt.Sprintf("Reconciling role for %s", namespace))
+
 		role := newRoleForSupportedNamespaces(name, namespace, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
 		}
 		role.Namespace = namespace
 		existingRole := v1.Role{}
-		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace}, &existingRole)
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace}, &existingRole)
 		if err != nil {
 			log.Info(err.Error())
 			if !errors.IsNotFound(err) {
@@ -204,7 +213,7 @@ func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, polic
 			}
 			continue
 		}
-
+		log.Info(fmt.Sprintf("Matching roles"))
 		// if the Rules differ, update the Role
 		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules

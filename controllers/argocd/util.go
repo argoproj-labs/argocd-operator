@@ -725,16 +725,19 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	log.Info("reconciling roles")
 	if err := r.reconcileRoles(cr); err != nil {
+		log.Info(err.Error())
 		return err
 	}
 
 	log.Info("reconciling rolebindings")
 	if err := r.reconcileRoleBindings(cr); err != nil {
+		log.Info(err.Error())
 		return err
 	}
 
 	log.Info("reconciling service accounts")
 	if err := r.reconcileServiceAccounts(cr); err != nil {
+		log.Info(err.Error())
 		return err
 	}
 
