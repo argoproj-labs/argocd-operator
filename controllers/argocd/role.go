@@ -33,7 +33,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 func newRoleForSupportedNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getRoleNameForSupportedNamespaces(cr.GetNamespace(), namespace),
+			Name:      getRoleNameForSupportedNamespaces(namespace, cr),
 			Namespace: namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},

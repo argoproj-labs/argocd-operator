@@ -239,7 +239,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			roleBinding.RoleRef = v1.RoleRef{
 				APIGroup: v1.GroupName,
 				Kind:     "Role",
-				Name:     getRoleNameForSupportedNamespaces(cr.GetNamespace(), namespace),
+				Name:     getRoleNameForSupportedNamespaces(namespace, cr),
 			}
 
 			// fetch existing rolebinding by name
@@ -300,8 +300,8 @@ func getCustomRoleName(name string) string {
 }
 
 // Returns the name of the role for the supported namespaces for ArgoCDServer in the format of "sourceNamespace_targetNamespace_argocd-server"
-func getRoleNameForSupportedNamespaces(sourceNamespace, targetNamespace string) string {
-	return fmt.Sprintf("%s_%s_%s", sourceNamespace, targetNamespace, common.ArgoCDServerComponent)
+func getRoleNameForSupportedNamespaces(targetNamespace string, cr *argoprojv1a1.ArgoCD) string {
+	return fmt.Sprintf("%s_%s_%s", cr.Name, targetNamespace, common.ArgoCDServerComponent)
 }
 
 // newRoleBindingWithNameForSupportedNamespaces creates a new RoleBinding with the given name for the supported namespaces of ArgoCD Server.
