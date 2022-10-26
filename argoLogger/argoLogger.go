@@ -31,7 +31,7 @@ func LoggerFromContext(ctx context.Context) *argoLogger {
 	return &argoLogger{z: zap.L()}
 }
 
-// LoggerFromContext returns logger from context
+// LoggerWithoutContext returns logger without context
 func LoggerWithoutContext() *argoLogger {
 	return &argoLogger{z: zap.L()}
 }
