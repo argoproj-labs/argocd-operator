@@ -26,3 +26,17 @@ spec:
     sourceNamespaces:
     - some-namespace
 ```
+
+When a namespace is specified under `sourceNamespaces`, operator adds `argocd.argoproj.io/managed-by-cluster-argocd` label to the specified namespace. For example, the namespace would look like below:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    argocd.argoproj.io/managed-by-cluster-argocd: example-argocd
+    kubernetes.io/metadata.name: some-namespace
+  name: some-namespace
+```
+
+
