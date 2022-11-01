@@ -209,14 +209,19 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 	// reconcile rolebindings only for ArgoCDServerComponent
 	if name == common.ArgoCDServerComponent {
+
 		// reconcile rolebindings for all supported namespaces for argocd-server
-		for _, namespace := range cr.Spec.Server.SourceNamespaces {
+		for _, sourceNamespace := range cr.Spec.Server.SourceNamespaces {
+			namespace := &corev1.Namespace{}
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+				return err
+			}
 
 			managedNamespace := false
-			// do not reconcile roles for namespaces already containing managed-by label
+			// do not reconcile role bindings for namespaces already containing managed-by label
 			// as it already contains roles reconciled during reconcilation of ManagedNamespaces
 			for _, ns := range r.ManagedNamespaces.Items {
-				if ns.Name == namespace {
+				if reflect.DeepEqual(ns, namespace) {
 					managedNamespace = true
 					break
 				}
@@ -224,8 +229,14 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			if managedNamespace {
 				continue
 			}
+
+			// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
+			if n, ok := namespace.Labels[common.ArgoCDManagedByLabel]; !ok || n != cr.Name {
+				continue
+			}
+
 			list := &argoprojv1a1.ArgoCDList{}
-			listOption := &client.ListOptions{Namespace: namespace}
+			listOption := &client.ListOptions{Namespace: namespace.Name}
 			err := r.Client.List(context.TODO(), list, listOption)
 			if err != nil {
 				log.Info(err.Error())
@@ -233,13 +244,13 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 
 			// get expected name
-			roleBinding := newRoleBindingWithNameForSupportedNamespaces(name, namespace, cr)
-			roleBinding.Namespace = namespace
+			roleBinding := newRoleBindingWithNameForSupportedNamespaces(name, namespace.Name, cr)
+			roleBinding.Namespace = namespace.Name
 
 			roleBinding.RoleRef = v1.RoleRef{
 				APIGroup: v1.GroupName,
 				Kind:     "Role",
-				Name:     getRoleNameForSupportedNamespaces(namespace, cr),
+				Name:     getRoleNameForSupportedNamespaces(namespace.Name, cr),
 			}
 
 			// fetch existing rolebinding by name

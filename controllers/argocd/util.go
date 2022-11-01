@@ -1367,6 +1367,21 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+func (r *ReconcileArgoCD) getManagedClusterArgoCDNamespaces(cr *argoproj.ArgoCD) (*corev1.NamespaceList, error) {
+	namespaces := &corev1.NamespaceList{}
+	listOption := client.MatchingLabels{
+		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
+	}
+
+	// get the list of namespaces managed by the Argo CD instance
+	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
+		return nil, err
+	}
+
+	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
+	return namespaces, nil
+}
+
 func isProxyCluster() bool {
 	cfg, err := config.GetConfig()
 	if err != nil {
