@@ -7,10 +7,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
-spec: 
-  server:
-    sourceNamespaces:
-    - test-1-24-custom
-  controller:
-    sourceNamespaces:
-    - test-1-24-custom
+spec:
+  sourceNamespaces:
+  - test-1-24-custom

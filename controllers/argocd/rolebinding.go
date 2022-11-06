@@ -58,12 +58,16 @@ func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 func newRoleBindingForSupportNamespaces(cr *argoprojv1a1.ArgoCD, namespace string) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        fmt.Sprintf("%s_%s_%s", cr.Name, cr.Namespace, namespace),
+			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace),
 			Labels:      argoutil.LabelsForCluster(cr),
 			Annotations: argoutil.AnnotationsForCluster(cr),
 			Namespace:   namespace,
 		},
 	}
+}
+
+func getRoleBindingNameForSourceNamespaces(argocdName, argocdNamespace, targetNamespace string) string {
+	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
 }
 
 // newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
@@ -211,7 +215,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	if name == common.ArgoCDServerComponent {
 
 		// reconcile rolebindings for all supported namespaces for argocd-server
-		for _, sourceNamespace := range cr.Spec.Server.SourceNamespaces {
+		for _, sourceNamespace := range cr.Spec.SourceNamespaces {
 			namespace := &corev1.Namespace{}
 			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 				return err
@@ -227,11 +231,6 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				}
 			}
 			if managedNamespace {
-				continue
-			}
-
-			// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
-			if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n != cr.Name {
 				continue
 			}
 
@@ -274,6 +273,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			}
 
 			if roleBindingExists {
+				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
+				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Name {
+					continue
+				}
 				// if the RoleRef changes, delete the existing role binding and create a new one
 				if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
 					if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
@@ -318,7 +321,6 @@ func getRoleNameForSupportedNamespaces(targetNamespace string, cr *argoprojv1a1.
 // newRoleBindingWithNameForSupportedNamespaces creates a new RoleBinding with the given name for the supported namespaces of ArgoCD Server.
 func newRoleBindingWithNameForSupportedNamespaces(name, namespace string, cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
-	roleBinding.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
 
 	labels := roleBinding.ObjectMeta.Labels
 	labels[common.ArgoCDKeyName] = roleBinding.ObjectMeta.Name

@@ -308,8 +308,8 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 	if err != nil {
 		return cmd
 	}
-	if cr.Spec.Server.SourceNamespaces != nil && len(cr.Spec.Server.SourceNamespaces) > 0 {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.Server.SourceNamespaces, ",")))
+	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
 	cmd = append(cmd, extraArgs...)

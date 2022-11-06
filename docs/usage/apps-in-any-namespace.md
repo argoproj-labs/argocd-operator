@@ -9,7 +9,7 @@ In order to enable this feature, the Argo CD administrator must reconfigure the 
 
 The `--application-namespaces` parameter takes a comma-separated list of namespaces where Applications are to be allowed in. Each entry of the list supports shell-style wildcards such as `*`, so for example the entry `app-team-*` would match `app-team-one` and `app-team-two`. To enable all namespaces on the cluster where Argo CD is running on, you can just `*`, i.e. `--application-namespaces=*`.
 
-You can set the namespaces for argocd-server and argocd-controller in the ArgoCD yaml by setting `spec.server.sourceNamespaces` and `spec.controller.sourceNamespaces`.
+You can set the namespaces for argocd-server and argocd-controller in the ArgoCD yaml by setting `spec.sourceNamespaces`.
 
 ## Example
 
@@ -19,11 +19,7 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 spec:
-  server:
-    sourceNamespaces:
-    - some-namespace
-  controller:
-    sourceNamespaces:
+  sourceNamespaces:
     - some-namespace
 ```
 

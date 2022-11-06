@@ -427,12 +427,6 @@ spec:
                         format: int32
                         type: integer
                     type: object
-                  sourceNamespaces:
-                    description: SourceNamespaces defines the namespaces application
-                      resources are allowed to be created in
-                    items:
-                      type: string
-                    type: array
                 type: object
               dex:
                 description: Dex defines the Dex server options for ArgoCD.
@@ -5931,13 +5925,13 @@ spec:
                     required:
                     - type
                     type: object
-                  sourceNamespaces:
-                    description: SourceNamespaces defines the namespaces application
-                      resources are allowed to be created in
-                    items:
-                      type: string
-                    type: array
                 type: object
+              sourceNamespaces:
+                description: SourceNamespaces defines the namespaces application resources
+                  are allowed to be created in
+                items:
+                  type: string
+                type: array
               sso:
                 description: SSO defines the Single Sign-on configuration for Argo
                   CD

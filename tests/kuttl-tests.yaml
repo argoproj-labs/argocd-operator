@@ -6,6 +6,6 @@ testDirs:
 suppress:
   - events
 parallel: 1
-timeout: 300
+timeout: 100
 reportFormat: JSON
 reportName: e2e
