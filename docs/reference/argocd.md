@@ -957,14 +957,14 @@ spec:
 
 ## Resource Customizations
 
-There are two ways to customize resource behavior: with subkeys (`resourceCustomizationsNew`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while `resourceCustomizationsNew` maps directly to the respective subkey in the `argocd-cm`.
+There are two ways to customize resource behavior: with subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`
 
 !!! warning 
-    It is encouraged to use `resourceCustomizationsNew` over `resourceCustomizations`. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
+    `resourceCustomizations` is being deprecated so is encouraged to use `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
 
 ### Resource Customizations (with subkeys) Example
 
-Keys for `resourceCustomizationsNew` are in the form: `resource.customizations.ignoreDifferences.<group_kind>`, `resource.customizations.health.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. 
+Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. 
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -974,58 +974,57 @@ metadata:
   labels:
     example: resource-customizations
 spec:
-  resourceCustomizationsNew:
-    health:
-      - group: certmanager.k8s.io
-        kind: Certificate
-        customization: |
-          hs = {}
-          if obj.status ~= nil then
-            if obj.status.conditions ~= nil then
-              for i, condition in ipairs(obj.status.conditions) do
-                if condition.type == "Ready" and condition.status == "False" then
-                  hs.status = "Degraded"
-                  hs.message = condition.message
-                  return hs
-                end
-                if condition.type == "Ready" and condition.status == "True" then
-                  hs.status = "Healthy"
-                  hs.message = condition.message
-                  return hs
-                end
+  resourceHealthChecks:
+    - group: certmanager.k8s.io
+      kind: Certificate
+      check: |
+        hs = {}
+        if obj.status ~= nil then
+          if obj.status.conditions ~= nil then
+            for i, condition in ipairs(obj.status.conditions) do
+              if condition.type == "Ready" and condition.status == "False" then
+                hs.status = "Degraded"
+                hs.message = condition.message
+                return hs
+              end
+              if condition.type == "Ready" and condition.status == "True" then
+                hs.status = "Healthy"
+                hs.message = condition.message
+                return hs
               end
             end
           end
-          hs.status = "Progressing"
-          hs.message = "Waiting for certificate"
-          return hs
-        actions:
-        - group: apps
-          kind: Deployment
-          customization: |
-            discovery.lua: |
-              actions = {}
-              actions["restart"] = {}
-              return actions
-            definitions:
-              - name: restart
-                # Lua Script to modify the obj
-                action.lua: |
-                  local os = require("os")
-                  if obj.spec.template.metadata == nil then
-                      obj.spec.template.metadata = {}
-                  end
-                  if obj.spec.template.metadata.annotations == nil then
-                      obj.spec.template.metadata.annotations = {}
-                  end
-                  obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
-                  return obj
-        ignoreDifferences:
-        - group: admissionregistration.k8s.io
-          kind: MutatingWebhookConfiguration
-          customization: |
-          	jsonPointers: |
-            - /webhooks/0/clientConfig/caBundle
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for certificate"
+        return hs
+  resourceActions:
+  - group: apps
+    kind: Deployment
+    action: |
+      discovery.lua: |
+        actions = {}
+        actions["restart"] = {}
+        return actions
+      definitions:
+        - name: restart
+          # Lua Script to modify the obj
+          action.lua: |
+            local os = require("os")
+            if obj.spec.template.metadata == nil then
+                obj.spec.template.metadata = {}
+            end
+            if obj.spec.template.metadata.annotations == nil then
+                obj.spec.template.metadata.annotations = {}
+            end
+            obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+            return obj
+  resourceIgnoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+    jqPathExpressions: |
+      jsonPointers: |
+      - /webhooks/0/clientConfig/caBundle
 ```
  After applying these changes your `argocd-cm` Configmap should contain the following fields: 
 
@@ -1081,6 +1080,9 @@ return hs
 ```
 
 ### Resource Customizations Example
+
+!!! warning 
+    `resourceCustomizations` is being deprecated in favor of `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`.
 
 The following example defines a custom PVC health check in the `argocd-cm` ConfigMap using the `ResourceCustomizations` property on the `ArgoCD` resource.
 

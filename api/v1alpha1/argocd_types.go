@@ -339,18 +339,6 @@ type ArgoCDPrometheusSpec struct {
 	Size *int32 `json:"size,omitempty"`
 }
 
-// Configuration to customize resource behavior (optional) can be configured via splitted sub keys.
-type ResourceCustomizationsNew struct {
-	// Configuration to add custom health checks. Keys are in the format <group_kind>.
-	Health []ArgoCDRC `json:"health,omitempty"`
-
-	// Configuration to add custom actions. Keys are in the format <group_kind>.
-	Actions []ArgoCDRC `json:"actions,omitempty"`
-
-	// Configuration to define customizations ignoring differences between live and desired states for all resources. Keys are in the format <group_kind>.
-	IgnoreDifferences []ArgoCDRC `json:"ignoreDifferences,omitempty"`
-}
-
 // ArgoCDRBACSpec defines the desired state for the Argo CD RBAC configuration.
 type ArgoCDRBACSpec struct {
 	// DefaultPolicy is the name of the default role which Argo CD will falls back to, when
@@ -376,15 +364,6 @@ type ArgoCDRBACSpec struct {
 	// PolicyMatcherMode configures the matchers function mode for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
 	PolicyMatcherMode *string `json:"policyMatcherMode,omitempty"`
-}
-
-// ArgoCDRC defines the structure for ResourceCustomizationNew.
-type ArgoCDRC struct {
-	Group string `json:"group,omitempty"`
-
-	Kind string `json:"kind,omitempty"`
-
-	Customization string `json:"customization,omitempty"`
 }
 
 // ArgoCDRedisSpec defines the desired state for the Redis server component.
@@ -562,6 +541,27 @@ type ArgoCDServerServiceSpec struct {
 	Type corev1.ServiceType `json:"type"`
 }
 
+// Resource Customization for custom health check
+type ResourceHealthCheck struct {
+	Group string `json:"group"`
+	Kind  string `json:"kind"`
+	Check string `json:"check"`
+}
+
+// Resource Customization for ignore difference
+type ResourceIgnoreDifference struct {
+	Group             string `json:"group"`
+	Kind              string `json:"kind"`
+	JqPathExpressions string `json:"JqPathExpressions"`
+}
+
+// Resource Customization for custom action
+type ResourceAction struct {
+	Group  string `json:"group"`
+	Kind   string `json:"kind"`
+	Action string `json:"action"`
+}
+
 // SSOProviderType string defines the type of SSO provider.
 type SSOProviderType string
 
@@ -710,12 +710,21 @@ type ArgoCDSpec struct {
 	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
-	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of ResourceCustomizationsNew.
+	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`
 
-	// ResourceCustomizationsNew is the preferred way to customize resource behavior.
-	ResourceCustomizationsNew *ResourceCustomizationsNew `json:"resourceCustomizationsNew,omitempty"`
+	// ResourceHealthChecks customizes resource health check behavior.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Health Check Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ResourceHealthChecks []ResourceHealthCheck `json:"ResourceHealthChecks,omitempty"`
+
+	// ResourceIgnoreDifferences customizes resource ignore difference behavior.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Ignore Difference Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ResourceIgnoreDifferences []ResourceIgnoreDifference `json:"ResourceIgnoreDifferences,omitempty"`
+
+	// ResourceActions customizes resource action behavior.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Action Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ResourceActions []ResourceAction `json:"resourceActions,omitempty"`
 
 	// ResourceExclusions is used to completely ignore entire classes of resource group/kinds.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Exclusions'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}

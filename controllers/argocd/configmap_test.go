@@ -793,47 +793,47 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	customizations := &argoprojv1alpha1.ResourceCustomizationsNew{
-		Health: []argoprojv1alpha1.ArgoCDRC{
-			{
-				Group:         "healthFoo",
-				Kind:          "healthFoo",
-				Customization: "healthFoo",
-			},
-			{
-				Group:         "healthBar",
-				Kind:          "healthBar",
-				Customization: "healthBar",
-			},
+	health := []argoprojv1alpha1.ResourceHealthCheck{
+		{
+			Group: "healthFoo",
+			Kind:  "healthFoo",
+			Check: "healthFoo",
 		},
-		Actions: []argoprojv1alpha1.ArgoCDRC{
-			{
-				Group:         "actionsFoo",
-				Kind:          "actionsFoo",
-				Customization: "actionsFoo",
-			},
-			{
-				Group:         "actionsBar",
-				Kind:          "actionsBar",
-				Customization: "actionsBar",
-			},
+		{
+			Group: "healthBar",
+			Kind:  "healthBar",
+			Check: "healthBar",
 		},
-		IgnoreDifferences: []argoprojv1alpha1.ArgoCDRC{
-			{
-				Group:         "ignoreDiffFoo",
-				Kind:          "ignoreDiffFoo",
-				Customization: "ignoreDiffFoo",
-			},
-			{
-				Group:         "ignoreDiffBar",
-				Kind:          "ignoreDiffBar",
-				Customization: "ignoreDiffBar",
-			},
+	}
+	actions := []argoprojv1alpha1.ResourceAction{
+		{
+			Group:  "actionsFoo",
+			Kind:   "actionsFoo",
+			Action: "actionsFoo",
+		},
+		{
+			Group:  "actionsBar",
+			Kind:   "actionsBar",
+			Action: "actionsBar",
+		},
+	}
+	ignoreDifferences := []argoprojv1alpha1.ResourceIgnoreDifference{
+		{
+			Group:             "ignoreDiffFoo",
+			Kind:              "ignoreDiffFoo",
+			JqPathExpressions: "ignoreDiffFoo",
+		},
+		{
+			Group:             "ignoreDiffBar",
+			Kind:              "ignoreDiffBar",
+			JqPathExpressions: "ignoreDiffBar",
 		},
 	}
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.ResourceCustomizationsNew = customizations
+		a.Spec.ResourceHealthChecks = health
+		a.Spec.ResourceActions = actions
+		a.Spec.ResourceIgnoreDifferences = ignoreDifferences
 	})
 	r := makeTestReconciler(t, a)
 
@@ -869,7 +869,7 @@ func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
 
 	resourceCustomizationsEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
-		Message: "ResourceCustomizations is deprecated, please use the new format, ResourceCustomizationsNew, instead.",
+		Message: "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.",
 		Action:  "Deprecated",
 	}
 

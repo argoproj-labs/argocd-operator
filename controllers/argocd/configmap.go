@@ -144,7 +144,7 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	return scopes
 }
 
-// GetResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap. Please note that ResourceCustomizations are being deprecated in favor of ResourceCustomizationsNew.
+// getResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
 	if cr.Spec.ResourceCustomizations != "" {
@@ -156,28 +156,46 @@ func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	return rc
 }
 
-// preferred way to add customizations with `resource.customizations`, subkeys options are `actions`, `health`, and `ignoreDifferences`
-func getNewResourceCustomizations(cr *argoprojv1a1.ArgoCD) map[string]string {
-	newRC := make(map[string]string)
-	if cr.Spec.ResourceCustomizationsNew != nil {
-		rcNew := cr.Spec.ResourceCustomizationsNew
-		for _, newHealthCustomization := range rcNew.Health {
-			subkey := "resource.customizations.health." + newHealthCustomization.Group + "_" + newHealthCustomization.Kind
-			subvalue := newHealthCustomization.Customization
-			newRC[subkey] = subvalue
-		}
-		for _, newActionsCustomization := range rcNew.Actions {
-			subkey := "resource.customizations.actions." + newActionsCustomization.Group + "_" + newActionsCustomization.Kind
-			subvalue := newActionsCustomization.Customization
-			newRC[subkey] = subvalue
-		}
-		for _, newIgnoreDiffsCustomization := range rcNew.IgnoreDifferences {
-			subkey := "resource.customizations.ignoreDifferences." + newIgnoreDiffsCustomization.Group + "_" + newIgnoreDiffsCustomization.Kind
-			subvalue := newIgnoreDiffsCustomization.Customization
-			newRC[subkey] = subvalue
+// preferred way to add health customizations with `resource.customizations.health`
+func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
+	healthCheck := make(map[string]string)
+	if cr.Spec.ResourceHealthChecks != nil {
+		resourceHealthChecks := cr.Spec.ResourceHealthChecks
+		for _, healthCustomization := range resourceHealthChecks {
+			subkey := "resource.customizations.health." + healthCustomization.Group + "_" + healthCustomization.Kind
+			subvalue := healthCustomization.Check
+			healthCheck[subkey] = subvalue
 		}
 	}
-	return newRC
+	return healthCheck
+}
+
+// preferred way to add ignore differences customization with `resource.customizations.ignoreDifferences`
+func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) map[string]string {
+	ignoreDiff := make(map[string]string)
+	if cr.Spec.ResourceIgnoreDifferences != nil {
+		resourceIgnoreDiff := cr.Spec.ResourceIgnoreDifferences
+		for _, ignoreDiffCustomization := range resourceIgnoreDiff {
+			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + "_" + ignoreDiffCustomization.Kind
+			subvalue := ignoreDiffCustomization.JqPathExpressions
+			ignoreDiff[subkey] = subvalue
+		}
+	}
+	return ignoreDiff
+}
+
+// preferred way to add custom action with `resource.customizations.actions`
+func getResourceActions(cr *argoprojv1a1.ArgoCD) map[string]string {
+	action := make(map[string]string)
+	if cr.Spec.ResourceActions != nil {
+		resourceAction := cr.Spec.ResourceActions
+		for _, actionCustomization := range resourceAction {
+			subkey := "resource.customizations.actions." + actionCustomization.Group + "_" + actionCustomization.Kind
+			subvalue := actionCustomization.Action
+			action[subkey] = subvalue
+		}
+	}
+	return action
 }
 
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
@@ -359,19 +377,30 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
 
-	// new format with subkeys for ResourceCustomizations
-	if c := getNewResourceCustomizations(cr); c != nil {
+	if c := getResourceHealthChecks(cr); c != nil {
 		for k, v := range c {
 			cm.Data[k] = v
 		}
 	}
 
-	// old format of ResourceCustomizations, use should not be encouraged but is supported for now
+	if c := getResourceIgnoreDifferences(cr); c != nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	}
+
+	if c := getResourceActions(cr); c != nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	}
+
+	// old format of ResourceCustomizations
 	if c := getResourceCustomizations(cr); c != "" {
 
 		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
 		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
-			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new format, ResourceCustomizationsNew, instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
+			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
 			if err != nil {
 				return err
 			}

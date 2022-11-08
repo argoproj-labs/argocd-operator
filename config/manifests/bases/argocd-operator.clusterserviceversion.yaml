@@ -168,6 +168,19 @@ spec:
         name: ""
         version: v1
       specDescriptors:
+      - description: ResourceHealthChecks customizes resource health check behavior.
+        displayName: Resource Health Check Customizations'
+        path: ResourceHealthChecks
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceIgnoreDifferences customizes resource ignore difference
+          behavior.
+        displayName: Resource Ignore Difference Customizations'
+        path: ResourceIgnoreDifferences
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ApplicationInstanceLabelKey is the key name where Argo CD injects
           the app name as a tracking label.
         displayName: Application Instance Label Key'
@@ -465,9 +478,15 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ResourceActions customizes resource action behavior.
+        displayName: Resource Action Customizations'
+        path: resourceActions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: 'ResourceCustomizations customizes resource behavior. Keys are
           in the form: group/Kind. Please note that this is being deprecated in favor
-          of ResourceCustomizationsNew.'
+          of in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.'
         displayName: Resource Customizations'
         path: resourceCustomizations
         x-descriptors:
