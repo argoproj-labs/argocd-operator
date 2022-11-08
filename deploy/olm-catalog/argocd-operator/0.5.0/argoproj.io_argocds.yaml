@@ -34,6 +34,42 @@ spec:
           spec:
             description: ArgoCDSpec defines the desired state of ArgoCD
             properties:
+              ResourceHealthChecks:
+                description: ResourceHealthChecks customizes resource health check
+                  behavior.
+                items:
+                  description: Resource Customization for custom health check
+                  properties:
+                    check:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  required:
+                  - check
+                  - group
+                  - kind
+                  type: object
+                type: array
+              ResourceIgnoreDifferences:
+                description: ResourceIgnoreDifferences customizes resource ignore
+                  difference behavior.
+                items:
+                  description: Resource Customization for ignore difference
+                  properties:
+                    JqPathExpressions:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  required:
+                  - JqPathExpressions
+                  - group
+                  - kind
+                  type: object
+                type: array
               applicationInstanceLabelKey:
                 description: ApplicationInstanceLabelKey is the key name where Argo
                   CD injects the app name as a tracking label.
@@ -5480,59 +5516,29 @@ spec:
                 description: RepositoryCredentials are the Git pull credentials to
                   configure Argo CD with upon creation of the cluster.
                 type: string
+              resourceActions:
+                description: ResourceActions customizes resource action behavior.
+                items:
+                  description: Resource Customization for custom action
+                  properties:
+                    action:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  required:
+                  - action
+                  - group
+                  - kind
+                  type: object
+                type: array
               resourceCustomizations:
                 description: 'ResourceCustomizations customizes resource behavior.
                   Keys are in the form: group/Kind. Please note that this is being
-                  deprecated in favor of ResourceCustomizationsNew.'
+                  deprecated in favor of in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
+                  and ResourceActions.'
                 type: string
-              resourceCustomizationsNew:
-                description: ResourceCustomizationsNew is the preferred way to customize
-                  resource behavior.
-                properties:
-                  actions:
-                    description: Configuration to add custom actions. Keys are in
-                      the format <group_kind>.
-                    items:
-                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
-                      properties:
-                        customization:
-                          type: string
-                        group:
-                          type: string
-                        kind:
-                          type: string
-                      type: object
-                    type: array
-                  health:
-                    description: Configuration to add custom health checks. Keys are
-                      in the format <group_kind>.
-                    items:
-                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
-                      properties:
-                        customization:
-                          type: string
-                        group:
-                          type: string
-                        kind:
-                          type: string
-                      type: object
-                    type: array
-                  ignoreDifferences:
-                    description: Configuration to define customizations ignoring differences
-                      between live and desired states for all resources. Keys are
-                      in the format <group_kind>.
-                    items:
-                      description: ArgoCDRC defines the structure for ResourceCustomizationNew.
-                      properties:
-                        customization:
-                          type: string
-                        group:
-                          type: string
-                        kind:
-                          type: string
-                      type: object
-                    type: array
-                type: object
               resourceExclusions:
                 description: ResourceExclusions is used to completely ignore entire
                   classes of resource group/kinds.
