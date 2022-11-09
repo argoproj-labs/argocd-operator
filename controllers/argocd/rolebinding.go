@@ -274,7 +274,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 			if roleBindingExists {
 				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
-				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Name {
+				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Namespace {
 					continue
 				}
 				// if the RoleRef changes, delete the existing role binding and create a new one
