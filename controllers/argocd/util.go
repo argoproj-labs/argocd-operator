@@ -1368,35 +1368,37 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) getManagedClusterArgoCDNamespaces(cr *argoproj.ArgoCD) (*corev1.NamespaceList, error) {
+func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
+	r.ManagedSourceNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByClusterArgoCDLabel: cr.Name,
+		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
 	}
 
 	// get the list of namespaces managed by the Argo CD instance
 	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return nil, err
+		return err
 	}
 
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	return namespaces, nil
+	for _, namespace := range namespaces.Items {
+		r.ManagedSourceNamespaces[namespace.Name] = ""
+	}
+
+	return nil
 }
 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
-	if _, ok := r.ManagedSourceNamespaces[cr.Name]; !ok {
+	if _, ok := r.ManagedSourceNamespaces[cr.Namespace]; !ok {
 		return nil
 	}
-	managedSourceNamespaces := r.ManagedSourceNamespaces[cr.Name].Items
 
-	for i := 0; i < len(managedSourceNamespaces); i++ {
-		namespace := managedSourceNamespaces[i]
+	for _, ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.DeletionTimestamp == nil {
-			for _, ns := range cr.Spec.SourceNamespaces {
-				if namespace.Name == ns {
+			for _, namespace := range cr.Spec.SourceNamespaces {
+				if namespace == ns {
 					managedNamespace = true
 					break
 				}
@@ -1404,7 +1406,8 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 		}
 
 		if !managedNamespace {
-			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, &namespace); err != nil {
+			namespace := corev1.Namespace{}
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
 				if !errors.IsNotFound(err) {
 					return err
 				}
@@ -1441,13 +1444,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 					return err
 				}
 			}
-			// remove namespace from list of managed source namespaces
-			if i == len(managedSourceNamespaces) {
-				managedSourceNamespaces = managedSourceNamespaces[:i]
-			} else {
-				managedSourceNamespaces = append(managedSourceNamespaces[0:i], managedSourceNamespaces[i+1:]...)
-			}
-			i--
+			delete(r.ManagedSourceNamespaces, ns)
 		}
 	}
 	return nil

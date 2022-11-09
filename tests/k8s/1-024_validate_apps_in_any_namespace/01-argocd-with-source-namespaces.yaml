@@ -1,3 +1,9 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: central-argocd
+---
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,6 +13,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
+  namespace: central-argocd
 spec:
   sourceNamespaces:
   - test-1-24-custom
