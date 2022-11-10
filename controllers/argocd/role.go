@@ -192,17 +192,11 @@ func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, polic
 			return nil, err
 		}
 
-		managedNamespace := false
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		for _, ns := range r.ManagedNamespaces.Items {
-			if reflect.DeepEqual(ns, namespace) {
-				managedNamespace = true
-				break
-			}
-		}
-		if managedNamespace {
+		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			continue
 		}
 
