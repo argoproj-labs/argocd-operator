@@ -1,8 +1,13 @@
 # Applications in any namespace
 
+**Current feature state**: Beta
+
 Argo CD supports managing Application resources in namespaces other than the control plane's namespace (which is usally argocd), but this feature has to be explicitly enabled and configured appropriately.
 
 Argo CD administrators can define a certain set of namespaces where Application resources may be created, updated and reconciled in. However, applications in these additional namespaces will only be allowed to use certain AppProjects, as configured by the Argo CD administrators. This allows ordinary Argo CD users (e.g. application teams) to use patterns like declarative management of Application resources, implementing app-of-apps and others without the risk of a privilege escalation through usage of other AppProjects that would exceed the permissions granted to the application teams.
+
+!!! note
+    This feature is considered beta feature in upstream Argo CD as of now. Some of the implementation details may change over the course of time until it is promoted to a stable status.
 
 ## Using application-namespaces
 In order to enable this feature, the Argo CD administrator must reconfigure the argocd-server and argocd-application-controller workloads to add the --application-namespaces parameter to the container's startup command.

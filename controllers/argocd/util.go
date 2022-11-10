@@ -1390,9 +1390,6 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
-	if _, ok := r.ManagedSourceNamespaces[cr.Namespace]; !ok {
-		return nil
-	}
 
 	for _, ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
