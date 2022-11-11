@@ -793,6 +793,19 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
+
+	desiredIgnoreDifferenceCustomization :=
+		`jqpathexpressions:
+- a
+- b
+jsonpointers:
+- a
+- b
+managedfieldsmanagers:
+- a
+- b
+`
+
 	health := []argoprojv1alpha1.ResourceHealthCheck{
 		{
 			Group: "healthFoo",
@@ -817,23 +830,29 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t 
 			Action: "actionsBar",
 		},
 	}
-	ignoreDifferences := []argoprojv1alpha1.ResourceIgnoreDifference{
-		{
-			Group:             "ignoreDiffFoo",
-			Kind:              "ignoreDiffFoo",
-			JqPathExpressions: "ignoreDiffFoo",
+	ignoreDifferences := argoprojv1alpha1.ResourceIgnoreDifference{
+		All: &v1alpha1.IgnoreDifferenceCustomization{
+			JqPathExpressions:     []string{"a", "b"},
+			JsonPointers:          []string{"a", "b"},
+			ManagedFieldsManagers: []string{"a", "b"},
 		},
-		{
-			Group:             "ignoreDiffBar",
-			Kind:              "ignoreDiffBar",
-			JqPathExpressions: "ignoreDiffBar",
+		ResourceIdentifiers: []argoprojv1alpha1.ResourceIdentifiers{
+			{
+				Group: "ignoreDiffBar",
+				Kind:  "ignoreDiffBar",
+				Customization: v1alpha1.IgnoreDifferenceCustomization{
+					JqPathExpressions:     []string{"a", "b"},
+					JsonPointers:          []string{"a", "b"},
+					ManagedFieldsManagers: []string{"a", "b"},
+				},
+			},
 		},
 	}
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.ResourceHealthChecks = health
 		a.Spec.ResourceActions = actions
-		a.Spec.ResourceIgnoreDifferences = ignoreDifferences
+		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
 	})
 	r := makeTestReconciler(t, a)
 
@@ -852,8 +871,8 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t 
 	desiredCM["resource.customizations.health.healthBar_healthBar"] = "healthBar"
 	desiredCM["resource.customizations.actions.actionsFoo_actionsFoo"] = "actionsFoo"
 	desiredCM["resource.customizations.actions.actionsBar_actionsBar"] = "actionsBar"
-	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffFoo_ignoreDiffFoo"] = "ignoreDiffFoo"
-	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffBar_ignoreDiffBar"] = "ignoreDiffBar"
+	desiredCM["resource.customizations.ignoreDifferences.all"] = desiredIgnoreDifferenceCustomization
+	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffBar_ignoreDiffBar"] = desiredIgnoreDifferenceCustomization
 
 	for k, v := range desiredCM {
 		if value, ok := cm.Data[k]; !ok || value != v {
@@ -898,7 +917,6 @@ func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
 		})
 	}
 }
-
 func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
