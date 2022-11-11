@@ -817,23 +817,29 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t 
 			Action: "actionsBar",
 		},
 	}
-	ignoreDifferences := []argoprojv1alpha1.ResourceIgnoreDifference{
-		{
-			Group:             "ignoreDiffFoo",
-			Kind:              "ignoreDiffFoo",
-			JqPathExpressions: "ignoreDiffFoo",
+	ignoreDifferences := argoprojv1alpha1.ResourceIgnoreDifference{
+		All: &v1alpha1.IgnoreDifferenceCustomization{
+			JqPathExpressions:     []string{"a", "b"},
+			JsonPointers:          []string{"a", "b"},
+			ManagedFieldsManagers: []string{"a", "b"},
 		},
-		{
-			Group:             "ignoreDiffBar",
-			Kind:              "ignoreDiffBar",
-			JqPathExpressions: "ignoreDiffBar",
+		ResourceIdentifiers: []argoprojv1alpha1.ResourceIdentifiers{
+			{
+				Group: "a",
+				Kind:  "b",
+				Customization: v1alpha1.IgnoreDifferenceCustomization{
+					JqPathExpressions:     []string{"a", "b"},
+					JsonPointers:          []string{"a", "b"},
+					ManagedFieldsManagers: []string{"a", "b"},
+				},
+			},
 		},
 	}
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.ResourceHealthChecks = health
 		a.Spec.ResourceActions = actions
-		a.Spec.ResourceIgnoreDifferences = ignoreDifferences
+		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
 	})
 	r := makeTestReconciler(t, a)
 

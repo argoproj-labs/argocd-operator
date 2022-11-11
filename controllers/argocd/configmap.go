@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -151,12 +152,10 @@ func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 		rc = cr.Spec.ResourceCustomizations
 	}
 
-	// TODO: change this to log.warn once it's available with zap logger
-	log.Info("[WARNING] You are using an old format for ResourceCustomizations, please use the new format.")
 	return rc
 }
 
-// preferred way to add health customizations with `resource.customizations.health`
+// getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
 func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
 	healthCheck := make(map[string]string)
 	if cr.Spec.ResourceHealthChecks != nil {
@@ -170,21 +169,34 @@ func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
 	return healthCheck
 }
 
-// preferred way to add ignore differences customization with `resource.customizations.ignoreDifferences`
-func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) map[string]string {
+// getResourceIgnoreDifferences loads ignore differences customizations to `resource.customizations.ignoreDifferences` from argocd-cm ConfigMap
+func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) (map[string]string, error) {
 	ignoreDiff := make(map[string]string)
 	if cr.Spec.ResourceIgnoreDifferences != nil {
 		resourceIgnoreDiff := cr.Spec.ResourceIgnoreDifferences
-		for _, ignoreDiffCustomization := range resourceIgnoreDiff {
+		if !reflect.DeepEqual(resourceIgnoreDiff.All, &v1alpha1.IgnoreDifferenceCustomization{}) {
+			subkey := "resource.customizations.ignoreDifferences.all"
+			bytes, err := yaml.Marshal(resourceIgnoreDiff.All)
+			if err != nil {
+				return ignoreDiff, err
+			}
+			subvalue := string(bytes)
+			ignoreDiff[subkey] = subvalue
+		}
+		for _, ignoreDiffCustomization := range resourceIgnoreDiff.ResourceIdentifiers {
 			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + "_" + ignoreDiffCustomization.Kind
-			subvalue := ignoreDiffCustomization.JqPathExpressions
+			bytes, err := yaml.Marshal(ignoreDiffCustomization.Customization)
+			if err != nil {
+				return ignoreDiff, err
+			}
+			subvalue := string(bytes)
 			ignoreDiff[subkey] = subvalue
 		}
 	}
-	return ignoreDiff
+	return ignoreDiff, nil
 }
 
-// preferred way to add custom action with `resource.customizations.actions`
+// getResourceActions loads custom actions to `resource.customizations.actions` from argocd-cm ConfigMap
 func getResourceActions(cr *argoprojv1a1.ArgoCD) map[string]string {
 	action := make(map[string]string)
 	if cr.Spec.ResourceActions != nil {
@@ -383,10 +395,12 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 		}
 	}
 
-	if c := getResourceIgnoreDifferences(cr); c != nil {
+	if c, err := getResourceIgnoreDifferences(cr); c != nil && err == nil {
 		for k, v := range c {
 			cm.Data[k] = v
 		}
+	} else {
+		return err
 	}
 
 	if c := getResourceActions(cr); c != nil {

@@ -1,0 +1,34 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  resource.customizations.actions.apps_Deployment: |
+    discovery.lua: |
+      actions = {}
+      actions["restart"] = {}
+      return actions
+    definitions:
+      - name: restart
+        # Lua Script to modify the obj
+        action.lua: |
+          local os = require("os")
+          if obj.spec.template.metadata == nil then
+              obj.spec.template.metadata = {}
+          end
+          if obj.spec.template.metadata.annotations == nil then
+              obj.spec.template.metadata.annotations = {}
+          end
+          obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+          return obj
