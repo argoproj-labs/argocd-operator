@@ -225,13 +225,10 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command: []string{
-			"/shared/argocd-dex",
-			"rundex",
-		},
-		Image: getDexContainerImage(cr),
-		Name:  "dex",
-		Env:   proxyEnvVars(),
+		Command: getDexCommand(cr),
+		Image:   getDexContainerImage(cr),
+		Name:    "dex",
+		Env:     proxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -337,6 +334,11 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			changed = true
 		}
 
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command, deploy.Spec.Template.Spec.Containers[0].Command) {
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			changed = true
+		}
+
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].Env,
 			deploy.Spec.Template.Spec.InitContainers[0].Env) {
 			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
@@ -365,6 +367,26 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 
 	log.Info(fmt.Sprintf("creating deployment %s for Argo CD instance %s in namespace %s", deploy.Name, cr.Name, cr.Namespace))
 	return r.Client.Create(context.TODO(), deploy)
+}
+
+func getDexCommand(cr *argoprojv1a1.ArgoCD) []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "/shared/argocd-dex")
+	cmd = append(cmd, "rundex")
+
+	var logLevel, logFormat string
+	if cr.Spec.Dex != nil {
+		logLevel = cr.Spec.Dex.LogLevel
+		logFormat = cr.Spec.Dex.LogFormat
+	}
+
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, getLogLevel(logLevel))
+
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(logFormat))
+
+	return cmd
 }
 
 // reconcileDexService will ensure that the Service for Dex is present.

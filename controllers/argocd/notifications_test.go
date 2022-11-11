@@ -144,7 +144,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 
 	want := []corev1.Container{{
-		Command:         []string{"argocd-notifications", "--loglevel", "info"},
+		Command:         []string{"argocd-notifications", "--loglevel", "info", "--logformat", "text"},
 		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
@@ -345,12 +345,14 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 	}
 }
 
-func TestReconcileNotifications_testLogLevel(t *testing.T) {
+func TestReconcileNotifications_testLogLevelFormat(t *testing.T) {
 
 	testLogLevel := "debug"
+	testLogFormat := "json"
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 		a.Spec.Notifications.LogLevel = testLogLevel
+		a.Spec.Notifications.LogFormat = testLogFormat
 	})
 
 	r := makeTestReconciler(t, a)
@@ -371,6 +373,8 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"argocd-notifications",
 		"--loglevel",
 		"debug",
+		"--logformat",
+		"json",
 	}
 
 	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
@@ -382,6 +386,8 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		"argocd-notifications",
 		"--logLevel",
 		"info",
+		"--logformat",
+		"text",
 	}
 
 	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand

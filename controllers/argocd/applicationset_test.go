@@ -497,3 +497,75 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationSetService(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 }
+
+func TestReconcileApplicationSet_testLogLevelFormat(t *testing.T) {
+
+	testLogLevel := "debug"
+	testLogFormat := "json"
+	a := makeTestArgoCD(func(cd *v1alpha1.ArgoCD) {
+		cd.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{
+			LogLevel:  testLogLevel,
+			LogFormat: testLogFormat,
+		}
+	})
+
+	r := makeTestReconciler(t, a)
+
+	sa := corev1.ServiceAccount{}
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedCMD := []string{
+		"entrypoint.sh",
+		"argocd-applicationset-controller",
+		"--argocd-repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--loglevel",
+		"debug",
+		"--logformat",
+		"json",
+	}
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("failed to reconcile applicationset deployment logLevel:\n%s", diff)
+	}
+
+	// Verify any manual updates to the logLevel should be overridden by the operator.
+	unwantedCommand := []string{
+		"entrypoint.sh",
+		"argocd-applicationset-controller",
+		"--argocd-repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to applicationset:\n%s", diff)
+	}
+}

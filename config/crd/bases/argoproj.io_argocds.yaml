@@ -47,6 +47,11 @@ spec:
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the ApplicationSet
+                      controller. Defaults to ArgoCDDefaultLogFormat if not configured.
+                      Valid options are text or json.
+                    type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
@@ -444,6 +449,16 @@ spec:
                     type: array
                   image:
                     description: Image is the Dex container image.
+                    type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the ArgoCD
+                      Dex. Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
+                    type: string
+                  logLevel:
+                    description: LogLevel describes the log level that should be used
+                      by the ArgoCD Dex. Defaults to ArgoCDDefaultLogLevel if not
+                      set. Valid options are debug, info, error and warn.
                     type: string
                   openShiftOAuth:
                     description: OpenShiftOAuth enables OpenShift OAuth authentication
@@ -958,6 +973,11 @@ spec:
                     type: array
                   image:
                     description: Image is the Argo CD Notifications image (optional)
+                    type: string
+                  logFormat:
+                    description: LogFormat refers to the log format used by the argocd-notifications.
+                      Defaults to ArgoCDDefaultLogFormat if not configured. Valid
+                      options are text or json.
                     type: string
                   logLevel:
                     description: LogLevel describes the log level that should be used
@@ -5946,6 +5966,16 @@ spec:
                         type: array
                       image:
                         description: Image is the Dex container image.
+                        type: string
+                      logFormat:
+                        description: LogFormat refers to the log format used by the
+                          ArgoCD Dex. Defaults to ArgoCDDefaultLogFormat if not configured.
+                          Valid options are text or json.
+                        type: string
+                      logLevel:
+                        description: LogLevel describes the log level that should
+                          be used by the ArgoCD Dex. Defaults to ArgoCDDefaultLogLevel
+                          if not set. Valid options are debug, info, error and warn.
                         type: string
                       openShiftOAuth:
                         description: OpenShiftOAuth enables OpenShift OAuth authentication
