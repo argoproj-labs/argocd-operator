@@ -1418,7 +1418,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 
 			// Delete Roles for SourceNamespaces
 			existingRole := v1.Role{}
-			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: getRoleNameForSupportedNamespaces(namespace.Name, cr), Namespace: namespace.Name}, &existingRole); err != nil {
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: getRoleNameForApplicationSourceNamespaces(namespace.Name, cr), Namespace: namespace.Name}, &existingRole); err != nil {
 				if !errors.IsNotFound(err) {
 					return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
 				}

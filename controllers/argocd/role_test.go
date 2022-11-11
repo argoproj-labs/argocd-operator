@@ -122,7 +122,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
 }
 
-func TestReconcileArgoCD_reconcileRoleForSupportedNamespaces(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
@@ -136,11 +136,11 @@ func TestReconcileArgoCD_reconcileRoleForSupportedNamespaces(t *testing.T) {
 	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
 
 	workloadIdentifier := common.ArgoCDServerComponent
-	expectedRules := policyRuleForServerSupportedNamespaces()
-	_, err := r.reconcileRoleForSupportedNamespaces(workloadIdentifier, expectedRules, a)
+	expectedRules := policyRuleForServerApplicationSourceNamespaces()
+	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
-	expectedName := getRoleNameForSupportedNamespaces(sourceNamespace, a)
+	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)
 	reconciledRole := &v1.Role{}
 
 	// check if roles are created for the new namespace

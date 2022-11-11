@@ -209,7 +209,7 @@ func policyRuleForNotificationsController() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForServerSupportedNamespaces() []v1.PolicyRule {
+func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
 			APIGroups: []string{

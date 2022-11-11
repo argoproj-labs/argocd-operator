@@ -31,10 +31,10 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 	}
 }
 
-func newRoleForSupportedNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
+func newRoleForApplicationSourceNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      getRoleNameForSupportedNamespaces(namespace, cr),
+			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
 			Namespace: namespace,
 			Labels:    argoutil.LabelsForCluster(cr),
 		},
@@ -80,14 +80,14 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	log.Info("reconciling roles for supported namespaces")
-	policyRuleForSupportedNamespaces := policyRuleForServerSupportedNamespaces()
-	// reconcile roles is supported namespaces for ArgoCD Server
-	if _, err := r.reconcileRoleForSupportedNamespaces(common.ArgoCDServerComponent, policyRuleForSupportedNamespaces, cr); err != nil {
+	log.Info("reconciling roles for source namespaces")
+	policyRuleForApplicationSourceNamespaces := policyRuleForServerApplicationSourceNamespaces()
+	// reconcile roles is source namespaces for ArgoCD Server
+	if _, err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
 		return err
 	}
 
-	log.Info("performing cleanup for supported namespaces")
+	log.Info("performing cleanup for source namespaces")
 	// remove resources for namespaces not part of SourceNamespaces
 	if err := r.removeUnmanagedSourceNamespaceResources(cr); err != nil {
 		return err
@@ -181,10 +181,10 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
-	// create policy rules for each supported namespace for ArgoCD Server
+	// create policy rules for each source namespace for ArgoCD Server
 	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
 
 		namespace := &corev1.Namespace{}
@@ -202,7 +202,7 @@ func (r *ReconcileArgoCD) reconcileRoleForSupportedNamespaces(name string, polic
 
 		log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
 
-		role := newRoleForSupportedNamespaces(name, namespace.Name, policyRules, cr)
+		role := newRoleForApplicationSourceNamespaces(name, namespace.Name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
 		}
