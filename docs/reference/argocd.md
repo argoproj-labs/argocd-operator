@@ -957,7 +957,7 @@ spec:
 
 ## Resource Customizations
 
-There are two ways to customize resource behavior: with subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`) and without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`
+There are two ways to customize resource behavior- the first way, only available with release v0.5.0+, is with subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`), the second is without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
 
 !!! warning 
     `resourceCustomizations` is being deprecated so is encouraged to use `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 

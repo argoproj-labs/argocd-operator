@@ -5536,7 +5536,7 @@ spec:
               resourceCustomizations:
                 description: 'ResourceCustomizations customizes resource behavior.
                   Keys are in the form: group/Kind. Please note that this is being
-                  deprecated in favor of in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
+                  deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
                   and ResourceActions.'
                 type: string
               resourceExclusions:

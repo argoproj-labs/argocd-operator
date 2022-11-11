@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  ResourceIgnoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+    JqPathExpressions: |
+      jsonPointers: |
+      - /webhooks/0/clientConfig/caBundle
