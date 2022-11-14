@@ -195,12 +195,14 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
-			// cleanup of resources will be taken care by removeUnmanagedSourceNamespaceResources after this function call.
 			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
 				delete(r.ManagedSourceNamespaces, namespace.Name)
+				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
+					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
+				}
 			}
 			continue
 		}
@@ -218,7 +220,6 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			if !errors.IsNotFound(err) {
 				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
-			log.Info(fmt.Sprintf("Fetching Role Error: %s", err.Error()))
 		}
 
 		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
