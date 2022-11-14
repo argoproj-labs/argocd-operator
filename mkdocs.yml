@@ -48,9 +48,10 @@ nav:
     - ArgoCDExport: reference/argocdexport.md
     - API Docs: reference/api.html.md
   - Contributing: 
+      - Contributing: developer-guide/contributing.md
       - Development: 
-          - Setup: contribute/development.md
-          - OLM Environment: contribute/olm-env.md
-          - OpenAPI: contribute/openapi.md
+          - Setup: developer-guide/development.md
+          - OLM Environment: developer-guide/olm-env.md
+          - OpenAPI: developer-guide/openapi.md
   - Releases ⧉: https://github.com/argoproj-labs/argocd-operator/releases
   - Roadmap ⧉: https://github.com/argoproj-labs/argocd-operator/milestones
