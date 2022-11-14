@@ -197,6 +197,11 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		// reconciled during reconcilation of ManagedNamespaces
 		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
+			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
+			// cleanup of resources will be taken care by removeUnmanagedSourceNamespaceResources after this function call.
+			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
+				delete(r.ManagedSourceNamespaces, namespace.Name)
+			}
 			continue
 		}
 
