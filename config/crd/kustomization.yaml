@@ -7,6 +7,11 @@ resources:
 - bases/argoproj.io_applications.yaml
 - bases/argoproj.io_applicationsets.yaml
 - bases/argoproj.io_appprojects.yaml
+- bases/argoproj.io_rollouts.yaml
+- bases/argoproj.io_experiment.yaml
+- bases/argoproj.io_clusteranalysistemplate.yaml
+- bases/argoproj.io_analysistemplate.yaml
+- bases/argoproj.io_analysisrun.yaml
 
 #+kubebuilder:scaffold:crdkustomizeresource
 

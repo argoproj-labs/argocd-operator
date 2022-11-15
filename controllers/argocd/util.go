@@ -816,6 +816,13 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if cr.Spec.Rollouts != nil {
+		log.Info("reconciling Rollouts")
+		if err := r.reconcileRolloutsController(cr); err != nil {
+			return err
+		}
+	}
+
 	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
 		return err
 	}

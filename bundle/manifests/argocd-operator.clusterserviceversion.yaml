@@ -141,6 +141,12 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - kind: AnalysisRun
+      name: analysisruns.argoproj.io
+      version: v1alpha1
+    - kind: AnalysisTemplate
+      name: analysistemplates.argoproj.io
+      version: v1alpha1
     - description: An Application is a group of Kubernetes resources as defined by
         a manifest.
       displayName: Application
@@ -825,6 +831,15 @@ spec:
         path: ssoConfig
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      version: v1alpha1
+    - kind: ClusterAnalysisTemplate
+      name: clusteranalysistemplates.argoproj.io
+      version: v1alpha1
+    - kind: Experiment
+      name: experiments.argoproj.io
+      version: v1alpha1
+    - kind: Rollout
+      name: rollouts.argoproj.io
       version: v1alpha1
   description: |
     ## Overview
