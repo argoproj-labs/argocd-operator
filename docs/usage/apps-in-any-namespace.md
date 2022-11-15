@@ -40,4 +40,10 @@ metadata:
   name: some-namespace
 ```
 
+**Things to consider:**
+
+* No namespace can be managed by multiple argo-cd instances (cluster scoped or namespace scoped) i.e, only one of either `managed-by` or `managed-by-cluster-argocd` labels can be applied to a given namespace. We will be prioritizing `managed-by` label in case of a conflict as this feature is currently in beta, so the new roles/rolebindings will not be created if namespace is already labelled with `managed-by` label, and they will be deleted if a namespace is first added to the `sourceNamespacs` list and is later also labelled with `managed-by` label.
+
+* Users will not be create/manage apps and create app resources in the same namespace that is added to `sourceNamespaces` (as they both require their own labels) out of the box. As a workaround users will have to create custom roles to be able to create app resources in the namespace added to `sourceNamespaces`.
+
 
