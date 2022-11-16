@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	testNamespace          = "rollouts"
-	testRolloutsName       = "example-rollouts"
-	testRolloutsController = "example-rollouts-argo-rollouts"
+	testNamespace    = "rollouts"
+	testRolloutsName = "example-rollouts"
 )
 
 type argoCDOpt func(*argoprojv1alpha1.ArgoRollouts)
