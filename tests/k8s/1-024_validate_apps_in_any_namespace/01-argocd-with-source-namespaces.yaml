@@ -9,6 +9,11 @@ kind: Namespace
 metadata:
   name: test-1-24-custom
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-2-24-custom
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -17,3 +22,4 @@ metadata:
 spec:
   sourceNamespaces:
   - test-1-24-custom
+  - test-2-24-custom

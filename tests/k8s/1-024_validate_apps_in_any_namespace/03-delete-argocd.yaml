@@ -8,4 +8,4 @@ delete:
   namespace: central-argocd
 commands:
   # Sleep to allow resources to be completely deleted
-  - command: sleep 60s
+  - command: sleep 30s
