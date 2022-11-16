@@ -284,7 +284,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	}
 
 	return corev1.Container{
-		Env:             proxyEnvVars(envVars...),
+		Env:             argoutil.ProxyEnvVars(envVars...),
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
@@ -678,7 +678,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 						{
 							Name:  defaultKeycloakIdentifier,
 							Image: getKeycloakContainerImage(cr),
-							Env:   proxyEnvVars(getKeycloakContainerEnv()...),
+							Env:   argoutil.ProxyEnvVars(getKeycloakContainerEnv()...),
 							Ports: []corev1.ContainerPort{
 								{Name: "http", ContainerPort: httpPort},
 								{Name: "https", ContainerPort: portTLS},

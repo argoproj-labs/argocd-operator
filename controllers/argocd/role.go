@@ -24,7 +24,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateResourceName(name, cr),
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 		Rules: rules,
 	}
@@ -43,7 +43,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
-			Labels:      argoutil.LabelsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr.Name),
 			Annotations: argoutil.AnnotationsForCluster(cr),
 		},
 		Rules: rules,

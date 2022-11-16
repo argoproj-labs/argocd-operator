@@ -943,6 +943,34 @@ spec:
         - apiGroups:
           - argoproj.io
           resources:
+          - analysisruns
+          - analysisruns/finalizers
+          - analysisruns/status
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - analysistemplates
+          - analysistemplates/finalizers
+          - analysistemplates/status
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - argoproj.io
+          resources:
           - applications
           - appprojects
           verbs:
@@ -963,6 +991,48 @@ spec:
           - argocds/status
           verbs:
           - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - clusteranalysistemplates
+          - clusteranalysistemplates/finalizers
+          - clusteranalysistemplates/status
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - experiments
+          - experiments/finalizers
+          - experiments/status
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - rollouts
+          - rollouts/finalizers
+          - rollouts/status
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - autoscaling
           resources:

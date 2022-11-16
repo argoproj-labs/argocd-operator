@@ -492,7 +492,7 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 
-	s := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
+	s := argoutil.NewServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a.Name, a.Namespace)
 
 	assert.NoError(t, r.reconcileApplicationSetService(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))

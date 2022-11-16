@@ -720,7 +720,7 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 
 	for _, tt := range envTests {
-		e := proxyEnvVars(tt.vars...)
+		e := argoutil.ProxyEnvVars(tt.vars...)
 		assert.Equal(t, tt.want, e)
 	}
 }
@@ -1040,11 +1040,11 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
 	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
 	extraCMDArgs := []string{"--extra-path", "/"}
-	assert.NoError(t, isMergable(extraCMDArgs, cmd))
+	assert.NoError(t, argoutil.IsMergable(extraCMDArgs, cmd))
 
 	cmd = []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
 	extraCMDArgs = []string{"--server", "bar.com"}
-	assert.Error(t, isMergable(extraCMDArgs, cmd))
+	assert.Error(t, argoutil.IsMergable(extraCMDArgs, cmd))
 }
 
 func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
@@ -1633,7 +1633,7 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      test.serviceAccount,
 					Namespace: a.Namespace,
-					Labels:    argoutil.LabelsForCluster(a),
+					Labels:    argoutil.LabelsForCluster(a.Name),
 				},
 			}
 			r.Client.Create(context.TODO(), sa)

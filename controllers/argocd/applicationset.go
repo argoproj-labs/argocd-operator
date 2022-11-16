@@ -187,7 +187,7 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 		},
 	}}
 	// Environment specified in the CR take precedence over everything else
-	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
+	appSetEnv = argoutil.EnvMerge(appSetEnv, argoutil.ProxyEnvVars(), false)
 
 	return corev1.Container{
 		Command:         getArgoApplicationSetCommand(cr),
@@ -466,7 +466,7 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling applicationset service")
 
-	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
+	svc := argoutil.NewServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr.Name, cr.Namespace)
 	if cr.Spec.ApplicationSet == nil {
 
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {

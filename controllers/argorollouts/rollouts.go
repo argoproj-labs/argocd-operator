@@ -1,18 +1,4 @@
-// Copyright 2021 ArgoCD Operator Developers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-package argocd
+package argorollouts
 
 import (
 	"context"
@@ -22,6 +8,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -43,45 +30,8 @@ import (
 // kind: Service # name: argo-rollouts-metrics
 // kind: Deployment # name: argo-rollouts
 
-func (r *ReconcileArgoCD) reconcileRolloutsController(cr *argoprojv1a1.ArgoCD) error {
-
-	log.Info("reconciling rollouts serviceaccount")
-	sa, err := r.reconcileRolloutsServiceAccount(cr)
-	if err != nil {
-		return err
-	}
-
-	log.Info("reconciling rollouts roles")
-	role, err := r.reconcileRolloutsRole(cr)
-	if err != nil {
-		return err
-	}
-
-	log.Info("reconciling rollouts role bindings")
-	if err := r.reconcileRolloutsRoleBinding(cr, role, sa); err != nil {
-		return err
-	}
-
-	log.Info("reconciling rollouts secret")
-	if err := r.reconcileRolloutsSecrets(cr); err != nil {
-		return err
-	}
-
-	log.Info("reconciling rollouts deployment")
-	if err := r.reconcileRolloutsDeployment(cr, sa); err != nil {
-		return err
-	}
-
-	log.Info("reconciling rollouts service")
-	if err := r.reconcileRolloutsService(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Reconciles rollouts serviceaccount.
-func (r *ReconcileArgoCD) reconcileRolloutsServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ArgoRolloutsReconciler) reconcileRolloutsServiceAccount(cr *argoprojv1a1.ArgoRollouts) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName("argo-rollouts", cr)
 	setRolloutsLabels(&sa.ObjectMeta)
@@ -111,7 +61,7 @@ func (r *ReconcileArgoCD) reconcileRolloutsServiceAccount(cr *argoprojv1a1.ArgoC
 }
 
 // Reconciles rollouts role.
-func (r *ReconcileArgoCD) reconcileRolloutsRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+func (r *ArgoRolloutsReconciler) reconcileRolloutsRole(cr *argoprojv1a1.ArgoRollouts) (*v1.Role, error) {
 
 	policyRules := []v1.PolicyRule{
 
@@ -449,7 +399,7 @@ func (r *ReconcileArgoCD) reconcileRolloutsRole(cr *argoprojv1a1.ArgoCD) (*v1.Ro
 }
 
 // Reconcile rollouts rolebinding.
-func (r *ReconcileArgoCD) reconcileRolloutsRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+func (r *ArgoRolloutsReconciler) reconcileRolloutsRoleBinding(cr *argoprojv1a1.ArgoRollouts, role *v1.Role, sa *corev1.ServiceAccount) error {
 
 	name := "argo-rollouts"
 
@@ -493,7 +443,7 @@ func (r *ReconcileArgoCD) reconcileRolloutsRoleBinding(cr *argoprojv1a1.ArgoCD, 
 }
 
 // reconcileRolloutsDeployment will ensure the Deployment resource is present for the Rollouts controller component.
-func (r *ReconcileArgoCD) reconcileRolloutsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ArgoRolloutsReconciler) reconcileRolloutsDeployment(cr *argoprojv1a1.ArgoRollouts, sa *corev1.ServiceAccount) error {
 	deploy := newDeploymentWithSuffix("argo-rollouts", "controller", cr)
 
 	setRolloutsLabels(&deploy.ObjectMeta)
@@ -510,7 +460,8 @@ func (r *ReconcileArgoCD) reconcileRolloutsDeployment(cr *argoprojv1a1.ArgoCD, s
 	podSpec.Containers = []corev1.Container{
 		rolloutsContainer(cr),
 	}
-	AddSeccompProfileForOpenShift(r.Client, podSpec)
+
+	argocd.AddSeccompProfileForOpenShift(r.Client, podSpec)
 
 	if existing := newDeploymentWithSuffix("argo-rollouts", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
@@ -547,16 +498,16 @@ func (r *ReconcileArgoCD) reconcileRolloutsDeployment(cr *argoprojv1a1.ArgoCD, s
 
 }
 
-func rolloutsContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+func rolloutsContainer(cr *argoprojv1a1.ArgoRollouts) corev1.Container {
 
-	// Global proxy env vars go first
-	rolloutsEnv := cr.Spec.Rollouts.Env
+	// Global proxy env vars go firstArgoRollouts
+	rolloutsEnv := cr.Spec.Env
 
 	// Environment specified in the CR take precedence over everything else
-	rolloutsEnv = argoutil.EnvMerge(rolloutsEnv, proxyEnvVars(), false)
+	rolloutsEnv = argoutil.EnvMerge(rolloutsEnv, argoutil.ProxyEnvVars(), false)
 
 	return corev1.Container{
-		Command:         cr.Spec.Rollouts.ExtraCommandArgs,
+		Args:            getRolloutsCommandArgs(cr),
 		Env:             rolloutsEnv,
 		Image:           getRolloutsContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
@@ -611,18 +562,17 @@ func rolloutsContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	}
 }
 
+// boolPtr returns a pointer to val
+func boolPtr(val bool) *bool {
+	return &val
+}
+
 // Returns the container image for rollouts controller.
-func getRolloutsContainerImage(cr *argoprojv1a1.ArgoCD) string {
+func getRolloutsContainerImage(cr *argoprojv1a1.ArgoRollouts) string {
 	defaultImg, defaultTag := false, false
 
-	img := ""
-	tag := ""
-
-	// First pull from spec, if it exists
-	if cr.Spec.Rollouts != nil {
-		img = cr.Spec.Rollouts.Image
-		tag = cr.Spec.Rollouts.Version
-	}
+	img := cr.Spec.Image
+	tag := cr.Spec.Version
 
 	// If spec is empty, use the defaults
 	if img == "" {
@@ -641,13 +591,29 @@ func getRolloutsContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	return argoutil.CombineImageTag(img, tag)
 }
 
+// getRolloutsCommand will return the command for the Rollouts controller component.
+func getRolloutsCommandArgs(cr *argoprojv1a1.ArgoRollouts) []string {
+	args := make([]string, 0)
+
+	args = append(args, "--namespaced")
+
+	extraArgs := cr.Spec.ExtraCommandArgs
+	err := argoutil.IsMergable(extraArgs, args)
+	if err != nil {
+		return args
+	}
+
+	args = append(args, extraArgs...)
+	return args
+}
+
 // getRolloutsControllerResources will return the ResourceRequirements for the rollouts container.
-func getRolloutsControllerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+func getRolloutsControllerResources(cr *argoprojv1a1.ArgoRollouts) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.ApplicationSet.Resources != nil {
-		resources = *cr.Spec.ApplicationSet.Resources
+	if cr.Spec.Resources != nil {
+		resources = *cr.Spec.Resources
 	}
 
 	return resources
@@ -660,27 +626,13 @@ func setRolloutsLabels(obj *metav1.ObjectMeta) {
 }
 
 // reconcileRolloutsService will ensure that the Service is present for the Rollouts controller.
-func (r *ReconcileArgoCD) reconcileRolloutsService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoRolloutsReconciler) reconcileRolloutsService(cr *argoprojv1a1.ArgoRollouts) error {
 
-	svc := newServiceWithSuffix("argo-rollouts", "controller", cr)
-	if cr.Spec.Rollouts == nil {
-
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
-			if err != nil {
-				return err
-			}
-			log.Info(fmt.Sprintf("Deleting rollouts controller service %s as rollouts is disabled", svc.Name))
-			err = r.Delete(context.TODO(), svc)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-			return nil // Service found, do nothing
-		}
+	svc := argoutil.NewServiceWithSuffix("argo-rollouts", "controller", cr.Name, cr.Namespace)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
 	}
+
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "metrics",
@@ -691,7 +643,7 @@ func (r *ReconcileArgoCD) reconcileRolloutsService(cr *argoprojv1a1.ArgoCD) erro
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("argo-rollouts", cr),
+		common.ArgoCDKeyName: nameWithSuffix("argo-rollouts", cr.Name),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
@@ -700,8 +652,8 @@ func (r *ReconcileArgoCD) reconcileRolloutsService(cr *argoprojv1a1.ArgoCD) erro
 	return r.Client.Create(context.TODO(), svc)
 }
 
-//
-func (r *ReconcileArgoCD) reconcileRolloutsSecrets(cr *argoprojv1a1.ArgoCD) error {
+// Reconciles secrets for rollouts controller
+func (r *ArgoRolloutsReconciler) reconcileRolloutsSecrets(cr *argoprojv1a1.ArgoRollouts) error {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argo-rollouts-notification-secret",

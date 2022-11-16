@@ -89,7 +89,7 @@ func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }
@@ -100,7 +100,7 @@ func newServiceMonitor(cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }

@@ -269,7 +269,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 	notificationEnv := cr.Spec.Notifications.Env
 	// Let user specify their own environment first
-	notificationEnv = argoutil.EnvMerge(notificationEnv, proxyEnvVars(), false)
+	notificationEnv = argoutil.EnvMerge(notificationEnv, argoutil.ProxyEnvVars(), false)
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{

@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -304,29 +303,13 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
 
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
+	err := argoutil.IsMergable(extraArgs, cmd)
 	if err != nil {
 		return cmd
 	}
 
 	cmd = append(cmd, extraArgs...)
 	return cmd
-}
-
-// isMergable returns error if any of the extraCommandArgs already exists in the Argo CD server cmd.
-func isMergable(extraArgs []string, cmd []string) error {
-	if len(extraArgs) > 0 {
-		for _, arg := range extraArgs {
-			if len(arg) > 2 && arg[:2] == "--" {
-				if ok := contains(cmd, arg); ok {
-					err := errors.New("duplicate argument error")
-					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // getDexServerAddress will return the Dex server address.
@@ -345,7 +328,7 @@ func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }
@@ -439,7 +422,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 				ContainerPort: 3000,
 			},
 		},
-		Env:       proxyEnvVars(),
+		Env:       argoutil.ProxyEnvVars(),
 		Resources: getGrafanaResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
@@ -574,7 +557,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 			},
 		},
 		Resources: getRedisResources(cr),
-		Env:       proxyEnvVars(),
+		Env:       argoutil.ProxyEnvVars(),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -719,7 +702,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		Image:           getRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "haproxy",
-		Env:             proxyEnvVars(),
+		Env:             argoutil.ProxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -772,7 +755,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		Image:           getRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
-		Env:             proxyEnvVars(),
+		Env:             argoutil.ProxyEnvVars(),
 		Resources:       getRedisHAProxyResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
@@ -869,7 +852,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
 	// Environment specified in the CR take precedence over everything else
-	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
+	repoEnv = argoutil.EnvMerge(repoEnv, argoutil.ProxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
 		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
@@ -882,7 +865,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 		Command:         getArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       getArgoRepoResources(cr),
-		Env:             proxyEnvVars(),
+		Env:             argoutil.ProxyEnvVars(),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -1158,7 +1141,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
-	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
+	serverEnv = argoutil.EnvMerge(serverEnv, argoutil.ProxyEnvVars(), false)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1327,29 +1310,6 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 
 	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
 	return r.Client.Update(context.TODO(), deployment)
-}
-
-func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
-	result := []corev1.EnvVar{}
-	result = append(result, vars...)
-	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
-	for _, p := range proxyKeys {
-		if k, v := caseInsensitiveGetenv(p); k != "" {
-			result = append(result, corev1.EnvVar{Name: k, Value: v})
-		}
-	}
-	return result
-}
-
-func caseInsensitiveGetenv(s string) (string, string) {
-	if v := os.Getenv(s); v != "" {
-		return s, v
-	}
-	ls := strings.ToLower(s)
-	if v := os.Getenv(ls); v != "" {
-		return ls, v
-	}
-	return "", ""
 }
 
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {

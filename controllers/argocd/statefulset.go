@@ -44,7 +44,7 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }
@@ -449,7 +449,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	// Sharding setting explicitly overrides a value set in the env
 	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
 	// Let user specify their own environment first
-	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, argoutil.ProxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
@@ -550,7 +550,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	} else {
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.Client, cr),
-			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
+			Env:             argoutil.ProxyEnvVars(getArgoImportContainerEnv(export)...),
 			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,

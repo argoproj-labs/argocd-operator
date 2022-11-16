@@ -231,7 +231,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 		},
 		Image: getDexContainerImage(cr),
 		Name:  "dex",
-		Env:   proxyEnvVars(),
+		Env:   argoutil.ProxyEnvVars(),
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -277,7 +277,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 			"/usr/local/bin/argocd",
 			"/shared/argocd-dex",
 		},
-		Env:             proxyEnvVars(),
+		Env:             argoutil.ProxyEnvVars(),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
@@ -369,7 +369,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileDexService will ensure that the Service for Dex is present.
 func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
-	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
+	svc := argoutil.NewServiceWithSuffix("dex-server", "dex-server", cr.Name, cr.Namespace)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
 		// dex uninstallation requested

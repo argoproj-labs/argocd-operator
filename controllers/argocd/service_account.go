@@ -35,7 +35,7 @@ func newServiceAccount(cr *argoprojv1a1.ArgoCD) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }

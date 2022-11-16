@@ -816,13 +816,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	if cr.Spec.Rollouts != nil {
-		log.Info("reconciling Rollouts")
-		if err := r.reconcileRolloutsController(cr); err != nil {
-			return err
-		}
-	}
-
 	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
 		return err
 	}
@@ -1479,16 +1472,6 @@ func generateRandomBytes(n int) []byte {
 func generateRandomString(s int) string {
 	b := generateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b)
-}
-
-// contains returns true if a string is part of the given slice.
-func contains(s []string, g string) bool {
-	for _, a := range s {
-		if a == g {
-			return true
-		}
-	}
-	return false
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.

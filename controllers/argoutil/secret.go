@@ -45,7 +45,7 @@ func NewTLSSecret(cr *argoprojv1a1.ArgoCD, suffix string) *corev1.Secret {
 func NewSecret(cr *argoprojv1a1.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: LabelsForCluster(cr),
+			Labels: LabelsForCluster(cr.Name),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}

@@ -444,28 +444,6 @@ type ArgoCDRepoSpec struct {
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 }
 
-// ArgoRollouts defines the configuration for Argo Rollouts controller.
-// Learn more about the Rollouts - https://argoproj.github.io/argo-rollouts/
-type ArgoRollouts struct {
-
-	// Env lets you specify environment for Rollouts pods
-	Env []corev1.EnvVar `json:"env,omitempty"`
-
-	// Extra Command arguments that would append to the Rollouts
-	// ExtraCommandArgs will not be added, if one of these commands is already part of the Rollouts command
-	// with same or different value.
-	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
-
-	// Image defines Argo Rollouts controller image (optional)
-	Image string `json:"image,omitempty"`
-
-	// Version defines Argo Rollouts controller tag (optional)
-	Version string `json:"version,omitempty"`
-
-	// Resources defines the Compute Resources required by the container for Rollouts.
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-}
-
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
 type ArgoCDRouteSpec struct {
 	// Annotations is the map of annotations to use for the Route resource.
@@ -726,10 +704,6 @@ type ArgoCDSpec struct {
 	// ResourceTrackingMethod defines how Argo CD should track resources that it manages
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Tracking Method'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ResourceTrackingMethod string `json:"resourceTrackingMethod,omitempty"`
-
-	// ArgoRollouts defines the configuration for Argo Rollouts Controller.
-	// Learn more about Rollouts - https://argoproj.github.io/argo-rollouts/
-	Rollouts *ArgoRollouts `json:"rollouts,omitempty"`
 
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`

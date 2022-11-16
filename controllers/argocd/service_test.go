@@ -6,13 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	a := makeTestArgoCD()
 	t.Run("Ensure annotation will be set for OpenShift", func(t *testing.T) {
 		routeAPIFound = true
-		svc := newService(a)
+		svc := argoutil.NewService(a.Name, a.Namespace)
 
 		// Annotation is inserted, update is required
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
@@ -27,7 +28,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	})
 	t.Run("Ensure annotation will be unset for OpenShift", func(t *testing.T) {
 		routeAPIFound = true
-		svc := newService(a)
+		svc := argoutil.NewService(a.Name, a.Namespace)
 		svc.Annotations = make(map[string]string)
 		svc.Annotations[common.AnnotationOpenShiftServiceCA] = "some-secret"
 
@@ -43,7 +44,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	})
 	t.Run("Ensure annotation will not be set for non-OpenShift", func(t *testing.T) {
 		routeAPIFound = false
-		svc := newService(a)
+		svc := argoutil.NewService(a.Name, a.Namespace)
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, false)
 		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]

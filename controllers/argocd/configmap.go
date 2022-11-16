@@ -229,7 +229,7 @@ func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }

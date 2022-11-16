@@ -108,8 +108,8 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 }
 
 // LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
-	labels := common.DefaultLabels(cr.Name)
+func LabelsForCluster(name string) map[string]string {
+	labels := common.DefaultLabels(name)
 	return labels
 }
 

@@ -42,7 +42,7 @@ func newIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }
