@@ -23,6 +23,7 @@ func newServiceAccount(cr *argoprojv1a1.ArgoRollouts) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr.Name),
 		},
 	}
 }
@@ -31,6 +32,10 @@ func newServiceAccount(cr *argoprojv1a1.ArgoRollouts) *corev1.ServiceAccount {
 func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoRollouts) *corev1.ServiceAccount {
 	sa := newServiceAccount(cr)
 	sa.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
+
+	lbls := sa.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	sa.ObjectMeta.Labels = lbls
 
 	return sa
 }

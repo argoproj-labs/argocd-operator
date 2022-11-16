@@ -1,9 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
+kind: ArgoRollouts
 metadata:
-  name: example-argocd
+  name: example-rollouts
   labels:
     example: basic
-spec:
-  rollouts:
-    enabled: true
+spec: {}
