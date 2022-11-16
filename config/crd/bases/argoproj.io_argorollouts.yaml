@@ -38,8 +38,6 @@ spec:
             description: ArgoRolloutsSpec defines the desired state for Argo Rollouts
               controller.
             properties:
-              enabled:
-                type: boolean
               env:
                 description: Env lets you specify environment for Rollouts pods
                 items:

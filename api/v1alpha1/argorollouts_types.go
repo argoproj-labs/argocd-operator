@@ -70,8 +70,6 @@ type ArgoRolloutsSpec struct {
 	// Env lets you specify environment for Rollouts pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	Enabled bool `json:"enabled,omitempty"`
-
 	// Extra Command arguments that would append to the Rollouts
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the Rollouts command
 	// with same or different value.
