@@ -41,6 +41,8 @@ type ReconcileArgoCD struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	ManagedNamespaces *corev1.NamespaceList
+	// Stores a list of SourceNamespaces as values
+	ManagedSourceNamespaces map[string]string
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -100,6 +102,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 				}
 			}
 
+			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
+			}
+
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
 				return reconcile.Result{}, err
 			}
@@ -125,6 +131,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	}
 
 	if err = r.setManagedNamespaces(argocd); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err = r.setManagedSourceNamespaces(argocd); err != nil {
 		return reconcile.Result{}, err
 	}
 

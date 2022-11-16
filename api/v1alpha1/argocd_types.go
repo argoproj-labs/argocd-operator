@@ -708,6 +708,9 @@ type ArgoCDSpec struct {
 	// Server defines the options for the ArgoCD Server component.
 	Server ArgoCDServerSpec `json:"server,omitempty"`
 
+	// SourceNamespaces defines the namespaces application resources are allowed to be created in
+	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
+
 	// SSO defines the Single Sign-on configuration for Argo CD
 	SSO *ArgoCDSSOSpec `json:"sso,omitempty"`
 

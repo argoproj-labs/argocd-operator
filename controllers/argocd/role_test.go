@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -119,6 +120,33 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole))
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
+}
+
+func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "newNamespaceTest"
+	a := makeTestArgoCD()
+	a.Spec = v1alpha1.ArgoCDSpec{
+		SourceNamespaces: []string{
+			sourceNamespace,
+		},
+	}
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
+
+	workloadIdentifier := common.ArgoCDServerComponent
+	expectedRules := policyRuleForServerApplicationSourceNamespaces()
+	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
+	assert.NoError(t, err)
+
+	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)
+	reconciledRole := &v1.Role{}
+
+	// check if roles are created for the new namespace
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, reconciledRole))
+	assert.Equal(t, expectedRules, reconciledRole.Rules)
+
 }
 
 func TestReconcileArgoCD_RoleHooks(t *testing.T) {
