@@ -46,6 +46,7 @@ nav:
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
+    - ArgoRollouts: reference/argorollouts.md
     - API Docs: reference/api.html.md
   - Contributing: 
       - Contributing: developer-guide/contributing.md

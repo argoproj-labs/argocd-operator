@@ -19,17 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// The following are the rollouts controller resources reconciled by the operator.
-// kind: ServiceAccount # name: argo-rollouts
-// kind: ClusterRole # name: argo-rollouts
-// kind: ClusterRole # name: argo-rollouts-aggregate-to-admin
-// kind: ClusterRole # name: argo-rollouts-aggregate-to-edit
-// kind: ClusterRole # name: argo-rollouts-aggregate-to-view
-// kind: ClusterRoleBinding # name: argo-rollouts
-// kind: Secret # name: argo-rollouts-notification-secret
-// kind: Service # name: argo-rollouts-metrics
-// kind: Deployment # name: argo-rollouts
-
 // Reconciles rollouts serviceaccount.
 func (r *ArgoRolloutsReconciler) reconcileRolloutsServiceAccount(cr *argoprojv1a1.ArgoRollouts) (*corev1.ServiceAccount, error) {
 

@@ -301,7 +301,7 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 	ArgoRolloutsDefaultImage = "quay.io/argoproj/argo-rollouts"
 
 	// ArgoRolloutsDefaultVersion is the default version for the rollouts controller.
-	ArgoRolloutsDefaultVersion = "sha256:38828e693b02e6f858d89fa22a9d9811d3d7a2430a1d4c7d687b6f509775c6ce"
+	ArgoRolloutsDefaultVersion = "sha256:38828e693b02e6f858d89fa22a9d9811d3d7a2430a1d4c7d687b6f509775c6ce" //v1.3.1
 )
 
 // DefaultLabels returns the default set of labels for controllers.
