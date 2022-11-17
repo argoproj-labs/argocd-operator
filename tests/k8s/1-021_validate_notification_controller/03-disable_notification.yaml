@@ -1,6 +1,7 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-- script: |
-    kubectl patch --type=merge -n $NAMESPACE argocd/example-argocd --patch '{"spec":{"notifications":{"enabled":false}}}'
-- script: sleep 10
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  notifications:
+    enabled: false
