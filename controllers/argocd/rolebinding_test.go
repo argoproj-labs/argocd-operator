@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -196,4 +197,30 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-server")
 	checkForUpdatedRoleRef(t, "custom-server-role", expectedName)
+}
+
+func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	sourceNamespace := "newNamespaceTest"
+	a := makeTestArgoCD()
+	a.Spec = v1alpha1.ArgoCDSpec{
+		SourceNamespaces: []string{
+			sourceNamespace,
+		},
+	}
+	r := makeTestReconciler(t, a)
+	p := policyRuleForApplicationController()
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
+
+	workloadIdentifier := common.ArgoCDServerComponent
+
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
+
+	roleBinding := &rbacv1.RoleBinding{}
+	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, a.Namespace, sourceNamespace)
+
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
+
 }

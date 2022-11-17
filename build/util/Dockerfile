@@ -1,5 +1,5 @@
-# Argo CD v2.4.7
-FROM quay.io/argoproj/argocd@sha256:f887f854ab22f7f29f915aae2b765f2948d1555d61e9ce3ca9e659f8df22ab2b
+# Argo CD v2.5.2
+FROM quay.io/argoproj/argocd@sha256:9df610ec57cb8ec08001ffaeeedfe1c248e7906707a654801f8d7b4d07905693
 
 USER root
 

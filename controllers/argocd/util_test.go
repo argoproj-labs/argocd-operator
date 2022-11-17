@@ -606,6 +606,34 @@ func TestSetManagedNamespaces(t *testing.T) {
 	}
 }
 
+func TestSetManagedSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = v1alpha1.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test-namespace-1",
+		},
+	}
+	nsList := &v1.NamespaceList{
+		Items: []v1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-1",
+					Labels: map[string]string{
+						common.ArgoCDManagedByClusterArgoCDLabel: testNamespace,
+					},
+				},
+			},
+		},
+	}
+	r := makeTestReconciler(t, nsList)
+
+	err := r.setManagedSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(r.ManagedSourceNamespaces))
+	assert.Contains(t, r.ManagedSourceNamespaces, "test-namespace-1")
+}
+
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings

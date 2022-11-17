@@ -904,6 +904,11 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 	in.Redis.DeepCopyInto(&out.Redis)
 	in.Repo.DeepCopyInto(&out.Repo)
 	in.Server.DeepCopyInto(&out.Server)
+	if in.SourceNamespaces != nil {
+		in, out := &in.SourceNamespaces, &out.SourceNamespaces
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.SSO != nil {
 		in, out := &in.SSO, &out.SSO
 		*out = new(ArgoCDSSOSpec)

@@ -5928,6 +5928,12 @@ spec:
                     - type
                     type: object
                 type: object
+              sourceNamespaces:
+                description: SourceNamespaces defines the namespaces application resources
+                  are allowed to be created in
+                items:
+                  type: string
+                type: array
               sso:
                 description: SSO defines the Single Sign-on configuration for Argo
                   CD

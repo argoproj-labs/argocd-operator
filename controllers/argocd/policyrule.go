@@ -209,6 +209,27 @@ func policyRuleForNotificationsController() []v1.PolicyRule {
 	}
 }
 
+func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+				"delete",
+			},
+		},
+	}
+}
+
 func policyRuleForServerClusterRole() []v1.PolicyRule {
 	return []v1.PolicyRule{
 		{
