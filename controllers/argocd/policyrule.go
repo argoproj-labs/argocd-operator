@@ -245,6 +245,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 				"delete",
 				"patch",
 				"list",
+				"watch",
 			},
 		},
 		{
