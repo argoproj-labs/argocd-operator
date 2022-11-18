@@ -219,6 +219,7 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"applications",
 			},
 			Verbs: []string{
+				"create",
 				"get",
 				"list",
 				"patch",
