@@ -244,6 +244,16 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 				"get",
 				"delete",
 				"patch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
 				"list",
 				"watch",
 			},
