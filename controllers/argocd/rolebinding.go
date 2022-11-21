@@ -262,7 +262,12 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 			roleBinding.Subjects = []v1.Subject{
 				{
 					Kind:      v1.ServiceAccountKind,
-					Name:      sa.Name,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
+					Namespace: sa.Namespace,
+				},
+				{
+					Kind:      v1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDApplicationControllerComponent),
 					Namespace: sa.Namespace,
 				},
 			}
@@ -310,7 +315,7 @@ func getCustomRoleName(name string) string {
 
 // Returns the name of the role for the source namespaces for ArgoCDServer in the format of "sourceNamespace_targetNamespace_argocd-server"
 func getRoleNameForApplicationSourceNamespaces(targetNamespace string, cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("%s_%s_%s", cr.Name, targetNamespace, common.ArgoCDServerComponent)
+	return fmt.Sprintf("%s_%s", cr.Name, targetNamespace)
 }
 
 // newRoleBindingWithNameForApplicationSourceNamespaces creates a new RoleBinding with the given name for the source namespaces of ArgoCD Server.

@@ -219,6 +219,7 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"applications",
 			},
 			Verbs: []string{
+				"create",
 				"get",
 				"list",
 				"patch",
@@ -243,6 +244,8 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 				"get",
 				"delete",
 				"patch",
+				"list",
+				"watch",
 			},
 		},
 		{
