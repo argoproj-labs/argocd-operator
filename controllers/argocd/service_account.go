@@ -43,17 +43,13 @@ func newServiceAccount(cr *argoprojv1a1.ArgoCD) *corev1.ServiceAccount {
 // newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
 func newServiceAccountWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.ServiceAccount {
 	sa := newServiceAccount(cr)
-	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
+	sa.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
 
 	lbls := sa.ObjectMeta.Labels
 	lbls[common.ArgoCDKeyName] = name
 	sa.ObjectMeta.Labels = lbls
 
 	return sa
-}
-
-func getServiceAccountName(crName, name string) string {
-	return fmt.Sprintf("%s-%s", crName, name)
 }
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
