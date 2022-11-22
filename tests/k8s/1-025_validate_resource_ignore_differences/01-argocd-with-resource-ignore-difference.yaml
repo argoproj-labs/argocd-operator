@@ -6,6 +6,6 @@ spec:
   ResourceIgnoreDifferences:
   - group: admissionregistration.k8s.io
     kind: MutatingWebhookConfiguration
-    JqPathExpressions: |
+    jqPathExpressions: |
       jsonPointers: |
       - /webhooks/0/clientConfig/caBundle

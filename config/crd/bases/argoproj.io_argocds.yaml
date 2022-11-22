@@ -36,42 +36,6 @@ spec:
           spec:
             description: ArgoCDSpec defines the desired state of ArgoCD
             properties:
-              ResourceHealthChecks:
-                description: ResourceHealthChecks customizes resource health check
-                  behavior.
-                items:
-                  description: Resource Customization for custom health check
-                  properties:
-                    check:
-                      type: string
-                    group:
-                      type: string
-                    kind:
-                      type: string
-                  required:
-                  - check
-                  - group
-                  - kind
-                  type: object
-                type: array
-              ResourceIgnoreDifferences:
-                description: ResourceIgnoreDifferences customizes resource ignore
-                  difference behavior.
-                items:
-                  description: Resource Customization for ignore difference
-                  properties:
-                    JqPathExpressions:
-                      type: string
-                    group:
-                      type: string
-                    kind:
-                      type: string
-                  required:
-                  - JqPathExpressions
-                  - group
-                  - kind
-                  type: object
-                type: array
               applicationInstanceLabelKey:
                 description: ApplicationInstanceLabelKey is the key name where Argo
                   CD injects the app name as a tracking label.
@@ -5529,10 +5493,6 @@ spec:
                       type: string
                     kind:
                       type: string
-                  required:
-                  - action
-                  - group
-                  - kind
                   type: object
                 type: array
               resourceCustomizations:
@@ -5545,6 +5505,65 @@ spec:
                 description: ResourceExclusions is used to completely ignore entire
                   classes of resource group/kinds.
                 type: string
+              resourceHealthChecks:
+                description: ResourceHealthChecks customizes resource health check
+                  behavior.
+                items:
+                  description: Resource Customization for custom health check
+                  properties:
+                    check:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  type: object
+                type: array
+              resourceIgnoreDifferences:
+                description: ResourceIgnoreDifferences customizes resource ignore
+                  difference behavior.
+                properties:
+                  all:
+                    properties:
+                      jqPathExpressions:
+                        items:
+                          type: string
+                        type: array
+                      jsonPointers:
+                        items:
+                          type: string
+                        type: array
+                      managedFieldsManagers:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  resourceIdentifiers:
+                    items:
+                      description: Resource Customization fields for ignore difference
+                      properties:
+                        customization:
+                          properties:
+                            jqPathExpressions:
+                              items:
+                                type: string
+                              type: array
+                            jsonPointers:
+                              items:
+                                type: string
+                              type: array
+                            managedFieldsManagers:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        group:
+                          type: string
+                        kind:
+                          type: string
+                      type: object
+                    type: array
+                type: object
               resourceInclusions:
                 description: ResourceInclusions is used to only include specific group/kinds
                   in the reconciliation process.
