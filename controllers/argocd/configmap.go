@@ -174,7 +174,7 @@ func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) (map[string]string, e
 	ignoreDiff := make(map[string]string)
 	if cr.Spec.ResourceIgnoreDifferences != nil {
 		resourceIgnoreDiff := cr.Spec.ResourceIgnoreDifferences
-		if !reflect.DeepEqual(resourceIgnoreDiff.All, &v1alpha1.IgnoreDifferenceCustomization{}) {
+		if resourceIgnoreDiff.All != nil {
 			subkey := "resource.customizations.ignoreDifferences.all"
 			bytes, err := yaml.Marshal(resourceIgnoreDiff.All)
 			if err != nil {
