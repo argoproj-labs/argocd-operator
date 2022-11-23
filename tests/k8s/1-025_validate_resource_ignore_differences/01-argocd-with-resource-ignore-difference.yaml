@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  resourceIgnoreDifferences:
+    all:
+      jqPathExpressions:
+          - xyz
+          - abc
+      jsonPointers:
+          - xyz
+          - abc
+      managedFieldsManagers:
+          - xyz
+          - abc
+    resourceIdentifiers:
+      - group: apps
+        kind: deployments
+        customization:
+          jqPathExpressions:
+            - xyz
+            - abc
+          jsonPointers:
+            - xyz
+            - abc
+          managedFieldManagers:
+            - xyz
+            - abc
+      - group: batch
+        kind: jobs
+        customization:
+          jqPathExpressions:
+            - xyz
+            - abc
+          jsonPointers:
+            - xyz
+            - abc
+          managedFieldsManagers:
+            - xyz
+            - abc
