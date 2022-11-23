@@ -791,6 +791,133 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 	}
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	desiredIgnoreDifferenceCustomization :=
+		`jqpathexpressions:
+- a
+- b
+jsonpointers:
+- a
+- b
+managedfieldsmanagers:
+- a
+- b
+`
+
+	health := []argoprojv1alpha1.ResourceHealthCheck{
+		{
+			Group: "healthFoo",
+			Kind:  "healthFoo",
+			Check: "healthFoo",
+		},
+		{
+			Group: "healthBar",
+			Kind:  "healthBar",
+			Check: "healthBar",
+		},
+	}
+	actions := []argoprojv1alpha1.ResourceAction{
+		{
+			Group:  "actionsFoo",
+			Kind:   "actionsFoo",
+			Action: "actionsFoo",
+		},
+		{
+			Group:  "actionsBar",
+			Kind:   "actionsBar",
+			Action: "actionsBar",
+		},
+	}
+	ignoreDifferences := argoprojv1alpha1.ResourceIgnoreDifference{
+		All: &v1alpha1.IgnoreDifferenceCustomization{
+			JqPathExpressions:     []string{"a", "b"},
+			JsonPointers:          []string{"a", "b"},
+			ManagedFieldsManagers: []string{"a", "b"},
+		},
+		ResourceIdentifiers: []argoprojv1alpha1.ResourceIdentifiers{
+			{
+				Group: "ignoreDiffBar",
+				Kind:  "ignoreDiffBar",
+				Customization: v1alpha1.IgnoreDifferenceCustomization{
+					JqPathExpressions:     []string{"a", "b"},
+					JsonPointers:          []string{"a", "b"},
+					ManagedFieldsManagers: []string{"a", "b"},
+				},
+			},
+		},
+	}
+
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.ResourceHealthChecks = health
+		a.Spec.ResourceActions = actions
+		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
+	})
+	r := makeTestReconciler(t, a)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	desiredCM := make(map[string]string)
+	desiredCM["resource.customizations.health.healthFoo_healthFoo"] = "healthFoo"
+	desiredCM["resource.customizations.health.healthBar_healthBar"] = "healthBar"
+	desiredCM["resource.customizations.actions.actionsFoo_actionsFoo"] = "actionsFoo"
+	desiredCM["resource.customizations.actions.actionsBar_actionsBar"] = "actionsBar"
+	desiredCM["resource.customizations.ignoreDifferences.all"] = desiredIgnoreDifferenceCustomization
+	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffBar_ignoreDiffBar"] = desiredIgnoreDifferenceCustomization
+
+	for k, v := range desiredCM {
+		if value, ok := cm.Data[k]; !ok || value != v {
+			t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", value, desiredCM[k])
+		}
+	}
+}
+
+func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
+
+	resourceCustomizationsEvent := &corev1.Event{
+		Reason:  "DeprecationNotice",
+		Message: "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.",
+		Action:  "Deprecated",
+	}
+
+	tests := []struct {
+		name       string
+		argoCD     *argoprojv1alpha1.ArgoCD
+		wantEvents []*corev1.Event
+	}{
+		{
+			name: "ResourceCustomizations used",
+			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
+				ac.Spec.ResourceCustomizations = "testing: testing"
+			}),
+			wantEvents: []*corev1.Event{resourceCustomizationsEvent},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := makeFakeReconciler(t, test.argoCD)
+			err := r.reconcileArgoConfigMap(test.argoCD)
+			assert.NoError(t, err)
+			gotEventList := &corev1.EventList{}
+			err = r.Client.List(context.TODO(), gotEventList)
+			assert.NoError(t, err)
+			assert.Equal(t, len(test.wantEvents), len(gotEventList.Items))
+		})
+	}
+}
+
 func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)

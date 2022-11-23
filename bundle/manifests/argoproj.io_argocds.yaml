@@ -5480,14 +5480,88 @@ spec:
                 description: RepositoryCredentials are the Git pull credentials to
                   configure Argo CD with upon creation of the cluster.
                 type: string
+              resourceActions:
+                description: ResourceActions customizes resource action behavior.
+                items:
+                  description: Resource Customization for custom action
+                  properties:
+                    action:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  type: object
+                type: array
               resourceCustomizations:
                 description: 'ResourceCustomizations customizes resource behavior.
-                  Keys are in the form: group/Kind.'
+                  Keys are in the form: group/Kind. Please note that this is being
+                  deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
+                  and ResourceActions.'
                 type: string
               resourceExclusions:
                 description: ResourceExclusions is used to completely ignore entire
                   classes of resource group/kinds.
                 type: string
+              resourceHealthChecks:
+                description: ResourceHealthChecks customizes resource health check
+                  behavior.
+                items:
+                  description: Resource Customization for custom health check
+                  properties:
+                    check:
+                      type: string
+                    group:
+                      type: string
+                    kind:
+                      type: string
+                  type: object
+                type: array
+              resourceIgnoreDifferences:
+                description: ResourceIgnoreDifferences customizes resource ignore
+                  difference behavior.
+                properties:
+                  all:
+                    properties:
+                      jqPathExpressions:
+                        items:
+                          type: string
+                        type: array
+                      jsonPointers:
+                        items:
+                          type: string
+                        type: array
+                      managedFieldsManagers:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  resourceIdentifiers:
+                    items:
+                      description: Resource Customization fields for ignore difference
+                      properties:
+                        customization:
+                          properties:
+                            jqPathExpressions:
+                              items:
+                                type: string
+                              type: array
+                            jsonPointers:
+                              items:
+                                type: string
+                              type: array
+                            managedFieldsManagers:
+                              items:
+                                type: string
+                              type: array
+                          type: object
+                        group:
+                          type: string
+                        kind:
+                          type: string
+                      type: object
+                    type: array
+                type: object
               resourceInclusions:
                 description: ResourceInclusions is used to only include specific group/kinds
                   in the reconciliation process.
