@@ -3,9 +3,39 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 spec:
-  ResourceIgnoreDifferences:
-  - group: admissionregistration.k8s.io
-    kind: MutatingWebhookConfiguration
-    jqPathExpressions: |
-      jsonPointers: |
-      - /webhooks/0/clientConfig/caBundle
+  resourceIgnoreDifferences:
+    all:
+      jqPathExpressions:
+          - xyz
+          - abc
+      jsonPointers:
+          - xyz
+          - abc
+      managedFieldsManagers:
+          - xyz
+          - abc
+    resourceIdentifiers:
+      - group: apps
+        kind: deployments
+        customization:
+          jqPathExpressions:
+            - xyz
+            - abc
+          jsonPointers:
+            - xyz
+            - abc
+          managedFieldManagers:
+            - xyz
+            - abc
+      - group: batch
+        kind: jobs
+        customization:
+          jqPathExpressions:
+            - xyz
+            - abc
+          jsonPointers:
+            - xyz
+            - abc
+          managedFieldsManagers:
+            - xyz
+            - abc
