@@ -121,7 +121,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	dnsNames := []string{
 		cr.ObjectMeta.Name,
 		nameWithSuffix("grpc", cr),
-		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
+		fmt.Sprintf("%s.%s", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
 	}
 
 	if cr.Spec.Grafana.Enabled {

@@ -797,7 +797,7 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		wantCmd := []string{
 			"uid_entrypoint.sh",
 			"argocd-repo-server",
-			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis", "argocd-redis.argocd:6379",
 			"--redis-use-tls",
 			"--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt",
 			"--loglevel", "info",
@@ -826,7 +826,7 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 		wantCmd := []string{
 			"uid_entrypoint.sh",
 			"argocd-repo-server",
-			"--redis", "argocd-redis.argocd.svc.cluster.local:6379",
+			"--redis", "argocd-redis.argocd:6379",
 			"--redis-use-tls",
 			"--redis-insecure-skip-tls-verify",
 			"--loglevel", "info",
@@ -861,11 +861,11 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"http://argocd-dex-server.argocd:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
@@ -928,11 +928,11 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
-		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"http://argocd-dex-server.argocd:5556",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd:8081",
 		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
+		"argocd-redis.argocd:6379",
 		"--redis-use-tls",
 		"--redis-ca-certificate",
 		"/app/config/server/tls/redis/tls.crt",
@@ -953,11 +953,11 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"--staticassets",
 		"/shared/app",
 		"--dex-server",
-		"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"http://argocd-dex-server.argocd:5556",
 		"--repo-server",
-		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"argocd-repo-server.argocd:8081",
 		"--redis",
-		"argocd-redis.argocd.svc.cluster.local:6379",
+		"argocd-redis.argocd:6379",
 		"--loglevel",
 		"info",
 		"--logformat",
@@ -1038,11 +1038,11 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 }
 
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
-	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	cmd := []string{"--server", "foo", "--path", "/bar"}
 	extraCMDArgs := []string{"--extra-path", "/"}
 	assert.NoError(t, isMergable(extraCMDArgs, cmd))
 
-	cmd = []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
+	cmd = []string{"--server", "foo", "--path", "/bar"}
 	extraCMDArgs = []string{"--server", "bar.com"}
 	assert.Error(t, isMergable(extraCMDArgs, cmd))
 }
@@ -1076,11 +1076,11 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"http://argocd-dex-server.argocd:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
@@ -1162,11 +1162,11 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--staticassets",
 					"/shared/app",
 					"--dex-server",
-					"http://argocd-dex-server.argocd.svc.cluster.local:5556",
+					"http://argocd-dex-server.argocd:5556",
 					"--repo-server",
-					"argocd-repo-server.argocd.svc.cluster.local:8081",
+					"argocd-repo-server.argocd:8081",
 					"--redis",
-					"argocd-redis.argocd.svc.cluster.local:6379",
+					"argocd-redis.argocd:6379",
 					"--loglevel",
 					"info",
 					"--logformat",
