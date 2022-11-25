@@ -268,7 +268,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				// conditions exist and type is RouteAdmitted
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
 					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
-						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Host = route.Spec.Host
 						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = ""
@@ -277,7 +277,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				} else {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
-						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Host = route.Spec.Host
 						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = "Unavailable"
