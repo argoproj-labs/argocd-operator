@@ -334,7 +334,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fmt.Sprintf("http://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
