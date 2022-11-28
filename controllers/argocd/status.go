@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strings"
 
@@ -253,14 +252,6 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 	cr.Status.Host = ""
 	cr.Status.Phase = "Available"
-
-	// Log an error if a user configures route on a platform where route API does not exist.
-	// This is a misconfiguration.
-	if cr.Spec.Server.Route.Enabled && !IsRouteAPIAvailable() {
-		err := errors.New("Misconfiguration:")
-		log.Error(err, "Routes not available in non-OpenShift environments, please use Ingresses instead")
-		return nil
-	}
 
 	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
