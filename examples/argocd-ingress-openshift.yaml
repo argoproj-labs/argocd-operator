@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: ingress
+spec:
+  server:
+    host: test-crane.apps.rhoms-4.12-112804.dev.openshiftappsvc.org
+    grpc:
+      ingress:
+        enabled: true
+    ingress:
+      enabled: true
+      tls:
+       - hosts:
+          - test-crane
+    insecure: true

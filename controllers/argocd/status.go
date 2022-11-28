@@ -16,11 +16,14 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -250,16 +253,41 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 	cr.Status.Host = ""
 	cr.Status.Phase = "Available"
-	if cr.Spec.Server.Route.Enabled {
-		if !IsRouteAPIAvailable() {
-			log.Info("Routes not available in non-OpenShift environments, please use Ingresses instead")
-			return nil
-		}
+
+	// Log an error if a user configures route on a platform where route API does not exist.
+	// This is a misconfiguration.
+	if cr.Spec.Server.Route.Enabled && !IsRouteAPIAvailable() {
+		err := errors.New("Misconfiguration:")
+		log.Error(err, "Routes not available in non-OpenShift environments, please use Ingresses instead")
+		return nil
+	}
+
+	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
-		if !argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+
+		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
+		// to fulfill the conditions specified.
+		// But the names of such created route resources are randomly generated so it is better to identify the routes using Labels
+		// instead of Name.
+		// 1. If a user creates ingress on openshift, Ingress controller generates a route for the ingress with random name.
+		// 2. If a user creates route on openshift, Ingress controller processes the route with provided name.
+		routeList := &routev1.RouteList{}
+		opts := &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"app.kubernetes.io/name": route.Name,
+			}),
+			Namespace: cr.Namespace,
+		}
+
+		if err := r.Client.List(context.TODO(), routeList, opts); err != nil {
+			return err
+		}
+
+		if len(routeList.Items) == 0 {
 			log.Info("argocd-server route requested but not found on cluster")
 			return nil
 		} else {
+			route = &routeList.Items[0]
 			// status.ingress not available
 			if route.Status.Ingress == nil {
 				cr.Status.Host = ""
@@ -268,7 +296,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				// conditions exist and type is RouteAdmitted
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
 					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
-						cr.Status.Host = route.Spec.Host
+						cr.Status.Host = route.Status.Ingress[0].Host
 						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = ""
@@ -277,7 +305,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				} else {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
-						cr.Status.Host = route.Spec.Host
+						cr.Status.Host = route.Status.Ingress[0].Host
 						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = "Unavailable"
