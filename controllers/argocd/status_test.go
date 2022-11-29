@@ -152,6 +152,9 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testArgoCDName + "-server",
 					Namespace: testNamespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/name": testArgoCDName + "-server",
+					},
 				},
 				Spec: routev1.RouteSpec{
 					Host: "argocd",
