@@ -1026,27 +1026,6 @@ spec:
       - "*.local"
 ```
 
-### Resource Exclusions Example
-
-The following example sets a value in the `argocd-cm` ConfigMap using the `ResourceExclusions` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: resource-exclusions
-spec:
-  resourceExclusions: |
-    - apiGroups:
-      - repositories.stash.appscode.com
-      kinds:
-      - Snapshot
-      clusters:
-      - "*.local"
-```
-
 ## Resource Inclusions
 
 In addition to exclusions, you might configure the list of included resources using the resourceInclusions setting.
