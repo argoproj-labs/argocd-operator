@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -144,13 +145,69 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	return scopes
 }
 
-// getResourceCustomizations will return the resource customizations for the given ArgoCD.
+// getResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap
 func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
 	rc := common.ArgoCDDefaultResourceCustomizations
 	if cr.Spec.ResourceCustomizations != "" {
 		rc = cr.Spec.ResourceCustomizations
 	}
+
 	return rc
+}
+
+// getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
+func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
+	healthCheck := make(map[string]string)
+	if cr.Spec.ResourceHealthChecks != nil {
+		resourceHealthChecks := cr.Spec.ResourceHealthChecks
+		for _, healthCustomization := range resourceHealthChecks {
+			subkey := "resource.customizations.health." + healthCustomization.Group + "_" + healthCustomization.Kind
+			subvalue := healthCustomization.Check
+			healthCheck[subkey] = subvalue
+		}
+	}
+	return healthCheck
+}
+
+// getResourceIgnoreDifferences loads ignore differences customizations to `resource.customizations.ignoreDifferences` from argocd-cm ConfigMap
+func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) (map[string]string, error) {
+	ignoreDiff := make(map[string]string)
+	if cr.Spec.ResourceIgnoreDifferences != nil {
+		resourceIgnoreDiff := cr.Spec.ResourceIgnoreDifferences
+		if !reflect.DeepEqual(resourceIgnoreDiff.All, &v1alpha1.IgnoreDifferenceCustomization{}) {
+			subkey := "resource.customizations.ignoreDifferences.all"
+			bytes, err := yaml.Marshal(resourceIgnoreDiff.All)
+			if err != nil {
+				return ignoreDiff, err
+			}
+			subvalue := string(bytes)
+			ignoreDiff[subkey] = subvalue
+		}
+		for _, ignoreDiffCustomization := range resourceIgnoreDiff.ResourceIdentifiers {
+			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + "_" + ignoreDiffCustomization.Kind
+			bytes, err := yaml.Marshal(ignoreDiffCustomization.Customization)
+			if err != nil {
+				return ignoreDiff, err
+			}
+			subvalue := string(bytes)
+			ignoreDiff[subkey] = subvalue
+		}
+	}
+	return ignoreDiff, nil
+}
+
+// getResourceActions loads custom actions to `resource.customizations.actions` from argocd-cm ConfigMap
+func getResourceActions(cr *argoprojv1a1.ArgoCD) map[string]string {
+	action := make(map[string]string)
+	if cr.Spec.ResourceActions != nil {
+		resourceAction := cr.Spec.ResourceActions
+		for _, actionCustomization := range resourceAction {
+			subkey := "resource.customizations.actions." + actionCustomization.Group + "_" + actionCustomization.Kind
+			subvalue := actionCustomization.Action
+			action[subkey] = subvalue
+		}
+	}
+	return action
 }
 
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
@@ -331,9 +388,47 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	cm.Data[common.ArgoCDKeyOIDCConfig] = getOIDCConfig(cr)
+
+	if c := getResourceHealthChecks(cr); c != nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	}
+
+	if c, err := getResourceIgnoreDifferences(cr); c != nil && err == nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	} else {
+		return err
+	}
+
+	if c := getResourceActions(cr); c != nil {
+		for k, v := range c {
+			cm.Data[k] = v
+		}
+	}
+
+	// old format of ResourceCustomizations
 	if c := getResourceCustomizations(cr); c != "" {
+
+		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
+			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
+			if err != nil {
+				return err
+			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{ResourceCustomizationsDeprecationWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
+		}
 		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
 	}
+
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
