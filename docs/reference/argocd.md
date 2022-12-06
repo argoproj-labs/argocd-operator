@@ -964,16 +964,33 @@ There are two ways to customize resource behavior- the first way, only available
 
 ### Resource Customizations (with subkeys) Example
 
-Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. 
+Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. Additionally, `.spec.resourceIgnoreDifferences.all` allows you to apply these specified settings to all resources managed by this Argo CD instance.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
-  name: example-argocd
-  labels:
-    example: resource-customizations
+  name: argocd
 spec:
+  resourceIgnoreDifferences:
+    all:
+      jsonPointers:
+        - /spec/replicas
+      managedFieldsManagers:
+        - kube-controller-manager
+    resourceIdentifiers:
+      - group: admissionregistration.k8s.io
+        kind: MutatingWebhookConfiguration
+        customization:
+          jqPathExpressions:
+            - '.webhooks[]?.clientConfig.caBundle'
+      - group: apps
+        kind: Deployment
+        customization:
+          managedFieldsManagers:
+            - kube-controller-manager
+          jsonPointers:
+            - /spec/replicas
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate
@@ -999,14 +1016,14 @@ spec:
         hs.message = "Waiting for certificate"
         return hs
   resourceActions:
-  - group: apps
-    kind: Deployment
-    action: |
-      discovery.lua: |
+    - group: apps
+      kind: Deployment
+      action: |
+        discovery.lua: |
         actions = {}
         actions["restart"] = {}
         return actions
-      definitions:
+        definitions:
         - name: restart
           # Lua Script to modify the obj
           action.lua: |
@@ -1019,23 +1036,54 @@ spec:
             end
             obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
             return obj
-  resourceIgnoreDifferences:
-  - group: admissionregistration.k8s.io
-    kind: MutatingWebhookConfiguration
-    jqPathExpressions: |
-      jsonPointers: |
-      - /webhooks/0/clientConfig/caBundle
 ```
  After applying these changes your `argocd-cm` Configmap should contain the following fields: 
 
 ```
-resource.customizations.actions.apps_Deployment:
-----
-discovery.lua: |
+resource.customizations.ignoreDifferences.all: |
+  jsonPointers:
+  - /spec/replicas
+  managedFieldsManagers:
+  - kube-controller-manager
+
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+  jqpathexpressions:
+  - '.webhooks[]?.clientConfig.caBundle'
+
+resource.customizations.ignoreDifferences.apps_deployments: |
+  managedFieldsManagers:
+  - kube-controller-manager
+  jsonPointers:
+  - /spec/replicas
+
+resource.customizations.health.certmanager.k8s.io_Certificate: |
+  hs = {}
+  if obj.status ~= nil then
+    if obj.status.conditions ~= nil then
+      for i, condition in ipairs(obj.status.conditions) do
+        if condition.type == "Ready" and condition.status == "False" then
+          hs.status = "Degraded"
+          hs.message = condition.message
+          return hs
+        end
+        if condition.type == "Ready" and condition.status == "True" then
+          hs.status = "Healthy"
+          hs.message = condition.message
+          return hs
+        end
+      end
+    end
+  end
+  hs.status = "Progressing"
+  hs.message = "Waiting for certificate"
+  return hs
+
+resource.customizations.actions.apps_Deployment: |
+  discovery.lua: |
   actions = {}
   actions["restart"] = {}
   return actions
-definitions:
+  definitions:
   - name: restart
     # Lua Script to modify the obj
     action.lua: |
@@ -1048,35 +1096,6 @@ definitions:
       end
       obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
       return obj
-
-resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration
-----
-jsonPointers: |
-- /webhooks/0/clientConfig/caBundle
-
-resource.customizations.health.certmanager.k8s.io_Certificate:
-----
-hs = {}
-if obj.status ~= nil then
-  if obj.status.conditions ~= nil then
-    for i, condition in ipairs(obj.status.conditions) do
-      if condition.type == "Ready" and condition.status == "False" then
-        hs.status = "Degraded"
-        hs.message = condition.message
-        return hs
-      end
-      if condition.type == "Ready" and condition.status == "True" then
-        hs.status = "Healthy"
-        hs.message = condition.message
-        return hs
-      end
-    end
-  end
-end
-hs.status = "Progressing"
-hs.message = "Waiting for certificate"
-return hs
-
 ```
 
 ### Resource Customizations Example
