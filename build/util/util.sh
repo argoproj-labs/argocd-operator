@@ -21,6 +21,7 @@ BACKUP_FILENAME=argocd-backup.yaml
 BACKUP_EXPORT_LOCATION=/tmp/${BACKUP_FILENAME}
 BACKUP_ENCRYPT_LOCATION=/backups/${BACKUP_FILENAME}
 BACKUP_KEY_LOCATION=/secrets/backup.key
+DEFAULT_BACKUP_BUCKET_REGION="us-east-1"
 
 export_argocd () {
     echo "exporting argo-cd"
@@ -60,9 +61,20 @@ push_backup () {
 push_aws () {
     echo "pushing argo-cd backup to aws"
     BACKUP_BUCKET_NAME=`cat /secrets/aws.bucket.name`
+    BACKUP_BUCKET_REGION=DEFAULT_BACKUP_BUCKET_REGION
+    # Set BACKUP_BUCKET_REGION to us-east-1(DEFAULT_BACKUP_BUCKET_REGION) if a user does not provide aws.bucket.region
+    # in aws-backup-secret
+    BACKUP_BUCKET_REGION_FILE=/secrets/aws.bucket.region
+    if [[ -f "$BACKUP_BUCKET_REGION_FILE" ]]; then
+        BACKUP_BUCKET_REGION=`cat /secrets/aws.bucket.region`
+    fi
     BACKUP_BUCKET_URI="s3://${BACKUP_BUCKET_NAME}"
-    aws s3 mb ${BACKUP_BUCKET_URI} --region us-east-1
-    aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    # Create bucket only if it does not exist
+    if aws s3 ls $BACKUP_BUCKET_URI 2>&1 | grep -q 'An error occurred'
+    then
+        aws s3 mb ${BACKUP_BUCKET_URI} --region ${BACKUP_BUCKET_REGION}
+        aws s3api put-public-access-block --bucket ${BACKUP_BUCKET_NAME} --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+    fi
     aws s3 cp ${BACKUP_ENCRYPT_LOCATION} ${BACKUP_BUCKET_URI}/${BACKUP_FILENAME}
 }
 

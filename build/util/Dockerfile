@@ -6,6 +6,7 @@ FROM docker.io/library/ubuntu:22.04
 USER root
 
 ENV ARGOCD_USER_ID=999
+ENV DEBIAN_FRONTEND noninteractive
 
 RUN groupadd -g $ARGOCD_USER_ID argocd && \
     useradd -r -u $ARGOCD_USER_ID -g argocd argocd && \
