@@ -1,0 +1,9 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: argocd-catalog
+spec:
+  sourceType: grpc
+  image: quay.io/argoprojlabs/argocd-operator-registry@sha256:a541110c0d2bde77e19643cf191d82937d4ed6e96f3bc2c38d2126f27351cb46 # replace with your index image
+  displayName: Argo CD Operators
+  publisher: Argo CD Community

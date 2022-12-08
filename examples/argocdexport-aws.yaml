@@ -9,6 +9,7 @@ data:
   aws.bucket.name: ZXhhbXBsZS1hcmdvY2RleHBvcnQ=
   aws.access.key.id: YWNjZXNzX2tleV9pZA==
   aws.secret.access.key: c2VjcmV0X2FjY2Vzc19rZXk=
+  aws.bucket.region: dXMtd2VzdC0x
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCDExport
