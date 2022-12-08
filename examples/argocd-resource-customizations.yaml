@@ -5,40 +5,23 @@ metadata:
 spec:
   resourceIgnoreDifferences:
     all:
-      jqPathExpressions:
-          - xyz
-          - abc
       jsonPointers:
-          - xyz
-          - abc
+        - /spec/replicas
       managedFieldsManagers:
-          - xyz
-          - abc
+        - kube-controller-manager
     resourceIdentifiers:
+      - group: admissionregistration.k8s.io
+        kind: MutatingWebhookConfiguration
+        customization:
+          jqPathExpressions:
+            - '.webhooks[]?.clientConfig.caBundle'
       - group: apps
-        kind: deployments
+        kind: Deployment
         customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
-          managedFieldManagers:
-            - xyz
-            - abc
-      - group: batch
-        kind: jobs
-        customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
           managedFieldsManagers:
-            - xyz
-            - abc
+            - kube-controller-manager
+          jsonPointers:
+            - /spec/replicas
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate

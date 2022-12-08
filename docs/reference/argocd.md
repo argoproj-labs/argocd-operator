@@ -974,40 +974,23 @@ metadata:
 spec:
   resourceIgnoreDifferences:
     all:
-      jqPathExpressions:
-          - xyz
-          - abc
       jsonPointers:
-          - xyz
-          - abc
+        - /spec/replicas
       managedFieldsManagers:
-          - xyz
-          - abc
+        - kube-controller-manager
     resourceIdentifiers:
+      - group: admissionregistration.k8s.io
+        kind: MutatingWebhookConfiguration
+        customization:
+          jqPathExpressions:
+            - '.webhooks[]?.clientConfig.caBundle'
       - group: apps
-        kind: deployments
+        kind: Deployment
         customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
-          managedFieldManagers:
-            - xyz
-            - abc
-      - group: batch
-        kind: jobs
-        customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
           managedFieldsManagers:
-            - xyz
-            - abc
+            - kube-controller-manager
+          jsonPointers:
+            - /spec/replicas
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate
@@ -1058,33 +1041,55 @@ spec:
 
 ```
 resource.customizations.ignoreDifferences.all: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers:
-    - xyz
-    - abc
-  resource.customizations.ignoreDifferences.apps_deployments: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers: []
-  resource.customizations.ignoreDifferences.batch_jobs: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers:
-    - xyz
-    - abc
+  jsonPointers:
+  - /spec/replicas
+  managedFieldsManagers:
+  - kube-controller-manager
+
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+  jqpathexpressions:
+  - '.webhooks[]?.clientConfig.caBundle'
+
+resource.customizations.ignoreDifferences.apps_deployments: |
+  managedFieldsManagers:
+  - kube-controller-manager
+  jsonPointers:
+  - /spec/replicas
+
+resource.customizations.health.certmanager.k8s.io_Certificate: |
+  hs = {}
+  if obj.status ~= nil then
+    if obj.status.conditions ~= nil then
+      for i, condition in ipairs(obj.status.conditions) do
+        if condition.type == "Ready" and condition.status == "False" then
+          hs.status = "Degraded"
+          hs.message = condition.message
+          return hs
+        end
+        if condition.type == "Ready" and condition.status == "True" then
+          hs.status = "Healthy"
+          hs.message = condition.message
+          return hs
+        end
+      end
+    end
+  end
+  hs.status = "Progressing"
+  hs.message = "Waiting for certificate"
+  return hs
+
+resource.customizations.actions.apps_Deployment: |
+  discovery.lua: |
+  actions = {}
+  actions["restart"] = {}
+  return actions
+  definitions:
+  - name: restart
+    # Lua Script to modify the obj
+    action.lua: |
+      end
+      obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+      return obj
 ```
 
 ### Resource Customizations Example
