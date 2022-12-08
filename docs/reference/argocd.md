@@ -1426,6 +1426,39 @@ Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | T
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
 
+## System-Level Configuration
+
+The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind
+in `resource.customizations` key of `argocd-cm` ConfigMap. Following is an example of a customization which ignores the `caBundle` field
+of a `MutatingWebhookConfiguration` webhooks:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+    jqPathExpressions:
+    - '.webhooks[]?.clientConfig.caBundle'
+```
+
+Resource customization can also be configured to ignore all differences made by a `managedFieldsManager` at the system level. The example bellow shows how to configure ArgoCD to ignore changes made by `kube-controller-manager` in `Deployment` resources.
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.apps_Deployment: |
+    managedFieldsManagers:
+    - kube-controller-manager
+```
+
+It is possible to configure ignoreDifferences to be applied to all resources in every Application managed by an ArgoCD instance. In order to do so, resource customizations can be configured like in the example bellow:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.all: |
+    managedFieldsManagers:
+    - kube-controller-manager
+    jsonPointers:
+    - /spec/replicas
+```
+
 ## TLS Options
 
 The following properties are available for configuring the TLS settings.
