@@ -974,40 +974,23 @@ metadata:
 spec:
   resourceIgnoreDifferences:
     all:
-      jqPathExpressions:
-          - xyz
-          - abc
       jsonPointers:
-          - xyz
-          - abc
+        - /spec/replicas
       managedFieldsManagers:
-          - xyz
-          - abc
+        - kube-controller-manager
     resourceIdentifiers:
+      - group: admissionregistration.k8s.io
+        kind: MutatingWebhookConfiguration
+        customization:
+          jqPathExpressions:
+            - '.webhooks[]?.clientConfig.caBundle'
       - group: apps
-        kind: deployments
+        kind: Deployment
         customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
-          managedFieldManagers:
-            - xyz
-            - abc
-      - group: batch
-        kind: jobs
-        customization:
-          jqPathExpressions:
-            - xyz
-            - abc
-          jsonPointers:
-            - xyz
-            - abc
           managedFieldsManagers:
-            - xyz
-            - abc
+            - kube-controller-manager
+          jsonPointers:
+            - /spec/replicas
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate
@@ -1058,33 +1041,55 @@ spec:
 
 ```
 resource.customizations.ignoreDifferences.all: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers:
-    - xyz
-    - abc
-  resource.customizations.ignoreDifferences.apps_deployments: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers: []
-  resource.customizations.ignoreDifferences.batch_jobs: |
-    jqpathexpressions:
-    - xyz
-    - abc
-    jsonpointers:
-    - xyz
-    - abc
-    managedfieldsmanagers:
-    - xyz
-    - abc
+  jsonPointers:
+  - /spec/replicas
+  managedFieldsManagers:
+  - kube-controller-manager
+
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+  jqpathexpressions:
+  - '.webhooks[]?.clientConfig.caBundle'
+
+resource.customizations.ignoreDifferences.apps_deployments: |
+  managedFieldsManagers:
+  - kube-controller-manager
+  jsonPointers:
+  - /spec/replicas
+
+resource.customizations.health.certmanager.k8s.io_Certificate: |
+  hs = {}
+  if obj.status ~= nil then
+    if obj.status.conditions ~= nil then
+      for i, condition in ipairs(obj.status.conditions) do
+        if condition.type == "Ready" and condition.status == "False" then
+          hs.status = "Degraded"
+          hs.message = condition.message
+          return hs
+        end
+        if condition.type == "Ready" and condition.status == "True" then
+          hs.status = "Healthy"
+          hs.message = condition.message
+          return hs
+        end
+      end
+    end
+  end
+  hs.status = "Progressing"
+  hs.message = "Waiting for certificate"
+  return hs
+
+resource.customizations.actions.apps_Deployment: |
+  discovery.lua: |
+  actions = {}
+  actions["restart"] = {}
+  return actions
+  definitions:
+  - name: restart
+    # Lua Script to modify the obj
+    action.lua: |
+      end
+      obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
+      return obj
 ```
 
 ### Resource Customizations Example
@@ -1420,6 +1425,39 @@ Provider | [Empty] | The name of the provider used to configure Single sign-on. 
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
+
+## System-Level Configuration
+
+The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind
+in `resource.customizations` key of `argocd-cm` ConfigMap. Following is an example of a customization which ignores the `caBundle` field
+of a `MutatingWebhookConfiguration` webhooks:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+    jqPathExpressions:
+    - '.webhooks[]?.clientConfig.caBundle'
+```
+
+Resource customization can also be configured to ignore all differences made by a `managedFieldsManager` at the system level. The example bellow shows how to configure ArgoCD to ignore changes made by `kube-controller-manager` in `Deployment` resources.
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.apps_Deployment: |
+    managedFieldsManagers:
+    - kube-controller-manager
+```
+
+It is possible to configure ignoreDifferences to be applied to all resources in every Application managed by an ArgoCD instance. In order to do so, resource customizations can be configured like in the example bellow:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.all: |
+    managedFieldsManagers:
+    - kube-controller-manager
+    jsonPointers:
+    - /spec/replicas
+```
 
 ## TLS Options
 
