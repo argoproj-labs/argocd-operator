@@ -1,5 +1,5 @@
-# upstream-registry-builder v1.13.4
-FROM quay.io/operator-framework/upstream-registry-builder@sha256:ec1f9ec32f0d011b4fae7ac765ab85cf7eb84fc866f5540c9747a4cbe3688d65 as builder
+# upstream-registry-builder v1.26.2
+FROM quay.io/operator-framework/upstream-registry-builder@sha256:dc3ef48c8f6d90ea9654cd2ac5e32afbb777d6395b29f55f9976b201b62e4145 as builder
 
 COPY manifests manifests
 RUN ./bin/initializer -o ./bundles.db
