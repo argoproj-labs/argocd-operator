@@ -962,35 +962,44 @@ There are two ways to customize resource behavior- the first way, only available
 !!! warning 
     `resourceCustomizations` is being deprecated so is encouraged to use `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
 
-### Resource Customizations (with subkeys) Example
+### Resource Customizations (with subkeys)
 
-Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. Additionally, `.spec.resourceIgnoreDifferences.all` allows you to apply these specified settings to all resources managed by this Argo CD instance.
+Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`.
 
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: argocd
+#### Application Level Configuration
+
+Argo CD allows ignoring differences at a specific JSON path, using [RFC6902 JSON patches](https://tools.ietf.org/html/rfc6902) and [JQ path expressions](https://stedolan.github.io/jq/manual/#path(path_expression)). It is also possible to ignore differences from fields owned by specific managers defined in `metadata.managedFields` in live resources.
+
+The following sample application is configured to ignore differences in `spec.replicas` for all deployments:
+
+```yaml
 spec:
   resourceIgnoreDifferences:
-    all:
-      jsonPointers:
-        - /spec/replicas
-      managedFieldsManagers:
-        - kube-controller-manager
     resourceIdentifiers:
-      - group: admissionregistration.k8s.io
-        kind: MutatingWebhookConfiguration
-        customization:
-          jqPathExpressions:
-            - '.webhooks[]?.clientConfig.caBundle'
-      - group: apps
-        kind: Deployment
-        customization:
-          managedFieldsManagers:
-            - kube-controller-manager
-          jsonPointers:
-            - /spec/replicas
+    - group: apps
+      kind: Deployment
+      customization:
+        jsonPointers:
+        - /spec/replicas
+```
+
+Note that the `group` field relates to the [Kubernetes API group](https://kubernetes.io/docs/reference/using-api/#api-groups) without the version.
+
+To ignore elements of a list, you can use JQ path expressions to identify list items based on item content:
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: apps
+      kind: Deployment
+      customization:
+        jqPathExpressions:
+        - .spec.template.spec.initContainers[] | select(.name == "injected-init-container")
+```
+
+The following example defines a custom health check in the `argocd-cm` ConfigMap:
+``` yaml
+spec:
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate
@@ -1015,6 +1024,11 @@ spec:
         hs.status = "Progressing"
         hs.message = "Waiting for certificate"
         return hs
+```
+
+The following example defines a custom action in the `argocd-cm` ConfigMap:
+``` yaml
+spec:
   resourceActions:
     - group: apps
       kind: Deployment
@@ -1037,24 +1051,15 @@ spec:
             obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
             return obj
 ```
- After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+
+After applying these changes your `argocd-cm` Configmap should contain the following fields: 
 
 ```
-resource.customizations.ignoreDifferences.all: |
+resource.customizations.ignoreDifferences.apps_Deployment: |
   jsonPointers:
   - /spec/replicas
-  managedFieldsManagers:
-  - kube-controller-manager
-
-resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
-  jqpathexpressions:
-  - '.webhooks[]?.clientConfig.caBundle'
-
-resource.customizations.ignoreDifferences.apps_deployments: |
-  managedFieldsManagers:
-  - kube-controller-manager
-  jsonPointers:
-  - /spec/replicas
+  jqPathExpressions:
+  - .spec.template.spec.initContainers[] | select(.name == "injected-init-container")
 
 resource.customizations.health.certmanager.k8s.io_Certificate: |
   hs = {}
@@ -1087,12 +1092,75 @@ resource.customizations.actions.apps_Deployment: |
   - name: restart
     # Lua Script to modify the obj
     action.lua: |
+      local os = require("os")
+      if obj.spec.template.metadata == nil then
+          obj.spec.template.metadata = {}
+      end
+      if obj.spec.template.metadata.annotations == nil then
+          obj.spec.template.metadata.annotations = {}
       end
       obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
       return obj
 ```
 
-### Resource Customizations Example
+#### System-Level Configuration
+The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind in `resource.customizations` key of `argocd-cm` ConfigMap. Following is an example of a customization which ignores the `caBundle` field of a `MutatingWebhookConfiguration` webhooks:
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      customization:
+        jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+```
+
+Resource customization can also be configured to ignore all differences made by a `managedField.manager` at the system level. The example bellow shows how to configure ArgoCD to ignore changes made by `kube-controller-manager` in `Deployment` resources.
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: apps
+      kind: Deployment
+      customization:
+        managedFieldsManagers:
+        - kube-controller-manager
+```
+
+It is possible to configure ignoreDifferences to be applied to all resources in every Application managed by an ArgoCD instance. In order to do so, resource customizations can be configured like in the example below:
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    all:
+      managedFieldsManagers:
+        - kube-controller-manager
+      jsonPointers:
+        - /spec/replicas
+```
+
+After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+
+```
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+  jqPathExpressions:
+  - '.webhooks[]?.clientConfig.caBundle'
+
+resource.customizations.ignoreDifferences.apps_Deployment: |
+  managedFieldsManagers:
+  - kube-controller-manager
+
+resource.customizations.ignoreDifferences.all: |
+  managedFieldsManagers:
+  - kube-controller-manager
+  jsonPointers:
+  - /spec/replicas
+```
+
+### Resource Customizations (without subkeys) Example
 
 !!! warning 
     `resourceCustomizations` is being deprecated in favor of `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`.
@@ -1129,7 +1197,6 @@ spec:
         hs.message = "Waiting for certificate"
         return hs
 ```
-
 ## Resource Exclusions
 
 Configuration to completely ignore entire classes of resource group/kinds (optional).

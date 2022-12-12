@@ -24,7 +24,7 @@ data:
     managedfieldsmanagers:
     - xyz
     - abc
-  resource.customizations.ignoreDifferences.apps_deployments: |
+  resource.customizations.ignoreDifferences.apps_Deployment: |
     jqpathexpressions:
     - xyz
     - abc
