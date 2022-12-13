@@ -1091,7 +1091,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.5.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:2f5c0d4567607266ccacb91d8c2e3b18c2afe0edaf55855dcb1a06b02173b520
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1172,10 +1172,10 @@ spec:
   - name: Operator Source Code
     url: https://github.com/argoproj-labs/argocd-operator
   maintainers:
-  - email: jfischer@redhat.com
-    name: Jann Fischer
+  - email: aveerama@redhat.com
+    name: Abhishek Veeramalla
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.3.0
+  replaces: argocd-operator.v0.4.0
   version: 0.5.0
