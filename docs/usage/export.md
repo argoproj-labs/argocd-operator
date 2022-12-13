@@ -205,6 +205,7 @@ metadata:
 type: Opaque
 data:
   aws.bucket.name: ...
+  aws.bucket.region: ...
   aws.access.key.id: ...
   aws.secret.access.key: ....
 ```
@@ -214,6 +215,10 @@ The following properties must exist on the Secret referenced in the `ArgoCDExpor
 **aws.bucket.name**
 
 The name of the AWS S3 bucket. This should be the name of the bucket only, do not prefix the value `s3://`, as the operator will handle this automatically.
+
+**aws.bucket.region**
+
+The region of the AWS S3 bucket.
 
 **aws.access.key.id**
 
