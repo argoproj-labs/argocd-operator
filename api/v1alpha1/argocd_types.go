@@ -792,19 +792,11 @@ type ArgoCDStatus struct {
 	ApplicationController string `json:"applicationController,omitempty"`
 
 	// ApplicationSetController is a simple, high-level summary of where the Argo CD applicationSet controller component is in its lifecycle.
-<<<<<<< HEAD
-	// There are five possible ApplicationSetController values:
-	// Pending: The Argo CD applicationSet controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
-	// Running: All of the required Pods for the Argo CD applicationSet controller component are in a Ready state.
-	// Failed: At least one of the  Argo CD applicationSet controller component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD applicationSet controller component could not be obtained.
-=======
 	// There are four possible ApplicationSetController values:
 	// Pending: The Argo CD applicationSet controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD applicationSet controller component are in a Ready state.
 	// Failed: At least one of the  Argo CD applicationSet controller component Pods had a failure.
 	// Unknown: The state of the Argo CD applicationSet controller component could not be obtained.
->>>>>>> 3ad1c504ae2fd7ecdd3c276bac9ec2cb30629ae6
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="ApplicationSetController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ApplicationSetController string `json:"applicationSetController,omitempty"`
 

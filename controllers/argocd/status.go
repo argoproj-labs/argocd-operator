@@ -154,7 +154,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 
 	if cr.Status.ApplicationSetController != status {
 		cr.Status.ApplicationSetController = status
-<<<<<<< HEAD
 
 		// Update status of applicationSet controller workload for current instance and expose as metric to prometheus
 		if cr.Status.ApplicationSetController == "Pending" {
@@ -168,10 +167,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 
-=======
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
->>>>>>> 3ad1c504ae2fd7ecdd3c276bac9ec2cb30629ae6
 	return nil
 }
 
