@@ -630,104 +630,102 @@ spec:
       statusDescriptors:
       - description: 'ApplicationController is a simple, high-level summary of where
           the Argo CD application controller component is in its lifecycle. There
-          are five possible ApplicationController values: Pending: The Argo CD application
+          are four possible ApplicationController values: Pending: The Argo CD application
           controller component has been accepted by the Kubernetes system, but one
           or more of the required resources have not been created. Running: All of
           the required Pods for the Argo CD application controller component are in
           a Ready state. Failed: At least one of the  Argo CD application controller
-          component Pods had a failure. Unknown: For some reason the state of the
-          Argo CD application controller component could not be obtained.'
+          component Pods had a failure. Unknown: The state of the Argo CD application
+          controller component could not be obtained.'
         displayName: ApplicationController
         path: applicationController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'ApplicationSetController is a simple, high-level summary of
           where the Argo CD applicationSet controller component is in its lifecycle.
-          There are five possible ApplicationSetController values: Pending: The Argo
+          There are four possible ApplicationSetController values: Pending: The Argo
           CD applicationSet controller component has been accepted by the Kubernetes
           system, but one or more of the required resources have not been created.
           Running: All of the required Pods for the Argo CD applicationSet controller
           component are in a Ready state. Failed: At least one of the  Argo CD applicationSet
-          controller component Pods had a failure. Unknown: For some reason the state
-          of the Argo CD applicationSet controller component could not be obtained.'
+          controller component Pods had a failure. Unknown: The state of the Argo
+          CD applicationSet controller component could not be obtained.'
         displayName: ApplicationSetController
         path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Dex is a simple, high-level summary of where the Argo CD Dex
-          component is in its lifecycle. There are five possible dex values: Pending:
+          component is in its lifecycle. There are four possible dex values: Pending:
           The Argo CD Dex component has been accepted by the Kubernetes system, but
           one or more of the required resources have not been created. Running: All
           of the required Pods for the Argo CD Dex component are in a Ready state.
           Failed: At least one of the  Argo CD Dex component Pods had a failure. Unknown:
-          For some reason the state of the Argo CD Dex component could not be obtained.'
+          The state of the Argo CD Dex component could not be obtained.'
         displayName: Dex
         path: dex
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'NotificationsController is a simple, high-level summary of where
           the Argo CD notifications controller component is in its lifecycle. There
-          are five possible NotificationsController values: Pending: The Argo CD notifications
+          are four possible NotificationsController values: Pending: The Argo CD notifications
           controller component has been accepted by the Kubernetes system, but one
           or more of the required resources have not been created. Running: All of
           the required Pods for the Argo CD notifications controller component are
           in a Ready state. Failed: At least one of the  Argo CD notifications controller
-          component Pods had a failure. Unknown: For some reason the state of the
-          Argo CD notifications controller component could not be obtained.'
+          component Pods had a failure. Unknown: The state of the Argo CD notifications
+          controller component could not be obtained.'
         displayName: NotificationsController
         path: notificationsController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Phase is a simple, high-level summary of where the ArgoCD is
-          in its lifecycle. There are five possible phase values: Pending: The ArgoCD
+          in its lifecycle. There are four possible phase values: Pending: The ArgoCD
           has been accepted by the Kubernetes system, but one or more of the required
           resources have not been created. Available: All of the resources for the
           ArgoCD are ready. Failed: At least one resource has experienced a failure.
-          Unknown: For some reason the state of the ArgoCD phase could not be obtained.'
+          Unknown: The state of the ArgoCD phase could not be obtained.'
         displayName: Phase
         path: phase
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Redis is a simple, high-level summary of where the Argo CD Redis
-          component is in its lifecycle. There are five possible redis values: Pending:
+          component is in its lifecycle. There are four possible redis values: Pending:
           The Argo CD Redis component has been accepted by the Kubernetes system,
           but one or more of the required resources have not been created. Running:
           All of the required Pods for the Argo CD Redis component are in a Ready
           state. Failed: At least one of the  Argo CD Redis component Pods had a failure.
-          Unknown: For some reason the state of the Argo CD Redis component could
-          not be obtained.'
+          Unknown: The state of the Argo CD Redis component could not be obtained.'
         displayName: Redis
         path: redis
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Repo is a simple, high-level summary of where the Argo CD Repo
-          component is in its lifecycle. There are five possible repo values: Pending:
+          component is in its lifecycle. There are four possible repo values: Pending:
           The Argo CD Repo component has been accepted by the Kubernetes system, but
           one or more of the required resources have not been created. Running: All
           of the required Pods for the Argo CD Repo component are in a Ready state.
           Failed: At least one of the  Argo CD Repo component Pods had a failure.
-          Unknown: For some reason the state of the Argo CD Repo component could not
-          be obtained.'
+          Unknown: The state of the Argo CD Repo component could not be obtained.'
         displayName: Repo
         path: repo
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Server is a simple, high-level summary of where the Argo CD
-          server component is in its lifecycle. There are five possible server values:
+          server component is in its lifecycle. There are four possible server values:
           Pending: The Argo CD server component has been accepted by the Kubernetes
           system, but one or more of the required resources have not been created.
           Running: All of the required Pods for the Argo CD server component are in
           a Ready state. Failed: At least one of the  Argo CD server component Pods
-          had a failure. Unknown: For some reason the state of the Argo CD server
-          component could not be obtained.'
+          had a failure. Unknown: The state of the Argo CD server component could
+          not be obtained.'
         displayName: Server
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'SSOConfig defines the status of SSO configuration. Success:
           Only one SSO provider is configured in CR. Failed: SSO configuration is
-          illegal or more than one SSO providers are configured in CR. Unknown: For
-          some reason the SSO configuration could not be obtained.'
+          illegal or more than one SSO providers are configured in CR. Unknown: The
+          SSO configuration could not be obtained.'
         displayName: SSOConfig
         path: ssoConfig
         x-descriptors:
