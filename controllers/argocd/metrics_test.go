@@ -17,53 +17,53 @@ import (
 const (
 
 	// desired exposed metrics for argo-cd instance out of the box
-	desiredDefaultMetricsResponse string = `# HELP argocd_application_controller_status Describes the status of the application controller workload [0='Unknown', 1='Pending', 2='Running']
+	desiredDefaultMetricsResponse string = `# HELP argocd_application_controller_status Describes the status of the application controller workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_application_controller_status gauge
-argocd_application_controller_status{namespace="argocd"} 2
-# HELP argocd_applicationset_controller_status Describes the status of the applicationSet controller workload [0='Unknown', 1='Pending', 2='Running']
+argocd_application_controller_status{namespace="argocd"} 3
+# HELP argocd_applicationset_controller_status Describes the status of the applicationSet controller workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_applicationset_controller_status gauge
 argocd_applicationset_controller_status{namespace="argocd"} 0
-# HELP argocd_dex_status Describes the status of the dex workload [0='Unknown', 1='Pending', 2='Running']
+# HELP argocd_dex_status Describes the status of the dex workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_dex_status gauge
 argocd_dex_status{namespace="argocd"} 0
-# HELP argocd_phase Describes the phase of argo-cd instance [1='Pending', 3='Available']
+# HELP argocd_phase Describes the phase of argo-cd instance [2='Pending', 4='Available']
 # TYPE argocd_phase gauge
-argocd_phase{namespace="argocd"} 3
-# HELP argocd_redis_status Describes the status of the redis workload [0='Unknown', 1='Pending', 2='Running']
+argocd_phase{namespace="argocd"} 4
+# HELP argocd_redis_status Describes the status of the redis workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_redis_status gauge
-argocd_redis_status{namespace="argocd"} 2
-# HELP argocd_repo_server_status Describes the status of the repo server workload [0='Unknown', 1='Pending', 2='Running']
+argocd_redis_status{namespace="argocd"} 3
+# HELP argocd_repo_server_status Describes the status of the repo server workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_repo_server_status gauge
-argocd_repo_server_status{namespace="argocd"} 2
-# HELP argocd_server_status Describes the status of the argo-cd server workload [0='Unknown', 1='Pending', 2='Running']
+argocd_repo_server_status{namespace="argocd"} 3
+# HELP argocd_server_status Describes the status of the argo-cd server workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_server_status gauge
-argocd_server_status{namespace="argocd"} 2`
+argocd_server_status{namespace="argocd"} 3`
 
 	// desired exposed metrics when notifications-controller is enbaled and appset has invalid image
-	desiredMetricsResponse = `# HELP argocd_application_controller_status Describes the status of the application controller workload [0='Unknown', 1='Pending', 2='Running']
+	desiredMetricsResponse = `# HELP argocd_application_controller_status Describes the status of the application controller workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_application_controller_status gauge
-argocd_application_controller_status{namespace="argocd"} 2
-# HELP argocd_applicationset_controller_status Describes the status of the applicationSet controller workload [0='Unknown', 1='Pending', 2='Running']
+argocd_application_controller_status{namespace="argocd"} 3
+# HELP argocd_applicationset_controller_status Describes the status of the applicationSet controller workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_applicationset_controller_status gauge
-argocd_applicationset_controller_status{namespace="argocd"} 1
-# HELP argocd_dex_status Describes the status of the dex workload [0='Unknown', 1='Pending', 2='Running']
+argocd_applicationset_controller_status{namespace="argocd"} 2
+# HELP argocd_dex_status Describes the status of the dex workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_dex_status gauge
 argocd_dex_status{namespace="argocd"} 0
-# HELP argocd_notifications_controller_status Describes the status of the notifications controller workload [0='Unknown', 1='Pending', 2='Running']
+# HELP argocd_notifications_controller_status Describes the status of the notifications controller workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_notifications_controller_status gauge
-argocd_notifications_controller_status{namespace="argocd"} 2
-# HELP argocd_phase Describes the phase of argo-cd instance [1='Pending', 3='Available']
+argocd_notifications_controller_status{namespace="argocd"} 3
+# HELP argocd_phase Describes the phase of argo-cd instance [2='Pending', 4='Available']
 # TYPE argocd_phase gauge
-argocd_phase{namespace="argocd"} 3
-# HELP argocd_redis_status Describes the status of the redis workload [0='Unknown', 1='Pending', 2='Running']
+argocd_phase{namespace="argocd"} 4
+# HELP argocd_redis_status Describes the status of the redis workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_redis_status gauge
-argocd_redis_status{namespace="argocd"} 2
-# HELP argocd_repo_server_status Describes the status of the repo server workload [0='Unknown', 1='Pending', 2='Running']
+argocd_redis_status{namespace="argocd"} 3
+# HELP argocd_repo_server_status Describes the status of the repo server workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_repo_server_status gauge
-argocd_repo_server_status{namespace="argocd"} 2
-# HELP argocd_server_status Describes the status of the argo-cd server workload [0='Unknown', 1='Pending', 2='Running']
+argocd_repo_server_status{namespace="argocd"} 3
+# HELP argocd_server_status Describes the status of the argo-cd server workload [0='Unknown', 1='Failed', 2='Pending', 3='Running']
 # TYPE argocd_server_status gauge
-argocd_server_status{namespace="argocd"} 2`
+argocd_server_status{namespace="argocd"} 3`
 )
 
 var (
@@ -219,10 +219,6 @@ func TestInstanceStatusMetrics(t *testing.T) {
 			testMetricsServer.Handler.ServeHTTP(rr, req)
 			assert.Equal(t, rr.Code, http.StatusOK)
 			body := rr.Body.String()
-
-			t.Log(test.want)
-			t.Log("=======================")
-			t.Log(body)
 
 			assert.True(t, strings.Contains(body, test.want))
 		})
