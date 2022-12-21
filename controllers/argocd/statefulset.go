@@ -426,6 +426,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
+	env = append(env, corev1.EnvVar{
+		Name:  "HOME",
+		Value: "/home/argocd",
+	})
+
 	if cr.Spec.Controller.Sharding.Enabled {
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
