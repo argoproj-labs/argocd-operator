@@ -107,7 +107,7 @@ const (
 	ArgoCDDefaultDexHTTPPort = 5556
 
 	// ArgoCDDefaultDexMetricsPort is the default Metrics listen port for Dex.
-	ArgoCDDefaultDexMetricsPort = 5558
+	ArgoCDDefaultDexMetricsPort = 8443
 
 	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"

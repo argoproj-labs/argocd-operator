@@ -824,6 +824,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
+	if err := r.reconcilePrometheusRule(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
 		return err
 	}
