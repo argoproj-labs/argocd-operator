@@ -42,6 +42,8 @@ const (
 	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
 	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
 
+	// ArgoCDApplicationSetControllerComponent is the name of the AppplicationSet controller control plane component
+	ArgoCDApplicationSetControllerComponent = "argocd-applicationset-controller"
 	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component
 	ArgoCDOperatorGrafanaComponent = "argocd-grafana"
 

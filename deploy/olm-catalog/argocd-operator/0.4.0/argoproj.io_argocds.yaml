@@ -5995,6 +5995,18 @@ spec:
                   had a failure. Unknown: For some reason the state of the Argo CD
                   application controller component could not be obtained.'
                 type: string
+              applicationSetController:
+                description: 'ApplicationController is a simple, high-level summary
+                  of where the Argo CD application controller component is in its
+                  lifecycle. There are five possible ApplicationController values:
+                  Pending: The Argo CD application controller component has been accepted
+                  by the Kubernetes system, but one or more of the required resources
+                  have not been created. Running: All of the required Pods for the
+                  Argo CD application controller component are in a Ready state. Failed:
+                  At least one of the  Argo CD application controller component Pods
+                  had a failure. Unknown: For some reason the state of the Argo CD
+                  application controller component could not be obtained.'
+                type: string
               dex:
                 description: 'Dex is a simple, high-level summary of where the Argo
                   CD Dex component is in its lifecycle. There are five possible dex

@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,6 +71,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 
 	log.Info("reconciling applicationset deployments")
 	if err := r.reconcileApplicationSetDeployment(cr, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset ingress")
+	if err := r.reconcileApplicationSetControllerIngress(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset routes")
+	if err := r.reconcileApplicationSetControllerWebhookRoute(cr); err != nil {
 		return err
 	}
 
@@ -136,12 +147,17 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 		},
 	}
 
-	podSpec.Containers = []corev1.Container{
-		applicationSetContainer(cr),
-	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-
+	if cr.Spec.ApplicationSet != nil {
+		podSpec.Containers = []corev1.Container{
+			applicationSetContainer(cr),
+		}
+	}
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if cr.Spec.ApplicationSet == nil {
+			log.Info(fmt.Sprintf("Deleting Deployment %s as applicationset is disabled", existing.Name))
+			return r.Client.Delete(context.TODO(), existing)
+		}
 
 		existingSpec := existing.Spec.Template.Spec
 
@@ -255,6 +271,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1
 	}
 
 	if exists {
+		if cr.Spec.ApplicationSet == nil {
+			log.Info(fmt.Sprintf("Deleting service account %s as applicationset is disabled", sa.Name))
+			return nil, r.Client.Delete(context.TODO(), sa)
+		}
 		return sa, nil
 	}
 
@@ -359,6 +379,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
 		}
+		if cr.Spec.ApplicationSet == nil {
+			log.Info(fmt.Sprintf("Deleting role %s as applicationset is disabled", role.Name))
+			return nil, r.Client.Delete(context.TODO(), role)
+		}
 		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
 			return nil, err
 		}
@@ -409,6 +433,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.Ar
 	}
 
 	if roleBindingExists {
+		if cr.Spec.ApplicationSet == nil {
+			log.Info(fmt.Sprintf("Deleting rolebinding %s as applicationset is disabled", roleBinding.Name))
+			return r.Client.Delete(context.TODO(), roleBinding)
+		}
 		return r.Client.Update(context.TODO(), roleBinding)
 	}
 
@@ -462,13 +490,54 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 	obj.Labels["app.kubernetes.io/component"] = "controller"
 }
 
+//deleteApplicationSetResources Triggers reconciliation of application set resources,logic for deletion of applicationset is in reconcile methods this method triggers the cleanup of resources using the reconcilation logic as CR changes
+func (r *ReconcileArgoCD) deleteApplicationSetResources(cr *argoprojv1a1.ArgoCD) error {
+
+	sa := &corev1.ServiceAccount{}
+	role := &rbacv1.Role{}
+
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDApplicationSetControllerComponent), sa); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDApplicationSetControllerComponent), role); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	log.Info("reconciling ApplicationSet deployment")
+	if err := r.reconcileApplicationSetDeployment(cr, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ApplicationSet role binding")
+	if err := r.reconcileApplicationSetRoleBinding(cr, role, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ApplicationSet role")
+	_, err := r.reconcileApplicationSetRole(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling ApplicationSet serviceaccount")
+	_, err = r.reconcileApplicationSetServiceAccount(cr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
 func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil {
-
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
 			if err != nil {

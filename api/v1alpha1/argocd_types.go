@@ -791,6 +791,15 @@ type ArgoCDStatus struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="ApplicationController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ApplicationController string `json:"applicationController,omitempty"`
 
+	// ApplicationSetController is a simple, high-level summary of where the Argo CD applicationset controller component is in its lifecycle.
+	// There are five possible ApplicationSetController values:
+	// Pending: The Argo CD applicationset controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD applicationset controller component are in a Ready state.
+	// Failed: At least one of the  Argo CD applicationset controller component Pods had a failure.
+	// Unknown: For some reason the state of the Argo CD applicationset controller component could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="ApplicationSetController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	ApplicationSetController string `json:"applicationSetController,omitempty"`
+
 	// Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
 	// There are five possible dex values:
 	// Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.

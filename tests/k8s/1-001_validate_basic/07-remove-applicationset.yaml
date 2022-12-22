@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+# patches to disable applicationset
+- script: |
+    kubectl patch -n $NAMESPACE argocd/example-argocd --type='json' -p='[{"op": "remove", "path": "/spec/applicationSet"}]'
+- script: sleep 10

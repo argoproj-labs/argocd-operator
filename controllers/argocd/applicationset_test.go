@@ -24,6 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -262,7 +263,6 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 
 	// Ensure the updated Deployment has the expected properties
 	checkExpectedDeploymentValues(t, deployment, &sa, a)
-
 }
 
 func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) {
@@ -405,8 +405,8 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 func TestReconcileApplicationSet_Role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
-
 	roleRet, err := r.reconcileApplicationSetRole(a)
 	assert.NoError(t, err)
 
@@ -451,6 +451,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
@@ -472,7 +473,6 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 
 	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
-
 }
 
 func appsetAssertExpectedLabels(t *testing.T, meta *metav1.ObjectMeta) {
@@ -485,6 +485,65 @@ func setProxyEnvVars(t *testing.T) {
 	t.Setenv("HTTPS_PROXY", "https://example.com")
 	t.Setenv("HTTP_PROXY", "http://example.com")
 	t.Setenv("NO_PROXY", ".cluster.local")
+}
+
+func TestReconcileApplicationSet_DeleteDeployment(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	r := makeTestReconciler(t, a)
+	sa := corev1.ServiceAccount{}
+
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	a.Spec.ApplicationSet = nil
+	r = makeTestReconciler(t, a)
+	checkdeployment := &appsv1.Deployment{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkdeployment))
+	assert.Equal(t, checkdeployment.Name, "")
+	checkrole := &v1.Role{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkrole))
+	assert.Equal(t, checkrole.Name, "")
+
+	checksa := &corev1.ServiceAccount{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checksa))
+	assert.Equal(t, checksa.Name, "")
+	checkroleBinding := &v1.RoleBinding{}
+	assert.Error(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		checkroleBinding))
+	assert.Equal(t, checkroleBinding.Name, "")
 }
 
 func TestReconcileApplicationSet_Service(t *testing.T) {
