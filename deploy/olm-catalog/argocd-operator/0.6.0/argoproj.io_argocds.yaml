@@ -782,17 +782,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              monitoring:
-                description: Monitoring defines whether workload status monitoring
-                  configuration for this instance.
-                properties:
-                  enabled:
-                    description: Enabled defines whether workload status monitoring
-                      is enabled for this instance or not
-                    type: boolean
-                required:
-                - enabled
-                type: object
               nodePlacement:
                 description: NodePlacement defines NodeSelectors and Taints for Argo
                   CD workloads
@@ -6313,4 +6302,3 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
-  
