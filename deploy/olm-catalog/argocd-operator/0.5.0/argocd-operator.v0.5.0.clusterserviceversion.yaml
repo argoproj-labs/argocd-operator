@@ -1179,3 +1179,4 @@ spec:
     name: Argo CD Community
   replaces: argocd-operator.v0.4.0
   version: 0.5.0
+  
