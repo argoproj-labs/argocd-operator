@@ -783,72 +783,81 @@ type ArgoCDSpec struct {
 // +k8s:openapi-gen=true
 type ArgoCDStatus struct {
 	// ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
-	// There are five possible ApplicationController values:
+	// There are four possible ApplicationController values:
 	// Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
 	// Failed: At least one of the  Argo CD application controller component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD application controller component could not be obtained.
+	// Unknown: The state of the Argo CD application controller component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="ApplicationController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ApplicationController string `json:"applicationController,omitempty"`
 
+	// ApplicationSetController is a simple, high-level summary of where the Argo CD applicationSet controller component is in its lifecycle.
+	// There are four possible ApplicationSetController values:
+	// Pending: The Argo CD applicationSet controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+	// Running: All of the required Pods for the Argo CD applicationSet controller component are in a Ready state.
+	// Failed: At least one of the  Argo CD applicationSet controller component Pods had a failure.
+	// Unknown: The state of the Argo CD applicationSet controller component could not be obtained.
+	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="ApplicationSetController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	ApplicationSetController string `json:"applicationSetController,omitempty"`
+
 	// Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
-	// There are five possible dex values:
+	// There are four possible dex values:
 	// Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
 	// Failed: At least one of the  Argo CD Dex component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
+	// Unknown: The state of the Argo CD Dex component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Dex",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Dex string `json:"dex,omitempty"`
 
 	// NotificationsController is a simple, high-level summary of where the Argo CD notifications controller component is in its lifecycle.
-	// There are five possible NotificationsController values:
+	// There are four possible NotificationsController values:
 	// Pending: The Argo CD notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD notifications controller component are in a Ready state.
 	// Failed: At least one of the  Argo CD notifications controller component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD notifications controller component could not be obtained.
+	// Unknown: The state of the Argo CD notifications controller component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="NotificationsController",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	NotificationsController string `json:"notificationsController,omitempty"`
 
 	// SSOConfig defines the status of SSO configuration.
 	// Success: Only one SSO provider is configured in CR.
 	// Failed: SSO configuration is illegal or more than one SSO providers are configured in CR.
-	// Unknown: For some reason the SSO configuration could not be obtained.
+	// Unknown: The SSO configuration could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="SSOConfig",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	SSOConfig string `json:"ssoConfig,omitempty"`
 
 	// Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
-	// There are five possible phase values:
+	// There are four possible phase values:
 	// Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Available: All of the resources for the ArgoCD are ready.
 	// Failed: At least one resource has experienced a failure.
-	// Unknown: For some reason the state of the ArgoCD phase could not be obtained.
+	// Unknown: The state of the ArgoCD phase could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Phase",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Phase string `json:"phase,omitempty"`
 
 	// Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
-	// There are five possible redis values:
+	// There are four possible redis values:
 	// Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
 	// Failed: At least one of the  Argo CD Redis component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD Redis component could not be obtained.
+	// Unknown: The state of the Argo CD Redis component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Redis",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Redis string `json:"redis,omitempty"`
 
 	// Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
-	// There are five possible repo values:
+	// There are four possible repo values:
 	// Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
 	// Failed: At least one of the  Argo CD Repo component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD Repo component could not be obtained.
+	// Unknown: The state of the Argo CD Repo component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Repo",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Repo string `json:"repo,omitempty"`
 
 	// Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
-	// There are five possible server values:
+	// There are four possible server values:
 	// Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
 	// Running: All of the required Pods for the Argo CD server component are in a Ready state.
 	// Failed: At least one of the  Argo CD server component Pods had a failure.
-	// Unknown: For some reason the state of the Argo CD server component could not be obtained.
+	// Unknown: The state of the Argo CD server component could not be obtained.
 	//+operator-sdk:csv:customresourcedefinitions:type=status,displayName="Server",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Server string `json:"server,omitempty"`
 
