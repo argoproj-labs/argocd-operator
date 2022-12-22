@@ -295,7 +295,9 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 				Replicas: 3,
 			},
 			replicas: 1,
-			vars:     nil,
+			vars: []corev1.EnvVar{
+				{Name: "HOME", Value: "/home/argocd"},
+			},
 		},
 		{
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
@@ -305,6 +307,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 1,
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
+				{Name: "HOME", Value: "/home/argocd"},
 			},
 		},
 		{
@@ -315,6 +318,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 3,
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
+				{Name: "HOME", Value: "/home/argocd"},
 			},
 		},
 	}
