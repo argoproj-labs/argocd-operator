@@ -2,14 +2,140 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: '[]'
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "AppProject",
+          "metadata": {
+            "name": "example"
+          },
+          "spec": null
+        },
+        {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "Application",
+          "metadata": {
+            "name": "example"
+          },
+          "spec": null
+        },
+        {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "ApplicationSet",
+          "metadata": {
+            "name": "example"
+          },
+          "spec": null
+        },
+        {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "ArgoCD",
+          "metadata": {
+            "name": "argocd-sample"
+          },
+          "spec": {
+            "controller": {
+              "resources": {
+                "limits": {
+                  "cpu": "2000m",
+                  "memory": "2048Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "1024Mi"
+                }
+              }
+            },
+            "ha": {
+              "enabled": false,
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "128Mi"
+                }
+              }
+            },
+            "redis": {
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "128Mi"
+                }
+              }
+            },
+            "repo": {
+              "resources": {
+                "limits": {
+                  "cpu": "1000m",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "256Mi"
+                }
+              }
+            },
+            "server": {
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "125m",
+                  "memory": "128Mi"
+                }
+              },
+              "route": {
+                "enabled": true
+              }
+            },
+            "sso": {
+              "dex": {
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                }
+              },
+              "provider": "dex"
+            }
+          }
+        },
+        {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "ArgoCDExport",
+          "metadata": {
+            "name": "argocdexport-sample"
+          },
+          "spec": {
+            "argocd": "argocd-sample"
+          }
+        }
+      ]
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.0.0
+  name: argocd-operator.v0.6.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -630,116 +756,402 @@ spec:
       statusDescriptors:
       - description: 'ApplicationController is a simple, high-level summary of where
           the Argo CD application controller component is in its lifecycle. There
-          are four possible ApplicationController values: Pending: The Argo CD application
+          are five possible ApplicationController values: Pending: The Argo CD application
           controller component has been accepted by the Kubernetes system, but one
           or more of the required resources have not been created. Running: All of
           the required Pods for the Argo CD application controller component are in
           a Ready state. Failed: At least one of the  Argo CD application controller
-          component Pods had a failure. Unknown: The state of the Argo CD application
-          controller component could not be obtained.'
+          component Pods had a failure. Unknown: For some reason the state of the
+          Argo CD application controller component could not be obtained.'
         displayName: ApplicationController
         path: applicationController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'ApplicationSetController is a simple, high-level summary of
-          where the Argo CD applicationSet controller component is in its lifecycle.
-          There are four possible ApplicationSetController values: Pending: The Argo
-          CD applicationSet controller component has been accepted by the Kubernetes
-          system, but one or more of the required resources have not been created.
-          Running: All of the required Pods for the Argo CD applicationSet controller
-          component are in a Ready state. Failed: At least one of the  Argo CD applicationSet
-          controller component Pods had a failure. Unknown: The state of the Argo
-          CD applicationSet controller component could not be obtained.'
-        displayName: ApplicationSetController
-        path: applicationSetController
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Dex is a simple, high-level summary of where the Argo CD Dex
-          component is in its lifecycle. There are four possible dex values: Pending:
+          component is in its lifecycle. There are five possible dex values: Pending:
           The Argo CD Dex component has been accepted by the Kubernetes system, but
           one or more of the required resources have not been created. Running: All
           of the required Pods for the Argo CD Dex component are in a Ready state.
           Failed: At least one of the  Argo CD Dex component Pods had a failure. Unknown:
-          The state of the Argo CD Dex component could not be obtained.'
+          For some reason the state of the Argo CD Dex component could not be obtained.'
         displayName: Dex
         path: dex
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'NotificationsController is a simple, high-level summary of where
           the Argo CD notifications controller component is in its lifecycle. There
-          are four possible NotificationsController values: Pending: The Argo CD notifications
+          are five possible NotificationsController values: Pending: The Argo CD notifications
           controller component has been accepted by the Kubernetes system, but one
           or more of the required resources have not been created. Running: All of
           the required Pods for the Argo CD notifications controller component are
           in a Ready state. Failed: At least one of the  Argo CD notifications controller
-          component Pods had a failure. Unknown: The state of the Argo CD notifications
-          controller component could not be obtained.'
+          component Pods had a failure. Unknown: For some reason the state of the
+          Argo CD notifications controller component could not be obtained.'
         displayName: NotificationsController
         path: notificationsController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Phase is a simple, high-level summary of where the ArgoCD is
-          in its lifecycle. There are four possible phase values: Pending: The ArgoCD
+          in its lifecycle. There are five possible phase values: Pending: The ArgoCD
           has been accepted by the Kubernetes system, but one or more of the required
           resources have not been created. Available: All of the resources for the
           ArgoCD are ready. Failed: At least one resource has experienced a failure.
-          Unknown: The state of the ArgoCD phase could not be obtained.'
+          Unknown: For some reason the state of the ArgoCD phase could not be obtained.'
         displayName: Phase
         path: phase
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Redis is a simple, high-level summary of where the Argo CD Redis
-          component is in its lifecycle. There are four possible redis values: Pending:
+          component is in its lifecycle. There are five possible redis values: Pending:
           The Argo CD Redis component has been accepted by the Kubernetes system,
           but one or more of the required resources have not been created. Running:
           All of the required Pods for the Argo CD Redis component are in a Ready
           state. Failed: At least one of the  Argo CD Redis component Pods had a failure.
-          Unknown: The state of the Argo CD Redis component could not be obtained.'
+          Unknown: For some reason the state of the Argo CD Redis component could
+          not be obtained.'
         displayName: Redis
         path: redis
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Repo is a simple, high-level summary of where the Argo CD Repo
-          component is in its lifecycle. There are four possible repo values: Pending:
+          component is in its lifecycle. There are five possible repo values: Pending:
           The Argo CD Repo component has been accepted by the Kubernetes system, but
           one or more of the required resources have not been created. Running: All
           of the required Pods for the Argo CD Repo component are in a Ready state.
           Failed: At least one of the  Argo CD Repo component Pods had a failure.
-          Unknown: The state of the Argo CD Repo component could not be obtained.'
+          Unknown: For some reason the state of the Argo CD Repo component could not
+          be obtained.'
         displayName: Repo
         path: repo
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Server is a simple, high-level summary of where the Argo CD
-          server component is in its lifecycle. There are four possible server values:
+          server component is in its lifecycle. There are five possible server values:
           Pending: The Argo CD server component has been accepted by the Kubernetes
           system, but one or more of the required resources have not been created.
           Running: All of the required Pods for the Argo CD server component are in
           a Ready state. Failed: At least one of the  Argo CD server component Pods
-          had a failure. Unknown: The state of the Argo CD server component could
-          not be obtained.'
+          had a failure. Unknown: For some reason the state of the Argo CD server
+          component could not be obtained.'
         displayName: Server
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'SSOConfig defines the status of SSO configuration. Success:
           Only one SSO provider is configured in CR. Failed: SSO configuration is
-          illegal or more than one SSO providers are configured in CR. Unknown: The
-          SSO configuration could not be obtained.'
+          illegal or more than one SSO providers are configured in CR. Unknown: For
+          some reason the SSO configuration could not be obtained.'
         displayName: SSOConfig
         path: ssoConfig
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
-  description: '---description---'
+  description: |
+    ## Overview
+
+    The Argo CD Operator manages the full lifecycle for [Argo CD](https://argoproj.github.io/argo-cd/) and it's
+    components. The operator's goal is to automate the tasks required when operating an Argo CD cluster.
+
+    Beyond installation, the operator helps to automate the process of upgrading, backing up and restoring as needed and
+    remove the human as much as possible. In addition, the operator aims to provide deep insights into the Argo CD
+    environment by configuring Prometheus and Grafana to aggregate, visualize and expose the metrics already exported by
+    Argo CD.
+
+    The operator aims to provide the following, and is a work in progress.
+
+    * Easy configuration and installation of the Argo CD components with sane defaults to get up and running quickly.
+    * Provide seamless upgrades to the Argo CD components.
+    * Ability to back up and restore an Argo CD cluster from a point in time or on a recurring schedule.
+    * Aggregate and expose the metrics for Argo CD and the operator itself using Prometheus and Grafana.
+    * Autoscale the Argo CD components as necessary to handle variability in demand.
+
+    ## Usage
+
+    Deploy a basic Argo CD cluster by creating a new ArgoCD resource in the namespace where the operator is installed.
+
+    ```
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCD
+    metadata:
+      name: example-argocd
+    spec: {}
+    ```
+
+    ## Backup
+
+    Backup the cluster above by creating a new ArgoCDExport resource in the namespace where the operator is installed.
+
+    ```
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCDExport
+    metadata:
+      name: example-argocdexport
+    spec:
+      argocd: example-argocd
+    ```
+
+    See the [documentation](https://argocd-operator.readthedocs.io) and examples on
+    [github](https://github.com/argoproj-labs/argocd-operator) for more information.
   displayName: Argo CD
   icon:
-  - base64data: ""
-    mediatype: ""
+  - base64data: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDIzIDMwIiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zOnNlcmlmPSJodHRwOi8vd3d3LnNlcmlmLmNvbS8iIHN0eWxlPSJmaWxsLXJ1bGU6ZXZlbm9kZDtjbGlwLXJ1bGU6ZXZlbm9kZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6MjsiPgogICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAsMSwtOS4yLC03KSI+CiAgICAgICAgPGc+CiAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgPHBhdGggZD0iTTE2LDI3LjdDMTYsMjcuNyAxNS44LDI4LjMgMTUuNSwyOC42QzE1LjMsMjguOCAxNS4xLDI4LjkgMTQuOCwyOC45QzE0LjEsMjkuMSAxMy4zLDI5LjIgMTMuMywyOS4yQzEzLjMsMjkuMiAxNCwyOS4zIDE0LjgsMjkuNEMxNS4xLDI5LjQgMTUuMSwyOS40IDE1LjMsMjkuNUMxNS44LDI5LjUgMTYsMjkuMiAxNiwyOS4yTDE2LDI3LjdaIiBzdHlsZT0iZmlsbDpyZ2IoMjMzLDEwMSw3NSk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuMiwyNy43QzI1LjIsMjcuNyAyNS40LDI4LjMgMjUuNywyOC42QzI1LjksMjguOCAyNi4xLDI4LjkgMjYuNCwyOC45QzI3LjEsMjkuMSAyNy45LDI5LjIgMjcuOSwyOS4yQzI3LjksMjkuMiAyNy4yLDI5LjMgMjYuMywyOS40QzI2LDI5LjQgMjYsMjkuNCAyNS44LDI5LjVDMjUuMiwyOS41IDI1LjEsMjkuMiAyNS4xLDI5LjJMMjUuMiwyNy43WiIgc3R5bGU9ImZpbGw6cmdiKDIzMywxMDEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICA8L2c+CiAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjAuNyIgY3k9IjE3LjgiIHI9IjEwLjgiIHN0eWxlPSJmaWxsOnJnYigxODIsMjA3LDIzNCk7Ii8+CiAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyMC43IiBjeT0iMTcuOCIgcj0iMTAuNCIgc3R5bGU9ImZpbGw6cmdiKDIzMCwyNDUsMjQ4KTsiLz4KICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjIwLjciIGN5PSIxOCIgcj0iOC41IiBzdHlsZT0iZmlsbDpyZ2IoMjA4LDIzMiwyNDApOyIvPgogICAgICAgICAgICAgICAgPGcgaWQ9IkJvZHlfMV8iPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xNS43LDIyQzE1LjcsMjIgMTYuNCwzMy4zIDE2LjQsMzMuNUMxNi40LDMzLjYgMTYuNSwzMy44IDE2LDM0QzE1LjUsMzQuMiAxMy45LDM0LjYgMTMuOSwzNC42TDE2LjMsMzQuNkMxNy40LDM0LjYgMTcuNCwzMy43IDE3LjQsMzMuNUMxNy40LDMzLjMgMTcuNywyOSAxNy43LDI5QzE3LjcsMjkgMTcuOCwzNC4xIDE3LjgsMzQuM0MxNy44LDM0LjUgMTcuNywzNC44IDE3LDM1QzE2LjUsMzUuMSAxNSwzNS40IDE1LDM1LjRMMTcuMywzNS40QzE4LjcsMzUuNCAxOC43LDM0LjUgMTguNywzNC41TDE5LDMwQzE5LDMwIDE5LjEsMzQuNSAxOS4xLDM1QzE5LjEsMzUuNCAxOC44LDM1LjcgMTcuNywzNS45QzE3LDM2LjEgMTYuMSwzNi4zIDE2LjEsMzYuM0wxOC43LDM2LjNDMjAsMzYuMiAyMC4yLDM1LjMgMjAuMiwzNS4zTDIyLjQsMjQuMUwxNS43LDIyWiIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yNS43LDIyQzI1LjcsMjIgMjUsMzMuMyAyNSwzMy41QzI1LDMzLjYgMjQuOSwzMy44IDI1LjQsMzRDMjUuOSwzNC4yIDI3LjUsMzQuNiAyNy41LDM0LjZMMjUuMSwzNC42QzI0LDM0LjYgMjQsMzMuNyAyNCwzMy41QzI0LDMzLjMgMjMuNywyOSAyMy43LDI5QzIzLjcsMjkgMjMuNiwzNC4xIDIzLjYsMzQuM0MyMy42LDM0LjUgMjMuNywzNC44IDI0LjQsMzVDMjQuOSwzNS4xIDI2LjQsMzUuNCAyNi40LDM1LjRMMjQuMSwzNS40QzIyLjcsMzUuNCAyMi43LDM0LjUgMjIuNywzNC41TDIyLjQsMzBDMjIuNCwzMCAyMi4zLDM0LjUgMjIuMywzNUMyMi4zLDM1LjQgMjIuNiwzNS43IDIzLjcsMzUuOUMyNC40LDM2LjEgMjUuMywzNi4zIDI1LjMsMzYuM0wyMi43LDM2LjNDMjEuNCwzNi4yIDIxLjIsMzUuMyAyMS4yLDM1LjNMMTksMjQuMUwyNS43LDIyWiIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yNS44LDE2LjVDMjUuOCwxOS4zIDIzLjUsMjEuNSAyMC44LDIxLjVDMTguMSwyMS41IDE1LjgsMTkuMiAxNS44LDE2LjVDMTUuOCwxMy44IDE4LjEsMTEuNSAyMC44LDExLjVDMjMuNSwxMS41IDI1LjgsMTMuNyAyNS44LDE2LjVaIiBzdHlsZT0iZmlsbDpyZ2IoMjM4LDEyMSw3NSk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICAgICAgPGNsaXBQYXRoIGlkPSJfY2xpcDEiPgogICAgICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuOCwxNi4zTDI1LjIsMzBMMTYuMiwzMEwxNS43LDE2LjMiLz4KICAgICAgICAgICAgICAgICAgICA8L2NsaXBQYXRoPgogICAgICAgICAgICAgICAgICAgIDxnIGNsaXAtcGF0aD0idXJsKCNfY2xpcDEpIj4KICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjAuOCIgY3k9IjE5LjIiIHI9IjguOSIgc3R5bGU9ImZpbGw6cmdiKDIzOCwxMjEsNzUpOyIvPgogICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuNSwyMkMyNS41LDIyIDI2LjEsMTYuNyAyNS4zLDE0LjdDMjMuOCwxMS4yIDIwLjMsMTEuNSAyMC4zLDExLjVDMjAuMywxMS41IDIyLjMsMTIuMyAyMi40LDE1LjNDMjIuNSwxNy40IDIyLjQsMjAuNSAyMi40LDIwLjVMMjUuNSwyMloiIHN0eWxlPSJmaWxsOnJnYigyMjcsNzgsNTkpO2ZpbGwtb3BhY2l0eTowLjIyO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgPGcgaWQ9IkZhY2VfMV8iPgogICAgICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjE4LjciIGN5PSIxMy44IiByPSIwLjciIHN0eWxlPSJmaWxsOnJnYigyNTEsMjIzLDE5NSk7ZmlsbC1vcGFjaXR5OjAuNTsiLz4KICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgPGc+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjIuNSwyNEMyMi41LDI1LjcgMjEuNywyNi44IDIwLjcsMjYuOEMxOS43LDI2LjggMTguOSwyNS41IDE4LjksMjMuOEMxOC45LDIzLjggMTkuNywyNS40IDIwLjgsMjUuNEMyMS45LDI1LjQgMjIuNSwyNCAyMi41LDI0WiIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0yMi41LDI0QzIyLjUsMjUuMSAyMS43LDI1LjcgMjAuNywyNS43QzE5LjcsMjUuNyAxOSwyNC45IDE5LDIzLjlDMTksMjMuOSAxOS44LDI0LjkgMjAuOSwyNC45QzIyLDI0LjkgMjIuNSwyNCAyMi41LDI0WiIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgPGc+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Zz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMjQuMiIgY3k9IjE5LjMiIHI9IjMuMSIgc3R5bGU9ImZpbGw6cmdiKDIzMywxMDEsNzUpOyIvPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIxNy4yIiBjeT0iMTkuMyIgcj0iMy4xIiBzdHlsZT0iZmlsbDpyZ2IoMjMzLDEwMSw3NSk7Ii8+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyNC4yIiBjeT0iMTkuMyIgcj0iMi40IiBzdHlsZT0iZmlsbDp3aGl0ZTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMTciIGN5PSIxOS4zIiByPSIyLjQiIHN0eWxlPSJmaWxsOndoaXRlOyIvPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxnPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxjaXJjbGUgY3g9IjE3IiBjeT0iMTkiIHI9IjAuNyIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8Y2lyY2xlIGN4PSIyNC4yIiBjeT0iMTkiIHI9IjAuNyIgc3R5bGU9ImZpbGw6cmdiKDEsMSwxKTsiLz4KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgICAgICAgICAgPC9nPgogICAgICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgIDwvZz4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik05LjcsMjAuNUM5LjQsMjAuNSA5LjIsMjAuMyA5LjIsMjBMOS4yLDE2QzkuMiwxNS43IDkuNCwxNS41IDkuNywxNS41QzEwLDE1LjUgMTAuMiwxNS43IDEwLjIsMTZMMTAuMiwyMEMxMC4yLDIwLjMgMTAsMjAuNSA5LjcsMjAuNVoiIHN0eWxlPSJmaWxsOnJnYigxODIsMjA3LDIzNCk7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMzEuNSwyMC41QzMxLjIsMjAuNSAzMSwyMC4zIDMxLDIwTDMxLDE2QzMxLDE1LjcgMzEuMiwxNS41IDMxLjUsMTUuNUMzMS44LDE1LjUgMzIsMTUuNyAzMiwxNkwzMiwyMEMzMiwyMC4zIDMxLjgsMjAuNSAzMS41LDIwLjVaIiBzdHlsZT0iZmlsbDpyZ2IoMTgyLDIwNywyMzQpO2ZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgICAgICAgICAgICAgPGNpcmNsZSBjeD0iMTcuMyIgY3k9IjkuOCIgcj0iMC41IiBzdHlsZT0iZmlsbDp3aGl0ZTsiLz4KICAgICAgICAgICAgICAgIDxwYXRoIGQ9Ik0xMy43LDIzLjNDMTMuNiwyMy4zIDEzLjUsMjMuMyAxMy40LDIzLjJDMTIuMiwyMS43IDExLjYsMTkuOCAxMS42LDE3LjlDMTEuNiwxNi4zIDEyLDE0LjggMTIuOCwxMy40QzEzLjYsMTIuMSAxNC43LDExIDE2LDEwLjJDMTYuMiwxMC4xIDE2LjQsMTAuMiAxNi41LDEwLjNDMTYuNiwxMC41IDE2LjUsMTAuNyAxNi40LDEwLjhDMTMuOSwxMi4yIDEyLjMsMTQuOSAxMi4zLDE3LjhDMTIuMywxOS42IDEyLjksMjEuMyAxNCwyMi43QzE0LjEsMjIuOCAxNC4xLDIzLjEgMTMuOSwyMy4yQzEzLjgsMjMuMyAxMy44LDIzLjMgMTMuNywyMy4zWiIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMjUuMiwyOEwyNS4yLDI3LjJDMjMuOCwyOCAyMi4zLDI4LjggMjAuNSwyOC44QzE4LjUsMjguOCAxNy4yLDI3LjkgMTUuOSwyNy4yTDE2LDI4QzE2LDI4IDE3LjUsMjkuNiAyMC42LDI5LjZDMjMuNSwyOS41IDI1LjIsMjggMjUuMiwyOFoiIHN0eWxlPSJmaWxsOnJnYigyMzMsMTAxLDc1KTtmaWxsLW9wYWNpdHk6MC4yNTtmaWxsLXJ1bGU6bm9uemVybzsiLz4KICAgICAgICAgICAgPC9nPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+Cg==
+    mediatype: image/svg+xml
   install:
     spec:
-      deployments: null
-    strategy: ""
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - endpoints
+          - events
+          - namespaces
+          - persistentvolumeclaims
+          - pods
+          - secrets
+          - serviceaccounts
+          - services
+          - services/finalizers
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - pods/log
+          verbs:
+          - get
+        - apiGroups:
+          - apps
+          resources:
+          - daemonsets
+          - deployments
+          - replicasets
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resourceNames:
+          - argocd-operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - apps.openshift.io
+          resources:
+          - deploymentconfigs
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - applications
+          - appprojects
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - argocdexports
+          - argocdexports/finalizers
+          - argocdexports/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - argocds
+          - argocds/finalizers
+          - argocds/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - autoscaling
+          resources:
+          - horizontalpodautoscalers
+          verbs:
+          - '*'
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          - jobs
+          verbs:
+          - '*'
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - clusterversions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheuses
+          - servicemonitors
+          verbs:
+          - '*'
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - ingresses
+          verbs:
+          - '*'
+        - apiGroups:
+          - oauth.openshift.io
+          resources:
+          - oauthclients
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          - clusterroles
+          verbs:
+          - '*'
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          - routes/custom-host
+          verbs:
+          - '*'
+        - apiGroups:
+          - template.openshift.io
+          resources:
+          - templateconfigs
+          - templateinstances
+          - templates
+          verbs:
+          - '*'
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: argocd-operator-controller-manager
+      deployments:
+      - name: argocd-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: argocd-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: argocd-operator
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                - --leader-elect
+                command:
+                - /manager
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                image: quay.io/argoprojlabs/argocd-operator:v0.6.0
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources: {}
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: argocd-operator-controller-manager
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: argocd-operator-controller-manager
+    strategy: deployment
   installModes:
   - supported: true
     type: OwnNamespace
