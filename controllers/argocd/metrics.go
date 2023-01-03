@@ -19,9 +19,6 @@ const (
 	WorkloadPendingState   workloadState = 2
 	WorkloadRunningState   workloadState = 3
 	WorkloadAvailableState workloadState = 4
-)
-
-const (
 	// MetricsPath is the endpoint to collect instance level metrics
 	MetricsPath = "/metrics"
 )
