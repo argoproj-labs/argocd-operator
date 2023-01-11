@@ -270,7 +270,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 
 	ruleGroups := []monitoringv1.RuleGroup{
 		{
-			Name: "",
+			Name: "ArgoCDComponentStatus",
 			Rules: []monitoringv1.Rule{
 				{
 					Alert: "ApplicationControllerNotReady",
@@ -279,7 +279,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_application_controller_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace),
 					},
 					For: "1m",
 					Labels: map[string]string{
@@ -293,7 +293,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_server_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-server"), cr.Namespace),
 					},
 					For: "1m",
 					Labels: map[string]string{
@@ -307,21 +307,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_repo_server_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
-					},
-					For: "1m",
-					Labels: map[string]string{
-						"severity": "critical",
-					},
-				},
-				{
-					Alert: "ArgoCDPhasePending",
-					Annotations: map[string]string{
-						"message": fmt.Sprintf("Argo CD in namespace %s is in pending phase. One or more core components are not running", cr.Namespace),
-					},
-					Expr: intstr.IntOrString{
-						Type:   intstr.String,
-						StrVal: fmt.Sprintf("argocd_phase{namespace=\"%s\"} < 4", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace),
 					},
 					For: "1m",
 					Labels: map[string]string{
@@ -335,7 +321,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_applicationset_controller_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace),
 					},
 					For: "10m",
 					Labels: map[string]string{
@@ -349,7 +335,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_dex_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace),
 					},
 					For: "10m",
 					Labels: map[string]string{
@@ -363,7 +349,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_notifications_controller_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace),
 					},
 					For: "10m",
 					Labels: map[string]string{
@@ -377,7 +363,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 					},
 					Expr: intstr.IntOrString{
 						Type:   intstr.String,
-						StrVal: fmt.Sprintf("(argocd_redis_status{namespace=\"%s\"} > 0) < 3", cr.Namespace),
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-redis"), cr.Namespace, fmt.Sprintf(cr.Name+"-redis"), cr.Namespace),
 					},
 					For: "10m",
 					Labels: map[string]string{
