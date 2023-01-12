@@ -90,16 +90,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoprojv1a1.
 
 	if cr.Status.ApplicationController != status {
 		cr.Status.ApplicationController = status
-
-		// Update status of applicaiton controller workload for current instance and expose as metric to prometheus
-		if cr.Status.ApplicationController == "Pending" {
-			InstanceStatusTracker().SetApplicationControllerStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.ApplicationController == "Running" {
-			InstanceStatusTracker().SetApplicationControllerStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.ApplicationController == "Unknown" {
-			InstanceStatusTracker().SetApplicationControllerStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
@@ -122,16 +112,6 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Dex != status {
 		cr.Status.Dex = status
-
-		// Update status of dex workload for current instance and expose as metric to prometheus
-		if cr.Status.Dex == "Pending" {
-			InstanceStatusTracker().SetDexStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.Dex == "Running" {
-			InstanceStatusTracker().SetDexStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.Dex == "Unknown" {
-			InstanceStatusTracker().SetDexStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
@@ -154,16 +134,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 
 	if cr.Status.ApplicationSetController != status {
 		cr.Status.ApplicationSetController = status
-
-		// Update status of applicationSet controller workload for current instance and expose as metric to prometheus
-		if cr.Status.ApplicationSetController == "Pending" {
-			InstanceStatusTracker().SetApplicationSetControllerStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.ApplicationSetController == "Running" {
-			InstanceStatusTracker().SetApplicationSetControllerStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.ApplicationSetController == "Unknown" {
-			InstanceStatusTracker().SetApplicationSetControllerStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 
@@ -189,12 +159,6 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.ApplicationController == "Running" && cr.Status.Redis == "Running" && cr.Status.Repo == "Running" && cr.Status.Server == "Running" {
 		phase = "Available"
-
-		// Update phase of current instance and expose as metric to prometheus
-		InstanceStatusTracker().SetArgoCDPhase(cr.Namespace, WorkloadAvailableState)
-	} else {
-		phase = "Pending"
-		InstanceStatusTracker().SetArgoCDPhase(cr.Namespace, WorkloadPendingState)
 	}
 
 	if cr.Status.Phase != phase {
@@ -233,16 +197,6 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Redis != status {
 		cr.Status.Redis = status
-
-		// Update status of redis workload for current instance and expose as metric to prometheus
-		if cr.Status.Redis == "Pending" {
-			InstanceStatusTracker().SetRedisStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.Redis == "Running" {
-			InstanceStatusTracker().SetRedisStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.Redis == "Unknown" {
-			InstanceStatusTracker().SetRedisStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
@@ -265,16 +219,6 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Repo != status {
 		cr.Status.Repo = status
-
-		// Update status of repo-server workload for current instance and expose as metric to prometheus
-		if cr.Status.Repo == "Pending" {
-			InstanceStatusTracker().SetRepoServerStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.Repo == "Running" {
-			InstanceStatusTracker().SetRepoServerStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.Repo == "Unknown" {
-			InstanceStatusTracker().SetRepoServerStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
@@ -298,16 +242,6 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.Server != status {
 		cr.Status.Server = status
-
-		// Update status of server workload for current instance and expose as metric to prometheus
-		if cr.Status.Server == "Pending" {
-			InstanceStatusTracker().SetServerStatus(cr.Namespace, WorkloadPendingState)
-		} else if cr.Status.Server == "Running" {
-			InstanceStatusTracker().SetServerStatus(cr.Namespace, WorkloadRunningState)
-		} else if cr.Status.Server == "Unknown" {
-			InstanceStatusTracker().SetServerStatus(cr.Namespace, WorkloadUnknownState)
-		}
-
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil
@@ -333,15 +267,6 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 			cr.Status.NotificationsController = ""
 		} else {
 			cr.Status.NotificationsController = status
-
-			// Update status of notifications controller workload for current instance and expose as metric to prometheus
-			if cr.Status.NotificationsController == "Pending" {
-				InstanceStatusTracker().SetNotificationsControllerStatus(cr.Namespace, WorkloadPendingState)
-			} else if cr.Status.NotificationsController == "Running" {
-				InstanceStatusTracker().SetNotificationsControllerStatus(cr.Namespace, WorkloadRunningState)
-			} else if cr.Status.NotificationsController == "Unknown" {
-				InstanceStatusTracker().SetNotificationsControllerStatus(cr.Namespace, WorkloadUnknownState)
-			}
 		}
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
