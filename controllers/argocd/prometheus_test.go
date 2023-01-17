@@ -14,23 +14,42 @@ import (
 
 func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 	tests := []struct {
-		name    string
-		argocd  *argoprojv1alpha1.ArgoCD
-		wantErr bool
+		name              string
+		argocd            *argoprojv1alpha1.ArgoCD
+		wantPromRuleFound bool
+		existingPromRule  bool
 	}{
 		{
-			name: "monitoring enabled",
+			name: "monitoring enabled, no existing prom rule",
 			argocd: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = true
 			}),
-			wantErr: false,
+			existingPromRule:  false,
+			wantPromRuleFound: true,
 		},
 		{
-			name: "monitoring disabled",
+			name: "monitoring disabled, no existing prom rule",
 			argocd: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = false
 			}),
-			wantErr: true,
+			existingPromRule:  false,
+			wantPromRuleFound: false,
+		},
+		{
+			name: "monitoring enabled, existing prom rule",
+			argocd: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.Monitoring.Enabled = true
+			}),
+			existingPromRule:  true,
+			wantPromRuleFound: true,
+		},
+		{
+			name: "monitoring disabled, existing prom rule",
+			argocd: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.Monitoring.Enabled = false
+			}),
+			existingPromRule:  true,
+			wantPromRuleFound: false,
 		},
 	}
 
@@ -147,25 +166,36 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			err := monitoringv1.AddToScheme(r.Scheme)
 			assert.NoError(t, err)
 
+			if test.existingPromRule {
+				r.Client.Create(context.TODO(), newPrometheusRule(test.argocd.Namespace, "argocd-component-status-alert"))
+			}
+
 			err = r.reconcilePrometheusRule(test.argocd)
-			assert.NoError(t, err)
 
-			testRule := &monitoringv1.PrometheusRule{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
-				Name:      "argocd-component-status-alert",
-				Namespace: test.argocd.Namespace,
-			}, testRule)
+			// reconciler doesn't need to do anything and should return nil
+			if (test.existingPromRule && test.wantPromRuleFound) || (!test.existingPromRule && !test.wantPromRuleFound) {
+				if err != nil {
+					t.Fatal("expected nil response but got non-nil response")
+				}
+			} else {
+				// reconciler either needs to create rule or delete it
+				testRule := &monitoringv1.PrometheusRule{}
+				err = r.Client.Get(context.TODO(), types.NamespacedName{
+					Name:      "argocd-component-status-alert",
+					Namespace: test.argocd.Namespace,
+				}, testRule)
 
-			if test.wantErr && err == nil {
-				t.Fatal("Expected error but did not get one")
-			} else if !test.wantErr && err != nil {
-				t.Fatal("Unexpected error")
+				if test.wantPromRuleFound && err != nil {
+					t.Fatal("unexpected error - prometheusRule not found")
+				} else if !test.wantPromRuleFound && err == nil {
+					t.Fatal("expected error but did not get one - prometheusRule not deleted")
+				}
+
+				if !test.existingPromRule {
+					assert.Equal(t, desiredRuleGroup, testRule.Spec.Groups)
+				}
+
 			}
-
-			if test.argocd.Spec.Monitoring.Enabled {
-				assert.Equal(t, desiredRuleGroup, testRule.Spec.Groups)
-			}
-
 		})
 	}
 }
