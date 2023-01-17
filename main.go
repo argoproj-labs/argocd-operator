@@ -202,14 +202,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// start metrics server and log any errors in channel
-	go func() {
-		msErrCh := argocd.StartMetricsServer(common.ArgoCDDefaultInstanceStatusMetricsPort)
-		if err = <-msErrCh; err != nil {
-			setupLog.Error(err, "metrics server exited with error: %v", err)
-		}
-	}()
-
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
