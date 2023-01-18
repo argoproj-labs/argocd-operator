@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"github.com/google/go-cmp/cmp"
 	"os"
 	"testing"
 
@@ -385,6 +386,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 				Command: []string{
 					"/shared/argocd-dex",
 					"rundex",
+					"--loglevel",
+					"info",
+					"--logformat",
+					"text",
 				},
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
@@ -476,6 +481,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				Command: []string{
 					"/shared/argocd-dex",
 					"rundex",
+					"--loglevel",
+					"info",
+					"--logformat",
+					"text",
 				},
 				LivenessProbe: &corev1.Probe{
 					ProbeHandler: corev1.ProbeHandler{
@@ -1083,5 +1092,73 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestReconcileDex_testLogLevelFormat(t *testing.T) {
+
+	testLogLevel := "debug"
+	testLogFormat := "json"
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
+			OpenShiftOAuth: true,
+			LogLevel:       testLogLevel,
+			LogFormat:      testLogFormat,
+		}
+	})
+
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, r.reconcileDexDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedCMD := []string{
+		"/shared/argocd-dex",
+		"rundex",
+		"--loglevel",
+		"debug",
+		"--logformat",
+		"json",
+	}
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("failed to reconcile dex-server deployment logLevel:\n%s", diff)
+	}
+
+	// Verify any manual updates to the logLevel should be overridden by the operator.
+	unwantedCommand := []string{
+		"/shared/argocd-dex",
+		"rundex",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	deployment.Spec.Template.Spec.Containers[0].Command = unwantedCommand
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile back
+	assert.NoError(t, r.reconcileDexDeployment(a))
+
+	// Get the updated deployment
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-dex-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	if diff := cmp.Diff(expectedCMD, deployment.Spec.Template.Spec.Containers[0].Command); diff != "" {
+		t.Fatalf("operator failed to override the manual changes to dex-server:\n%s", diff)
 	}
 }

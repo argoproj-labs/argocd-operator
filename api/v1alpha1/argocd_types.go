@@ -132,6 +132,9 @@ type ArgoCDApplicationSet struct {
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
+	// LogFormat refers to the log format used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
+
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
 }
 
@@ -170,6 +173,12 @@ type ArgoCDDexSpec struct {
 	// Resources defines the Compute Resources required by the container for Dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Requirements'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:resourceRequirements"}
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// LogLevel describes the log level that should be used by the ArgoCD Dex. Defaults to ArgoCDDefaultLogLevel if not set. Valid options are debug, info, error and warn.
+	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the ArgoCD Dex. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
 
 	// Version is the Dex container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
@@ -316,6 +325,9 @@ type ArgoCDNotifications struct {
 
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
+
+	// LogFormat refers to the log format used by the argocd-notifications. Defaults to ArgoCDDefaultLogFormat if not configured. Valid options are text or json.
+	LogFormat string `json:"logFormat,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.

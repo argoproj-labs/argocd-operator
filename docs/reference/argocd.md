@@ -132,6 +132,7 @@ Processors.Operation | 10 | The number of operation processors.
 Processors.Status | 20 | The number of status processors.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+LogFormat | info | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications
 Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
 Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
@@ -186,6 +187,8 @@ Groups | [Empty] | Optional list of required groups a user must be a member of
 Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
 OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
 Resources | [Empty] | The container compute resources.
+LogLevel | info | The log level to be used by the ArgoCD Dex. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Dex. Valid options are text or json.
 Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 
 ### Dex Example
@@ -580,6 +583,7 @@ Image | `argoproj/argocd` | The container image for all Argo CD components. This
 Version | *(recent Argo CD version)* | The tag to use with the Notifications container image.
 Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
+LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 
 ### Notifications Controller Example
 

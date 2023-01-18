@@ -531,6 +531,9 @@ func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
 
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(cr.Spec.Notifications.LogFormat))
+
 	return cmd
 }
 

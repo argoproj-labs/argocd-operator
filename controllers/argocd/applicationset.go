@@ -46,6 +46,9 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
+	cmd = append(cmd, "--logformat")
+	cmd = append(cmd, getLogFormat(cr.Spec.ApplicationSet.LogFormat))
+
 	return cmd
 }
 
@@ -152,7 +155,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 			!reflect.DeepEqual(existing.Spec.Template.Labels, deploy.Spec.Template.Labels) ||
 			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
-			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations)
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command, deploy.Spec.Template.Spec.Containers[0].Command)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {
@@ -164,6 +168,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
