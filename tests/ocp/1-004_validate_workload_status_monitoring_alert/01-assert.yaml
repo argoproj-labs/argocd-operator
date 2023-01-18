@@ -1,0 +1,100 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-component-status-alert
+  namespace: $NAMESPACE
+spec:
+  groups:
+    - name: ArgoCDComponentStatus
+      rules:
+        - alert: ApplicationControllerNotReady
+          annotations:
+            message: >-
+              application controller deployment for Argo CD instance in
+              namespace ${NAMESPACE} is not running
+          expr: >-
+            kube_statefulset_status_replicas{statefulset="argocd-application-controller",
+            namespace="${NAMESPACE}"} !=
+            kube_statefulset_status_replicas_ready{statefulset="argocd-application-controller",
+            namespace="${NAMESPACE}"} 
+          for: 1m
+          labels:
+            severity: critical
+        - alert: ServerNotReady
+          annotations:
+            message: >-
+              server deployment for Argo CD instance in namespace ${NAMESPACE} is not
+              running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-server",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-server",
+            namespace="${NAMESPACE}"} 
+          for: 1m
+          labels:
+            severity: critical
+        - alert: RepoServerNotReady
+          annotations:
+            message: >-
+              repo server deployment for Argo CD instance in namespace ${NAMESPACE}
+              is not running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-repo-server",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-repo-server",
+            namespace="${NAMESPACE}"} 
+          for: 1m
+          labels:
+            severity: critical
+        - alert: ApplicationSetControllerNotReady
+          annotations:
+            message: >-
+              applicationSet controller deployment for Argo CD instance in
+              namespace ${NAMESPACE} is not running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-applicationset-controller",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-applicationset-controller",
+            namespace="${NAMESPACE}"} 
+          for: 10m
+          labels:
+            severity: warning
+        - alert: DexNotReady
+          annotations:
+            message: >-
+              dex deployment for Argo CD instance in namespace ${NAMESPACE} is not
+              running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-dex-server",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-dex-server",
+            namespace="${NAMESPACE}"} 
+          for: 10m
+          labels:
+            severity: warning
+        - alert: NotificationsControllerNotReady
+          annotations:
+            message: >-
+              notifications controller deployment for Argo CD instance in
+              namespace ${NAMESPACE} is not running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-notifications-controller",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-notifications-controller",
+            namespace="${NAMESPACE}"} 
+          for: 10m
+          labels:
+            severity: warning
+        - alert: RedisNotReady
+          annotations:
+            message: >-
+              redis deployment for Argo CD instance in namespace ${NAMESPACE} is not
+              running
+          expr: >-
+            kube_deployment_status_replicas{deployment="argocd-redis",
+            namespace="${NAMESPACE}"} !=
+            kube_deployment_status_replicas_ready{deployment="argocd-redis",
+            namespace="${NAMESPACE}"} 
+          for: 10m
+          labels:
+            severity: warning

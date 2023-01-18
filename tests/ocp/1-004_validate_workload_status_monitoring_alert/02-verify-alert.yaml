@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 10m
+- script: |
+    jq '.data.alerts' <<< "$(oc -n openshift-monitoring exec -c prometheus prometheus-k8s-0 -- curl -s   'http://localhost:9090/api/v1/alerts')" > alerts.json
+
+    result=$(jq $(jq --arg deployment "argocd-applicationset-controller" --arg namespace $NAMESPACE '.[] | select(.labels.alertname == "ApplicationSetControllerNotReady" and .state == "firing")' alerts.json)
+
+    [[ ! -z "$result" ]] && exit 0 || exit 1
+
