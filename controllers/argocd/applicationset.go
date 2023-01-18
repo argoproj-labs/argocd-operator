@@ -46,6 +46,15 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
+	// ApplicationSet command arguments provided by the user
+	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+
+	cmd = append(cmd, extraArgs...)
+
 	return cmd
 }
 
@@ -186,6 +195,10 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			},
 		},
 	}}
+
+	// Merge ApplicationSet env vars provided by the user
+	// User should be able to override the default NAMESPACE environmental variable
+	appSetEnv = argoutil.EnvMerge(cr.Spec.ApplicationSet.Env, appSetEnv, true)
 	// Environment specified in the CR take precedence over everything else
 	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
 

@@ -120,6 +120,14 @@ type ArgoCDApplicationControllerShardSpec struct {
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 type ArgoCDApplicationSet struct {
 
+	// Env lets you specify environment for applicationSet controller pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Extra Command arguments that would append to the ApplicationSet server command.
+	// ExtraCommandArgs will not be added, if one of these commands is already part of the ApplicationSet command
+	// with same or different value.
+	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
 	// Image is the Argo CD ApplicationSet image (optional)
 	Image string `json:"image,omitempty"`
 
