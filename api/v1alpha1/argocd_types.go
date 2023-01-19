@@ -392,6 +392,11 @@ type ArgoCDRedisSpec struct {
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
 
+	// Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided
+	// by the operator.
+	// Please note that the command line arguments provided as part of ExtraRepoCommandArgs will not overwrite the default command line arguments.
+	ExtraRepoCommandArgs []string `json:"extraRepoCommandArgs,omitempty"`
+
 	// LogLevel describes the log level that should be used by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 

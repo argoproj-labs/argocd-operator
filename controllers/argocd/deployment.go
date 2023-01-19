@@ -250,6 +250,15 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
 
+	// *** NOTE ***
+	// Do Not add any new default command line arguments below this.
+	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+
+	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 

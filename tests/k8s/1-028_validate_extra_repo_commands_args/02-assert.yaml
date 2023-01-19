@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-repo-server
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-argocd-repo-server
+  template:
+    spec:
+      containers:
+        - command:
+            - uid_entrypoint.sh
+            - argocd-repo-server
+            - --redis
+            - example-argocd-redis.default.svc.cluster.local:6379
+            - --loglevel
+            - info
+            - --logformat
+            - text
+            - --reposerver.max.combined.directory.manifests.size
+            - 10M
+          name: argocd-repo-server
+
