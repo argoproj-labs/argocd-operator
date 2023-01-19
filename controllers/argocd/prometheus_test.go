@@ -111,7 +111,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 								Type:   intstr.String,
 								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-applicationset-controller"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-applicationset-controller"), test.argocd.Namespace),
 							},
-							For: "10m",
+							For: "5m",
 							Labels: map[string]string{
 								"severity": "warning",
 							},
@@ -125,7 +125,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 								Type:   intstr.String,
 								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-dex-server"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-dex-server"), test.argocd.Namespace),
 							},
-							For: "10m",
+							For: "5m",
 							Labels: map[string]string{
 								"severity": "warning",
 							},
@@ -139,7 +139,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 								Type:   intstr.String,
 								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-notifications-controller"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-notifications-controller"), test.argocd.Namespace),
 							},
-							For: "10m",
+							For: "5m",
 							Labels: map[string]string{
 								"severity": "warning",
 							},
@@ -153,7 +153,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 								Type:   intstr.String,
 								StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(test.argocd.Name+"-redis"), test.argocd.Namespace, fmt.Sprintf(test.argocd.Name+"-redis"), test.argocd.Namespace),
 							},
-							For: "10m",
+							For: "5m",
 							Labels: map[string]string{
 								"severity": "warning",
 							},

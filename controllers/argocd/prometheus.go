@@ -323,7 +323,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace),
 					},
-					For: "10m",
+					For: "5m",
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -337,7 +337,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace),
 					},
-					For: "10m",
+					For: "5m",
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -351,7 +351,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace),
 					},
-					For: "10m",
+					For: "5m",
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -365,7 +365,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-redis"), cr.Namespace, fmt.Sprintf(cr.Name+"-redis"), cr.Namespace),
 					},
-					For: "10m",
+					For: "5m",
 					Labels: map[string]string{
 						"severity": "warning",
 					},
