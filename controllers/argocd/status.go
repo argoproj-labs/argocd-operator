@@ -136,7 +136,6 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 		cr.Status.ApplicationSetController = status
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
-
 	return nil
 }
 
@@ -159,6 +158,11 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Status.ApplicationController == "Running" && cr.Status.Redis == "Running" && cr.Status.Repo == "Running" && cr.Status.Server == "Running" {
 		phase = "Available"
+<<<<<<< HEAD
+=======
+	} else {
+		phase = "Pending"
+>>>>>>> 770f8f0aa55c751bfb23f8d3a88a0e04b188db5f
 	}
 
 	if cr.Status.Phase != phase {
