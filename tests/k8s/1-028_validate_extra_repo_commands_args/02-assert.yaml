@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: example-argocd-repo-server
+  namespace: test-1-28-repo-extra-command
 spec:
   selector:
     matchLabels:
@@ -14,7 +15,7 @@ spec:
             - uid_entrypoint.sh
             - argocd-repo-server
             - --redis
-            - example-argocd-redis.default.svc.cluster.local:6379
+            - example-argocd-redis.test-1-28-repo-extra-command.svc.cluster.local:6379
             - --loglevel
             - info
             - --logformat
