@@ -20,6 +20,7 @@ import (
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -246,4 +247,151 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1.
 		return err
 	}
 	return r.Client.Create(context.TODO(), sm)
+}
+
+// reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses
+func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error {
+
+	promRule := newPrometheusRule(cr.Namespace, "argocd-component-status-alert")
+
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule) {
+
+		if !cr.Spec.Monitoring.Enabled {
+			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule
+			log.Info("instance monitoring disabled, deleting component status tracking prometheusRule")
+			return r.Client.Delete(context.TODO(), promRule)
+		}
+		return nil // PrometheusRule found, do nothing
+	}
+
+	if !cr.Spec.Monitoring.Enabled {
+		return nil // Monitoring not enabled, do nothing.
+	}
+
+	ruleGroups := []monitoringv1.RuleGroup{
+		{
+			Name: "ArgoCDComponentStatus",
+			Rules: []monitoringv1.Rule{
+				{
+					Alert: "ApplicationControllerNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("application controller deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-application-controller"), cr.Namespace),
+					},
+					For: "1m",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				},
+				{
+					Alert: "ServerNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("server deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-server"), cr.Namespace),
+					},
+					For: "1m",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				},
+				{
+					Alert: "RepoServerNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("repo server deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-repo-server"), cr.Namespace),
+					},
+					For: "1m",
+					Labels: map[string]string{
+						"severity": "critical",
+					},
+				},
+				{
+					Alert: "ApplicationSetControllerNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("applicationSet controller deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-applicationset-controller"), cr.Namespace),
+					},
+					For: "5m",
+					Labels: map[string]string{
+						"severity": "warning",
+					},
+				},
+				{
+					Alert: "DexNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("dex deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace, fmt.Sprintf(cr.Name+"-dex-server"), cr.Namespace),
+					},
+					For: "5m",
+					Labels: map[string]string{
+						"severity": "warning",
+					},
+				},
+				{
+					Alert: "NotificationsControllerNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("notifications controller deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace, fmt.Sprintf(cr.Name+"-notifications-controller"), cr.Namespace),
+					},
+					For: "5m",
+					Labels: map[string]string{
+						"severity": "warning",
+					},
+				},
+				{
+					Alert: "RedisNotReady",
+					Annotations: map[string]string{
+						"message": fmt.Sprintf("redis deployment for Argo CD instance in namespace %s is not running", cr.Namespace),
+					},
+					Expr: intstr.IntOrString{
+						Type:   intstr.String,
+						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", fmt.Sprintf(cr.Name+"-redis"), cr.Namespace, fmt.Sprintf(cr.Name+"-redis"), cr.Namespace),
+					},
+					For: "5m",
+					Labels: map[string]string{
+						"severity": "warning",
+					},
+				},
+			},
+		},
+	}
+	promRule.Spec.Groups = ruleGroups
+
+	if err := controllerutil.SetControllerReference(cr, promRule, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info("instance monitoring enabled, creating component status tracking prometheusRule")
+	return r.Client.Create(context.TODO(), promRule) // Create PrometheusRule
+}
+
+// newPrometheusRule returns an empty PrometheusRule
+func newPrometheusRule(namespace, alertRuleName string) *monitoringv1.PrometheusRule {
+
+	promRule := &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      alertRuleName,
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{},
+	}
+	return promRule
 }

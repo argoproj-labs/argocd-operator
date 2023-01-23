@@ -614,6 +614,15 @@ type KustomizeVersionSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
+// ArgoCDMonitoringSpec is used to configure workload status monitoring for a given Argo CD instance.
+// It triggers creation of serviceMonitor and PrometheusRules that alert users when a given workload
+// status meets a certain criteria. For e.g, it can fire an alert if the application controller is
+// pending for x mins consecutively.
+type ArgoCDMonitoringSpec struct {
+	// Enabled defines whether workload status monitoring is enabled for this instance or not
+	Enabled bool `json:"enabled"`
+}
+
 //ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
 type ArgoCDNodePlacementSpec struct {
 	// NodeSelector is a field of PodSpec, it is a map of key value pairs used for node selection
@@ -700,6 +709,9 @@ type ArgoCDSpec struct {
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OIDC Config'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	OIDCConfig string `json:"oidcConfig,omitempty"`
+
+	// Monitoring defines whether workload status monitoring configuration for this instance.
+	Monitoring ArgoCDMonitoringSpec `json:"monitoring,omitempty"`
 
 	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
 	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`

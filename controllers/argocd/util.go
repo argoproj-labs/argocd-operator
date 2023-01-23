@@ -797,6 +797,11 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 			return err
 		}
 
+		// Reconciles prometheusRule created to alert based on argo-cd workload status
+		if err := r.reconcilePrometheusRule(cr); err != nil {
+			return err
+		}
+
 		if err := r.reconcileMetricsServiceMonitor(cr); err != nil {
 			return err
 		}
