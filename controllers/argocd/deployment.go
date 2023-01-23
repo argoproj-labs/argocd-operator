@@ -332,7 +332,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 			if len(arg) > 2 && arg[:2] == "--" {
 				if ok := contains(cmd, arg); ok {
 					err := errors.New("duplicate argument error")
-					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
+					log.Error(err, fmt.Sprintf("Arg %s is already part of the default command arguments", arg))
 					return err
 				}
 			}
