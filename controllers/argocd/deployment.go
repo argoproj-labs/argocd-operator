@@ -325,7 +325,7 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 	return cmd
 }
 
-// isMergable returns error if any of the extraCommandArgs already exists in the Argo CD server cmd.
+// isMergable returns error if any of the extraArgs is already part of the default command Arguments.
 func isMergable(extraArgs []string, cmd []string) error {
 	if len(extraArgs) > 0 {
 		for _, arg := range extraArgs {
