@@ -1359,6 +1359,15 @@ spec:
                     description: ExecTimeout specifies the timeout in seconds for
                       tool execution
                     type: integer
+                  extraRepoCommandArgs:
+                    description: Extra Command arguments allows users to pass command
+                      line arguments to repo server workload. They get added to default
+                      command line arguments provided by the operator. Please note
+                      that the command line arguments provided as part of ExtraRepoCommandArgs
+                      will not overwrite the default command line arguments.
+                    items:
+                      type: string
+                    type: array
                   image:
                     description: Image is the ArgoCD Repo Server container image.
                     type: string

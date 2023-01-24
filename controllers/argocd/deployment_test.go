@@ -1651,3 +1651,94 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	testRedisServerAddress := getRedisServerAddress(a)
+
+	baseCommand := []string{
+		"uid_entrypoint.sh",
+		"argocd-repo-server",
+		"--redis",
+		testRedisServerAddress,
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	// When a single command argument is passed
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--reposerver.max.combined.directory.manifests.size",
+		"10M",
+	}
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd := append(baseCommand,
+		"--reposerver.max.combined.directory.manifests.size", "10M")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When multiple command arguments are passed
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--reposerver.max.combined.directory.manifests.size",
+		"10M",
+		"--foo",
+		"bar",
+		"test",
+	}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd = append(cmd, "--foo", "bar", "test")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When one of the ExtraCommandArgs already exists in cmd with same or different value
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// Remove all the command arguments that were added.
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
