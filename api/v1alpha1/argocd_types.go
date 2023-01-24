@@ -123,9 +123,10 @@ type ArgoCDApplicationSet struct {
 	// Env lets you specify environment for applicationSet controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// Extra Command arguments that would append to the ApplicationSet server command.
-	// ExtraCommandArgs will not be added, if one of these commands is already part of the ApplicationSet command
-	// with same or different value.
+	// ExtraCommandArgs allows users to pass command line arguments to ApplicationSet controller.
+	// They get added to default command line arguments provided by the operator.
+	// Please note that the command line arguments provided as part of ExtraCommandArgs
+	// will not overwrite the default command line arguments.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
 
 	// Image is the Argo CD ApplicationSet image (optional)

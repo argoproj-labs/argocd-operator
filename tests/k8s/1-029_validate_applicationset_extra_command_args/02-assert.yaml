@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-applicationset-controller
+  namespace: test-1-29-appsets-extra-command
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-argocd-applicationset-controller
+  template:
+    spec:
+      containers:
+        - command:
+          - entrypoint.sh
+          - argocd-applicationset-controller
+          - --argocd-repo-server
+          - example-argocd-repo-server.test-1-29-appsets-extra-command.svc.cluster.local:8081
+          - --loglevel
+          - info
+          - --enable-progressive-rollouts
+          name: argocd-applicationset-controller
+

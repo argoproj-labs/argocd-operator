@@ -156,10 +156,11 @@ spec:
                       type: object
                     type: array
                   extraCommandArgs:
-                    description: Extra Command arguments that would append to the
-                      ApplicationSet server command. ExtraCommandArgs will not be
-                      added, if one of these commands is already part of the ApplicationSet
-                      command with same or different value.
+                    description: ExtraCommandArgs allows users to pass command line
+                      arguments to ApplicationSet controller. They get added to default
+                      command line arguments provided by the operator. Please note
+                      that the command line arguments provided as part of ExtraCommandArgs
+                      will not overwrite the default command line arguments.
                     items:
                       type: string
                     type: array

@@ -1,0 +1,14 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-applicationset-controller
+status:
+  readyReplicas: 1
