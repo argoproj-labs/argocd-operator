@@ -5,7 +5,6 @@ metadata:
   labels:
     example: route
 spec:
-  applicationSet: {}
   grafana:
     enabled: true
     route:

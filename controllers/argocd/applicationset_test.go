@@ -497,3 +497,145 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 	assert.NoError(t, r.reconcileApplicationSetService(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Namespace: s.Namespace, Name: s.Name}, s))
 }
+
+func TestArgoCDApplicationSetCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	r := makeTestReconciler(t, a)
+
+	baseCommand := []string{
+		"entrypoint.sh",
+		"argocd-applicationset-controller",
+		"--argocd-repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--loglevel",
+		"info",
+	}
+
+	// When a single command argument is passed
+	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
+		"--foo",
+		"bar",
+	}
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd := append(baseCommand, "--foo", "bar")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When multiple command arguments are passed
+	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
+		"--foo",
+		"bar",
+		"--ping",
+		"pong",
+		"test",
+	}
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd = append(cmd, "--ping", "pong", "test")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When one of the ExtraCommandArgs already exists in cmd with same or different value
+	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
+		"--argocd-repo-server",
+		"foo.scv.cluster.local:6379",
+	}
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// Remove all the command arguments that were added.
+	a.Spec.ApplicationSet.ExtraCommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
+
+func TestArgoCDApplicationSetEnv(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	r := makeTestReconciler(t, a)
+
+	defaultEnv := []corev1.EnvVar{
+		{
+			Name: "NAMESPACE",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					APIVersion: "",
+					FieldPath:  "metadata.namespace",
+				},
+			},
+		},
+	}
+
+	// Pass an environment variable using Argo CD CR.
+	customEnv := []corev1.EnvVar{
+		{
+			Name:  "foo",
+			Value: "bar",
+		},
+	}
+	a.Spec.ApplicationSet.Env = customEnv
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	expectedEnv := append(defaultEnv, customEnv...)
+	assert.Equal(t, expectedEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+
+	// Remove all the env vars that were added.
+	a.Spec.ApplicationSet.Env = []corev1.EnvVar{}
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, defaultEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+}
