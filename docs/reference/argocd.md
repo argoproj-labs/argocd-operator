@@ -75,6 +75,8 @@ The following properties are available for configuring the ApplicationSet contro
 
 Name | Default | Description
 --- | --- | ---
+Env | [Empty] | Environment to set for the applicationSet controller workloads
+[ExtraCommandArgs](#add-command-arguments-to-applicationsets-controller) | [Empty] | Extra Command arguments allows users to pass command line arguments to applicationSet workload. They get added to default command line arguments provided by the operator.
 Image | `quay.io/argoproj/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
@@ -97,6 +99,23 @@ spec:
   applicationSet: {}
 ```
 
+### Add Command Arguments to ApplicationSets Controller
+
+Below example shows how a user can add command arguments to the ApplicationSet controller. 
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: applicationset
+spec:
+  applicationSet:
+    extraCommandArgs:
+      - --foo
+      - bar
+```
 
 ## Config Management Plugins
 
