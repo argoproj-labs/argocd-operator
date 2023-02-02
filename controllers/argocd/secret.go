@@ -149,6 +149,11 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
 	secret := argoutil.NewSecretWithName(cr, common.ArgoCDSecretName)
 
+	clientSecret, err := r.getDexOAuthClientSecret(cr)
+	if err != nil {
+		return nil
+	}
+
 	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile argo secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
@@ -179,6 +184,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		common.ArgoCDKeyAdminPassword:      []byte(hashedPassword),
 		common.ArgoCDKeyAdminPasswordMTime: nowBytes(),
 		common.ArgoCDKeyServerSecretKey:    sessionKey,
+		common.ArgoCDDexSecretKey:          []byte(*clientSecret),
 		common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
 		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 	}

@@ -228,4 +228,7 @@ const (
 
 	// ArgoCDServerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD server
 	ArgoCDServerClusterRoleEnvName = "SERVER_CLUSTER_ROLE"
+
+	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
+	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
 )
