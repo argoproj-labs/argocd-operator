@@ -143,10 +143,6 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
 func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
-	clientSecret, err := r.getDexOAuthClientSecret(cr)
-	if err != nil {
-		return "", err
-	}
 
 	groups := []string{}
 
@@ -164,7 +160,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 		Config: map[string]interface{}{
 			"issuer":       "https://kubernetes.default.svc", // TODO: Should this be hard-coded?
 			"clientID":     getDexOAuthClientID(cr),
-			"clientSecret": *clientSecret,
+			"clientSecret": "$oidc.dex.clientSecret",
 			"redirectURI":  r.getDexOAuthRedirectURI(cr),
 			"insecureCA":   true, // TODO: Configure for openshift CA,
 			"groups":       groups,
