@@ -29,6 +29,7 @@ import (
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -161,7 +162,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
-		return r.reconcileExistingArgoSecret(secret, clusterSecret, tlsSecret)
+		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
 	}
 
 	// Secret not found, create it...
@@ -181,6 +182,14 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		common.ArgoCDKeyServerSecretKey:    sessionKey,
 		common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
 		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
+	}
+
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex {
+		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
+		if err != nil {
+			return nil
+		}
+		secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
 	}
 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
@@ -290,7 +299,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
-func (r *ReconcileArgoCD) reconcileExistingArgoSecret(secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
 	if secret.Data == nil {
@@ -323,6 +332,17 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(secret *corev1.Secret, clu
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
 		changed = true
+	}
+
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex {
+		if secret.Data[common.ArgoCDDexSecretKey] == nil {
+			dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
+			if err != nil {
+				return nil
+			}
+			secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
+			changed = true
+		}
 	}
 
 	if changed {

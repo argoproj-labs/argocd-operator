@@ -222,6 +222,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	r := makeTestReconciler(t, argocd)
 	r.Client.Create(context.TODO(), clusterSecret)
 	r.Client.Create(context.TODO(), tlsSecret)
+
 	err := r.reconcileArgoSecret(argocd)
 
 	assert.NoError(t, err)
@@ -234,7 +235,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	testSecret.Data = nil
 	r.Client.Update(context.TODO(), testSecret)
 
-	_ = r.reconcileExistingArgoSecret(testSecret, clusterSecret, tlsSecret)
+	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
 	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
 
 	if testSecret.Data == nil {
