@@ -103,8 +103,13 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
-		// Skip terminating namespaces.
+		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
+		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		if namespace.DeletionTimestamp != nil {
+			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+				delete(namespace.Labels, common.ArgoCDManagedByLabel)
+				_ = r.Client.Update(context.TODO(), &namespace)
+			}
 			continue
 		}
 
