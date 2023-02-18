@@ -88,11 +88,9 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name             string
-		currentReplicas  int32
-		updatedReplicas  int32
-		autoscale        bool
-		expectedReplicas int32
+		name            string
+		updatedReplicas int32
+		autoscale       bool
 	}{
 		{
 			name:            "deployment spec replicas overwritten by operator",
