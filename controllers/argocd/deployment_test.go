@@ -88,33 +88,28 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name          string
-		replicas      int32
-		autoscale     bool
-		expectedNil   bool
-		expectedValue int32
+		name             string
+		currentReplicas  int32
+		updatedReplicas  int32
+		autoscale        bool
+		expectedReplicas int32
 	}{
 		{
-			name:          "replicas field in the spec should reflect the number of replicas on the cluster",
-			replicas:      5,
-			autoscale:     false,
-			expectedNil:   false,
-			expectedValue: 5,
+			name:            "deployment spec replicas overwritten by operator",
+			updatedReplicas: 5,
+			autoscale:       false,
 		},
 		{
-			name:        "replicas should be overriden by autoscale",
-			replicas:    1,
-			autoscale:   true,
-			expectedNil: true,
+			name:            "deployment spec replicas ignored by operator",
+			updatedReplicas: 8,
+			autoscale:       true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 				a.Spec.Server.Autoscale.Enabled = test.autoscale
-				a.Spec.Server.Replicas = &test.replicas
 			})
 			r := makeTestReconciler(t, a)
 
@@ -127,9 +122,24 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 				Namespace: testNamespace,
 			}, deployment)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectedNil, deployment.Spec.Replicas == nil)
-			if deployment.Spec.Replicas != nil {
-				assert.Equal(t, test.expectedValue, *deployment.Spec.Replicas)
+
+			initialReplicaCount := deployment.Spec.Replicas
+
+			a.Spec.Server.Replicas = &test.updatedReplicas
+			err = r.reconcileServerDeployment(a, false)
+			assert.NoError(t, err)
+
+			deployment = &appsv1.Deployment{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-server",
+				Namespace: testNamespace,
+			}, deployment)
+			assert.NoError(t, err)
+
+			if !test.autoscale {
+				assert.Equal(t, test.updatedReplicas, *deployment.Spec.Replicas)
+			} else {
+				assert.Equal(t, *initialReplicaCount, *deployment.Spec.Replicas)
 			}
 		})
 	}
