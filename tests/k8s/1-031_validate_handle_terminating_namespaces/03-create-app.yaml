@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: gitops-service-argocd
+spec:
+  destination:
+    namespace: john
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: kustomize-guestbook
+    repoURL: https://github.com/argoproj/argocd-example-apps
+    targetRevision: master
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

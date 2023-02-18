@@ -1,0 +1,12 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 600
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: gitops-service-argocd
+status:
+  sync:
+    status: Synced
