@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"reflect"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,12 +23,6 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-)
-
-var (
-	maxReplicas int32 = 3
-	minReplicas int32 = 1
-	tcup        int32 = 50
 )
 
 func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
@@ -57,54 +50,39 @@ func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD
 	return newHorizontalPodAutoscalerWithName(nameWithSuffix(suffix, cr), cr)
 }
 
-// reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component, and reconcile any detected changes.
+// reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component.
 func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoprojv1a1.ArgoCD) error {
-
-	defaultHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
-	defaultHPA.Spec = autoscaling.HorizontalPodAutoscalerSpec{
-		MaxReplicas:                    maxReplicas,
-		MinReplicas:                    &minReplicas,
-		TargetCPUUtilizationPercentage: &tcup,
-		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
-			APIVersion: "apps/v1",
-			Kind:       "Deployment",
-			Name:       nameWithSuffix("server", cr),
-		},
-	}
-
-	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
+	hpa := newHorizontalPodAutoscalerWithSuffix("server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, hpa.Name, hpa) {
 		if !cr.Spec.Server.Autoscale.Enabled {
-			return r.Client.Delete(context.TODO(), existingHPA) // HorizontalPodAutoscaler found but globally disabled, delete it.
+			return r.Client.Delete(context.TODO(), hpa) // HorizontalPodAutoscaler found but globally disabled, delete it.
 		}
-
-		changed := false
-		// HorizontalPodAutoscaler found, reconcile if necessary changes detected
-		if cr.Spec.Server.Autoscale.HPA != nil {
-			if !reflect.DeepEqual(existingHPA.Spec, cr.Spec.Server.Autoscale.HPA) {
-				existingHPA.Spec = *cr.Spec.Server.Autoscale.HPA
-				changed = true
-			}
-		}
-
-		if changed {
-			return r.Client.Update(context.TODO(), existingHPA)
-		}
-
-		// HorizontalPodAutoscaler found, no changes detected
-		return nil
+		return nil // HorizontalPodAutoscaler found and configured, nothing do to, move along...
 	}
 
 	if !cr.Spec.Server.Autoscale.Enabled {
 		return nil // AutoScale not enabled, move along...
 	}
 
-	// AutoScale enabled, no existing HPA found, create
 	if cr.Spec.Server.Autoscale.HPA != nil {
-		defaultHPA.Spec = *cr.Spec.Server.Autoscale.HPA
+		hpa.Spec = *cr.Spec.Server.Autoscale.HPA
+	} else {
+		hpa.Spec.MaxReplicas = 3
+
+		var minrReplicas int32 = 1
+		hpa.Spec.MinReplicas = &minrReplicas
+
+		var tcup int32 = 50
+		hpa.Spec.TargetCPUUtilizationPercentage = &tcup
+
+		hpa.Spec.ScaleTargetRef = autoscaling.CrossVersionObjectReference{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
+			Name:       nameWithSuffix("server", cr),
+		}
 	}
 
-	return r.Client.Create(context.TODO(), defaultHPA)
+	return r.Client.Create(context.TODO(), hpa)
 }
 
 // reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
