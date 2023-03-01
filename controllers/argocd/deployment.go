@@ -35,30 +35,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var (
-	defaultRepoServerReplicas int32 = 1
-	defaultServerReplicas     int32 = 1
-)
-
 // getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
-// has been set in argocd CR. Otherwise, default value is returned if the replicas is not set in the argocd CR or
+// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0.
 func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
 		return cr.Spec.Repo.Replicas
 	}
 
-	return &defaultRepoServerReplicas
+	return nil
 }
 
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
-// has been set in argocd CR. Otherwise, default value is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0.
+// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
+// replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
 func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
-	if cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
+	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
 		return cr.Spec.Server.Replicas
 	}
-	return &defaultServerReplicas
+	return nil
 }
 
 func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {

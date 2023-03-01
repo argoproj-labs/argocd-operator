@@ -87,26 +87,45 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	var (
+		initalReplicas  int32 = 4
+		updatedReplicas int32 = 5
+	)
+
 	tests := []struct {
-		name            string
-		updatedReplicas int32
-		autoscale       bool
+		name              string
+		initialReplicas   *int32
+		updatedReplicas   *int32
+		autoscale         bool
+		wantFinalReplicas *int32
 	}{
 		{
-			name:            "deployment spec replicas overwritten by operator",
-			updatedReplicas: 5,
-			autoscale:       false,
+			name:              "deployment spec replicas initially nil, updated by operator, no autoscale",
+			initialReplicas:   nil,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         false,
+			wantFinalReplicas: &updatedReplicas,
 		},
 		{
-			name:            "deployment spec replicas ignored by operator",
-			updatedReplicas: 8,
-			autoscale:       true,
+			name:              "deployment spec replicas initially not nil, updated by operator, no autoscale",
+			initialReplicas:   &initalReplicas,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         false,
+			wantFinalReplicas: &updatedReplicas,
+		},
+		{
+			name:              "deployment spec replicas initially nil, ignored by operator with autoscale",
+			initialReplicas:   nil,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         true,
+			wantFinalReplicas: nil,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Server.Replicas = test.initialReplicas
 				a.Spec.Server.Autoscale.Enabled = test.autoscale
 			})
 			r := makeTestReconciler(t, a)
@@ -120,10 +139,9 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 				Namespace: testNamespace,
 			}, deployment)
 			assert.NoError(t, err)
+			assert.Equal(t, test.initialReplicas, deployment.Spec.Replicas)
 
-			initialReplicaCount := deployment.Spec.Replicas
-
-			a.Spec.Server.Replicas = &test.updatedReplicas
+			a.Spec.Server.Replicas = test.updatedReplicas
 			err = r.reconcileServerDeployment(a, false)
 			assert.NoError(t, err)
 
@@ -133,12 +151,8 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 				Namespace: testNamespace,
 			}, deployment)
 			assert.NoError(t, err)
+			assert.Equal(t, test.wantFinalReplicas, deployment.Spec.Replicas)
 
-			if !test.autoscale {
-				assert.Equal(t, test.updatedReplicas, *deployment.Spec.Replicas)
-			} else {
-				assert.Equal(t, *initialReplicaCount, *deployment.Spec.Replicas)
-			}
 		})
 	}
 }
