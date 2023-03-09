@@ -337,13 +337,15 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
-			return nil
+			return err
 		}
 		actual := string(secret.Data[common.ArgoCDDexSecretKey])
-		expected := *dexOIDCClientSecret
-		if actual != expected {
-			secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-			changed = true
+		if dexOIDCClientSecret != nil {
+			expected := *dexOIDCClientSecret
+			if actual != expected {
+				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
+				changed = true
+			}
 		}
 	}
 
