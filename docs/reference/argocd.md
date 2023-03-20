@@ -1560,7 +1560,7 @@ The following properties are available for configuring a [UI banner message](htt
 Name | Default | Description
 --- | --- | ---
 Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
-BAnner.URL.SecretName | [Empty] | The banner message link URL (optional).
+Banner.URL | [Empty] | The banner message link URL (optional).
 
 ### Banner Example
 The following example enables a UI banner with message content and URL.
