@@ -120,6 +120,15 @@ type ArgoCDApplicationControllerShardSpec struct {
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.
 type ArgoCDApplicationSet struct {
 
+	// Env lets you specify environment for applicationSet controller pods
+	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// ExtraCommandArgs allows users to pass command line arguments to ApplicationSet controller.
+	// They get added to default command line arguments provided by the operator.
+	// Please note that the command line arguments provided as part of ExtraCommandArgs
+	// will not overwrite the default command line arguments.
+	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
 	// Image is the Argo CD ApplicationSet image (optional)
 	Image string `json:"image,omitempty"`
 
@@ -392,6 +401,11 @@ type ArgoCDRedisSpec struct {
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
 
+	// Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided
+	// by the operator.
+	// Please note that the command line arguments provided as part of ExtraRepoCommandArgs will not overwrite the default command line arguments.
+	ExtraRepoCommandArgs []string `json:"extraRepoCommandArgs,omitempty"`
+
 	// LogLevel describes the log level that should be used by the Repo Server. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug, info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
 
@@ -614,6 +628,15 @@ type KustomizeVersionSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
+// ArgoCDMonitoringSpec is used to configure workload status monitoring for a given Argo CD instance.
+// It triggers creation of serviceMonitor and PrometheusRules that alert users when a given workload
+// status meets a certain criteria. For e.g, it can fire an alert if the application controller is
+// pending for x mins consecutively.
+type ArgoCDMonitoringSpec struct {
+	// Enabled defines whether workload status monitoring is enabled for this instance or not
+	Enabled bool `json:"enabled"`
+}
+
 //ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
 type ArgoCDNodePlacementSpec struct {
 	// NodeSelector is a field of PodSpec, it is a map of key value pairs used for node selection
@@ -700,6 +723,9 @@ type ArgoCDSpec struct {
 	// OIDCConfig is the OIDC configuration as an alternative to dex.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="OIDC Config'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	OIDCConfig string `json:"oidcConfig,omitempty"`
+
+	// Monitoring defines whether workload status monitoring configuration for this instance.
+	Monitoring ArgoCDMonitoringSpec `json:"monitoring,omitempty"`
 
 	// NodePlacement defines NodeSelectors and Taints for Argo CD workloads
 	NodePlacement *ArgoCDNodePlacementSpec `json:"nodePlacement,omitempty"`

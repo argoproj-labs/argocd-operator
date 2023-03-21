@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-applicationset-controller
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-argocd-applicationset-controller
+  template:
+    spec:
+      containers:
+        - name: argocd-applicationset-controller
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: foo
+              value: bar
+

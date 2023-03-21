@@ -53,7 +53,6 @@ func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
 		return cr.Spec.Server.Replicas
 	}
-
 	return nil
 }
 
@@ -250,6 +249,15 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
 
+	// *** NOTE ***
+	// Do Not add any new default command line arguments below this.
+	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+
+	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -316,14 +324,14 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 	return cmd
 }
 
-// isMergable returns error if any of the extraCommandArgs already exists in the Argo CD server cmd.
+// isMergable returns error if any of the extraArgs is already part of the default command Arguments.
 func isMergable(extraArgs []string, cmd []string) error {
 	if len(extraArgs) > 0 {
 		for _, arg := range extraArgs {
 			if len(arg) > 2 && arg[:2] == "--" {
 				if ok := contains(cmd, arg); ok {
 					err := errors.New("duplicate argument error")
-					log.Error(err, fmt.Sprintf("Arg %s is already part of the Argo CD server command", arg))
+					log.Error(err, fmt.Sprintf("Arg %s is already part of the default command arguments", arg))
 					return err
 				}
 			}
@@ -1306,8 +1314,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, use
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
-			existing.Spec.Replicas = deploy.Spec.Replicas
-			changed = true
+			if !cr.Spec.Server.Autoscale.Enabled {
+				existing.Spec.Replicas = deploy.Spec.Replicas
+				changed = true
+			}
 		}
 		if changed {
 			return r.Client.Update(context.TODO(), existing)

@@ -1,0 +1,17 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: test-1-28-repo-extra-command
+
+status:
+  phase: Available
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-repo-server
+  namespace: test-1-28-repo-extra-command
+status:
+  readyReplicas: 1

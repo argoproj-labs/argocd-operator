@@ -1,0 +1,207 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitops-service-argocd
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  finalizers:
+  - argoproj.io/finalizer
+  name: gitops-service-argocd
+  namespace: gitops-service-argocd
+spec:
+
+  resourceInclusions: |
+    - apiGroups:
+      - ""
+      kinds:
+      - "PersistentVolumeClaim"
+      - "PersistentVolume"
+      - "Secret"
+      - "ConfigMap"
+      - "Pod"
+      - "Endpoint"
+      - "Service"
+      - "ServiceAccounts"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "apps"
+      kinds:
+      - "ReplicaSet"
+      - "StatefulSet"
+      - "DaemonSet"
+      - "Deployment"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "discovery.k8s.io"
+      kinds:
+      - "EndpointSlice"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "networking.k8s.io"
+      kinds:
+      - "Ingress"
+      - "IngressClass"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "rbac.authorization.k8s.io"
+      kinds:
+      - "RoleBinding"
+      - "Role"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "route.openshift.io"
+      kinds:
+      - "Route"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "triggers.tekton.dev"
+      kinds:
+      - "EventListener"
+      - "TriggerTemplate"
+      clusters:
+      - "*"
+    - apiGroups:
+      - "pipelinesascode.tekton.dev"
+      kinds:
+      - "Repository"
+      clusters:
+      - "*"
+  applicationSet:
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  controller:
+    logLevel: "debug"
+    processors: {}
+    resources:
+      limits:
+        cpu: "1"
+        memory: 3Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    sharding: {}
+
+    # May 2022: Argo CD to check for new Git revisions every 1 minute, rather than every 3 minutes. (jonwest@redhat.com)
+    appSync: 60s
+
+#  dex:
+#    enabled: false
+#    openShiftOAuth: false # true
+#    resources:
+#      limits:
+#        cpu: 500m
+#        memory: 256Mi
+#      requests:
+#        cpu: 250m
+#        memory: 128Mi
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  ha:
+    enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  initialSSHKnownHosts: {}
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  rbac:
+    policy: g, system:authenticated, role:admin
+    scopes: '[groups]'
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  repo:
+    logLevel: "debug"
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  server:
+    logLevel: "debug"
+    autoscale:
+      enabled: false
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 125m
+        memory: 128Mi
+    route:
+      enabled: true
+      tls:
+        termination: reencrypt
+    service:
+      type: ""
+  tls:
+    ca: {}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jane
+  labels:
+    argocd.argoproj.io/managed-by: gitops-service-argocd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config-map-2
+  namespace: jane
+  
+  finalizers:
+  - some.random/finalizer
+  
+data: {}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: john
+  labels:
+    argocd.argoproj.io/managed-by: gitops-service-argocd

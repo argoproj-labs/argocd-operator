@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: test-1-28-repo-extra-command
+spec:
+  repo:
+    extraRepoCommandArgs:
+      - --reposerver.max.combined.directory.manifests.size
+      - 10M

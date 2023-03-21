@@ -87,34 +87,46 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	var (
+		initalReplicas  int32 = 4
+		updatedReplicas int32 = 5
+	)
+
 	tests := []struct {
-		name          string
-		replicas      int32
-		autoscale     bool
-		expectedNil   bool
-		expectedValue int32
+		name              string
+		initialReplicas   *int32
+		updatedReplicas   *int32
+		autoscale         bool
+		wantFinalReplicas *int32
 	}{
 		{
-			name:          "replicas field in the spec should reflect the number of replicas on the cluster",
-			replicas:      5,
-			autoscale:     false,
-			expectedNil:   false,
-			expectedValue: 5,
+			name:              "deployment spec replicas initially nil, updated by operator, no autoscale",
+			initialReplicas:   nil,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         false,
+			wantFinalReplicas: &updatedReplicas,
 		},
 		{
-			name:        "replicas should be overriden by autoscale",
-			replicas:    1,
-			autoscale:   true,
-			expectedNil: true,
+			name:              "deployment spec replicas initially not nil, updated by operator, no autoscale",
+			initialReplicas:   &initalReplicas,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         false,
+			wantFinalReplicas: &updatedReplicas,
+		},
+		{
+			name:              "deployment spec replicas initially nil, ignored by operator with autoscale",
+			initialReplicas:   nil,
+			updatedReplicas:   &updatedReplicas,
+			autoscale:         true,
+			wantFinalReplicas: nil,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-
 			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+				a.Spec.Server.Replicas = test.initialReplicas
 				a.Spec.Server.Autoscale.Enabled = test.autoscale
-				a.Spec.Server.Replicas = &test.replicas
 			})
 			r := makeTestReconciler(t, a)
 
@@ -127,10 +139,20 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 				Namespace: testNamespace,
 			}, deployment)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectedNil, deployment.Spec.Replicas == nil)
-			if deployment.Spec.Replicas != nil {
-				assert.Equal(t, test.expectedValue, *deployment.Spec.Replicas)
-			}
+			assert.Equal(t, test.initialReplicas, deployment.Spec.Replicas)
+
+			a.Spec.Server.Replicas = test.updatedReplicas
+			err = r.reconcileServerDeployment(a, false)
+			assert.NoError(t, err)
+
+			deployment = &appsv1.Deployment{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-server",
+				Namespace: testNamespace,
+			}, deployment)
+			assert.NoError(t, err)
+			assert.Equal(t, test.wantFinalReplicas, deployment.Spec.Replicas)
+
 		})
 	}
 }
@@ -1650,4 +1672,95 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 			assert.Equal(t, test.serviceAccount, deployment.Spec.Template.Spec.ServiceAccountName)
 		})
 	}
+}
+
+func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
+	a := makeTestArgoCD()
+	r := makeTestReconciler(t, a)
+
+	testRedisServerAddress := getRedisServerAddress(a)
+
+	baseCommand := []string{
+		"uid_entrypoint.sh",
+		"argocd-repo-server",
+		"--redis",
+		testRedisServerAddress,
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	// When a single command argument is passed
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--reposerver.max.combined.directory.manifests.size",
+		"10M",
+	}
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd := append(baseCommand,
+		"--reposerver.max.combined.directory.manifests.size", "10M")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When multiple command arguments are passed
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--reposerver.max.combined.directory.manifests.size",
+		"10M",
+		"--foo",
+		"bar",
+		"test",
+	}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	cmd = append(cmd, "--foo", "bar", "test")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When one of the ExtraCommandArgs already exists in cmd with same or different value
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{
+		"--redis",
+		"foo.scv.cluster.local:6379",
+	}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// Remove all the command arguments that were added.
+	a.Spec.Repo.ExtraRepoCommandArgs = []string{}
+
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
 }

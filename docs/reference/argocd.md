@@ -75,6 +75,8 @@ The following properties are available for configuring the ApplicationSet contro
 
 Name | Default | Description
 --- | --- | ---
+Env | [Empty] | Environment to set for the applicationSet controller workloads
+[ExtraCommandArgs](#add-command-arguments-to-applicationsets-controller) | [Empty] | Extra Command arguments allows users to pass command line arguments to applicationSet workload. They get added to default command line arguments provided by the operator.
 Image | `quay.io/argoproj/argocd-applicationset` | The container image for the ApplicationSet controller. This overrides the `ARGOCD_APPLICATIONSET_IMAGE` environment variable.
 Version | *(recent ApplicationSet version)* | The tag to use with the ApplicationSet container image.
 Resources | [Empty] | The container compute resources.
@@ -97,6 +99,23 @@ spec:
   applicationSet: {}
 ```
 
+### Add Command Arguments to ApplicationSets Controller
+
+Below example shows how a user can add command arguments to the ApplicationSet controller. 
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: applicationset
+spec:
+  applicationSet:
+    extraCommandArgs:
+      - --foo
+      - bar
+```
 
 ## Config Management Plugins
 
@@ -921,6 +940,7 @@ The following properties are available for configuring the Repo server component
 
 Name | Default | Description
 --- | --- | ---
+[ExtraRepoCommandArgs](#pass-command-arguments-to-repo-server) | [Empty] | Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided by the operator.
 Resources | [Empty] | The container compute resources.
 MountSAToken | false | Whether the ServiceAccount token should be mounted to the repo-server pod.
 ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
@@ -932,9 +952,21 @@ LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid opti
 LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
-Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0. 
+Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0.
 
-### Repo Example
+### Pass Command Arguments To Repo Server
+
+Allows a user to pass additional arguments to Argo CD Repo Server command.
+
+Name | Default | Description
+--- | --- | ---
+ExtraCommandArgs | [Empty] | Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments
+provided by the operator.
+
+!!! note
+    The command line arguments provided as part of ExtraRepoCommandArgs will not overwrite the default command line arguments created by the operator.
+
+### Repo Server Example
 
 The following example shows all properties set to the default values.
 
@@ -953,6 +985,22 @@ spec:
     verifytls: false
     autotls: ""
     replicas: 1
+```
+
+### Repo Server Command Arguments Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: server
+spec:
+  repo:
+    extraRepoCommandArgs:
+      - --reposerver.max.combined.directory.manifests.size
+      - 10M
 ```
 
 ## Resource Customizations
@@ -1255,6 +1303,9 @@ Name | Default | Description
 Enabled | false | Toggle Autoscaling support globally for the Argo CD server component.
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
 
+!!! note
+    When `.spec.server.autoscale.enabled` is set to `true`, the number of required replicas (if set) in `.spec.server.replicas` will be ignored. The final replica count on the server deployment will be controlled by the Horizontal Pod Autoscaler instead. 
+
 ### Server Command Arguments
 
 Allows a user to pass arguments to Argo CD Server command.
@@ -1509,7 +1560,7 @@ The following properties are available for configuring a [UI banner message](htt
 Name | Default | Description
 --- | --- | ---
 Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
-BAnner.URL.SecretName | [Empty] | The banner message link URL (optional).
+Banner.URL | [Empty] | The banner message link URL (optional).
 
 ### Banner Example
 The following example enables a UI banner with message content and URL.
