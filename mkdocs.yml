@@ -30,6 +30,7 @@ nav:
     - Basics: usage/basics.md
     - Config Management: usage/config_management_2.0.md
     - Custom Tooling: usage/customization.md
+    - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
     - Export: usage/export.md
     - ExtraConfig: usage/extra-config.md
     - High Availability: usage/ha.md
