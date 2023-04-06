@@ -196,19 +196,22 @@ By default Argo CD instance is provided the following permissions
 * Argo CD is provided the following cluster scoped permissions because Argo CD requires cluster-wide read privileges on resources to function properly. (Please see [RBAC](https://argo-cd.readthedocs.io/en/stable/operator-manual/security/#cluster-rbac) section for more details.)
 
 ```yaml
- - verbs:
-    - get
-    - list
-    - watch
-   apiGroups:
-    - '*'
-   resources:
-    - '*'
- - verbs:
-    - get
-    - list
-   nonResourceURLs:
-    - '*'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: <argocd-instance-name>
+    app.kubernetes.io/name: <argocd-instance-name>
+    app.kubernetes.io/part-of: argocd
+  name: <argocd-instance-name>-argocd-application-controller
+  namespace: <argocd-instance-namespace>
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
 ```
 
 ## Cluster Scoped Instance
