@@ -186,3 +186,112 @@ See the [routes][docs_routes] documentation for steps to configure the Route sup
 [docs_ingress]:./ingress.md
 [docs_routes]:./routes.md
 [argocd_reference]:../reference/argocd.md
+
+### Default Permissions provided to Argo CD instance
+
+By default Argo CD instance is provided the following permissions
+
+* Argo CD instance is provided with ADMIN privileges for the namespace it is installed in. For instance, if an Argo CD instance is deployed in **foo** namespace, it will have **ADMIN privileges** to manage resources for that namespace.
+
+* Argo CD is provided the following cluster scoped permissions because Argo CD requires cluster-wide read privileges on resources to function properly. (Please see [RBAC](https://argo-cd.readthedocs.io/en/stable/operator-manual/security/#cluster-rbac) section for more details.)
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: <argocd-instance-name>
+    app.kubernetes.io/name: <argocd-instance-name>
+    app.kubernetes.io/part-of: argocd
+  name: <argocd-instance-name>-argocd-application-controller
+  namespace: <argocd-instance-namespace>
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+```
+
+## Cluster Scoped Instance
+
+The Argo CD instance created above can also be used to manage the cluster scoped resources by adding the namespace of the Argo CD instance to the `ARGOCD_CLUSTER_CONFIG_NAMESPACES` environment variable of subscription resource as shown below.
+
+```yml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: argocd-operator
+spec:
+  config:
+   env: 
+    - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
+      value: <list of namespaces of cluster-scoped Argo CD instances>
+  channel: alpha
+  name: argocd-operator
+  source: argocd-catalog
+  sourceNamespace: olm
+```
+
+### In-built permissions for cluster configuration
+
+Argo CD is granted the following permissions using a cluster role when it is configured as cluster-scoped instance. **Argo CD is not granted cluster-admin**.
+
+Please note that these permissions are in addition to the `admin` privileges that Argo CD has to the namespace in which it is installed.
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: <argocd-instance-name>-<namespace>-argocd-application-controller
+  labels:
+    app.kubernetes.io/managed-by: <argocd-instance-namespace>
+    app.kubernetes.io/name: <argocd-instance-namespace>
+    app.kubernetes.io/part-of: argocd
+rules:
+  - verbs:
+      - '*'
+    apiGroups:
+      - '*'
+    resources:
+      - '*'
+```
+
+### Additional permissions
+
+Users can extend the permissions granted to Argo CD application controller by creating cluster roles with additional permissions and then a new cluster role binding to associate them to the service account.
+
+For example, user can extend the permissions for an Argo CD instance to be able to list the secrets for all namespaces by creating the below resources.
+
+#### Cluster Role
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: secrets-cluster-role
+rules:
+- apiGroups: [""] #specifies core api groups
+  resources: ["secrets"]
+  verbs: ["*"]
+```
+
+#### Cluster Role Binding
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+# This cluster role binding allows Service Account to read secrets in any namespace.
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: secrets-cluster-role # Name of cluster role to be referenced
+subjects:
+- kind: ServiceAccount
+  name: <argocd-instance-service-account-name>
+  namespace: <argocd-instance-namespace>
+```
