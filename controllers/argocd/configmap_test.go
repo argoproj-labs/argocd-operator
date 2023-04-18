@@ -305,32 +305,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 		updateCrSpecFunc func(cr *argoprojv1alpha1.ArgoCD)
 	}{
 		{
-			name: "dex config using .spec.dex + disable_dex",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:           "false",
-			updateCrSpecFunc: nil,
-		},
-		{
 			name:          "dex config using .spec.sso.provider=dex + .spec.sso.dex",
 			setEnvVarFunc: nil,
 			envVar:        "",
-			updateCrSpecFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
-						OpenShiftOAuth: true,
-					},
-				}
-			},
-		},
-		{
-			name: "dex config using .spec.sso.provider=dex + .spec.sso.dex + DISABLE_DEX=false",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar: "false",
 			updateCrSpecFunc: func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: v1alpha1.SSOProviderTypeDex,
@@ -353,8 +330,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			}
 
 			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-				a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
+				a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
+					Provider: v1alpha1.SSOProviderTypeDex,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: false,
+					},
 				}
 			})
 
@@ -363,12 +343,10 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 			if test.setEnvVarFunc != nil {
 				test.setEnvVarFunc(t, test.envVar)
-				a.Spec.Dex.OpenShiftOAuth = true
 			}
 
 			if test.updateCrSpecFunc != nil {
 				test.updateCrSpecFunc(a)
-				a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
 			}
 			err := r.reconcileArgoConfigMap(a)
 			assert.NoError(t, err)
@@ -409,17 +387,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 		setEnvVarFunc func(*testing.T, string)
 		argoCD        *argoprojv1alpha1.ArgoCD
 	}{
-		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			}),
-		},
 		{
 			name:          "dex disabled by removing .spec.sso",
 			setEnvVarFunc: nil,
@@ -462,7 +429,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	}
 }
 
-// When dex is enabled, dexConfig should be present in argocd-cm, when disabled, it should be removed (except when .spec.dex.openShiftOAuth is true)
+// When dex is enabled, dexConfig should be present in argocd-cm, when disabled, it should be removed
 func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -473,40 +440,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 		argoCD            *argoprojv1alpha1.ArgoCD
 		wantConfigRemoved bool
 	}{
-		{
-			name: "dex disabled using DISABLE_DEX, config removed",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantConfigRemoved: true,
-		},
-		{
-			name: "dex disabled using DISABLE_DEX, config not removed",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantConfigRemoved: false,
-		},
 		{
 			name:          "dex disabled by removing .spec.sso.provider",
 			setEnvVarFunc: nil,
@@ -527,7 +460,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			name:          "dex disabled by switching provider",
 			setEnvVarFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = nil
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
+				}
 			},
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{

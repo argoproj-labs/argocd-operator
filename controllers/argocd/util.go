@@ -993,16 +993,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 				}
 			}
 
-			// trigger deletion of dex when dex configuration is removed from .spec.dex
-			if !reflect.DeepEqual(oldCR.Spec.Dex, newCR.Spec.Dex) && (newCR.Spec.Dex == nil ||
-				(newCR.Spec.Dex.Config == "" && !newCR.Spec.Dex.OpenShiftOAuth)) {
-				err := r.deleteDexResources(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-
 			// Trigger reconciliation of SSO on update event
 			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
 				err := r.reconcileSSO(newCR)

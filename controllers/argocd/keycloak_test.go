@@ -125,27 +125,6 @@ func TestKeycloakContainerImage(t *testing.T) {
 			wantContainerImage: "envImage:latest",
 		},
 		{
-			name: "both cr.spec.sso.Image and ArgoCDKeycloakImageEnvName are set.",
-			setEnvVarFunc: func(t *testing.T, s string) {
-				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
-			},
-			envVar: "envImage:latest",
-			argoCD: makeArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-				}
-			}),
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-					Image:    "crImage",
-					Version:  "crVersion",
-				}
-			},
-			templateAPIFound:   true,
-			wantContainerImage: "crImage:crVersion",
-		},
-		{
 			name: "both cr.spec.sso.keycloak.Image and ArgoCDKeycloakImageEnvName are set",
 			setEnvVarFunc: func(t *testing.T, s string) {
 				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
@@ -290,20 +269,6 @@ func TestKeycloakResources(t *testing.T) {
 			wantResources: defaultKeycloakResources(),
 		},
 		{
-			name: "override with .spec.sso",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-				}
-			}),
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Resources: &fR,
-				}
-			},
-			wantResources: getFakeKeycloakResources(),
-		},
-		{
 			name: "override with .spec.sso.keycloak",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
@@ -405,7 +370,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 		desiredVerifyTLS bool
 	}{
 		{
-			name: ".spec.sso.verifyTLS & .spec.sso.keycloak.verifyTLS both nil",
+			name: ".spec.sso.keycloak.verifyTLS nil",
 			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
@@ -414,7 +379,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 			desiredVerifyTLS: true,
 		},
 		{
-			name: ".spec.sso.verifyTLS nil, .spec.sso.keycloak.verifyTLS false",
+			name: ".spec.sso.keycloak.verifyTLS false",
 			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
@@ -426,33 +391,13 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 			desiredVerifyTLS: false,
 		},
 		{
-			name: ".spec.sso.verifyTLS false, .spec.sso.keycloak.verifyTLS nil",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider:  argoappv1.SSOProviderTypeKeycloak,
-					VerifyTLS: boolPtr(false),
-				}
-			}),
-			desiredVerifyTLS: false,
-		},
-		{
-			name: ".spec.sso.verifyTLS nil, .spec.sso.keycloak.verifyTLS true",
+			name: ".spec.sso.keycloak.verifyTLS true",
 			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
 						VerifyTLS: boolPtr(true),
 					},
-				}
-			}),
-			desiredVerifyTLS: true,
-		},
-		{
-			name: ".spec.sso.verifyTLS true, .spec.sso.keycloak.verifyTLS nil",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider:  argoappv1.SSOProviderTypeKeycloak,
-					VerifyTLS: boolPtr(true),
 				}
 			}),
 			desiredVerifyTLS: true,

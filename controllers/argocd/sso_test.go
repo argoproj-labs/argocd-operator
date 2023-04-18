@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"errors"
-	"sort"
 	"testing"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -104,43 +103,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name: "sso provider dex + DISABLE_DEX",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
-						Config: "test-config",
-					},
-				}
-			}),
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "true",
-			wantErr: true,
-			Err:     errors.New("illegal SSO configuration: cannot set DISABLE_DEX to true when dex is configured through .spec.sso"),
-		},
-		{
-			name: "sso provider dex + non empty, conflicting `.spec.dex` fields",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
-						Config:         "",
-						OpenShiftOAuth: true,
-					},
-				}
-				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					Config:         "non-empty-config",
-					OpenShiftOAuth: true,
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot specify .spec.Dex fields when dex is configured through .spec.sso.dex"),
-		},
-		{
 			name: "sso provider dex but no .spec.sso.dex provided",
 			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
@@ -151,23 +113,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			envVar:        "",
 			wantErr:       true,
 			Err:           errors.New("illegal SSO configuration: must suppy valid dex configuration when requested SSO provider is dex"),
-		},
-		{
-			name: "sso provider dex + `.spec.sso` fields provided",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
-						Config: "test",
-					},
-					Image:   "test-image",
-					Version: "test-image-version",
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot supply keycloak configuration in spec.sso when requested SSO provider is dex"),
 		},
 		{
 			name: "sso provider dex + `.spec.sso.keycloak`",
@@ -187,68 +132,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			envVar:        "",
 			wantErr:       true,
 			Err:           errors.New("illegal SSO configuration: cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"),
-		},
-		{
-			name: "DISABLE_DEX + `.spec.sso.keycloak`",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						Image:   "test-image",
-						Version: "test-image-version",
-					},
-				}
-			}),
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "false",
-			wantErr: true,
-			Err:     errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
-		},
-		{
-			name: "no conflicts - `DISABLE_DEX` + `.spec.sso` fields",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Image:   "test-image",
-					Version: "test-image-version",
-				}
-			}),
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "true",
-			wantErr: false,
-		},
-		{
-			name: "sso provider keycloak + `.spec.dex.OpenShiftOAuth`",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argov1alpha1.SSOProviderTypeKeycloak,
-				}
-				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("multiple SSO configuration: multiple SSO providers configured simultaneously"),
-		},
-		{
-			name: "sso provider keycloak + `.spec.sso` + `.spec.sso.keycloak",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argov1alpha1.SSOProviderTypeKeycloak,
-					Image:    "test-image",
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						Version: "test-image-version-2",
-					},
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot specify keycloak fields in .spec.sso when keycloak is configured through .spec.sso.keycloak"),
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",
@@ -284,34 +167,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			wantErr:       true,
 			Err:           errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
 		},
-		{
-			name: "no conflict - no provider but .spec.sso fields supplied",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Image:   "test-image",
-					Version: "test-image-version",
-				}
-			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       false,
-		},
-		{
-			name: "no conflict (preserve existing behavior) sso provider keycloak + DISABLE_DEX",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argov1alpha1.SSOProviderTypeKeycloak,
-				}
-				ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			}),
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			envVar:  "true",
-			wantErr: false,
-		},
 	}
 
 	for _, test := range tests {
@@ -338,105 +193,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		})
 	}
 
-}
-
-func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
-
-	disableDexEvent := &corev1.Event{
-		Reason:  "DeprecationNotice",
-		Message: "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Dex can be enabled/disabled through `.spec.sso`",
-		Action:  "Deprecated",
-	}
-
-	specDexEvent := &corev1.Event{
-		Reason:  "DeprecationNotice",
-		Message: "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Dex configuration can be managed through `.spec.sso.dex`",
-		Action:  "Deprecated",
-	}
-
-	specSSOEvent := &corev1.Event{
-		Reason:  "DeprecationNotice",
-		Message: "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Keycloak configuration can be managed through `.spec.sso.keycloak`",
-		Action:  "Deprecated",
-	}
-
-	tests := []struct {
-		name          string
-		argoCD        *argov1alpha1.ArgoCD
-		envVar        string
-		setEnvVarFunc func(*testing.T, string)
-		wantEvents    []*corev1.Event
-	}{
-		{
-			name:   "DISABLE_DEX env var in use",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
-			envVar: "true",
-			setEnvVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			wantEvents: []*corev1.Event{disableDexEvent},
-		},
-		{
-			name: ".spec.dex in use",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.Dex = &argov1alpha1.ArgoCDDexSpec{
-					Config:  "",
-					Groups:  []string{},
-					Image:   "",
-					Version: "",
-				}
-			}),
-			envVar:        "",
-			setEnvVarFunc: nil,
-			wantEvents:    []*corev1.Event{specDexEvent},
-		},
-		{
-			name: ".spec.sso in use",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &argov1alpha1.ArgoCDSSOSpec{
-					Image:   "test-image",
-					Version: "test-image-version",
-				}
-			}),
-			envVar:        "",
-			setEnvVarFunc: nil,
-			wantEvents:    []*corev1.Event{specSSOEvent},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			r := makeFakeReconciler(t, test.argoCD)
-
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, test.envVar)
-			}
-			err := r.reconcileSSO(test.argoCD)
-			assert.NoError(t, err)
-
-			gotEventList := &corev1.EventList{}
-
-			err = r.Client.List(context.TODO(), gotEventList)
-			assert.NoError(t, err)
-			assert.Equal(t, len(test.wantEvents), len(gotEventList.Items))
-
-			sort.Slice(gotEventList.Items, func(i, j int) bool {
-				return gotEventList.Items[i].Message < gotEventList.Items[j].Message
-			})
-
-			sort.Slice(test.wantEvents, func(i, j int) bool {
-				return test.wantEvents[i].Message < test.wantEvents[j].Message
-			})
-
-			for i := range gotEventList.Items {
-				assert.Equal(t, test.wantEvents[i].Message, gotEventList.Items[i].Message)
-			}
-
-		})
-	}
 }
 
 func TestReconcile_testKeycloakK8sInstance(t *testing.T) {

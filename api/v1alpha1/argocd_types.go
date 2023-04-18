@@ -199,12 +199,6 @@ type ArgoCDDexSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
-// ArgoCDDexOAuthSpec defines the desired state for the Dex OAuth configuration.
-type ArgoCDDexOAuthSpec struct {
-	// Enabled will toggle OAuth support for the Dex server.
-	Enabled bool `json:"enabled"`
-}
-
 // ArgoCDGrafanaSpec defines the desired state for the Grafana component.
 type ArgoCDGrafanaSpec struct {
 	// Enabled will toggle Grafana support globally for ArgoCD.
@@ -616,16 +610,8 @@ const (
 
 // ArgoCDSSOSpec defines SSO provider.
 type ArgoCDSSOSpec struct {
-	// Image is the SSO container image.
-	Image string `json:"image,omitempty"`
 	// Provider installs and configures the given SSO Provider with Argo CD.
 	Provider SSOProviderType `json:"provider,omitempty"`
-	// Resources defines the Compute Resources required by the container for SSO.
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// VerifyTLS set to false disables strict TLS validation.
-	VerifyTLS *bool `json:"verifyTLS,omitempty"`
-	// Version is the SSO container image tag.
-	Version string `json:"version,omitempty"`
 
 	// Dex contains the configuration for Argo CD dex authentication
 	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
@@ -676,9 +662,6 @@ type ArgoCDSpec struct {
 
 	// Controller defines the Application Controller options for ArgoCD.
 	Controller ArgoCDApplicationControllerSpec `json:"controller,omitempty"`
-
-	// Dex defines the Dex server options for ArgoCD.
-	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`

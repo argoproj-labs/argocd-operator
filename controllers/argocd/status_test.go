@@ -31,9 +31,12 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 		{
 			name: "only dex configured",
 			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.Dex = &argoprojv1alpha1.ArgoCDDexSpec{
-					Resources:      makeTestDexResources(),
-					OpenShiftOAuth: true,
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: v1alpha1.SSOProviderTypeDex,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+						Resources:      makeTestDexResources(),
+					},
 				}
 			}),
 			templateAPIfound: false,
@@ -46,9 +49,6 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
 				}
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
 			}),
 			templateAPIfound: true,
 			wantSSOConfig:    "Success",
@@ -59,9 +59,9 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
-				}
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
 				}
 			}),
 			templateAPIfound: true,
@@ -72,7 +72,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 		{
 			name: "no sso configured",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
+				cr.Spec.SSO = nil
 			}),
 			templateAPIfound: false,
 			wantSSOConfig:    "Unknown",
