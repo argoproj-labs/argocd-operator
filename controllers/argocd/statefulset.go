@@ -454,7 +454,19 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 
-	if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
+	if cr.Spec.Controller.Sharding.EnableDynamicScaling {
+		if cr.Spec.Controller.Sharding.MinShards < 1 {
+			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
+			cr.Spec.Controller.Sharding.MinShards = 1
+		}
+
+		if cr.Spec.Controller.Sharding.MaxShards < cr.Spec.Controller.Sharding.MinShards {
+			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+		}
+
+		// TODO: Compute the dynamic count of replicas here
+
+	} else if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
 		replicas = cr.Spec.Controller.Sharding.Replicas
 	}
 
