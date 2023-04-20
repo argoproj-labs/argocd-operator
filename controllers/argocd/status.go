@@ -19,8 +19,10 @@ import (
 	"reflect"
 	"strings"
 
+	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -34,12 +36,8 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 		return err
 	}
 
-	if err := r.reconcileStatusSSOConfig(cr); err != nil {
+	if err := r.reconcileStatusSSO(cr); err != nil {
 		return err
-	}
-
-	if err := r.reconcileStatusDex(cr); err != nil {
-		log.Error(err, "error reconciling dex status")
 	}
 
 	if err := r.reconcileStatusPhase(cr); err != nil {
@@ -110,10 +108,52 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	if cr.Status.Dex != status {
-		cr.Status.Dex = status
+	if cr.Status.SSO != status {
+		cr.Status.SSO = status
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
+
+	return nil
+}
+
+// reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error {
+	status := "Unknown"
+
+	if IsTemplateAPIAvailable() {
+		// keycloak is installed using OpenShift templates.
+		deployConf := &oappsv1.DeploymentConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      defaultKeycloakIdentifier,
+				Namespace: cr.Namespace,
+			},
+		}
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, deployConf.Name, deployConf) {
+			status = "Pending"
+
+			if deployConf.Status.ReadyReplicas == deployConf.Spec.Replicas {
+				status = "Running"
+			}
+		}
+
+	} else {
+		deploy := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+			status = "Pending"
+
+			if deploy.Spec.Replicas != nil {
+				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+					status = "Running"
+				}
+			}
+		}
+	}
+
+	if cr.Status.SSO != status {
+		cr.Status.SSO = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+
 	return nil
 }
 
@@ -140,15 +180,26 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 }
 
 // reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusSSOConfig(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
 
-	// set status to track ssoConfigLegalStatus so it is always up to date with latest ssoConfig situation
+	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
 	status := ssoConfigLegalStatus
 
-	if cr.Status.SSOConfig != status {
-		cr.Status.SSOConfig = status
-		return r.Client.Status().Update(context.TODO(), cr)
+	// perform dex/keycloak status reconciliation only if sso configurations are legal
+	if status == ssoLegalSuccess {
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+			return r.reconcileStatusDex(cr)
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+			return r.reconcileStatusKeycloak(cr)
+		}
+	} else {
+		// illegal/unknown sso configurations
+		if cr.Status.SSO != status {
+			cr.Status.SSO = status
+			return r.Client.Status().Update(context.TODO(), cr)
+		}
 	}
+
 	return nil
 }
 

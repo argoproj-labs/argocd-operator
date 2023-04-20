@@ -112,7 +112,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			setEnvVarFunc: nil,
 			envVar:        "",
 			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: must suppy valid dex configuration when requested SSO provider is dex"),
+			Err:           errors.New("illegal SSO configuration: must supply valid dex configuration when requested SSO provider is dex"),
 		},
 		{
 			name: "sso provider dex + `.spec.sso.keycloak`",
@@ -166,6 +166,22 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			envVar:        "",
 			wantErr:       true,
 			Err:           errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
+		},
+		{
+			name: "unsupported sso provider but sso.dex/keycloak supplied",
+			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "Unsupported",
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						Config:         "test-config",
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			setEnvVarFunc: nil,
+			envVar:        "",
+			wantErr:       true,
+			Err:           errors.New("illegal SSO configuration: Unsupported SSO provider type. Supported providers are dex and keycloak"),
 		},
 	}
 

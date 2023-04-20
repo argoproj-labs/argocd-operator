@@ -6287,16 +6287,6 @@ spec:
                   component Pods had a failure. Unknown: The state of the Argo CD
                   applicationSet controller component could not be obtained.'
                 type: string
-              dex:
-                description: 'Dex is a simple, high-level summary of where the Argo
-                  CD Dex component is in its lifecycle. There are four possible dex
-                  values: Pending: The Argo CD Dex component has been accepted by
-                  the Kubernetes system, but one or more of the required resources
-                  have not been created. Running: All of the required Pods for the
-                  Argo CD Dex component are in a Ready state. Failed: At least one
-                  of the  Argo CD Dex component Pods had a failure. Unknown: The state
-                  of the Argo CD Dex component could not be obtained.'
-                type: string
               host:
                 description: Host is the hostname of the Ingress.
                 type: string
@@ -6361,11 +6351,15 @@ spec:
                   one of the  Argo CD server component Pods had a failure. Unknown:
                   The state of the Argo CD server component could not be obtained.'
                 type: string
-              ssoConfig:
-                description: 'SSOConfig defines the status of SSO configuration. Success:
-                  Only one SSO provider is configured in CR. Failed: SSO configuration
-                  is illegal or more than one SSO providers are configured in CR.
-                  Unknown: The SSO configuration could not be obtained.'
+              sso:
+                description: 'SSO is a simple, high-level summary of where the Argo
+                  CD SSO(Dex/Keycloak) component is in its lifecycle. There are four
+                  possible sso values: Pending: The Argo CD SSO component has been
+                  accepted by the Kubernetes system, but one or more of the required
+                  resources have not been created. Running: All of the required Pods
+                  for the Argo CD SSO component are in a Ready state. Failed: At least
+                  one of the  Argo CD SSO component Pods had a failure. Unknown: The
+                  state of the Argo CD SSO component could not be obtained.'
                 type: string
             type: object
         type: object

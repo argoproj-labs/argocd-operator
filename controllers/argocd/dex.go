@@ -429,7 +429,7 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 		log.Error(err, "error reconciling dex deployment")
 	}
 
-	if err := r.reconcileStatusDex(cr); err != nil {
+	if err := r.reconcileStatusSSO(cr); err != nil {
 		log.Error(err, "error reconciling dex status")
 	}
 
@@ -480,7 +480,7 @@ func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 		log.Error(err, "error reconciling dex rolebinding")
 	}
 
-	if err := r.reconcileStatusDex(cr); err != nil {
+	if err := r.reconcileStatusSSO(cr); err != nil {
 		log.Error(err, "error reconciling dex status")
 	}
 

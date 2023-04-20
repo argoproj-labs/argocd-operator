@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -40,7 +40,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				}
 			}),
 			templateAPIfound: false,
-			wantSSOConfig:    "Success",
+			wantSSOConfig:    "Pending",
 			wantErr:          false,
 		},
 		{
@@ -51,7 +51,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				}
 			}),
 			templateAPIfound: true,
-			wantSSOConfig:    "Success",
+			wantSSOConfig:    "Pending",
 			wantErr:          false,
 		},
 		{
@@ -78,6 +78,20 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 			wantSSOConfig:    "Unknown",
 			wantErr:          false,
 		},
+		{
+			name: "unsupported sso configured",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "Unsupported",
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			templateAPIfound: false,
+			wantSSOConfig:    "Failed",
+			wantErr:          false,
+		},
 	}
 
 	for _, test := range tests {
@@ -88,7 +102,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 
 			err := r.reconcileSSO(test.argoCD)
 
-			err = r.reconcileStatusSSOConfig(test.argoCD)
+			err = r.reconcileStatusSSO(test.argoCD)
 			if err != nil {
 				if !test.wantErr {
 					t.Errorf("Got unexpected error")
@@ -97,7 +111,7 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, test.wantSSOConfig, test.argoCD.Status.SSOConfig)
+			assert.Equal(t, test.wantSSOConfig, test.argoCD.Status.SSO)
 		})
 	}
 }

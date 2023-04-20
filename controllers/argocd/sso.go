@@ -66,11 +66,8 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// case 1
 	if cr.Spec.SSO == nil {
-
 		// no SSO configured, nothing to do here
-		if !UseDex(cr) {
-			return nil
-		}
+		return nil
 	}
 
 	if cr.Spec.SSO != nil {
@@ -86,7 +83,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			if cr.Spec.SSO.Dex == nil || (cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth && cr.Spec.SSO.Dex.Config == "") {
 				// sso provider specified as dex but no dexconfig supplied. This will cause health probe to fail as per
 				// https://github.com/argoproj-labs/argocd-operator/pull/615 ==> conflict
-				errMsg = "must suppy valid dex configuration when requested SSO provider is dex"
+				errMsg = "must supply valid dex configuration when requested SSO provider is dex"
 				isError = true
 			} else if cr.Spec.SSO.Keycloak != nil {
 				// new keycloak spec fields are expressed when `.spec.sso.provider` is set to dex ==> conflict
@@ -98,7 +95,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				err = errors.New(illegalSSOConfiguration + errMsg)
 				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
-				_ = r.reconcileStatusSSOConfig(cr)
+				_ = r.reconcileStatusSSO(cr)
 				return err
 			}
 		}
@@ -117,7 +114,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			if isError {
 				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration deletected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
-				_ = r.reconcileStatusSSOConfig(cr)
+				_ = r.reconcileStatusSSO(cr)
 				return err
 			}
 		}
@@ -134,9 +131,21 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 				err = errors.New(illegalSSOConfiguration + errMsg)
 				log.Error(err, fmt.Sprintf("Cannot specify SSO provider spec without specifying SSO provider type for Argo CD %s in namespace %s.", cr.Name, cr.Namespace))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
-				_ = r.reconcileStatusSSOConfig(cr)
+				_ = r.reconcileStatusSSO(cr)
 				return err
 			}
+		}
+
+		// case 5
+		if cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeDex && cr.Spec.SSO.Provider != v1alpha1.SSOProviderTypeKeycloak {
+			// `.spec.sso.provider` contains unsupported value
+
+			errMsg = fmt.Sprintf("Unsupported SSO provider type. Supported providers are %s and %s", v1alpha1.SSOProviderTypeDex, v1alpha1.SSOProviderTypeKeycloak)
+			err = errors.New(illegalSSOConfiguration + errMsg)
+			log.Error(err, fmt.Sprintf("Unsupported SSO provider type for Argo CD %s in namespace %s.", cr.Name, cr.Namespace))
+			ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
+			_ = r.reconcileStatusSSO(cr)
+			return err
 		}
 	}
 
@@ -170,7 +179,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 	}
 
-	_ = r.reconcileStatusSSOConfig(cr)
+	_ = r.reconcileStatusSSO(cr)
 
 	return nil
 }
@@ -192,6 +201,6 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, old
 		}
 	}
 
-	_ = r.reconcileStatusSSOConfig(newCr)
+	_ = r.reconcileStatusSSO(newCr)
 	return nil
 }
