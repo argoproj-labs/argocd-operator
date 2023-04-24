@@ -5,7 +5,7 @@ commands:
 - script: |
     timeout=$(kubectl get -n $NAMESPACE deployment argocd-repo-server -o json \
       | jq -r '.spec.template.spec.containers[0].env[]|select(.name=="ARGOCD_EXEC_TIMEOUT").value')
-    if test "$timeout" != "300"; then
-      echo "Assertion failed. Timeout should be 300, is '$timeout'"
+    if test "$timeout" != "300s"; then
+      echo "Assertion failed. Timeout should be 300s, is '$timeout'"
       exit 1
     fi
