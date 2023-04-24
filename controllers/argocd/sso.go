@@ -93,7 +93,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 			if isError {
 				err = errors.New(illegalSSOConfiguration + errMsg)
-				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detetected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
+				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
 				_ = r.reconcileStatusSSO(cr)
 				return err
@@ -112,7 +112,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 			}
 
 			if isError {
-				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration deletected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
+				log.Error(err, fmt.Sprintf("Illegal expression of SSO configuration detected for Argo CD %s in namespace %s. %s", cr.Name, cr.Namespace, errMsg))
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
 				_ = r.reconcileStatusSSO(cr)
 				return err
