@@ -19,8 +19,10 @@ import (
 	"reflect"
 	"strings"
 
+	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -120,7 +122,12 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error
 
 	if IsTemplateAPIAvailable() {
 		// keycloak is installed using OpenShift templates.
-		dc := getKeycloakDeploymentConfigTemplate(cr)
+		dc := &oappsv1.DeploymentConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      defaultKeycloakIdentifier,
+				Namespace: cr.Namespace,
+			},
+		}
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc) {
 			status = "Pending"
 
@@ -130,7 +137,7 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error
 		}
 
 	} else {
-		d := newKeycloakDeployment(cr)
+		d := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, d.Name, d) {
 			status = "Pending"
 

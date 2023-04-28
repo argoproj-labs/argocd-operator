@@ -56,6 +56,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	defer removeTemplateAPI()
 
 	dc := getKeycloakDeploymentConfigTemplate(a)
+	dc.ObjectMeta.Name = defaultKeycloakIdentifier
 
 	// keycloak not installed
 	_ = r.reconcileStatusKeycloak(a)
