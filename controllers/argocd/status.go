@@ -37,7 +37,7 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	if err := r.reconcileStatusSSO(cr); err != nil {
-		return err
+		log.Info(err.Error())
 	}
 
 	if err := r.reconcileStatusPhase(cr); err != nil {

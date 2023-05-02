@@ -713,12 +713,12 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
 	log.Info("reconciling SSO")
 	if err := r.reconcileSSO(cr); err != nil {
-		return err
+		log.Info(err.Error())
 	}
 
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
-		return err
+		log.Info(err.Error())
 	}
 
 	log.Info("reconciling roles")
