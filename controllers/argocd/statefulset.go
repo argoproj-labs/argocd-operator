@@ -464,7 +464,25 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
 		}
 
-		// TODO: Compute the dynamic count of replicas here
+		clusterSecrets, err := r.getClusterSecrets(cr)
+		if err != nil {
+			log.Info("Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
+		}
+
+		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersOnEachShard
+
+		if replicas < cr.Spec.Controller.Sharding.MinShards {
+			replicas = cr.Spec.Controller.Sharding.MinShards
+		}
+
+		if replicas > cr.Spec.Controller.Sharding.MaxShards {
+			replicas = cr.Spec.Controller.Sharding.MaxShards
+		}
+
+		cr.Spec.Controller.Sharding.Replicas = replicas
+		if err := r.Client.Update(context.TODO(), cr); err != nil {
+			log.Error(err, "Error setting replicas in Argo CD CR %s", cr.Name)
+		}
 
 	} else if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
 		replicas = cr.Spec.Controller.Sharding.Replicas
