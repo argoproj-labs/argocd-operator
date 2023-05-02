@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"strings"
+
 	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -1010,4 +1012,10 @@ func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
 	}
 
 	return ResourceTrackingMethodInvalid
+}
+
+// ToLower returns the lower case string representation for a SSOProviderType
+func (p SSOProviderType) ToLower() string {
+	str := string(p)
+	return strings.ToLower(str)
 }

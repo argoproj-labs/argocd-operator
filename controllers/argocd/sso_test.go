@@ -88,19 +88,64 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name          string
-		argoCD        *argov1alpha1.ArgoCD
-		envVar        string
-		setEnvVarFunc func(*testing.T, string)
-		wantErr       bool
-		Err           error
+		name                     string
+		argoCD                   *argov1alpha1.ArgoCD
+		envVar                   string
+		setEnvVarFunc            func(*testing.T, string)
+		wantErr                  bool
+		Err                      error
+		wantSSOConfigLegalStatus string
 	}{
 		{
-			name:          "no conflicts - no sso configured",
-			argoCD:        makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       false,
+			name:                     "no conflicts - no sso configured",
+			argoCD:                   makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Unknown",
+		},
+		{
+			name: "no conflict - case insensitive sso provider value",
+			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "DEX",
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						Config: "test-config",
+					},
+				}
+			}),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Success",
+		},
+		{
+			name: "no conflict - valid dex sso configurations",
+			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "dex",
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						Config:         "test-config",
+						OpenShiftOAuth: false,
+					},
+				}
+			}),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Success",
+		},
+		{
+			name: "no conflict - valid keycloak sso configurations",
+			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "keycloak",
+				}
+			}),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Success",
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
@@ -109,10 +154,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					Provider: v1alpha1.SSOProviderTypeDex,
 				}
 			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: must supply valid dex configuration when requested SSO provider is dex"),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: must supply valid dex configuration when requested SSO provider is dex"),
+			wantSSOConfigLegalStatus: "Failed",
 		},
 		{
 			name: "sso provider dex + `.spec.sso.keycloak`",
@@ -128,10 +174,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"),
+			wantSSOConfigLegalStatus: "Failed",
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",
@@ -144,10 +191,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: cannot supply dex configuration when requested SSO provider is keycloak"),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: cannot supply dex configuration when requested SSO provider is keycloak"),
+			wantSSOConfigLegalStatus: "Failed",
 		},
 		{
 			name: "sso provider missing but sso.dex/keycloak supplied",
@@ -162,10 +210,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
+			wantSSOConfigLegalStatus: "Failed",
 		},
 		{
 			name: "unsupported sso provider but sso.dex/keycloak supplied",
@@ -178,10 +227,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc: nil,
-			envVar:        "",
-			wantErr:       true,
-			Err:           errors.New("illegal SSO configuration: Unsupported SSO provider type. Supported providers are dex and keycloak"),
+			setEnvVarFunc:            nil,
+			envVar:                   "",
+			wantErr:                  true,
+			Err:                      errors.New("illegal SSO configuration: Unsupported SSO provider type. Supported providers are dex and keycloak"),
+			wantSSOConfigLegalStatus: "Failed",
 		},
 	}
 
@@ -195,9 +245,15 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			}
 
 			err := r.reconcileSSO(test.argoCD)
+			assert.Equal(t, test.wantSSOConfigLegalStatus, ssoConfigLegalStatus)
 			if err != nil {
 				if !test.wantErr {
-					t.Errorf("Got unexpected error")
+					// ignore unexpected errors for legal sso configurations.
+					// keycloak reconciliation code expects a live cluster &
+					// therefore throws unexpected errors during unit testing
+					if ssoConfigLegalStatus != ssoLegalSuccess {
+						t.Errorf("Got unexpected error")
+					}
 				} else {
 					assert.Equal(t, test.Err, err)
 				}

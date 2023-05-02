@@ -187,9 +187,9 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// perform dex/keycloak status reconciliation only if sso configurations are legal
 	if status == ssoLegalSuccess {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeDex {
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeDex.ToLower() {
 			return r.reconcileStatusDex(cr)
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == argoprojv1a1.SSOProviderTypeKeycloak {
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak.ToLower() {
 			return r.reconcileStatusKeycloak(cr)
 		}
 	} else {
