@@ -90,8 +90,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 	tests := []struct {
 		name                     string
 		argoCD                   *argov1alpha1.ArgoCD
-		envVar                   string
-		setEnvVarFunc            func(*testing.T, string)
 		wantErr                  bool
 		Err                      error
 		wantSSOConfigLegalStatus string
@@ -99,8 +97,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		{
 			name:                     "no conflicts - no sso configured",
 			argoCD:                   makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  false,
 			wantSSOConfigLegalStatus: "Unknown",
 		},
@@ -114,8 +110,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  false,
 			wantSSOConfigLegalStatus: "Success",
 		},
@@ -130,8 +124,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  false,
 			wantSSOConfigLegalStatus: "Success",
 		},
@@ -142,8 +134,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					Provider: "keycloak",
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  false,
 			wantSSOConfigLegalStatus: "Success",
 		},
@@ -154,8 +144,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					Provider: v1alpha1.SSOProviderTypeDex,
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  true,
 			Err:                      errors.New("illegal SSO configuration: must supply valid dex configuration when requested SSO provider is dex"),
 			wantSSOConfigLegalStatus: "Failed",
@@ -174,8 +162,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  true,
 			Err:                      errors.New("illegal SSO configuration: cannot supply keycloak configuration in .spec.sso.keycloak when requested SSO provider is dex"),
 			wantSSOConfigLegalStatus: "Failed",
@@ -191,8 +177,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  true,
 			Err:                      errors.New("illegal SSO configuration: cannot supply dex configuration when requested SSO provider is keycloak"),
 			wantSSOConfigLegalStatus: "Failed",
@@ -210,8 +194,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  true,
 			Err:                      errors.New("illegal SSO configuration: Cannot specify SSO provider spec without specifying SSO provider type"),
 			wantSSOConfigLegalStatus: "Failed",
@@ -227,8 +209,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 					},
 				}
 			}),
-			setEnvVarFunc:            nil,
-			envVar:                   "",
 			wantErr:                  true,
 			Err:                      errors.New("illegal SSO configuration: Unsupported SSO provider type. Supported providers are dex and keycloak"),
 			wantSSOConfigLegalStatus: "Failed",
@@ -239,10 +219,6 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			r := makeTestReconciler(t, test.argoCD)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
-
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, test.envVar)
-			}
 
 			err := r.reconcileSSO(test.argoCD)
 			assert.Equal(t, test.wantSSOConfigLegalStatus, ssoConfigLegalStatus)

@@ -300,14 +300,10 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		setEnvVarFunc    func(*testing.T, string)
-		envVar           string
 		updateCrSpecFunc func(cr *argoprojv1alpha1.ArgoCD)
 	}{
 		{
-			name:          "dex config using .spec.sso.provider=dex + .spec.sso.dex",
-			setEnvVarFunc: nil,
-			envVar:        "",
+			name: "dex config using .spec.sso.provider=dex + .spec.sso.dex",
 			updateCrSpecFunc: func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: v1alpha1.SSOProviderTypeDex,
@@ -340,10 +336,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 			secret := argoutil.NewSecretWithName(a, "token")
 			r := makeTestReconciler(t, a, sa, secret)
-
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, test.envVar)
-			}
 
 			if test.updateCrSpecFunc != nil {
 				test.updateCrSpecFunc(a)
@@ -383,20 +375,17 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name          string
-		setEnvVarFunc func(*testing.T, string)
-		argoCD        *argoprojv1alpha1.ArgoCD
+		name   string
+		argoCD *argoprojv1alpha1.ArgoCD
 	}{
 		{
-			name:          "dex disabled by removing .spec.sso",
-			setEnvVarFunc: nil,
+			name: "dex disabled by removing .spec.sso",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = nil
 			}),
 		},
 		{
-			name:          "dex disabled by switching provider",
-			setEnvVarFunc: nil,
+			name: "dex disabled by switching provider",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: v1alpha1.SSOProviderTypeKeycloak,
@@ -408,9 +397,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			r := makeTestReconciler(t, test.argoCD)
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, "true")
-			}
 
 			err := r.reconcileArgoConfigMap(test.argoCD)
 			assert.NoError(t, err)
@@ -435,14 +421,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 
 	tests := []struct {
 		name              string
-		setEnvVarFunc     func(*testing.T, string)
 		updateCrFunc      func(cr *argoprojv1alpha1.ArgoCD)
 		argoCD            *argoprojv1alpha1.ArgoCD
 		wantConfigRemoved bool
 	}{
 		{
-			name:          "dex disabled by removing .spec.sso.provider",
-			setEnvVarFunc: nil,
+			name: "dex disabled by removing .spec.sso.provider",
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
@@ -457,8 +441,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			wantConfigRemoved: true,
 		},
 		{
-			name:          "dex disabled by switching provider",
-			setEnvVarFunc: nil,
+			name: "dex disabled by switching provider",
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
@@ -488,9 +471,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			secret := argoutil.NewSecretWithName(test.argoCD, "token")
 
 			r := makeTestReconciler(t, test.argoCD, sa, secret)
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, "false")
-			}
 
 			err := r.reconcileArgoConfigMap(test.argoCD)
 			assert.NoError(t, err)
@@ -506,9 +486,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 				t.Fatalf("reconcileArgoConfigMap failed,could not find dexConfig")
 			}
 
-			if test.setEnvVarFunc != nil {
-				test.setEnvVarFunc(t, "true")
-			}
 			if test.updateCrFunc != nil {
 				test.updateCrFunc(test.argoCD)
 			}
