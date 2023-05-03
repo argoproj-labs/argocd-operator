@@ -34,7 +34,7 @@ type DexConnector struct {
 // UseDex determines whether Dex resources should be created and configured or not
 func UseDex(cr *argoprojv1a1.ArgoCD) bool {
 	if cr.Spec.SSO != nil {
-		return cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex.ToLower()
+		return cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex
 	}
 
 	return false

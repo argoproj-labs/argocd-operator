@@ -1014,8 +1014,8 @@ func ParseResourceTrackingMethod(name string) ResourceTrackingMethod {
 	return ResourceTrackingMethodInvalid
 }
 
-// ToLower returns the lower case string representation for a SSOProviderType
-func (p SSOProviderType) ToLower() string {
+// ToLower returns the lower case representation for a SSOProviderType
+func (p SSOProviderType) ToLower() SSOProviderType {
 	str := string(p)
-	return strings.ToLower(str)
+	return SSOProviderType(strings.ToLower(str))
 }

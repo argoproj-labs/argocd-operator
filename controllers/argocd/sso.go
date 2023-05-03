@@ -77,7 +77,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		isError := false
 
 		// case 2
-		if cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex.ToLower() {
+		if cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex {
 			// Relevant SSO settings at play are `.spec.sso.dex` fields, `.spec.sso.keycloak`
 
 			if cr.Spec.SSO.Dex == nil || (cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth && cr.Spec.SSO.Dex.Config == "") {
@@ -101,7 +101,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 
 		// case 3
-		if cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeKeycloak.ToLower() {
+		if cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `.spec.sso.keycloak` fields, `.spec.sso.dex`
 
 			if cr.Spec.SSO.Dex != nil {
@@ -137,7 +137,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 		}
 
 		// case 5
-		if cr.Spec.SSO.Provider.ToLower() != v1alpha1.SSOProviderTypeDex.ToLower() && cr.Spec.SSO.Provider.ToLower() != v1alpha1.SSOProviderTypeKeycloak.ToLower() {
+		if cr.Spec.SSO.Provider.ToLower() != v1alpha1.SSOProviderTypeDex && cr.Spec.SSO.Provider.ToLower() != v1alpha1.SSOProviderTypeKeycloak {
 			// `.spec.sso.provider` contains unsupported value
 
 			errMsg = fmt.Sprintf("Unsupported SSO provider type. Supported providers are %s and %s", v1alpha1.SSOProviderTypeDex, v1alpha1.SSOProviderTypeKeycloak)
@@ -155,7 +155,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// reconcile resources based on enabled provider
 	// keycloak
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak.ToLower() {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak {
 
 		// Trigger reconciliation of any Dex resources so they get deleted
 		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
@@ -188,12 +188,12 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, old
 
 	log.Info("uninstalling existing SSO configuration")
 
-	if oldCr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak.ToLower() {
+	if oldCr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak {
 		if err := deleteKeycloakConfiguration(newCr); err != nil {
 			log.Error(err, "Unable to delete existing keycloak configuration")
 			return err
 		}
-	} else if oldCr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeDex.ToLower() {
+	} else if oldCr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeDex {
 		// Trigger reconciliation of Dex resources so they get deleted
 		if err := r.deleteDexResources(newCr); err != nil {
 			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")
