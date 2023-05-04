@@ -16,7 +16,7 @@ metadata:
     The above described method assumes that the user has admin privileges on their cluster, which would allow them to apply labels to namespaces. 
 
 
-Users that do not have permissions to label namespaces can follow an alternate method to achieve the same behavior by leveraging the `.spec.syncPolicy` field of an application. SyncPolicy allows users to have a namespace created  with certain labels pre-configured at the time of application sync. Consider the following example Application:
+Alternatively, users can achieve the same behavior by leveraging the `.spec.syncPolicy` field of an application. SyncPolicy allows users to have a namespace created  with certain labels pre-configured at the time of application sync. Consider the following example Application:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -43,6 +43,10 @@ Users creating applications using the Argo CD UI instead of CLI must check the "
 A few points to keep in mind:
 
 - This method requires that the user create the namespace at app sync time using `createNamespace=true` or checking the `auto-create namespace` box in the UI, and not include their own namespace manifest in their git repository. 
-- A destination namespace must be set in `.spec.destination.namespace`  
+- A destination namespace must be set in `.spec.destination.namespace` 
+- Users should have admin privileges and/or access to a cluster scoped Argo CD instance  
 
 See https://argo-cd.readthedocs.io/en/stable/user-guide/sync-options/#namespace-metadata for more information 
+
+!!! note
+    There is a possibility that sync might fail at first try when using the above method. In such cases a follow up sync should be successful
