@@ -1303,6 +1303,9 @@ Name | Default | Description
 Enabled | false | Toggle Autoscaling support globally for the Argo CD server component.
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
 
+!!! note
+    When `.spec.server.autoscale.enabled` is set to `true`, the number of required replicas (if set) in `.spec.server.replicas` will be ignored. The final replica count on the server deployment will be controlled by the Horizontal Pod Autoscaler instead. 
+
 ### Server Command Arguments
 
 Allows a user to pass arguments to Argo CD Server command.

@@ -1315,8 +1315,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, use
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
-			existing.Spec.Replicas = deploy.Spec.Replicas
-			changed = true
+			if !cr.Spec.Server.Autoscale.Enabled {
+				existing.Spec.Replicas = deploy.Spec.Replicas
+				changed = true
+			}
 		}
 		if changed {
 			return r.Client.Update(context.TODO(), existing)
