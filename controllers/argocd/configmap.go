@@ -414,7 +414,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 
 		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
 		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
-			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
+			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions`.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
 			if err != nil {
 				return err
 			}
