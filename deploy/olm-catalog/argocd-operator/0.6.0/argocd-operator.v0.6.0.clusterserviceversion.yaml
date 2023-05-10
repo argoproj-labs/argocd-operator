@@ -134,6 +134,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
+    containerImage: quay.io/argoprojlabs/argocd-operator@sha256:99aeec24cc406d06d18822347d9ac3ed053a702d8419191e4e681075fed7b9bb
     support: Argo CD
   name: argocd-operator.v0.6.0
   namespace: placeholder
@@ -1072,12 +1073,12 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: argocd-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: argocd-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
@@ -1102,7 +1103,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.6.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:99aeec24cc406d06d18822347d9ac3ed053a702d8419191e4e681075fed7b9bb
                 livenessProbe:
                   httpGet:
                     path: /healthz
