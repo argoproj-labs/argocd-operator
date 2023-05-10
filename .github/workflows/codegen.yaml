@@ -8,7 +8,7 @@ on:
       - 'master'
 env:
   # Golang version to use
-  GOLANG_VERSION: 1.18.1
+  GOLANG_VERSION: 1.19
   # Version of operator-sdk binary
   SDK_VERSION: 1.11.0
   # Checksum of operator-sdk binary
