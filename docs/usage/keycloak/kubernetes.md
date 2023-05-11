@@ -75,7 +75,7 @@ spec:
 ```
 
 !!! warning
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.6.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.8.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
 
 !!! note
     If you test the operator locally using `make run`, please add `.spec.sso.verifyTLS: false`, or `.spec.sso.keycloak.verifyTLS: false` to your Argo CD CR. Specifying conflicting information in both specs will result in errors. 
