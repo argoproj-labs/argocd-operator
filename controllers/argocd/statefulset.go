@@ -451,7 +451,7 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 	return env
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 
 	if cr.Spec.Controller.Sharding.EnableDynamicScaling {
@@ -469,8 +469,11 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			log.Info("Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
 		}
 
+		fmt.Printf("Number of clusterSecrtes: %d\n", len(clusterSecrets.Items))
+
 		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersOnEachShard
 
+		fmt.Printf("Number of replicas: %d\n", replicas)
 		if replicas < cr.Spec.Controller.Sharding.MinShards {
 			replicas = cr.Spec.Controller.Sharding.MinShards
 		}
@@ -481,12 +484,21 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 		cr.Spec.Controller.Sharding.Replicas = replicas
 		if err := r.Client.Update(context.TODO(), cr); err != nil {
+			fmt.Println("Here")
 			log.Error(err, "Error setting replicas in Argo CD CR %s", cr.Name)
 		}
 
 	} else if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
 		replicas = cr.Spec.Controller.Sharding.Replicas
 	}
+
+	fmt.Println(replicas)
+	return replicas
+}
+
+func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+
+	replicas := r.getArgoControllerReplicaCount(cr)
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
