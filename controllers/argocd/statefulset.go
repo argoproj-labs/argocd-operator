@@ -469,11 +469,14 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 			log.Info("Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
 		}
 
-		fmt.Printf("Number of clusterSecrtes: %d\n", len(clusterSecrets.Items))
+		clustersOnEachShard := cr.Spec.Controller.Sharding.ClustersOnEachShard
+		if clustersOnEachShard < 1 {
+			log.Info("clustersOnEachShard cannot be less than 1. Defaulting to 1.")
+			clustersOnEachShard = 1
+		}
 
-		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersOnEachShard
+		replicas = int32(len(clusterSecrets.Items)) / clustersOnEachShard
 
-		fmt.Printf("Number of replicas: %d\n", replicas)
 		if replicas < cr.Spec.Controller.Sharding.MinShards {
 			replicas = cr.Spec.Controller.Sharding.MinShards
 		}
@@ -484,7 +487,6 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 
 		cr.Spec.Controller.Sharding.Replicas = replicas
 		if err := r.Client.Update(context.TODO(), cr); err != nil {
-			fmt.Println("Here")
 			log.Error(err, "Error setting replicas in Argo CD CR %s", cr.Name)
 		}
 
@@ -492,7 +494,6 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 		replicas = cr.Spec.Controller.Sharding.Replicas
 	}
 
-	fmt.Println(replicas)
 	return replicas
 }
 
