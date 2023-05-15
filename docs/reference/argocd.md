@@ -196,6 +196,9 @@ spec:
 !!! warning 
     `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.dex` to configure Dex.
 
+!!! note
+    `.spec.dex` field was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
+
 The following properties are available for configuring the Dex component.
 
 Name | Default | Description
@@ -1449,6 +1452,9 @@ spec:
 
 !!! warning
     `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.8.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
+!!! note
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields were earlier scheduled for removal in Argo CD operator v0.7.0, but have been extended to Argo CD operator v0.8.0.
 
 The following properties are available for configuring the Single sign-on component.
 
