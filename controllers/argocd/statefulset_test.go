@@ -520,7 +520,5 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 
 		assert.Equal(t, int32(st.expectedReplicas), replicas)
 
-		assert.Equal(t, st.expectedReplicas, a.Spec.Controller.Sharding.Replicas)
-
 	}
 }

@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -453,45 +454,50 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 
 func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
+	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
+	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
-		if cr.Spec.Controller.Sharding.MinShards < 1 {
-			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
-			cr.Spec.Controller.Sharding.MinShards = 1
+		if minShards < 1 {
+			err := errors.New("incorrect configuration")
+			log.Error(err, "Minimum number of shards cannot be less than 1. Setting default value to 1")
+			minShards = 1
 		}
 
-		if cr.Spec.Controller.Sharding.MaxShards < cr.Spec.Controller.Sharding.MinShards {
-			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+		if maxShards < minShards {
+			err := errors.New("incorrect configuration")
+			log.Error(err, "Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+			maxShards = minShards
 		}
 
 		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
 		if clustersPerShard < 1 {
-			log.Info("clustersPerShard cannot be less than 1. Defaulting to 1.")
-			clustersPerShard = 1
+			err := errors.New("incorrect configuration")
+			log.Error(err, "ClustersPerShard cannot be less than 1. Defaulting to 1")
+			return replicas
 		}
 
 		clusterSecrets, err := r.getClusterSecrets(cr)
 		if err != nil {
-			log.Info("Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
+			// If we were not able to query cluster secrets, return the default count of replicas (ArgocdApplicationControllerDefaultReplicas)
+			log.Error(err, "Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
+			return replicas
 		}
 
-		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersPerShard
+		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
 
-		if replicas < cr.Spec.Controller.Sharding.MinShards {
-			replicas = cr.Spec.Controller.Sharding.MinShards
+		if replicas < minShards {
+			replicas = minShards
 		}
 
-		if replicas > cr.Spec.Controller.Sharding.MaxShards {
-			replicas = cr.Spec.Controller.Sharding.MaxShards
+		if replicas > maxShards {
+			replicas = maxShards
 		}
 
-		cr.Spec.Controller.Sharding.Replicas = replicas
-		if err := r.Client.Update(context.TODO(), cr); err != nil {
-			log.Error(err, "Error setting replicas in Argo CD CR %s", cr.Name)
-		}
+		return replicas
 
 	} else if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
-		replicas = cr.Spec.Controller.Sharding.Replicas
+		return cr.Spec.Controller.Sharding.Replicas
 	}
 
 	return replicas
