@@ -155,7 +155,7 @@ AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applicati
 Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
 Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
 Env | [Empty] | Environment to set for the application controller workloads
-Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the ArgoCD Application Controller component.
+Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the ArgoCD Application Controller component. This will ignore the configuration of `Sharding.enabled` and `Sharding.replicas`
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component.
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component.
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster.
@@ -193,6 +193,40 @@ spec:
     env:
     - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
       value: '120'    
+```
+
+The following example shows how to set multiple replicas of Argo CD Application Controller. This example will scale up/down the Argo CD Application Controller based on the parameter clustersPerShard. The number of replicas will be set between minShards and maxShards. In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sharding:
+      dynamicScalingEnabled: true
+      minShards: 2
+      maxShards: 5
+      clustersPerShard: 10
+```
+
+The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sharding:
+      enabled: true
+      replicas: 5
 ```
 
 ## Dex Options
