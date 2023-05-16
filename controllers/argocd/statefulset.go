@@ -454,7 +454,7 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 
-	if cr.Spec.Controller.Sharding.EnableDynamicScaling {
+	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 		if cr.Spec.Controller.Sharding.MinShards < 1 {
 			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
 			cr.Spec.Controller.Sharding.MinShards = 1
@@ -464,18 +464,18 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
 		}
 
+		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
+		if clustersPerShard < 1 {
+			log.Info("clustersPerShard cannot be less than 1. Defaulting to 1.")
+			clustersPerShard = 1
+		}
+
 		clusterSecrets, err := r.getClusterSecrets(cr)
 		if err != nil {
 			log.Info("Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
 		}
 
-		clustersOnEachShard := cr.Spec.Controller.Sharding.ClustersOnEachShard
-		if clustersOnEachShard < 1 {
-			log.Info("clustersOnEachShard cannot be less than 1. Defaulting to 1.")
-			clustersOnEachShard = 1
-		}
-
-		replicas = int32(len(clusterSecrets.Items)) / clustersOnEachShard
+		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersPerShard
 
 		if replicas < cr.Spec.Controller.Sharding.MinShards {
 			replicas = cr.Spec.Controller.Sharding.MinShards
