@@ -159,7 +159,6 @@ Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component.
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component.
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster.
-Env | [Empty] | Environment to set for the application controller workloads
 
 ### Controller Example
 
