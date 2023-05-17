@@ -316,7 +316,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set", func(t *testing.T) {
@@ -336,7 +336,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set with env set explicitly", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		a.Spec.Repo.Env = []corev1.EnvVar{
 			{
 				Name:  "ARGOCD_EXEC_TIMEOUT",
-				Value: "20",
+				Value: "20s",
 			},
 		}
 		r := makeTestReconciler(t, a)
@@ -362,7 +362,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
