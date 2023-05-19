@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2019, 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,16 +84,16 @@ func (cr *ArgoCD) ValidateArgocdCR() error {
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 		if minShards < 1 {
-			return fmt.Errorf("Minimum number of shards cannot be less than 1. Setting default value to 1")
+			return fmt.Errorf("spec.controller.sharding.minShards cannot be less than 1")
 		}
 
 		if maxShards < minShards {
-			return fmt.Errorf("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+			return fmt.Errorf("spec.controller.sharding.maxShards cannot be less than spec.controller.sharding.minShards")
 		}
 
 		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
 		if clustersPerShard < 1 {
-			return fmt.Errorf("ClustersPerShard cannot be less than 1. Defaulting to 1")
+			return fmt.Errorf("spec.controller.sharding.clustersPerShard cannot be less than 1")
 		}
 	}
 

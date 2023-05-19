@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -458,24 +457,6 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
-		if minShards < 1 {
-			err := errors.New("incorrect configuration")
-			log.Error(err, "Minimum number of shards cannot be less than 1. Setting default value to 1")
-			minShards = 1
-		}
-
-		if maxShards < minShards {
-			err := errors.New("incorrect configuration")
-			log.Error(err, "Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
-			maxShards = minShards
-		}
-
-		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
-		if clustersPerShard < 1 {
-			err := errors.New("incorrect configuration")
-			log.Error(err, "ClustersPerShard cannot be less than 1. Defaulting to 1")
-			return replicas
-		}
 
 		clusterSecrets, err := r.getClusterSecrets(cr)
 		if err != nil {
@@ -484,7 +465,7 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 			return replicas
 		}
 
-		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
+		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersPerShard
 
 		if replicas < minShards {
 			replicas = minShards
