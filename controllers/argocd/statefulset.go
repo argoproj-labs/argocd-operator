@@ -93,35 +93,6 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.
 func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
-	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !cr.Spec.HA.Enabled {
-			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
-			return r.Client.Delete(context.TODO(), existing)
-		}
-
-		desiredImage := getRedisHAContainerImage(cr)
-		changed := false
-		updateNodePlacementStateful(existing, ss, &changed)
-		for i, container := range existing.Spec.Template.Spec.Containers {
-			if container.Image != desiredImage {
-				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
-				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-				changed = true
-			}
-		}
-
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
-		}
-
-		return nil // StatefulSet found, do nothing
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil // HA not enabled, do nothing.
-	}
-
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
 	ss.Spec.Selector = &metav1.LabelSelector{
@@ -415,6 +386,45 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 
 	if err := applyReconcilerHook(cr, ss, ""); err != nil {
 		return err
+	}
+
+	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.HA.Enabled {
+			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
+			return r.Client.Delete(context.TODO(), existing)
+		}
+
+		desiredImage := getRedisHAContainerImage(cr)
+		changed := false
+		updateNodePlacementStateful(existing, ss, &changed)
+		for i, container := range existing.Spec.Template.Spec.Containers {
+			if container.Image != desiredImage {
+				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
+				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				changed = true
+			}
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
+			existing.Spec.Template.Spec.Containers[0].Resources = ss.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
+			existing.Spec.Template.Spec.InitContainers[0].Resources = ss.Spec.Template.Spec.InitContainers[0].Resources
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+
+		return nil // StatefulSet found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
 	}
 
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
