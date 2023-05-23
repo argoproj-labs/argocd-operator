@@ -130,7 +130,6 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2023-05-23T19:15:30Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -550,8 +549,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1068,9 +1067,7 @@ spec:
           - create
         serviceAccountName: argocd-operator-controller-manager
       deployments:
-      - label:
-          control-plane: argocd-operator
-        name: argocd-operator-controller-manager
+      - name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
