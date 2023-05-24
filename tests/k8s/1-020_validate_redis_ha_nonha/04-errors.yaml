@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-redis-ha-haproxy
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-redis-ha-server
