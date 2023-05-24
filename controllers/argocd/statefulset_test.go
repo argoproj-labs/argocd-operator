@@ -106,8 +106,10 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	a.Spec.Redis.Resources = &newResources
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
-	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Image, fmt.Sprintf("%s:%s", testRedisImage, testRedisImageVersion))
-	assert.Equal(t, s.Spec.Template.Spec.Containers[0].Resources, newResources)
+	for _, container := range s.Spec.Template.Spec.Containers {
+		assert.Equal(t, container.Image, fmt.Sprintf("%s:%s", testRedisImage, testRedisImageVersion))
+		assert.Equal(t, container.Resources, newResources)
+	}
 	assert.Equal(t, s.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 
 	// test resource is Deleted, when HA is disabled
