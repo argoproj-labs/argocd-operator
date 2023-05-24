@@ -721,7 +721,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 				Name:          "redis",
 			},
 		},
-		Resources: getRedisHAProxyResources(cr),
+		Resources: getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -758,7 +758,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources:       getRedisHAProxyResources(cr),
+		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{

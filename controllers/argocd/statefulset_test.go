@@ -103,7 +103,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 			corev1.ResourceCPU:    resourcev1.MustParse("1"),
 		},
 	}
-	a.Spec.Redis.Resources = &newResources
+	a.Spec.HA.Resources = &newResources
 	assert.NoError(t, r.reconcileRedisStatefulSet(a))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
 	for _, container := range s.Spec.Template.Spec.Containers {

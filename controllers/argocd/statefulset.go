@@ -175,7 +175,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisResources(cr),
+			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
 				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
@@ -246,7 +246,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 				SuccessThreshold:    int32(1),
 				TimeoutSeconds:      int32(15),
 			},
-			Resources: getRedisResources(cr),
+			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
 				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
@@ -297,7 +297,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) err
 		Image:           getRedisHAContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
-		Resources:       getRedisResources(cr),
+		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
