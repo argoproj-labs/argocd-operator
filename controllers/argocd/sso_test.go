@@ -347,19 +347,19 @@ func TestReconcile_emitEventOnDetectingDeprecatedFields(t *testing.T) {
 
 	disableDexEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
-		Message: "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex can be enabled/disabled through `.spec.sso`",
+		Message: "`DISABLE_DEX` is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Dex can be enabled/disabled through `.spec.sso`",
 		Action:  "Deprecated",
 	}
 
 	specDexEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
-		Message: "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Dex configuration can be managed through `.spec.sso.dex`",
+		Message: "`.spec.dex` is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Dex configuration can be managed through `.spec.sso.dex`",
 		Action:  "Deprecated",
 	}
 
 	specSSOEvent := &corev1.Event{
 		Reason:  "DeprecationNotice",
-		Message: "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.6.0/OpenShift GitOps v1.9.0. Keycloak configuration can be managed through `.spec.sso.keycloak`",
+		Message: "`.spec.SSO.Image`, `.spec.SSO.Version`, `.spec.SSO.Resources` and `.spec.SSO.VerifyTLS` are deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Keycloak configuration can be managed through `.spec.sso.keycloak`",
 		Action:  "Deprecated",
 	}
 
