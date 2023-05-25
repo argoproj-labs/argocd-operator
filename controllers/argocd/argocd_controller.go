@@ -47,6 +47,12 @@ type ReconcileArgoCD struct {
 
 var log = logr.Log.WithName("controller_argocd")
 
+// Map to keep track of running Argo CD instances using their namespaces as key
+// This map will be used for the performance metrics purposes
+// Important note: This assumes that each instance only contains one Argo CD instance
+// as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
+var ActiveInstanceMap = make(map[string]*argoproj.ArgoCD)
+
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
 //+kubebuilder:rbac:groups=apps.openshift.io,resources=deploymentconfigs,verbs=*
@@ -90,7 +96,21 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
+	// If we discover a new Argo CD instance in a previously un-seen namespace
+	// we add it to the map and increment active instance count
+	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
+		ActiveInstanceMap[request.Namespace] = argocd
+		ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(1)
+		// ActiveInstances.Add(1)
+	}
+
 	if argocd.GetDeletionTimestamp() != nil {
+
+		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
+		delete(ActiveInstanceMap, argocd.Namespace)
+		ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(-1)
+		// ActiveInstances.Add(-1)
+
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
