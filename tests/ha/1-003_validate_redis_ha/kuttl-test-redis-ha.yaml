@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestSuite
-testDirs:
-  - ./tests/e2e-redis-ha/
-timeout: 720
-startKIND: false
-namespace: argocd-e2e

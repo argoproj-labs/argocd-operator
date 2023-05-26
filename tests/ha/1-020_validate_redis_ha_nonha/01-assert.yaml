@@ -1,0 +1,23 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-argocd-redis
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+  redis: Running
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-redis
+status:
+  readyReplicas: 1
