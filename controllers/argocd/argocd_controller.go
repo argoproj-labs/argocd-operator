@@ -47,11 +47,11 @@ type ReconcileArgoCD struct {
 
 var log = logr.Log.WithName("controller_argocd")
 
-// Map to keep track of running Argo CD instances using their namespaces as key
+// Map to keep track of running Argo CD instances using their namespaces as key and phase as value
 // This map will be used for the performance metrics purposes
 // Important note: This assumes that each instance only contains one Argo CD instance
 // as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
-var ActiveInstanceMap = make(map[string]*argoproj.ArgoCD)
+var ActiveInstanceMap = make(map[string]string)
 
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
@@ -99,9 +99,17 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	// If we discover a new Argo CD instance in a previously un-seen namespace
 	// we add it to the map and increment active instance count
 	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
-		ActiveInstanceMap[request.Namespace] = argocd
+		ActiveInstanceMap[request.Namespace] = argocd.Status.Phase
 		ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(1)
-		// ActiveInstances.Add(1)
+	} else {
+		// If we discover an existing instance's phase has changed since we last saw it
+		// increment instance count with new phase and decrement instance count with old phase
+		// update the phase in corresponding map entry
+		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != argocd.Status.Phase {
+			ActiveInstanceMap[argocd.Namespace] = argocd.Status.Phase
+			ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(1)
+			ActiveInstances.WithLabelValues(string(oldPhase)).Add(-1)
+		}
 	}
 
 	if argocd.GetDeletionTimestamp() != nil {

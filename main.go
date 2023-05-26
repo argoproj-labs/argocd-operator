@@ -202,6 +202,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	go func() {
+		msErrCh := argocd.StartMetricsServer(8085)
+		if err = <-msErrCh; err != nil {
+			setupLog.Error(err, "metrics server exited with error: %v", err)
+		}
+	}()
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
