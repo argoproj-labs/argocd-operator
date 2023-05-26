@@ -1088,6 +1088,41 @@ Resource Types:
             <p>Enabled will toggle HA support globally for Argo CD.</p>
          </td>
       </tr>
+      <tr>
+         <td>
+            <code>redisProxyImage</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>The Redis HAProxy container image. This overrides the "ARGOCD_REDIS_HA_PROXY_IMAGE" environment variable.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>redisProxyVersion</code></br>
+            <em>
+            string
+            </em>
+         </td>
+         <td>
+            <p>The tag to use for the Redis HAProxy container image.</p>
+         </td>
+      </tr>
+      <tr>
+         <td>
+            <code>resources</code></br>
+            <em>
+            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
+            Kubernetes core/v1.ResourceRequirements
+            </a>
+            </em>
+         </td>
+         <td>
+            <p>Resources defines the Compute Resources required by the container for Redis HA.</p>
+         </td>
+      </tr>
    </tbody>
 </table>
 <h3 id="argoproj.io/v1alpha1.ArgoCDImportSpec">ArgoCDImportSpec</h3>
