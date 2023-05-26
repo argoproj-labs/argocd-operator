@@ -512,8 +512,8 @@ func getRedisResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-// getRedisHAProxyResources will return the ResourceRequirements for the Redis HA Proxy.
-func getRedisHAProxyResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+// getRedisHAResources will return the ResourceRequirements for the Redis HA.
+func getRedisHAResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
