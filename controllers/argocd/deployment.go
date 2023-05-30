@@ -672,32 +672,6 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 
-	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !cr.Spec.HA.Enabled {
-			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
-			return r.Client.Delete(context.TODO(), existing)
-		}
-		changed := false
-		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getRedisHAProxyContainerImage(cr)
-
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-		updateNodePlacement(existing, deploy, &changed)
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
-		}
-		return nil // Deployment found, do nothing
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil // HA not enabled, do nothing.
-	}
-
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
@@ -747,7 +721,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 				Name:          "redis",
 			},
 		},
-		Resources: getRedisHAProxyResources(cr),
+		Resources: getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -784,7 +758,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "config-init",
 		Env:             proxyEnvVars(),
-		Resources:       getRedisHAProxyResources(cr),
+		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -857,6 +831,43 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 		return err
 	}
 
+	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
+			return r.Client.Delete(context.TODO(), existing)
+		}
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisHAProxyContainerImage(cr)
+
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed)
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
+			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
+			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
@@ -882,7 +893,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%d", *cr.Spec.Repo.ExecTimeout)}}, true)
+		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)

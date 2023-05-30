@@ -4,6 +4,9 @@ The Argo CD operator supports high availability through the mechanism described 
 
 To enable HA for an Argo CD cluster, include the `ha` section in the `ArgoCD` Custom Resource.
 
+!!! note
+    When `ha` is enabled, changes to `.spec.redis.resources` doesn't have any effect. Redis resource limits can be set using `.spec.ha.resources`.
+
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD

@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-# patches to enable ha
-- script: |
-    kubectl patch --type=merge -n $NAMESPACE argocd/example-argocd --patch '{"spec":{"ha":{"enabled":true}}}'
-- script: sleep 10 
