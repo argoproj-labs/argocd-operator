@@ -77,7 +77,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorDefaultMetricsPort), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -202,8 +202,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// start a new metrics server at a different port to serve custom implemented metrics
+	// This step is being taken as a workaround since custom metrics were not getting registered
+	// within the same default registry as is being used out of the box
 	go func() {
-		msErrCh := argocd.StartMetricsServer(8085)
+		msErrCh := argocd.StartMetricsServer(common.OperatorCustomMetricsPort)
 		if err = <-msErrCh; err != nil {
 			setupLog.Error(err, "metrics server exited with error: %v", err)
 		}

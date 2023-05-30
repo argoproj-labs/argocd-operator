@@ -19,6 +19,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"time"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 
@@ -80,6 +81,12 @@ var ActiveInstanceMap = make(map[string]string)
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+
+	reconcileStartTS := time.Now()
+	defer func() {
+		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
+	}()
+
 	reqLogger := logr.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
 	reqLogger.Info("Reconciling ArgoCD")
 
@@ -96,28 +103,35 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
+	newPhase := argocd.Status.Phase
 	// If we discover a new Argo CD instance in a previously un-seen namespace
-	// we add it to the map and increment active instance count
+	// we add it to the map and increment active instance count by phase
+	// as well as total active instance count
 	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
-		ActiveInstanceMap[request.Namespace] = argocd.Status.Phase
-		ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(1)
+		if newPhase != "" {
+			ActiveInstanceMap[request.Namespace] = newPhase
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Add(1)
+			ActiveInstancesTotal.Add(1)
+		}
 	} else {
 		// If we discover an existing instance's phase has changed since we last saw it
 		// increment instance count with new phase and decrement instance count with old phase
 		// update the phase in corresponding map entry
-		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != argocd.Status.Phase {
-			ActiveInstanceMap[argocd.Namespace] = argocd.Status.Phase
-			ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(1)
-			ActiveInstances.WithLabelValues(string(oldPhase)).Add(-1)
+		// total instance count remains the same
+		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
+			ActiveInstanceMap[argocd.Namespace] = newPhase
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Add(1)
+			ActiveInstancesByPhase.WithLabelValues(oldPhase).Add(-1)
 		}
 	}
 
 	if argocd.GetDeletionTimestamp() != nil {
 
 		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
+		// by phase as well as total
 		delete(ActiveInstanceMap, argocd.Namespace)
-		ActiveInstances.WithLabelValues(string(argocd.Status.Phase)).Add(-1)
-		// ActiveInstances.Add(-1)
+		ActiveInstancesByPhase.WithLabelValues(string(newPhase)).Add(-1)
+		ActiveInstancesTotal.Add(-1)
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
