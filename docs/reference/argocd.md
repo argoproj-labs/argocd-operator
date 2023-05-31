@@ -17,6 +17,7 @@ Name | Default | Description
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**Dex**](#dex-options) | [Object] | Dex configuration options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
+[**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
 [**Grafana**](#grafana-options) | [Object] | Grafana configuration options.
@@ -309,6 +310,28 @@ metadata:
 spec:
   disableAdmin: true
 ```
+
+## Extra Config
+
+This is a generic mechanism to add new or otherwise-unsupported
+features to the argocd-cm configmap.  Manual edits to the argocd-cm
+configmap will otherwise be automatically reverted.
+
+This defaults to empty.
+
+## Extra Config Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  extraConfig:
+    "accounts.argocd-devops": "apiKey"
+    "ping": "pong" // The same entry is reflected in Argo CD Configmap.
+```
+
 
 ## GA Tracking ID
 
