@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2021.
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 // log is for logging in this package.
-var log = logr.Log.WithName("validation_webhook_argocd")
+var log = logf.Log.WithName("validation_webhook_argocd")
 
 func (r *ArgoCD) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -34,25 +34,15 @@ func (r *ArgoCD) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/mutate-managed-gitops-redhat-com-v1alpha1-gitopsdeployment,mutating=true,failurePolicy=fail,sideEffects=None,groups=managed-gitops.redhat.com,resources=gitopsdeployments,verbs=create;update,versions=v1alpha1,name=mgitopsdeployment.kb.io,admissionReviewVersions=v1
-
-var _ webhook.Defaulter = &ArgoCD{}
-
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (cr *ArgoCD) Default() {
-	log.Info("default", "name", cr.Name)
-
-}
-
-//+kubebuilder:webhook:path=/validate-managed-gitops-redhat-com-v1alpha1-gitopsdeployment,mutating=false,failurePolicy=fail,sideEffects=None,groups=managed-gitops.redhat.com,resources=gitopsdeployments,verbs=create;update,versions=v1alpha1,name=vgitopsdeployment.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-argoproj-io-v1alpha1-argocd,mutating=false,failurePolicy=fail,sideEffects=None,groups=argoproj.io,resources=argocds,verbs=create;update,versions=v1alpha1,name=vargocd.kb.io,admissionReviewVersions={v1,v1beta1}
 
 var _ webhook.Validator = &ArgoCD{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *ArgoCD) ValidateCreate() error {
-	log.Info("validate ArgoCD create", "name", cr.Name)
+func (r *ArgoCD) ValidateCreate() error {
+	log.Info("validate ArgoCD create", "name", r.Name)
 
-	if err := cr.ValidateArgocdCR(); err != nil {
+	if err := r.ValidateArgocdCR(); err != nil {
 		return err
 	}
 
@@ -60,10 +50,10 @@ func (cr *ArgoCD) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *ArgoCD) ValidateUpdate(old runtime.Object) error {
-	log.Info("validate update", "name", cr.Name)
+func (r *ArgoCD) ValidateUpdate(old runtime.Object) error {
+	log.Info("validate update", "name", r.Name)
 
-	if err := cr.ValidateArgocdCR(); err != nil {
+	if err := r.ValidateArgocdCR(); err != nil {
 		return err
 	}
 
@@ -71,8 +61,8 @@ func (cr *ArgoCD) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (cr *ArgoCD) ValidateDelete() error {
-	log.Info("validate delete", "name", cr.Name)
+func (r *ArgoCD) ValidateDelete() error {
+	log.Info("validate delete", "name", r.Name)
 
 	return nil
 }
