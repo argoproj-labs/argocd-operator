@@ -39,22 +39,22 @@ func init() {
 // ArgoCD is the Schema for the argocds API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-//+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCD,v1alpha1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{ArgoCDExport,v1alpha1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{PersistentVolumeClaim,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Pod,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Prometheus,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{ReplicaSet,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Route,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Secret,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{Service,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{ServiceMonitor,v1,""}}
-//+operator-sdk:csv:customresourcedefinitions:resources={{StatefulSet,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{ArgoCD,v1alpha1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{ArgoCDExport,v1alpha1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{ConfigMap,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{CronJob,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Deployment,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Ingress,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Job,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{PersistentVolumeClaim,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Pod,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Prometheus,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{ReplicaSet,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Route,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Secret,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{Service,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{ServiceMonitor,v1,""}}
+// +operator-sdk:csv:customresourcedefinitions:resources={{StatefulSet,v1,""}}
 type ArgoCD struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
