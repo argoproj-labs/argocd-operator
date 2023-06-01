@@ -44,13 +44,18 @@ spec:
 #### Using the DISABLE_DEX environment variable 
 
 !!! warning 
-    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
+    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.provider` to enable/disable Dex.
 
-Until release v0.4.0 of Argo CD operator, Dex resources were created by default unless the `DISABLE_DEX` environment variable was explicitly set to `true`. However, v0.4.0 onward, `DISBALE_DEX` being either unset, or set to `false` will not trigger creation of Dex resources, unless there is valid Dex configuration expressed through `.spec.dex`. Users can continue setting `DISABLE_DEX` to `true` to uninstall dex resources until v0.6.0. 
+!!! note
+    `DISABLE_DEX` environment variable was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
+
+Until release v0.4.0 of Argo CD operator, Dex resources were created by default unless the `DISABLE_DEX` environment variable was explicitly set to `true`. However, v0.4.0 onward, `DISBALE_DEX` being either unset, or set to `false` will not trigger creation of Dex resources, unless there is valid Dex configuration expressed through `.spec.dex`. Users can continue setting `DISABLE_DEX` to `true` to uninstall dex resources until v0.8.0. 
 
 !!! warning 
-    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.dex` to configure Dex.
 
+!!! note
+    `.spec.dex` field was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
 
 An example of correctly configured dex would look as follows:
 
@@ -166,11 +171,17 @@ spec:
 ```
 
 !!! warning 
-    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.provider` to enable/disable Dex.
+    `DISABLE_DEX` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.provider` to enable/disable Dex.
+
+!!! note
+    `DISABLE_DEX` environment variable was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
 
 #### Using `.spec.dex`
 
 Dex can be uninstalled by either removing `.spec.dex` from the Argo CD CR, or ensuring `.spec.dex.config` is empty and `.spec.dex.openShiftOAuth` is set to `false`.
 
 !!! warning 
-    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.6.0. Please use `.spec.sso.dex` to configure Dex.
+    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.dex` to configure Dex.
+
+!!! note
+    `.spec.dex` field was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.

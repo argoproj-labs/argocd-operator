@@ -316,7 +316,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set", func(t *testing.T) {
@@ -336,7 +336,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set with env set explicitly", func(t *testing.T) {
@@ -347,7 +347,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		a.Spec.Repo.Env = []corev1.EnvVar{
 			{
 				Name:  "ARGOCD_EXEC_TIMEOUT",
-				Value: "20",
+				Value: "20s",
 			},
 		}
 		r := makeTestReconciler(t, a)
@@ -362,7 +362,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
@@ -644,6 +644,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	})
 	r := makeTestReconciler(t, a)
 
+	// test resource is Created on reconciliation
 	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -667,6 +668,31 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	}
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, testResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, testResources)
+
+	// test resource is Updated on reconciliation
+	newResources := corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("500m"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resourcev1.MustParse("512Mi"),
+			corev1.ResourceCPU:    resourcev1.MustParse("1"),
+		},
+	}
+	a.Spec.HA.Resources = &newResources
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
+	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
