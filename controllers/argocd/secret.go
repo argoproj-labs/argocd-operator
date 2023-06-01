@@ -184,7 +184,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 	}
 
-	if cr.Spec.Dex != nil || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex) {
+	if UseDex(cr) || (cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeDex) {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
 			return nil
