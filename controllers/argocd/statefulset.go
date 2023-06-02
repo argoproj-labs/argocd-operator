@@ -482,7 +482,7 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 			return replicas
 		}
 
-		replicas = int32(len(clusterSecrets.Items)) / cr.Spec.Controller.Sharding.ClustersPerShard
+		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
 
 		if replicas < minShards {
 			replicas = minShards
