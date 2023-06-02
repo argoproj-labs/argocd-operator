@@ -541,6 +541,7 @@ spec:
                         description: ClustersPerShard defines the maximum number of
                           clusters managed by each argocd shard
                         format: int32
+                        minimum: 1
                         type: integer
                       dynamicScalingEnabled:
                         description: DynamicScalingEnabled defines whether dynamic
@@ -559,6 +560,7 @@ spec:
                         description: MinShards defines the minimum number of shards
                           at any given point
                         format: int32
+                        minimum: 1
                         type: integer
                       replicas:
                         description: Replicas defines the number of replicas to run
