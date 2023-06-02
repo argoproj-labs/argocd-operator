@@ -458,6 +458,23 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 
 	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 
+		// TODO: move the validations to Validation Webhook once webhook has been introduced
+		if minShards < 1 {
+			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
+			minShards = 1
+		}
+
+		if maxShards < minShards {
+			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+			maxShards = minShards
+		}
+
+		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
+		if clustersPerShard < 1 {
+			log.Info("clustersPerShard cannot be less than 1. Defaulting to 1.")
+			clustersPerShard = 1
+		}
+
 		clusterSecrets, err := r.getClusterSecrets(cr)
 		if err != nil {
 			// If we were not able to query cluster secrets, return the default count of replicas (ArgocdApplicationControllerDefaultReplicas)
