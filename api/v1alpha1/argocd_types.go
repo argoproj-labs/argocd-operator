@@ -117,7 +117,7 @@ type ArgoCDApplicationControllerShardSpec struct {
 	Replicas int32 `json:"replicas,omitempty"`
 
 	// DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component
-	DynamicScalingEnabled bool `json:"dynamicScalingEnabled,omitempty"`
+	DynamicScalingEnabled *bool `json:"dynamicScalingEnabled,omitempty"`
 
 	// MinShards defines the minimum number of shards at any given point
 	// +kubebuilder:validation:Minimum=1

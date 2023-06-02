@@ -456,9 +456,9 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
 	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
 
-	if cr.Spec.Controller.Sharding.DynamicScalingEnabled {
+	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled {
 
-		// TODO: move the validations to Validation Webhook once webhook has been introduced
+		// TODO: add the same validations to Validation Webhook once webhook has been introduced
 		if minShards < 1 {
 			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
 			minShards = 1

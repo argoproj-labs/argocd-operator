@@ -464,7 +464,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: true,
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -476,7 +476,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: true,
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             4,
 				ClustersPerShard:      3,
@@ -488,7 +488,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: true,
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             2,
 				ClustersPerShard:      1,
