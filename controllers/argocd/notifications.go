@@ -140,8 +140,34 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 
 	// SA exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting serviceaccount %s as notifications is disabled", sa.Name))
-		return nil, r.Client.Delete(context.TODO(), sa)
+		// Define the Deployment and RoleBinding that depend on the ServiceAccount
+		deployment := &appsv1.Deployment{}
+		roleBinding := &rbacv1.RoleBinding{}
+
+		deploymentName := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller")
+		roleBindingName := fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent)
+
+		depErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: sa.Namespace}, deployment)
+		rbErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: sa.Namespace}, roleBinding)
+
+		// Check if either the Deployment or RoleBinding still exist
+		if errors.IsNotFound(depErr) && errors.IsNotFound(rbErr) {
+			// If both do not exist, delete the ServiceAccount
+			log.Info(fmt.Sprintf("Deleting ServiceAccount %s as notifications are disabled", sa.Name))
+			return nil, r.Client.Delete(context.TODO(), sa)
+		} else if depErr != nil && !errors.IsNotFound(depErr) {
+			// If Deployment still exists, don't delete the ServiceAccount and requeue the reconcile request
+			log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by Deployment: %s", sa.Name, deploymentName))
+
+			// Deployment still exists, requeue the reconcile request
+			return nil, fmt.Errorf("deployment %s still exists, requeue the reconcile request", deploymentName)
+		} else if rbErr != nil && !errors.IsNotFound(rbErr) {
+			// If RoleBinding still exists, don't delete the ServiceAccount and requeue the reconcile request
+			log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by RoleBinding: %s", sa.Name, roleBindingName))
+
+			// RoleBinding still exists, requeue the reconcile request
+			return nil, fmt.Errorf("roleBinding %s still exists, requeue the reconcile request", roleBindingName)
+		}
 	}
 
 	return sa, nil
