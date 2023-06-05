@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1359,11 +1358,6 @@ func operationProcessors(n int32) argoCDOpt {
 	}
 }
 
-func appSync(d time.Duration) argoCDOpt {
-	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.AppSync = &metav1.Duration{Duration: d}
-	}
-}
 func Test_UpdateNodePlacement(t *testing.T) {
 
 	deployment := &appsv1.Deployment{
