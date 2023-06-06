@@ -115,31 +115,36 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
+	err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa)
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
-		if !errors.IsNotFound(err) {
+	if cr.Spec.Notifications.Enabled {
+		if err != nil {
+			// handle case when service account doesn't exist and should be created
+			if errors.IsNotFound(err) {
+				if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+					return nil, err
+				}
+				log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
+				if err := r.Client.Create(context.TODO(), sa); err != nil {
+					return nil, err
+				}
+			} else {
+				// handle other errors
+				return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
+			}
+		}
+		// service account already exists, return it
+		return sa, nil
+	} else {
+		if err != nil {
+			// handle case when service account doesn't exist and should not exist
+			if errors.IsNotFound(err) {
+				return nil, nil
+			}
+			// handle other errors
 			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
 		}
-
-		// SA doesn't exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
-			return nil, nil
-		}
-
-		// SA doesn't exist but should, so it should be created
-		if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
-			return nil, err
-		}
-
-		log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
-		err := r.Client.Create(context.TODO(), sa)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// SA exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
+		// handle case when service account exists and should be deleted
 		// Define the Deployment and RoleBinding that depend on the ServiceAccount
 		deployment := &appsv1.Deployment{}
 		roleBinding := &rbacv1.RoleBinding{}
@@ -169,8 +174,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 			return nil, fmt.Errorf("roleBinding %s still exists, requeue the reconcile request", roleBindingName)
 		}
 	}
-
-	return sa, nil
+	// in case of deletion, return nil
+	return nil, nil
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*rbacv1.Role, error) {
