@@ -41,10 +41,55 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 
 	assert.Equal(t, desiredPolicyRules, testRole.Rules)
 
-	a.Spec.Notifications.Enabled = false
+	// Modify the rules of the existing role
+	testRole.Rules = append(testRole.Rules, rbacv1.PolicyRule{
+		Verbs:     []string{"get", "list"},
+		APIGroups: []string{"", "apps", "extensions", "argoproj.io"},
+		Resources: []string{"configmaps", "secrets"},
+	})
+
+	// Update the role with the modified rules
+	assert.NoError(t, r.Client.Update(context.TODO(), testRole))
+
+	// Reconcile again to correct the state
 	_, err = r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
 
+	// Fetch the updated role
+	updatedRole := &rbacv1.Role{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, updatedRole))
+
+	// Assert that the rules have been updated back to match the desired state
+	assert.Equal(t, desiredPolicyRules, updatedRole.Rules)
+}
+
+func TestReconcileNotifications_DeleteRoles(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	r := makeTestReconciler(t, a)
+
+	// Initially create the Role
+	_, err := r.reconcileNotificationsRole(a)
+	assert.NoError(t, err)
+
+	testRole := &rbacv1.Role{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, testRole))
+
+	// Disable notifications, which should trigger deletion of the Role
+	a.Spec.Notifications.Enabled = false
+	err = r.deleteNotificationsRole(a)
+	assert.NoError(t, err)
+
+	// Check that the Role no longer exists
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
@@ -70,17 +115,39 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	}, testSa))
 
 	assert.Equal(t, testSa.Name, desiredSa.Name)
+}
 
-	a.Spec.Notifications.Enabled = false
-	_, err = r.reconcileNotificationsServiceAccount(a)
+func TestReconcileNotifications_DeleteServiceAccount(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = false
+	})
+
+	r := makeTestReconciler(t, a)
+
+	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, a)
+
+	// Create the ServiceAccount
+	assert.NoError(t, r.Client.Create(context.TODO(), sa))
+
+	// Ensure the ServiceAccount is created
+	testSa := &corev1.ServiceAccount{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+		Namespace: a.Namespace,
+	}, testSa))
+	assert.Equal(t, testSa.Name, sa.Name)
+
+	// Call the deleteNotificationsServiceAccount function
+	err := r.deleteNotificationsServiceAccount(a, sa)
 	assert.NoError(t, err)
 
+	// Ensure the ServiceAccount is deleted
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
 	}, testSa)
 	assert.True(t, errors.IsNotFound(err))
-
 }
 
 func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
@@ -107,11 +174,40 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 
 	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
 	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
+}
 
-	a.Spec.Notifications.Enabled = false
-	err = r.reconcileNotificationsRoleBinding(a, role, sa)
+func TestReconcileNotifications_DeleteRoleBinding(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	r := makeTestReconciler(t, a)
+
+	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
+
+	// Assuming the role binding has been reconciled and exists
+	err := r.reconcileNotificationsRoleBinding(a, role, sa)
 	assert.NoError(t, err)
 
+	roleBinding := &rbacv1.RoleBinding{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
+			Namespace: a.Namespace,
+		},
+		roleBinding))
+
+	// Confirm that the role binding exists
+	assert.Equal(t, roleBinding.RoleRef.Name, role.Name)
+	assert.Equal(t, roleBinding.Subjects[0].Name, sa.Name)
+
+	// Now delete the role binding
+	err = r.deleteNotificationsRoleBinding(a)
+	assert.NoError(t, err)
+
+	// Confirm the role binding has been deleted
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      generateResourceName(common.ArgoCDNotificationsControllerComponent, a),
 		Namespace: a.Namespace,
@@ -218,9 +314,32 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	if diff := cmp.Diff(expectedSelector, deployment.Spec.Selector); diff != "" {
 		t.Fatalf("failed to reconcile notifications-controller label selector:\n%s", diff)
 	}
+}
 
+func TestReconcileNotifications_DeleteDeployments(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+	r := makeTestReconciler(t, a)
+	sa := corev1.ServiceAccount{}
+	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      a.Name + "-notifications-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Ensure the created Deployment has the expected properties
+	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
+
+	// Ensure the deployment is deleted
 	a.Spec.Notifications.Enabled = false
-	err := r.reconcileNotificationsDeployment(a, &sa)
+	err := r.deleteNotificationsDeployment(a)
 	assert.NoError(t, err)
 
 	err = r.Client.Get(context.TODO(), types.NamespacedName{
@@ -232,6 +351,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
+
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
@@ -246,12 +366,25 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 		Name:      "argocd-notifications-secret",
 		Namespace: a.Namespace,
 	}, testSecret))
+}
 
-	a.Spec.Notifications.Enabled = false
-	err = r.reconcileNotificationsSecret(a)
+func TestDeleteNotifications_DeleteSecret(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = false
+	})
+
+	r := makeTestReconciler(t, a)
+
+	err := r.deleteNotificationsSecret(a)
 	assert.NoError(t, err)
+
 	secret := &corev1.Secret{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-secret", Namespace: a.Namespace}, secret)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-notifications-secret",
+		Namespace: a.Namespace,
+	}, secret)
 	assertNotFound(t, err)
 }
 
@@ -273,13 +406,35 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	}, testCm))
 
 	assert.True(t, len(testCm.Data) > 0)
+}
 
-	a.Spec.Notifications.Enabled = false
-	err = r.reconcileNotificationsConfigMap(a)
+func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = false
+	})
+
+	r := makeTestReconciler(t, a)
+
+	// Create the existing ConfigMap
+	existingCm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-notifications-cm",
+			Namespace: a.Namespace,
+		},
+	}
+	assert.NoError(t, r.Client.Create(context.TODO(), existingCm))
+
+	err := r.deleteNotificationsConfigMap(a)
 	assert.NoError(t, err)
-	testCm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-cm", Namespace: a.Namespace}, testCm)
-	assertNotFound(t, err)
+
+	// Check if the ConfigMap was deleted
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-notifications-cm",
+		Namespace: a.Namespace,
+	}, cm)
+	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestReconcileNotifications_testEnvVars(t *testing.T) {
