@@ -1,3 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -5,17 +9,9 @@ metadata:
 status:
   phase: Available
 ---
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
-  name: argocd-application-controller-0
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: argocd-application-controller-1
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: argocd-application-controller-2
+  name: argocd-application-controller
+status:
+  replicas: 3
