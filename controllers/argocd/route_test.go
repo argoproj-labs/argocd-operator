@@ -28,6 +28,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
 		a.Spec.Server.Route.Enabled = true
 		labels := make(map[string]string)
 		labels["my-key"] = "my-value"
@@ -64,6 +65,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
+		a.Spec.Notifications.Enabled = true
 	})
 	objs := []runtime.Object{
 		argoCD,
@@ -136,6 +138,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 		a.Spec.Server.Insecure = true
+		a.Spec.Notifications.Enabled = true
 	})
 	objs := []runtime.Object{
 		argoCD,

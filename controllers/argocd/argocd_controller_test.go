@@ -75,7 +75,9 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 
 func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
+	a := makeTestArgoCD(func(a *argov1alpha1.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
 
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
