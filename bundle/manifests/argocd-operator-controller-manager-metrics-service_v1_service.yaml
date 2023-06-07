@@ -7,12 +7,9 @@ metadata:
   name: argocd-operator-controller-manager-metrics-service
 spec:
   ports:
-  - name: default-metrics
-    port: 8080
-    targetPort: 8080
-  - name: custom-metrics
-    port: 8085
-    targetPort: 8085
+  - name: https
+    port: 8443
+    targetPort: https
   selector:
     control-plane: argocd-operator
 status:

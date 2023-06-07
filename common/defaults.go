@@ -299,11 +299,8 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
 github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
 `
-	// OperatorDefaultMetricsPort is the port that is used to expose default controller-runtime metrics for the operator pod.
-	OperatorDefaultMetricsPort = 8080
-
-	// OperatorDefaultMetricsPort is the port that is used to expose custom metrics implemented by the Argo CD Operator.
-	OperatorCustomMetricsPort = 8085
+	// OperatorMetricsPort is the port that is used to expose default controller-runtime metrics for the operator pod.
+	OperatorMetricsPort = 8080
 )
 
 // DefaultLabels returns the default set of labels for controllers.

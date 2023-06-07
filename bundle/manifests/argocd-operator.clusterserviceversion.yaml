@@ -549,8 +549,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1004,6 +1004,7 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheuses
+          - prometheusrules
           - servicemonitors
           verbs:
           - '*'
@@ -1067,7 +1068,9 @@ spec:
           - create
         serviceAccountName: argocd-operator-controller-manager
       deployments:
-      - name: argocd-operator-controller-manager
+      - label:
+          control-plane: argocd-operator
+        name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:

@@ -10,15 +10,7 @@ metadata:
 spec:
   endpoints:
     - path: /metrics
-      interval: 30s
-      port: default-metrics
-      scheme: https
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      tlsConfig:
-        insecureSkipVerify: true
-    - path: /metrics
-      interval: 10s
-      port: cr-metrics
+      port: https
       scheme: https
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       tlsConfig:
