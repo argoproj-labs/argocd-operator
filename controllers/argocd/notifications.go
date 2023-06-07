@@ -77,34 +77,33 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 		}
 	}
 
-	log.Info("reconciling notifications deployment")
-	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
+	log.Info("delete notifications deployment")
+	if err := r.deleteNotificationsDeployment(cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling notifications secret")
-	if err := r.reconcileNotificationsSecret(cr); err != nil {
+	log.Info("delete notifications secret")
+	if err := r.deleteNotificationsSecret(cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling notifications configmap")
-	if err := r.reconcileNotificationsConfigMap(cr); err != nil {
+	log.Info("delete notifications configmap")
+	if err := r.deleteNotificationsConfigMap(cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling notifications role binding")
-	if err := r.reconcileNotificationsRoleBinding(cr, role, sa); err != nil {
+	log.Info("delete notifications role binding")
+	if err := r.deleteNotificationsRoleBinding(cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling notifications role")
-	_, err := r.reconcileNotificationsRole(cr)
-	if err != nil {
+	log.Info("delete notifications role")
+	if err := r.deleteNotificationsRole(cr); err != nil {
 		return err
 	}
 
-	log.Info("reconciling notifications serviceaccount")
-	_, err = r.reconcileNotificationsServiceAccount(cr)
+	log.Info("delete notifications serviceaccount")
+	err := r.deleteNotificationsServiceAccount(cr, sa)
 	if err != nil {
 		return err
 	}
@@ -113,69 +112,26 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
-
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
 	err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa)
 
-	if cr.Spec.Notifications.Enabled {
-		if err != nil {
-			// handle case when service account doesn't exist and should be created
-			if errors.IsNotFound(err) {
-				if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
-					return nil, err
-				}
-				log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
-				if err := r.Client.Create(context.TODO(), sa); err != nil {
-					return nil, err
-				}
-			} else {
-				// handle other errors
-				return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
+	if err != nil {
+		// handle case when service account doesn't exist
+		if errors.IsNotFound(err) {
+			if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+				return nil, err
 			}
-		}
-		// service account already exists, return it
-		return sa, nil
-	} else {
-		if err != nil {
-			// handle case when service account doesn't exist and should not exist
-			if errors.IsNotFound(err) {
-				return nil, nil
+			log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
+			if err := r.Client.Create(context.TODO(), sa); err != nil {
+				return nil, err
 			}
+		} else {
 			// handle other errors
-			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
-		}
-		// handle case when service account exists and should be deleted
-		// Define the Deployment and RoleBinding that depend on the ServiceAccount
-		deployment := &appsv1.Deployment{}
-		roleBinding := &rbacv1.RoleBinding{}
-
-		deploymentName := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller")
-		roleBindingName := fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent)
-
-		depErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: sa.Namespace}, deployment)
-		rbErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: sa.Namespace}, roleBinding)
-
-		// Check if either the Deployment or RoleBinding still exist
-		if errors.IsNotFound(depErr) && errors.IsNotFound(rbErr) {
-			// If both do not exist, delete the ServiceAccount
-			log.Info(fmt.Sprintf("Deleting ServiceAccount %s as notifications are disabled", sa.Name))
-			return nil, r.Client.Delete(context.TODO(), sa)
-		} else if depErr != nil && !errors.IsNotFound(depErr) {
-			// If Deployment still exists, don't delete the ServiceAccount and requeue the reconcile request
-			log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by Deployment: %s", sa.Name, deploymentName))
-
-			// Deployment still exists, requeue the reconcile request
-			return nil, fmt.Errorf("deployment %s still exists, requeue the reconcile request", deploymentName)
-		} else if rbErr != nil && !errors.IsNotFound(rbErr) {
-			// If RoleBinding still exists, don't delete the ServiceAccount and requeue the reconcile request
-			log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by RoleBinding: %s", sa.Name, roleBindingName))
-
-			// RoleBinding still exists, requeue the reconcile request
-			return nil, fmt.Errorf("roleBinding %s still exists, requeue the reconcile request", roleBindingName)
+			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s: %s", sa.Name, err)
 		}
 	}
-	// in case of deletion, return nil
-	return nil, nil
+
+	return sa, nil
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*rbacv1.Role, error) {
@@ -184,14 +140,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 	desiredRole := newRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
 
 	existingRole := &rbacv1.Role{}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
+	err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole)
+	if err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
-		}
-
-		// role does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
-			return nil, nil
 		}
 
 		// role does not exist but should, so it should be created
@@ -205,12 +157,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 			return nil, err
 		}
 		return desiredRole, nil
-	}
-
-	// role exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting role %s as notifications is disabled", existingRole.Name))
-		return nil, r.Client.Delete(context.TODO(), existingRole)
 	}
 
 	// role exists and should. Reconcile role if changed
@@ -249,11 +195,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", desiredRoleBinding.Name, err)
 		}
 
-		// roleBinding does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
-			return nil
-		}
-
 		// roleBinding does not exist but should, so it should be created
 		if err := controllerutil.SetControllerReference(cr, desiredRoleBinding, r.Scheme); err != nil {
 			return err
@@ -261,12 +202,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 
 		log.Info(fmt.Sprintf("Creating roleBinding %s", desiredRoleBinding.Name))
 		return r.Client.Create(context.TODO(), desiredRoleBinding)
-	}
-
-	// roleBinding exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting roleBinding %s as notifications is disabled", existingRoleBinding.Name))
-		return r.Client.Delete(context.TODO(), existingRoleBinding)
 	}
 
 	// roleBinding exists and should. Reconcile roleBinding if changed
@@ -287,9 +222,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 }
 
 func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
-
 	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
-
 	desiredDeployment.Spec.Strategy = appsv1.DeploymentStrategy{
 		Type: appsv1.RecreateDeploymentStrategyType,
 	}
@@ -368,19 +301,14 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 	}}
 
 	// fetch existing deployment by name
-	deploymentChanged := false
 	existingDeployment := &appsv1.Deployment{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the deployment associated with %s : %s", existingDeployment.Name, err)
-		}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
 
-		// deployment does not exist and shouldn't, nothing to do here
-		if !cr.Spec.Notifications.Enabled {
-			return nil
-		}
-
-		// deployment does not exist but should, so it should be created
+	if err != nil && errors.IsNotFound(err) {
+		// deployment does not exist but should, so create it
 		if err := controllerutil.SetControllerReference(cr, desiredDeployment, r.Scheme); err != nil {
 			return err
 		}
@@ -389,14 +317,20 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 		return r.Client.Create(context.TODO(), desiredDeployment)
 	}
 
-	// deployment exists but shouldn't, so it should be deleted
-	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting deployment %s as notifications is disabled", existingDeployment.Name))
-		return r.Client.Delete(context.TODO(), existingDeployment)
+	// deployment exists and should. Reconcile deployment if changed
+	deploymentChanged := updateDeployment(existingDeployment, desiredDeployment)
+	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
+
+	if deploymentChanged {
+		return r.Client.Update(context.TODO(), existingDeployment)
 	}
 
-	// deployment exists and should. Reconcile deployment if changed
-	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
+	return nil
+
+}
+
+func updateDeployment(existingDeployment, desiredDeployment *appsv1.Deployment) bool {
+	deploymentChanged := false
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
@@ -455,55 +389,44 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 		deploymentChanged = true
 	}
 
-	if deploymentChanged {
-		return r.Client.Update(context.TODO(), existingDeployment)
-	}
-
-	return nil
-
+	return deploymentChanged
 }
 
 // reconcileNotificationsConfigMap only creates/deletes the argocd-notifications-cm based on whether notifications is enabled/disabled in the CR
 // It does not reconcile/overwrite any fields or information in the configmap itself
 func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoCD) error {
-
 	desiredConfigMap := newConfigMapWithName("argocd-notifications-cm", cr)
 	desiredConfigMap.Data = getDefaultNotificationsConfig()
 
-	cmExists := true
 	existingConfigMap := &corev1.ConfigMap{}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap); err != nil {
+	err := argoutil.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap)
+	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the configmap associated with %s : %s", desiredConfigMap.Name, err)
 		}
-		cmExists = false
-	}
 
-	if cmExists {
-		// CM exists but shouldn't, so it should be deleted
-		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting configmap %s as notifications is disabled", existingConfigMap.Name))
-			return r.Client.Delete(context.TODO(), existingConfigMap)
+		// ConfigMap doesn't exist, so it should be created
+		if err := controllerutil.SetControllerReference(cr, desiredConfigMap, r.Scheme); err != nil {
+			return err
 		}
 
-		// CM exists and should, nothing to do here
+		log.Info(fmt.Sprintf("Creating configmap %s", desiredConfigMap.Name))
+		err := r.Client.Create(context.TODO(), desiredConfigMap)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 
-	// CM doesn't exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil
-	}
+	// ConfigMap exists, reconcile if changed
+	if !reflect.DeepEqual(existingConfigMap.Data, desiredConfigMap.Data) {
+		existingConfigMap.Data = desiredConfigMap.Data
+		if err := controllerutil.SetControllerReference(cr, existingConfigMap, r.Scheme); err != nil {
+			return err
+		}
 
-	// CM doesn't exist but should, so it should be created
-	if err := controllerutil.SetControllerReference(cr, desiredConfigMap, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info(fmt.Sprintf("Creating configmap %s", desiredConfigMap.Name))
-	err := r.Client.Create(context.TODO(), desiredConfigMap)
-	if err != nil {
-		return err
+		return r.Client.Update(context.TODO(), existingConfigMap)
 	}
 
 	return nil
@@ -512,7 +435,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoC
 // reconcileNotificationsSecret only creates/deletes the argocd-notifications-secret based on whether notifications is enabled/disabled in the CR
 // It does not reconcile/overwrite any fields or information in the secret itself
 func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) error {
-
 	desiredSecret := argoutil.NewSecretWithName(cr, "argocd-notifications-secret")
 
 	secretExists := true
@@ -525,22 +447,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) 
 	}
 
 	if secretExists {
-		// secret exists but shouldn't, so it should be deleted
-		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting secret %s as notifications is disabled", existingSecret.Name))
-			return r.Client.Delete(context.TODO(), existingSecret)
-		}
-
 		// secret exists and should, nothing to do here
 		return nil
 	}
 
-	// secret doesn't exist and shouldn't, nothing to do here
-	if !cr.Spec.Notifications.Enabled {
-		return nil
-	}
-
-	// secret doesn't exist but should, so it should be created
 	if err := controllerutil.SetControllerReference(cr, desiredSecret, r.Scheme); err != nil {
 		return err
 	}
@@ -575,4 +485,126 @@ func getNotificationsResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequireme
 	}
 
 	return resources
+}
+
+func (r *ReconcileArgoCD) deleteNotificationsConfigMap(cr *argoprojv1a1.ArgoCD) error {
+	existingConfigMap := &corev1.ConfigMap{}
+	desiredConfigMap := newConfigMapWithName("argocd-notifications-cm", cr)
+
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+
+		// ConfigMap does not exist and shouldn't, nothing to do here
+		return nil
+	}
+
+	// ConfigMap exists but shouldn't, so it should be deleted
+	log.Info(fmt.Sprintf("Deleting configmap %s as notifications is disabled", existingConfigMap.Name))
+	return r.Client.Delete(context.TODO(), existingConfigMap)
+}
+
+func (r *ReconcileArgoCD) deleteNotificationsRole(cr *argoprojv1a1.ArgoCD) error {
+	desiredRole := newRole(common.ArgoCDNotificationsControllerComponent, nil, cr)
+	existingRole := &rbacv1.Role{}
+
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
+		// If an error other than 'NotFound' occurred during the fetch, return it
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		// If the role doesn't exist, no further actions are necessary
+		return nil
+	}
+
+	// At this point, the role exists, so proceed with its deletion
+	log.Info(fmt.Sprintf("Deleting role %s as notifications are disabled", existingRole.Name))
+	return r.Client.Delete(context.TODO(), existingRole)
+}
+
+func (r *ReconcileArgoCD) deleteNotificationsRoleBinding(cr *argoprojv1a1.ArgoCD) error {
+	existingRoleBinding := &rbacv1.RoleBinding{}
+	desiredRoleBinding := newRoleBindingWithname(common.ArgoCDNotificationsControllerComponent, cr)
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredRoleBinding.Name, Namespace: cr.Namespace}, existingRoleBinding); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		// roleBinding does not exist and shouldn't, nothing to do here
+		return nil
+	}
+
+	// roleBinding exists but shouldn't, so it should be deleted
+	log.Info(fmt.Sprintf("Deleting roleBinding %s as notifications is disabled", existingRoleBinding.Name))
+	return r.Client.Delete(context.TODO(), existingRoleBinding)
+}
+
+// deleteNotificationsSecret deletes the argocd-notifications-secret if notifications is disabled in the CR
+func (r *ReconcileArgoCD) deleteNotificationsSecret(cr *argoprojv1a1.ArgoCD) error {
+	desiredSecret := argoutil.NewSecretWithName(cr, "argocd-notifications-secret")
+	existingSecret := &corev1.Secret{}
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredSecret.Name, existingSecret); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		// secret doesn't exist and shouldn't, nothing to do here
+		return nil
+	}
+
+	log.Info(fmt.Sprintf("Deleting secret %s as notifications is disabled", existingSecret.Name))
+	return r.Client.Delete(context.TODO(), existingSecret)
+}
+
+// deleteNotificationsDeployment deletes the notifications-controller Deployment if notifications are disabled.
+func (r *ReconcileArgoCD) deleteNotificationsDeployment(cr *argoprojv1a1.ArgoCD) error {
+	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
+	existingDeployment := &appsv1.Deployment{}
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		// deployment does not exist and shouldn't, nothing to do here
+		return nil
+	}
+
+	// Set controller reference before deleting the deployment
+	if err := controllerutil.SetControllerReference(cr, existingDeployment, r.Scheme); err != nil {
+		return err
+	}
+
+	log.Info(fmt.Sprintf("Deleting deployment %s as notifications is disabled", existingDeployment.Name))
+	return r.Client.Delete(context.TODO(), existingDeployment)
+}
+
+func (r *ReconcileArgoCD) deleteNotificationsServiceAccount(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+	deployment := &appsv1.Deployment{}
+	roleBinding := &rbacv1.RoleBinding{}
+
+	deploymentName := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller")
+	roleBindingName := fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent)
+
+	depErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: sa.Namespace}, deployment)
+	rbErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: sa.Namespace}, roleBinding)
+
+	// Check if either the Deployment or RoleBinding still exist
+	if errors.IsNotFound(depErr) && errors.IsNotFound(rbErr) {
+		// If both do not exist, delete the ServiceAccount
+		log.Info(fmt.Sprintf("Deleting ServiceAccount %s as notifications are disabled", sa.Name))
+		return r.Client.Delete(context.TODO(), sa)
+	} else if depErr != nil && !errors.IsNotFound(depErr) {
+		// If Deployment still exists, don't delete the ServiceAccount and requeue the reconcile request
+		log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by Deployment: %s", sa.Name, deploymentName))
+
+		// Deployment still exists, requeue the reconcile request
+		return fmt.Errorf("deployment %s still exists, requeue the reconcile request", deploymentName)
+	} else if rbErr != nil && !errors.IsNotFound(rbErr) {
+		// If RoleBinding still exists, don't delete the ServiceAccount and requeue the reconcile request
+		log.Info(fmt.Sprintf("Not deleting ServiceAccount %s because it is still used by RoleBinding: %s", sa.Name, roleBindingName))
+
+		// RoleBinding still exists, requeue the reconcile request
+		return fmt.Errorf("roleBinding %s still exists, requeue the reconcile request", roleBindingName)
+	}
+
+	// The ServiceAccount is not used by any resources, no action needed
+	return nil
 }
