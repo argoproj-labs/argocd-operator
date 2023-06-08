@@ -709,9 +709,6 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
-	log.Info("*** in reconcileResources !")
-	log.Info(fmt.Sprintf("cr.Spec.Notifications.Enabled: %v", cr.Spec.Notifications.Enabled))
-
 	// reconcile SSO first, because dex resources get reconciled through other function calls as well, not just through reconcileSSO (this is important
 	// so that dex resources can be appropriately cleaned up when DISABLE_DEX is set to true and the operator pod restarts but doesn't enter
 	// dex reconciliation again because dex is disabled, thus leaving hanging resources around if they are not also cleaned up in the main loop)
@@ -1035,13 +1032,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			if !ok {
 				return false
 			}
-			// if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
-			// 	err := r.deleteNotificationsResources(newCR)
-			// 	if err != nil {
-			// 		log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
-			// 			newCR.Name, newCR.Namespace))
-			// 	}
-			// }
 			return oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled
 		},
 	}
