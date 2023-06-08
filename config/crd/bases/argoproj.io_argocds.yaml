@@ -539,10 +539,31 @@ spec:
                     description: Sharding contains the options for the Application
                       Controller sharding configuration.
                     properties:
+                      clustersPerShard:
+                        description: ClustersPerShard defines the maximum number of
+                          clusters managed by each argocd shard
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      dynamicScalingEnabled:
+                        description: DynamicScalingEnabled defines whether dynamic
+                          scaling should be enabled for Application Controller component
+                        type: boolean
                       enabled:
                         description: Enabled defines whether sharding should be enabled
                           on the Application Controller component.
                         type: boolean
+                      maxShards:
+                        description: MaxShards defines the maximum number of shards
+                          at any given point
+                        format: int32
+                        type: integer
+                      minShards:
+                        description: MinShards defines the minimum number of shards
+                          at any given point
+                        format: int32
+                        minimum: 1
+                        type: integer
                       replicas:
                         description: Replicas defines the number of replicas to run
                           in the Application controller shard.

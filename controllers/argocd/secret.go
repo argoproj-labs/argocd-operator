@@ -460,17 +460,11 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 		clusterConfigInstance = true
 	}
 
-	clusterSecrets := &corev1.SecretList{}
-	opts := &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			common.ArgoCDSecretTypeLabel: "cluster",
-		}),
-		Namespace: cr.Namespace,
-	}
-
-	if err := r.Client.List(context.TODO(), clusterSecrets, opts); err != nil {
+	clusterSecrets, err := r.getClusterSecrets(cr)
+	if err != nil {
 		return err
 	}
+
 	for _, s := range clusterSecrets.Items {
 		// check if cluster secret with default server address exists
 		if string(s.Data["server"]) == common.ArgoCDDefaultServer {
@@ -685,4 +679,21 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) getClusterSecrets(cr *argoprojv1a1.ArgoCD) (*corev1.SecretList, error) {
+
+	clusterSecrets := &corev1.SecretList{}
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			common.ArgoCDSecretTypeLabel: "cluster",
+		}),
+		Namespace: cr.Namespace,
+	}
+
+	if err := r.Client.List(context.TODO(), clusterSecrets, opts); err != nil {
+		return nil, err
+	}
+
+	return clusterSecrets, nil
 }
