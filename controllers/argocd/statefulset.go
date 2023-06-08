@@ -451,12 +451,59 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 	return env
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
+	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
+	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
 
-	if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
-		replicas = cr.Spec.Controller.Sharding.Replicas
+	if cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled {
+
+		// TODO: add the same validations to Validation Webhook once webhook has been introduced
+		if minShards < 1 {
+			log.Info("Minimum number of shards cannot be less than 1. Setting default value to 1")
+			minShards = 1
+		}
+
+		if maxShards < minShards {
+			log.Info("Maximum number of shards cannot be less than minimum number of shards. Setting maximum shards same as minimum shards")
+			maxShards = minShards
+		}
+
+		clustersPerShard := cr.Spec.Controller.Sharding.ClustersPerShard
+		if clustersPerShard < 1 {
+			log.Info("clustersPerShard cannot be less than 1. Defaulting to 1.")
+			clustersPerShard = 1
+		}
+
+		clusterSecrets, err := r.getClusterSecrets(cr)
+		if err != nil {
+			// If we were not able to query cluster secrets, return the default count of replicas (ArgocdApplicationControllerDefaultReplicas)
+			log.Error(err, "Error retreiving cluster secrets for ArgoCD instance %s", cr.Name)
+			return replicas
+		}
+
+		replicas = int32(len(clusterSecrets.Items)) / clustersPerShard
+
+		if replicas < minShards {
+			replicas = minShards
+		}
+
+		if replicas > maxShards {
+			replicas = maxShards
+		}
+
+		return replicas
+
+	} else if cr.Spec.Controller.Sharding.Replicas != 0 && cr.Spec.Controller.Sharding.Enabled {
+		return cr.Spec.Controller.Sharding.Replicas
 	}
+
+	return replicas
+}
+
+func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+
+	replicas := r.getApplicationControllerReplicaCount(cr)
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas

@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
@@ -449,4 +450,75 @@ func Test_ContainsValidImage(t *testing.T) {
 		t.Fatalf("containsInvalidImage failed, got true, expected false")
 	}
 
+}
+
+func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		sharding         argoprojv1alpha1.ArgoCDApplicationControllerShardSpec
+		expectedReplicas int32
+		vars             []corev1.EnvVar
+	}{
+		{
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:               false,
+				Replicas:              1,
+				DynamicScalingEnabled: boolPtr(true),
+				MinShards:             2,
+				MaxShards:             4,
+				ClustersPerShard:      1,
+			},
+			expectedReplicas: 3,
+		},
+		{
+			// Replicas less than minimum shards
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:               false,
+				Replicas:              1,
+				DynamicScalingEnabled: boolPtr(true),
+				MinShards:             1,
+				MaxShards:             4,
+				ClustersPerShard:      3,
+			},
+			expectedReplicas: 1,
+		},
+		{
+			// Replicas more than maximum shards
+			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
+				Enabled:               false,
+				Replicas:              1,
+				DynamicScalingEnabled: boolPtr(true),
+				MinShards:             1,
+				MaxShards:             2,
+				ClustersPerShard:      1,
+			},
+			expectedReplicas: 2,
+		},
+	}
+
+	for _, st := range tests {
+		a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a.Spec.Controller.Sharding = st.sharding
+		})
+
+		clusterSecret1 := argoutil.NewSecretWithSuffix(a, "cluster1")
+		clusterSecret1.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+
+		clusterSecret2 := argoutil.NewSecretWithSuffix(a, "cluster2")
+		clusterSecret2.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+
+		clusterSecret3 := argoutil.NewSecretWithSuffix(a, "cluster3")
+		clusterSecret3.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+
+		r := makeTestReconciler(t, a)
+		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret1))
+		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret2))
+		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret3))
+
+		replicas := r.getApplicationControllerReplicaCount(a)
+
+		assert.Equal(t, int32(st.expectedReplicas), replicas)
+
+	}
 }

@@ -944,7 +944,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -1060,6 +1060,8 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
+	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
+
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
 	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
@@ -1068,6 +1070,12 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	// Watch for secrets of type TLS that might be created by external processes
 	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
+
+	// Watch for cluster secrets added to the argocd instance
+	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
+		}}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})
