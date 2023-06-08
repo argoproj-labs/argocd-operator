@@ -7,4 +7,8 @@ commands:
     kubectl delete -n $NAMESPACE application.argoproj.io my-app-3
 - script: sleep 5
 - script: |
-    ! kubectl get -n $NAMESPACE application.argoproj.io my-app-3
+    output=$(kubectl get -n $NAMESPACE application.argoproj.io my-app-3 --no-headers 2>/dev/null)
+    if [ -n "$output" ]; then
+      echo "my-app-3 still exists"
+      exit 1
+    fi
