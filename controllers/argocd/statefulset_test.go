@@ -516,7 +516,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret2))
 		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret3))
 
-		replicas := r.getArgoControllerReplicaCount(a)
+		replicas := r.getApplicationControllerReplicaCount(a)
 
 		assert.Equal(t, int32(st.expectedReplicas), replicas)
 

@@ -154,7 +154,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(o client.Object) []reconcile.R
 	return result
 }
 
-// namespaceResourceMapper maps a watch event on a namespace, back to the
+// clusterSecretResourceMapper maps a watch event on a namespace, back to the
 // ArgoCD object that we want to reconcile.
 func (r *ReconcileArgoCD) clusterSecretResourceMapper(o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}

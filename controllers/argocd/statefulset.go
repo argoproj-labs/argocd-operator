@@ -451,7 +451,7 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 	return env
 }
 
-func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
+func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
 	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
@@ -503,7 +503,7 @@ func (r *ReconcileArgoCD) getArgoControllerReplicaCount(cr *argoprojv1a1.ArgoCD)
 
 func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 
-	replicas := r.getArgoControllerReplicaCount(cr)
+	replicas := r.getApplicationControllerReplicaCount(cr)
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	ss.Spec.Replicas = &replicas
