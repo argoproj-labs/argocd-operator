@@ -6,3 +6,5 @@ commands:
   
     kubectl delete -n $NAMESPACE application.argoproj.io my-app-3
 - script: sleep 5
+- script: |
+    ! kubectl get -n $NAMESPACE application.argoproj.io my-app-3

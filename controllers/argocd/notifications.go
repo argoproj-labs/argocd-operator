@@ -411,24 +411,12 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoC
 		}
 
 		log.Info(fmt.Sprintf("Creating configmap %s", desiredConfigMap.Name))
-		err := r.Client.Create(context.TODO(), desiredConfigMap)
-		if err != nil {
+		if err := r.Client.Create(context.TODO(), desiredConfigMap); err != nil {
 			return err
 		}
-
-		return nil
 	}
 
-	// ConfigMap exists, reconcile if changed
-	if !reflect.DeepEqual(existingConfigMap.Data, desiredConfigMap.Data) {
-		existingConfigMap.Data = desiredConfigMap.Data
-		if err := controllerutil.SetControllerReference(cr, existingConfigMap, r.Scheme); err != nil {
-			return err
-		}
-
-		return r.Client.Update(context.TODO(), existingConfigMap)
-	}
-
+	// If the ConfigMap already exists, do nothing.
 	return nil
 }
 

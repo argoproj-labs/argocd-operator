@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app-3
+  annotations:
+    "notifications.argoproj.io/subscribe.on-created.gmail": "jdfake@email.com"
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    repoURL: https://github.com/redhat-developer/gitops-operator
+    path: test/examples/nginx
+    targetRevision: HEAD
