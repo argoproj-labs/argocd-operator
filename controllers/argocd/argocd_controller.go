@@ -130,7 +130,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
 		// by phase as well as total
 		delete(ActiveInstanceMap, argocd.Namespace)
-		ActiveInstancesByPhase.WithLabelValues(string(newPhase)).Add(-1)
+		ActiveInstancesByPhase.WithLabelValues(newPhase).Add(-1)
 		ActiveInstancesTotal.Add(-1)
 
 		if argocd.IsDeletionFinalizerPresent() {
