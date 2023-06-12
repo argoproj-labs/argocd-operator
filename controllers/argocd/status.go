@@ -332,6 +332,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 		ingress := newIngressWithSuffix("server", cr)
 		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 			log.Info("argocd-server ingress requested but not found on cluster")
+			cr.Status.Phase = "Pending"
 			return nil
 		} else {
 			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
