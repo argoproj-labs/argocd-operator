@@ -348,7 +348,6 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				}
 				hosts = strings.Join(s, ", ")
 				cr.Status.Host = hosts
-				cr.Status.Phase = "Available"
 			}
 		}
 	}
