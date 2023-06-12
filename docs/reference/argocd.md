@@ -1469,6 +1469,9 @@ Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
 
 ### Dex Example
 
+!!! note
+    `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
+
 The following examples show all properties set to the default values.  
 
 ``` yaml
@@ -1543,6 +1546,9 @@ VerifyTLS | true | Whether to enforce strict TLS checking when communicating wit
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
 
 ### Keycloak Single sign-on Example
+
+!!! note
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
 
 The following example uses keycloak as Single sign-on option for Argo CD.
 

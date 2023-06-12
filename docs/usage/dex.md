@@ -19,6 +19,9 @@ Dex configuration has moved to `.spec.sso` in release v0.4.0. Dex can be enabled
 !!! note
     Specifying `.spec.sso.dex` without setting dex as the provider will result in an error. 
 
+!!! note
+    `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
+
 An example of correctly configured dex would look as follows:
 
 ```yaml
@@ -109,5 +112,8 @@ spec:
 ```
 
 ## Uninstalling Dex 
+
+!!! note
+    `DISABLE_DEX` environment variable is no longer supported in Argo CD operator v0.8.0 onwards.
 
 Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider. 

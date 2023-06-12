@@ -75,6 +75,9 @@ spec:
 ```
 
 !!! note
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
+!!! note
     If you test the operator locally using `make run`, please add `.spec.sso.keycloak.verifyTLS: false` to your Argo CD CR. Specifying conflicting information in both specs will result in errors. 
 
 ## Create
