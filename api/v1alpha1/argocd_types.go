@@ -98,7 +98,7 @@ type ArgoCDApplicationControllerSpec struct {
 	// Set this to a duration, e.g. 10m or 600s to control the synchronisation
 	// frequency.
 	// +optional
-	AppSync *metav1.Duration `json:"appSync,omitempty"`
+	AppSync string `json:"appSync,omitempty"`
 
 	// Sharding contains the options for the Application Controller sharding configuration.
 	Sharding ArgoCDApplicationControllerShardSpec `json:"sharding,omitempty"`
