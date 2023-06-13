@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -448,10 +449,10 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 		})
 	}
 
-	if cr.Spec.Controller.AppSync != "" {
+	if cr.Spec.Controller.AppSync != nil {
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_RECONCILIATION_TIMEOUT",
-			Value: cr.Spec.Controller.AppSync,
+			Value: strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10) + "s",
 		})
 	}
 
