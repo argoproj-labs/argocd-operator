@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -352,29 +351,6 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 				"20",
 				"--kubectl-parallelism-limit",
 				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
-		},
-		{
-			"configured appSync",
-			[]argoCDOpt{appSync(time.Minute * 10)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--app-resync",
-				"600",
 				"--loglevel",
 				"info",
 				"--logformat",

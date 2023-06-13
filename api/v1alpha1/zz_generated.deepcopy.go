@@ -26,7 +26,6 @@ import (
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	"k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -100,11 +99,6 @@ func (in *ArgoCDApplicationControllerSpec) DeepCopyInto(out *ArgoCDApplicationCo
 		in, out := &in.Resources, &out.Resources
 		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.AppSync != nil {
-		in, out := &in.AppSync, &out.AppSync
-		*out = new(metav1.Duration)
-		**out = **in
 	}
 	in.Sharding.DeepCopyInto(&out.Sharding)
 	if in.Env != nil {

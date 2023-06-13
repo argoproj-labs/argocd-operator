@@ -448,6 +448,13 @@ func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
 		})
 	}
 
+	if cr.Spec.Controller.AppSync != "" {
+		env = append(env, corev1.EnvVar{
+			Name:  "ARGOCD_RECONCILIATION_TIMEOUT",
+			Value: cr.Spec.Controller.AppSync,
+		})
+	}
+
 	return env
 }
 
