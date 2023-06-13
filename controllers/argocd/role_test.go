@@ -27,7 +27,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 
 	workloadIdentifier := "x"
 	expectedRules := policyRuleForApplicationController()
-	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
@@ -45,35 +45,32 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 
 	// Check if the RedisHa policy rules are overwritten to Application Controller
 	// policy rules by the reconciler
-	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
-func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
+
+func TestReconcileArgoCD_reconcileRole_for_new_namespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
-	// only 1 role for the Argo CD instance namespace will be created
-	expectedNumberOfRoles := 1
 	// check no dexServer role is created for the new namespace with managed-by label
+	role := &v1.Role{}
 	workloadIdentifier := common.ArgoCDDexServerComponent
-	expectedRoleNamespace := a.Namespace
 	expectedDexServerRules := policyRuleForDexServer()
-	dexRoles, err := r.reconcileRole(workloadIdentifier, expectedDexServerRules, a)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedNumberOfRoles, len(dexRoles))
-	assert.Equal(t, expectedRoleNamespace, dexRoles[0].ObjectMeta.Namespace)
+	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
+	assert.NoError(t, r.reconcileRole(workloadIdentifier, expectedDexServerRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, role))
+
 	// check no redisHa role is created for the new namespace with managed-by label
 	workloadIdentifier = common.ArgoCDRedisHAComponent
 	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
-	redisHaRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
-	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].ObjectMeta.Namespace)
+	assert.NoError(t, r.reconcileRole(workloadIdentifier, expectedRedisHaRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, role))
 }
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
@@ -157,13 +154,21 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	Register(testRoleHook)
 
-	roles, err := r.reconcileRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, a)
-	role := roles[0]
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
+	assert.NoError(t, r.reconcileRole(workloadIdentifier, []v1.PolicyRule{}, a))
+
+	// Fetch the role that should have been created and perform assertions.
+	role := &v1.Role{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: generateResourceName(workloadIdentifier, a), Namespace: a.Namespace}, role)
 	assert.NoError(t, err)
 	assert.Equal(t, role.Rules, testRules())
 
-	roles, err = r.reconcileRole("test", []v1.PolicyRule{}, a)
-	role = roles[0]
+	workloadIdentifier = "test"
+	assert.NoError(t, r.reconcileRole(workloadIdentifier, []v1.PolicyRule{}, a))
+
+	// Fetch the role that should have been created and perform assertions.
+	role = &v1.Role{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: generateResourceName(workloadIdentifier, a), Namespace: a.Namespace}, role)
 	assert.NoError(t, err)
 	assert.Equal(t, role.Rules, []v1.PolicyRule{})
 }
@@ -177,7 +182,7 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 
 	workloadIdentifier := "argocd-application-controller"
 	expectedRules := policyRuleForApplicationController()
-	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
@@ -192,7 +197,7 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	// set the custom role as env variable
 	t.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role")
 
-	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	// check if the default cluster roles are removed
@@ -220,7 +225,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 
 	workloadIdentifier := "x"
 	expectedRules := policyRuleForApplicationController()
-	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := fmt.Sprintf("%s-%s", a.Name, workloadIdentifier)
@@ -255,7 +260,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	r.Client.Get(context.TODO(), types.NamespacedName{Namespace: "managedNS", Name: "managedNS"}, newNS)
 	assert.NotEqual(t, newNS.DeletionTimestamp, nil)
 
-	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	// Verify that the roles are deleted
@@ -266,7 +271,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	assert.NoError(t, createNamespace(r, "managedNS2", a.Namespace))
 
 	// Check if roles are created for the new namespace as well
-	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
+	err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, reconciledRole))

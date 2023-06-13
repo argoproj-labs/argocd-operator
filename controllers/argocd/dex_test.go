@@ -934,7 +934,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				test.setEnvFunc(t, "false")
 			}
 
-			_, err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
+			err := r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
 			// ensure role was created correctly
@@ -948,7 +948,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				test.updateCrFunc(test.argoCD)
 			}
 
-			_, err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
+			err = r.reconcileRole(common.ArgoCDDexServerComponent, rules, test.argoCD)
 			assert.NoError(t, err)
 
 			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: test.argoCD.Namespace}, role)
