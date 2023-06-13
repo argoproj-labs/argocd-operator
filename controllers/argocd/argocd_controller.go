@@ -102,7 +102,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 				}
 			}
 
-			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
+			if err := r.removeUnmanagedSourceNamespaceResources(ctx, argocd); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
 			}
 
@@ -138,7 +138,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if err := r.reconcileResources(argocd); err != nil {
+	if err := r.reconcileResources(ctx, argocd); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
