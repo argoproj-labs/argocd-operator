@@ -1,4 +1,3 @@
----
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 delete:
@@ -12,4 +11,4 @@ delete:
   kind: Namespace
   name: central-argocd
 commands:
-  - command: sleep 30s
+  - script: sleep 30

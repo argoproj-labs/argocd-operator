@@ -63,7 +63,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 }
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoles(ctx context.Context, cr *argoprojv1a1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -83,13 +83,13 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling roles for source namespaces")
 	policyRuleForApplicationSourceNamespaces := policyRuleForServerApplicationSourceNamespaces()
 	// reconcile roles is source namespaces for ArgoCD Server
-	if _, err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
+	if _, err := r.reconcileRoleForApplicationSourceNamespaces(ctx, common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
 		return err
 	}
 
 	log.Info("performing cleanup for source namespaces")
 	// remove resources for namespaces not part of SourceNamespaces
-	if err := r.removeUnmanagedSourceNamespaceResources(cr); err != nil {
+	if err := r.removeUnmanagedSourceNamespaceResources(ctx, cr); err != nil {
 		return err
 	}
 
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx context.Context, name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
 	// create policy rules for each source namespace for ArgoCD Server
@@ -205,7 +205,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
 			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
 				delete(r.ManagedSourceNamespaces, namespace.Name)
-				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
+				if err := r.cleanupUnmanagedSourceNamespaceResources(ctx, cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
 			}

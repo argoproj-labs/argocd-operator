@@ -125,6 +125,7 @@ func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
+	ctx := context.Background()
 	a := makeTestArgoCD()
 	a.Spec = v1alpha1.ArgoCDSpec{
 		SourceNamespaces: []string{
@@ -137,7 +138,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 
 	workloadIdentifier := common.ArgoCDServerComponent
 	expectedRules := policyRuleForServerApplicationSourceNamespaces()
-	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
+	_, err := r.reconcileRoleForApplicationSourceNamespaces(ctx, workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)

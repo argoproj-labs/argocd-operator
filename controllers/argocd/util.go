@@ -707,7 +707,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileResources(ctx context.Context, cr *argoprojv1a1.ArgoCD) error {
 
 	// reconcile SSO first, because dex resources get reconciled through other function calls as well, not just through reconcileSSO (this is important
 	// so that dex resources can be appropriately cleaned up when DISABLE_DEX is set to true and the operator pod restarts but doesn't enter
@@ -725,7 +725,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	log.Info("reconciling roles")
-	if err := r.reconcileRoles(cr); err != nil {
+	if err := r.reconcileRoles(ctx, cr); err != nil {
 		log.Info(err.Error())
 		return err
 	}
@@ -1416,33 +1416,28 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
-func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
-
-	for ns, _ := range r.ManagedSourceNamespaces {
+func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(ctx context.Context, cr *argoproj.ArgoCD) error {
+	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
-			for _, namespace := range cr.Spec.SourceNamespaces {
-				if namespace == ns {
-					managedNamespace = true
-					break
-				}
-			}
+			managedNamespace = contains(cr.Spec.SourceNamespaces, ns)
 		}
 
 		if !managedNamespace {
-			if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
-				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
-				continue
+			if err := r.cleanupUnmanagedSourceNamespaceResources(ctx, cr, ns); err != nil {
+				return fmt.Errorf("error cleaning up resources for namespace %s: %v", ns, err)
 			}
-			delete(r.ManagedSourceNamespaces, ns)
+			if _, exists := r.ManagedSourceNamespaces[ns]; exists {
+				delete(r.ManagedSourceNamespaces, ns)
+			}
 		}
 	}
 	return nil
 }
 
-func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
+func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(ctx context.Context, cr *argoproj.ArgoCD, ns string) error {
 	namespace := corev1.Namespace{}
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: ns}, &namespace); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -1450,33 +1445,34 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	}
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
-	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
-		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
+	if err := r.Client.Update(ctx, &namespace); err != nil {
+		return fmt.Errorf("failed to remove label from namespace [%s]: %v", namespace.Name, err)
 	}
 
 	// Delete Roles for SourceNamespaces
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
+			return fmt.Errorf("failed to fetch the role for the service account associated with %s: %v", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRole.Name != "" {
-		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+		if err := r.Client.Delete(ctx, &existingRole); err != nil {
 			return err
 		}
 	}
+
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
 	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace.Name)
-	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
+			return fmt.Errorf("failed to get the rolebinding associated with %s: %v", common.ArgoCDServerComponent, err)
 		}
 	}
 	if existingRoleBinding.Name != "" {
-		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+		if err := r.Client.Delete(ctx, existingRoleBinding); err != nil {
 			return err
 		}
 	}
