@@ -31,7 +31,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 	}
 }
 
-func newRoleForApplicationSourceNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
+func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
@@ -67,7 +67,7 @@ func (r *ReconcileArgoCD) reconcileRoles(ctx context.Context, cr *argoprojv1a1.A
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
-		if _, err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
+		if err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
 			return err
 		}
 	}
@@ -98,14 +98,16 @@ func (r *ReconcileArgoCD) reconcileRoles(ctx context.Context, cr *argoprojv1a1.A
 
 // reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
 // Managed by a single instance of ArgoCD.
-func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
-	var roles []*v1.Role
+func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+	// var roles []*v1.Role
+	log.Info(fmt.Sprintf("Starting reconcileRole with name: %s", name))
 
 	// create policy rules for each namespace
 	for _, namespace := range r.ManagedNamespaces.Items {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		if namespace.DeletionTimestamp != nil {
+			log.Info("Found terminating namespace. Removing managed-by label and skipping reconciliation.")
 			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 				delete(namespace.Labels, common.ArgoCDManagedByLabel)
 				_ = r.Client.Update(context.TODO(), &namespace)
@@ -117,8 +119,10 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err := r.Client.List(context.TODO(), list, listOption)
 		if err != nil {
-			return nil, err
+			return err
 		}
+		log.Info(fmt.Sprintf("ArgoCD list for namespace '%s' contains '%d' items", namespace.Name, len(list.Items)))
+
 		// only skip creation of dex and redisHa roles for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
 			// only create dexServer and redisHa roles for the namespace where the argocd instance is deployed
@@ -126,64 +130,73 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				continue
 			}
 		}
-		customRole := getCustomRoleName(name)
+
 		role := newRole(name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
-			return nil, err
+			return err
 		}
 		role.Namespace = namespace.Name
 		existingRole := v1.Role{}
 		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
+		roleExists := true
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
-			if customRole != "" {
-				continue // skip creating default role if custom cluster role is provided
-			}
-			roles = append(roles, role)
 
 			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-
+				log.Info("Dex installation not requested. Skipping role creation.")
 				continue // Dex installation not requested, do nothing
 			}
 
-			// Only set ownerReferences for roles in same namespace as ArgoCD CR
-			if cr.Namespace == role.Namespace {
-				if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
-					return nil, fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, role.Name, err)
+			roleExists = false
+		}
+
+		customRole := getCustomRoleName(name)
+
+		if roleExists {
+			// Delete the existing default role if custom role is specified
+			// or if there is an existing Role created for Dex but dex is disabled or not configured
+			if customRole != "" || name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+				log.Info("deleting the existing Dex role because dex is not configured")
+				if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete existing role %s in namespace %s: %v", existingRole.Name, existingRole.Namespace, err))
+					return err
 				}
 			}
 
-			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, cr.Namespace))
-			if err := r.Client.Create(context.TODO(), role); err != nil {
-				return nil, err
+			// if the Rules differ, update the Role
+			if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+				existingRole.Rules = role.Rules
+				if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update role %s in namespace %s: %v", existingRole.Name, existingRole.Namespace, err))
+					return err
+				}
 			}
 			continue
 		}
 
-		// Delete the existing default role if custom role is specified
-		// or if there is an existing Role created for Dex but dex is disabled or not configured
-		if customRole != "" ||
-			(name == common.ArgoCDDexServerComponent && !UseDex(cr)) {
-
-			log.Info("deleting the existing Dex role because dex is not configured")
-			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
-				return nil, err
-			}
-			continue
+		if customRole != "" {
+			log.Info(fmt.Sprintf("Custom role '%s' found. Skipping default role creation.", customRole))
+			continue // skip creating default role if custom cluster role is provided
 		}
 
-		// if the Rules differ, update the Role
-		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
-			existingRole.Rules = role.Rules
-			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
-				return nil, err
+		// Only set ownerReferences for roles in same namespace as ArgoCD CR
+		if cr.Namespace == role.Namespace {
+			if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, role.Name, err)
 			}
 		}
-		roles = append(roles, &existingRole)
+
+		log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, cr.Namespace))
+		if err := r.Client.Create(context.TODO(), role); err != nil {
+			log.Error(err, fmt.Sprintf("Failed to create role %s in namespace %s: %v", role.Name, role.Namespace, err))
+			return err
+		}
+		log.Info(fmt.Sprintf("Role %s created successfully in namespace %s", role.Name, role.Namespace))
+
 	}
-	return roles, nil
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx context.Context, name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
@@ -214,7 +227,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 
 		log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
 
-		role := newRoleForApplicationSourceNamespaces(name, namespace.Name, policyRules, cr)
+		role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
 			return nil, err
 		}
