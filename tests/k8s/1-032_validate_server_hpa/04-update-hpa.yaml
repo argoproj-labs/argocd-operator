@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  server:
+    replicas: 2
+    autoscale: 
+      enabled: true
+      hpa:
+        minReplicas: 8
+        maxReplicas: 12
+        targetCPUUtilizationPercentage: 50
+        scaleTargetRef:
+          kind: deployment
+          apiVersion: apps/v1
+          name: example-argocd-server
