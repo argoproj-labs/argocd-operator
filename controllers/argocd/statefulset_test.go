@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -375,12 +376,12 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
-		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "10m"},
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
 		{Name: "HOME", Value: "/home/argocd"},
 	}
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.AppSync = "10m"
+		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Minute * 10}
 	})
 	r := makeTestReconciler(t, a)
 
