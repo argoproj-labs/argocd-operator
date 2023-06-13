@@ -372,6 +372,38 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 	}
 }
 
+func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
+
+	expectedEnv := []corev1.EnvVar{
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "10m"},
+		{Name: "HOME", Value: "/home/argocd"},
+	}
+
+	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+		a.Spec.Controller.AppSync = "10m"
+	})
+	r := makeTestReconciler(t, a)
+
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	env := ss.Spec.Template.Spec.Containers[0].Env
+
+	diffEnv := cmp.Diff(env, expectedEnv)
+
+	if diffEnv != "" {
+		t.Fatalf("Reconciliation of EnvVars failed:\n%s", diffEnv)
+	}
+}
+
 func Test_UpdateNodePlacementStateful(t *testing.T) {
 
 	ss := &appsv1.StatefulSet{
