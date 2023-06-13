@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 45
+- script: |
+    set -e
+      serverReplicas=$(kubectl get -n $NAMESPACE deployment/example-argocd-server -o jsonpath='{.spec.replicas}')
+      
+      if [ "$serverReplicas" -ge 4 ] && [ "$serverReplicas" -le 7 ]; then
+        echo "server replica count matches expectation"
+        exit 0
+      fi
+      exit 1
+    done
