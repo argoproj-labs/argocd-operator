@@ -1257,9 +1257,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 
 			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
 			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
-			if _, ok := DeprecationEventEmissionTracker[e.Object.GetName()]; ok {
-				delete(DeprecationEventEmissionTracker, e.Object.GetName())
-			}
+			delete(DeprecationEventEmissionTracker, e.Object.GetName())
 
 			return false
 		},
@@ -1427,9 +1425,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(ctx context.Co
 			if err := r.cleanupUnmanagedSourceNamespaceResources(ctx, cr, ns); err != nil {
 				return fmt.Errorf("error cleaning up resources for namespace %s: %v", ns, err)
 			}
-			if _, exists := r.ManagedSourceNamespaces[ns]; exists {
-				delete(r.ManagedSourceNamespaces, ns)
-			}
+			delete(r.ManagedSourceNamespaces, ns)
 		}
 	}
 	return nil
@@ -1465,7 +1461,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(ctx context.C
 
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
-	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace.Name)
+	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
 	if err := r.Client.Get(ctx, types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s: %v", common.ArgoCDServerComponent, err)

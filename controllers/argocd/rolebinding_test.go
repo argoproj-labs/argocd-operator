@@ -219,7 +219,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
 	roleBinding := &rbacv1.RoleBinding{}
-	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, a.Namespace, sourceNamespace)
+	expectedName := getRoleBindingNameForSourceNamespaces(a.Name, sourceNamespace)
 
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: sourceNamespace}, roleBinding))
 
