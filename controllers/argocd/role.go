@@ -203,7 +203,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
 
 		namespace := &corev1.Namespace{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+		if err := r.Client.Get(ctx, types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 			return err
 		}
 
@@ -230,7 +230,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			}
 			role.Namespace = namespace.Name
 			existingRole := v1.Role{}
-			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
+			err := r.Client.Get(ctx, types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
 			if err != nil && !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
@@ -241,7 +241,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 				// If sourceNamespace includes the name but role is missing in the namespace, create the role
 				if reflect.DeepEqual(existingRole, v1.Role{}) {
 					log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
-					if err := r.Client.Create(context.TODO(), role); err != nil {
+					if err := r.Client.Create(ctx, role); err != nil {
 						return err
 					}
 				}
@@ -255,18 +255,18 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			}
 
 			// Get the latest value of namespace before updating it
-			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
+			if err := r.Client.Get(ctx, types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
 				return err
 			}
 			// Update namespace with managed-by-cluster-argocd label
 			namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
-			if err := r.Client.Update(context.TODO(), namespace); err != nil {
+			if err := r.Client.Update(ctx, namespace); err != nil {
 				log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
 			}
 			// if the Rules differ, update the Role
 			if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 				existingRole.Rules = role.Rules
-				if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
+				if err := r.Client.Update(ctx, &existingRole); err != nil {
 					return err
 				}
 			}
