@@ -226,13 +226,13 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 
 			role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
 			if err := applyReconcilerHook(cr, role, ""); err != nil {
-				return err
+				return fmt.Errorf("failed to apply reconciler hook for %s: %w", name, err)
 			}
 			role.Namespace = namespace.Name
 			existingRole := v1.Role{}
 			err := r.Client.Get(ctx, types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
 			if err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+				return fmt.Errorf("failed to reconcile the role for the service account associated with %s: %w", name, err)
 			}
 
 			// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
@@ -242,7 +242,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 				if reflect.DeepEqual(existingRole, v1.Role{}) {
 					log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
 					if err := r.Client.Create(ctx, role); err != nil {
-						return err
+						return fmt.Errorf("failed to create role for %s: %w", name, err)
 					}
 				}
 				continue
@@ -256,7 +256,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 
 			// Get the latest value of namespace before updating it
 			if err := r.Client.Get(ctx, types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
-				return err
+				return fmt.Errorf("failed to get latest namespace for %s: %w", name, err)
 			}
 			// Update namespace with managed-by-cluster-argocd label
 			namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
@@ -267,7 +267,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 				existingRole.Rules = role.Rules
 				if err := r.Client.Update(ctx, &existingRole); err != nil {
-					return err
+					return fmt.Errorf("failed to update role for %s: %w", name, err)
 				}
 			}
 
