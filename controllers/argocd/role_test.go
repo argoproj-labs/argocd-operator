@@ -135,7 +135,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 
 	workloadIdentifier := common.ArgoCDServerComponent
 	expectedRules := policyRuleForServerApplicationSourceNamespaces()
-	_, err := r.reconcileRoleForApplicationSourceNamespaces(ctx, workloadIdentifier, expectedRules, a)
+	err := r.reconcileRoleForApplicationSourceNamespaces(ctx, workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)
