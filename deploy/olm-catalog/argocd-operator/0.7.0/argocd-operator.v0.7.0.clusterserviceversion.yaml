@@ -1004,6 +1004,7 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheuses
+          - prometheusrules
           - servicemonitors
           verbs:
           - '*'
