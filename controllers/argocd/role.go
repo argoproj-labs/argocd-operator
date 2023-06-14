@@ -207,76 +207,74 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			return err
 		}
 
+		value, ok := namespace.Labels[common.ArgoCDManagedByLabel]
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
+		if ok && value != "" {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
-			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
+			val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+			if ok1 && val == cr.Namespace {
 				delete(r.ManagedSourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(ctx, cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
 			}
-			continue
-		}
+		} else {
+			log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
 
-		log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
-
-		role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
-		if err := applyReconcilerHook(cr, role, ""); err != nil {
-			return err
-		}
-		role.Namespace = namespace.Name
-		existingRole := v1.Role{}
-		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
-		if err != nil {
-			if !errors.IsNotFound(err) {
+			role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
+			if err := applyReconcilerHook(cr, role, ""); err != nil {
+				return err
+			}
+			role.Namespace = namespace.Name
+			existingRole := v1.Role{}
+			err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
+			if err != nil && !errors.IsNotFound(err) {
 				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
-		}
 
-		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
-		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
-		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; ok {
-			// If sourceNamespace includes the name but role is missing in the namespace, create the role
-			if reflect.DeepEqual(existingRole, v1.Role{}) {
-				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
-				if err := r.Client.Create(context.TODO(), role); err != nil {
+			// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
+			// as it already contains roles reconciled during reconcilation of ManagedNamespaces
+			if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; ok {
+				// If sourceNamespace includes the name but role is missing in the namespace, create the role
+				if reflect.DeepEqual(existingRole, v1.Role{}) {
+					log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
+					if err := r.Client.Create(context.TODO(), role); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+
+			// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
+			if value, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && value != "" {
+				log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
+				continue
+			}
+
+			// Get the latest value of namespace before updating it
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
+				return err
+			}
+			// Update namespace with managed-by-cluster-argocd label
+			namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+			if err := r.Client.Update(context.TODO(), namespace); err != nil {
+				log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
+			}
+			// if the Rules differ, update the Role
+			if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+				existingRole.Rules = role.Rules
+				if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
 					return err
 				}
 			}
-			continue
-		}
 
-		// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
-		if value, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && value != "" {
-			log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
-			continue
-		}
-
-		// Get the latest value of namespace before updating it
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
-			return err
-		}
-		// Update namespace with managed-by-cluster-argocd label
-		namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
-		if err := r.Client.Update(context.TODO(), namespace); err != nil {
-			log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
-		}
-		// if the Rules differ, update the Role
-		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
-			existingRole.Rules = role.Rules
-			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
-				return err
+			if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
+				r.ManagedSourceNamespaces[sourceNamespace] = ""
 			}
 		}
-
-		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
-			r.ManagedSourceNamespaces[sourceNamespace] = ""
-		}
-
 	}
 	return nil
 }
