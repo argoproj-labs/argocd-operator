@@ -207,15 +207,15 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			return err
 		}
 
-		value, ok := namespace.Labels[common.ArgoCDManagedByLabel]
+		managedByLabelval, isManagedByLabelPresent := namespace.Labels[common.ArgoCDManagedByLabel]
+		managedByClusterArgocdVal, isManagedByClusterArgoCDLabelPresent := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		if ok && value != "" {
-			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
+		if isManagedByLabelPresent && managedByLabelval != "" {
+			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, managedByLabelval))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
-			val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
-			if ok1 && val == cr.Namespace {
+			if isManagedByClusterArgoCDLabelPresent && managedByClusterArgocdVal == cr.Namespace {
 				delete(r.ManagedSourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(ctx, cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
@@ -249,8 +249,8 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			}
 
 			// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
-			if value, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && value != "" {
-				log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
+			if isManagedByClusterArgoCDLabelPresent && managedByClusterArgocdVal != "" {
+				log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", managedByClusterArgocdVal, namespace.Name))
 				continue
 			}
 
@@ -261,7 +261,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(ctx contex
 			// Update namespace with managed-by-cluster-argocd label
 			namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
 			if err := r.Client.Update(ctx, namespace); err != nil {
-				log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
+				return fmt.Errorf("failed to add label from namespace [%s]: %w", namespace.Name, err)
 			}
 			// if the Rules differ, update the Role
 			if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
