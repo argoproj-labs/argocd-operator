@@ -892,7 +892,7 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 		}
 		delete(ns.Labels, common.ArgoCDManagedByLabel)
 		if err := r.Client.Update(context.TODO(), ns); err != nil {
-			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
+			return fmt.Errorf("failed to remove label from namespace [%s]: %w", ns.Name, err)
 		}
 	}
 	return nil
