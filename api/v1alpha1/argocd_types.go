@@ -115,6 +115,20 @@ type ArgoCDApplicationControllerShardSpec struct {
 
 	// Replicas defines the number of replicas to run in the Application controller shard.
 	Replicas int32 `json:"replicas,omitempty"`
+
+	// DynamicScalingEnabled defines whether dynamic scaling should be enabled for Application Controller component
+	DynamicScalingEnabled *bool `json:"dynamicScalingEnabled,omitempty"`
+
+	// MinShards defines the minimum number of shards at any given point
+	// +kubebuilder:validation:Minimum=1
+	MinShards int32 `json:"minShards,omitempty"`
+
+	// MaxShards defines the maximum number of shards at any given point
+	MaxShards int32 `json:"maxShards,omitempty"`
+
+	// ClustersPerShard defines the maximum number of clusters managed by each argocd shard
+	// +kubebuilder:validation:Minimum=1
+	ClustersPerShard int32 `json:"clustersPerShard,omitempty"`
 }
 
 // ArgoCDApplicationSet defines whether the Argo CD ApplicationSet controller should be installed.

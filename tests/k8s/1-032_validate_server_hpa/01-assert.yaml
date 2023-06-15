@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-argocd-server
+spec:
+  replicas: 2
+status:
+  conditions:
+    - type: Available
+      status: 'True'
+    - type: Progressing
+      status: 'True'
