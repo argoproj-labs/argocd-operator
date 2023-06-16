@@ -1183,116 +1183,128 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
+// responds to an event where a namespace's labels have been updated
+func handleUpdate(e event.UpdateEvent) bool {
+	// Check if the new object has the ArgoCDManagedByLabel
+	if managedByLabelNewVal, isNewLabeled := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; isNewLabeled {
+		k8sClient, err := initK8sClient()
+		if err != nil {
+			log.Error(err, "Failed to initialize k8s client in handleUpdate, when the new object has the ArgoCDManagedByLabel")
+			return false
+		}
+		if managedByLabelOldVal, isOldLabeled := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; isOldLabeled && managedByLabelOldVal != managedByLabelNewVal {
+			err := handleNamespaceLabelChange(e.ObjectOld.GetName(), managedByLabelOldVal, k8sClient)
+			return err == nil
+		}
+		return true
+	}
+
+	// Check if the old object had the label but the new one doesn't
+	if managedByLabelOldVal, isOldLabeled := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; isOldLabeled && managedByLabelOldVal != "" {
+		k8sClient, err := initK8sClient()
+		if err != nil {
+			log.Error(err, "Failed to initialize k8s client in handleUpdate, when the old object had the label but the new one doesn't")
+			return false
+		}
+		err = handleNamespaceLabelChange(e.ObjectOld.GetName(), managedByLabelOldVal, k8sClient)
+		return err == nil
+	}
+
+	return false
+}
+
+func handleDelete(e event.DeleteEvent) bool {
+	// check if the object has the ArgoCDManagedByLabel
+	if managedByLabelVal, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && managedByLabelVal != "" {
+		k8sClient, err := initK8sClient()
+		if err != nil {
+			log.Error(err, "Failed to initialize k8s client in handleDelete", "event", e)
+			return false
+		}
+		err = handleNamespaceDeletion(e.Object.GetName(), managedByLabelVal, k8sClient)
+		return err == nil
+	}
+
+	// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
+	// is created in the future and contains an Argo CD instance, it will be tracked appropriately
+	delete(DeprecationEventEmissionTracker, e.Object.GetName())
+
+	return false
+}
+
+// returns a Predicate that filters events based on changes to a namespace's ArgoCDManagedByLabel
 func namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
-			// 1. Check if oldMeta had the label or not? if no, return true
-			// 2. if yes, check if the old and new values are different, if yes,
-			// first deleteRBACs for the old value & return true.
-			// Event is then handled by the reconciler, which would create appropriate RBACs.
-			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
-				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
-					k8sClient, err := initK8sClient()
-					if err != nil {
-						return false
-					}
-					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
-						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
-					} else {
-						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
-					}
-
-					// Delete namespace from cluster secret of previously managing argocd instance
-					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
-						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
-					} else {
-						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
-					}
-				}
-				return true
-			}
-			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
-			// which were created when the label was added to the namespace.
-			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-				if err != nil {
-					return false
-				}
-				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
-					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
-				} else {
-					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
-				}
-
-				// Delete managed namespace from cluster secret
-				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
-					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
-				} else {
-					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
-				}
-
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
-
-				if err != nil {
-					return false
-				}
-				// Delete managed namespace from cluster secret
-				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
-				} else {
-					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.Object.GetName()))
-				}
-			}
-
-			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
-			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
-			delete(DeprecationEventEmissionTracker, e.Object.GetName())
-
-			return false
-		},
+		UpdateFunc: handleUpdate,
+		DeleteFunc: handleDelete,
 	}
+}
+
+func handleNamespaceLabelChange(namespace, labelValue string, k8sClient kubernetes.Interface) error {
+	if err := deleteRBACsForNamespace(namespace, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", namespace))
+		return err
+	}
+	log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", namespace))
+
+	// Delete namespace from cluster secret of previously managing argocd instance
+	if err := deleteManagedNamespaceFromClusterSecret(labelValue, namespace, k8sClient); err != nil {
+		log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", namespace))
+		return err
+	}
+	log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", namespace))
+
+	return nil
+}
+
+func handleNamespaceDeletion(namespace, labelValue string, k8sClient kubernetes.Interface) error {
+	err := deleteManagedNamespaceFromClusterSecret(labelValue, namespace, k8sClient)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", namespace))
+		return err
+	}
+	log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", namespace))
+
+	return nil
 }
 
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
 func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
 
-	// List all the roles created for ArgoCD using the label selector
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
-	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	listOptions := metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()}
+	var allErrors []string
+
+	// List and delete all the roles
+	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), listOptions)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to list roles for namespace: %s", sourceNS))
 		return err
 	}
-
-	// Delete all the retrieved roles
 	for _, role := range roles.Items {
-		err = k8sClient.RbacV1().Roles(sourceNS).Delete(context.TODO(), role.Name, metav1.DeleteOptions{})
-		if err != nil {
-			log.Error(err, fmt.Sprintf("failed to delete roles for namespace: %s", sourceNS))
+		if err = k8sClient.RbacV1().Roles(sourceNS).Delete(context.TODO(), role.Name, metav1.DeleteOptions{}); err != nil {
+			log.Error(err, fmt.Sprintf("failed to delete role for namespace: %s", sourceNS))
+			allErrors = append(allErrors, err.Error())
 		}
 	}
 
-	// List all the roles bindings created for ArgoCD using the label selector
-	roleBindings, err := k8sClient.RbacV1().RoleBindings(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	// List and delete all the role bindings
+	roleBindings, err := k8sClient.RbacV1().RoleBindings(sourceNS).List(context.TODO(), listOptions)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS))
 		return err
 	}
-
-	// Delete all the retrieved role bindings
 	for _, roleBinding := range roleBindings.Items {
-		err = k8sClient.RbacV1().RoleBindings(sourceNS).Delete(context.TODO(), roleBinding.Name, metav1.DeleteOptions{})
-		if err != nil {
+		if err = k8sClient.RbacV1().RoleBindings(sourceNS).Delete(context.TODO(), roleBinding.Name, metav1.DeleteOptions{}); err != nil {
 			log.Error(err, fmt.Sprintf("failed to delete role binding for namespace: %s", sourceNS))
+			allErrors = append(allErrors, err.Error())
 		}
+	}
+
+	// If there were any errors, return them
+	if len(allErrors) > 0 {
+		return fmt.Errorf(strings.Join(allErrors, "; "))
 	}
 
 	return nil
@@ -1317,13 +1329,14 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 
 			for _, n := range namespaceList {
 				// remove the namespace from the list of namespaces
-				if strings.TrimSpace(n) == sourceNS {
-					continue
+				if strings.TrimSpace(n) != sourceNS {
+					result = append(result, strings.TrimSpace(n))
 				}
-				result = append(result, strings.TrimSpace(n))
-				sort.Strings(result)
-				secret.Data["namespaces"] = []byte(strings.Join(result, ","))
 			}
+
+			sort.Strings(result)
+			secret.Data["namespaces"] = []byte(strings.Join(result, ","))
+
 			// Update the secret with the updated list of namespaces
 			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
 				log.Error(err, fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS))
