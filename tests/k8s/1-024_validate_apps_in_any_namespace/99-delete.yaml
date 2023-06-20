@@ -11,5 +11,3 @@ delete:
 - apiVersion: v1
   kind: Namespace
   name: central-argocd
-commands:
-  - command: sleep 30s

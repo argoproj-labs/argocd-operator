@@ -1,4 +1,3 @@
----
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 delete:
@@ -6,6 +5,11 @@ delete:
   kind: ArgoCD
   name: example-argocd
   namespace: central-argocd
-commands:
-  # Sleep to allow resources to be completely deleted
-  - command: sleep 30s
+wait:
+- condition: delete
+  timeout: 30s
+  selector:
+    apiVersion: argoproj.io/v1alpha1
+    kind: ArgoCD
+    name: example-argocd
+    namespace: central-argocd
