@@ -1,8 +1,14 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-- script: | 
-    set -euo pipefail
-
+- script: |
+    set -e
     smtp4dev_pod=$(kubectl get pod -l=app=smtp4dev -o jsonpath='{.items[0].metadata.name}' -n $NAMESPACE)
-    kubectl -n $NAMESPACE exec -i "${smtp4dev_pod}" -- /bin/bash -c 'grep -rnw /tmp -e "Subject: Application my-app-3 has been created."'
+    output=$(kubectl -n $NAMESPACE exec -i "${smtp4dev_pod}" -- /bin/bash -c 'grep -rnw /tmp -e "Subject: Application my-app-3 has been created."')
+    if [ -n "$output" ]; then
+      echo "Email notification received: Application my-app-3 has been created."
+      exit 0
+    else
+      echo "Email notification not received."
+      exit 1
+    fi
