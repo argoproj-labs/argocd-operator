@@ -87,19 +87,6 @@ Resource Types:
                </tr>
                <tr>
                   <td>
-                     <code>dex</code></br>
-                     <em>
-                     <a href="#argoproj.io/v1alpha1.ArgoCDDexSpec">
-                     ArgoCDDexSpec
-                     </a>
-                     </em>
-                  </td>
-                  <td>
-                     <p>Dex defines the Dex server options for ArgoCD.</p>
-                  </td>
-               </tr>
-               <tr>
-                  <td>
                      <code>gaTrackingID</code></br>
                      <em>
                      string
@@ -1984,19 +1971,6 @@ Resource Types:
       </tr>
       <tr>
          <td>
-            <code>dex</code></br>
-            <em>
-            <a href="#argoproj.io/v1alpha1.ArgoCDDexSpec">
-            ArgoCDDexSpec
-            </a>
-            </em>
-         </td>
-         <td>
-            <p>Dex defines the Dex server options for ArgoCD.</p>
-         </td>
-      </tr>
-      <tr>
-         <td>
             <code>gaTrackingID</code></br>
             <em>
             string
@@ -2311,51 +2285,6 @@ Resource Types:
    </thead>
    <tbody>
       <tr>
-        <td>
-            <code>image</code></br>
-            <em>
-            string
-            </em>
-        </td>
-        <td>
-            <p>Image is the Keycloak container image.</p>
-        </td>
-        </tr>
-        <tr>
-        <td>
-            <code>resources</code></br>
-            <em>
-            <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#resourcerequirements-v1-core">
-            Kubernetes core/v1.ResourceRequirements
-            </em>
-        </td>
-        <td>
-            <p> Resources defines the Compute Resources required by the container for Keycloak.</p>
-        </td>
-        </tr>
-        <tr>
-        <td>
-            <code>version</code></br>
-            <em>
-            string
-            </em>
-        </td>
-        <td>
-            <p>Version is the Keycloak container image tag.</p>
-        </td>
-        </tr>
-        <tr>
-        <td>
-            <code>verifyTLS</code></br>
-            <em>
-            bool
-            </em>
-        </td>
-        <td>
-            <p>VerifyTLS set to false disables strict TLS validation.</p>
-        </td>
-        </tr>
-      <tr>
          <td>
             <code>dex</code></br>
             <em>
@@ -2364,7 +2293,7 @@ Resource Types:
             </em>
          </td>
          <td>
-            <p>Dex contains the configuration for Argo CD dex authentication</p>
+            <p>Dex contains the configuration for Argo CD dex authentication (previously found under cr.spec.dex)</p>
          </td>
       </tr>
       <tr>
@@ -2422,23 +2351,6 @@ Resource Types:
                Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
                Failed: At least one of the  Argo CD application controller component Pods had a failure.
                Unknown: For some reason the state of the Argo CD application controller component could not be obtained.
-            </p>
-         </td>
-      </tr>
-      <tr>
-         <td>
-            <code>dex</code></br>
-            <em>
-            string
-            </em>
-         </td>
-         <td>
-            <p>Dex is a simple, high-level summary of where the Argo CD Dex component is in its lifecycle.
-               There are five possible dex values:
-               Pending: The Argo CD Dex component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
-               Running: All of the required Pods for the Argo CD Dex component are in a Ready state.
-               Failed: At least one of the  Argo CD Dex component Pods had a failure.
-               Unknown: For some reason the state of the Argo CD Dex component could not be obtained.
             </p>
          </td>
       </tr>
@@ -2529,17 +2441,18 @@ Resource Types:
       </tr>
       <tr>
          <td>
-            <code>ssoConfig</code></br>
+            <code>sso</code></br>
             <em>
             string
             </em>
          </td>
          <td>
-            <p>ssoConfig is a simple, high-level summary of the status of SSO configuration for the Argo CD instance.
-               There are three possible server values:
-               Success: Only one SSO provider is configured in CR
-               Failed: SSO configuration is illegal or more than one SSO providers are configured in CR.
-               Unknown: For some reason the SSO configuration could not be obtained.
+            <p>SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak) component is in its lifecycle.
+               There are four possible server values:
+               Pending: The Argo CD SSO component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+               Running: All of the required Pods for the Argo CD SSO component are in a Ready state.
+               Failed: At least one of the  Argo CD SSO component Pods had a failure.
+               Unknown: The state of the Argo CD SSO component could not be obtained.
             </p>
          </td>
       </tr>
