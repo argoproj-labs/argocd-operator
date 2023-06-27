@@ -2,6 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: argocd
-spec:
-  dex:
-    config: test-config
+status:
+  phase: Available
+  sso: Failed
