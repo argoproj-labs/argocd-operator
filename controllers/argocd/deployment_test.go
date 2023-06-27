@@ -557,8 +557,11 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
-		a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			Config: "test",
+		a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				Config: "test",
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)
@@ -583,8 +586,11 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
-		a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			Config: "test",
+		a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				Config: "test",
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)

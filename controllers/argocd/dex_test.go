@@ -2,7 +2,6 @@ package argocd
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,54 +18,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func Test_isDexDisabled(t *testing.T) {
-
-	tests := []struct {
-		name                string
-		envVar              string
-		envVarFunc          func(*testing.T, string)
-		wantIsDisableDexSet bool
-		wantIsDexDisabled   bool
-	}{
-		{
-			name:                "DISABLE_DEX not set",
-			envVar:              "",
-			envVarFunc:          nil,
-			wantIsDisableDexSet: false,
-		},
-		{
-			name:   "DISABLE_DEX set to false",
-			envVar: "false",
-			envVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			wantIsDexDisabled:   false,
-			wantIsDisableDexSet: true,
-		},
-		{
-			name:   "DISABLE_DEX set to true",
-			envVar: "true",
-			envVarFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			wantIsDexDisabled:   true,
-			wantIsDisableDexSet: true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if test.envVarFunc != nil {
-				test.envVarFunc(t, test.envVar)
-			}
-
-			gotIsDexDisabled := isDexDisabled()
-			assert.Equal(t, test.wantIsDexDisabled, gotIsDexDisabled)
-			assert.Equal(t, test.wantIsDisableDexSet, isDisableDexSet)
-		})
-	}
-}
-
 func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -75,17 +26,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 		setEnvFunc func(*testing.T, string)
 		argoCD     *argoprojv1alpha1.ArgoCD
 	}{
-		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-		},
 		{
 			name:       "dex disabled by not specifying .spec.sso.provider=dex",
 			setEnvFunc: nil,
@@ -133,26 +73,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 		wantDeploymentDeleted bool
 	}{
 		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantDeploymentDeleted: true,
-		},
-		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -185,22 +105,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 				}
 			}),
 			wantDeploymentDeleted: true,
-		},
-		{
-			name: "dex disabled but deployment not deleted because of existing dex configuration",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: nil,
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				os.Unsetenv("DISABLE_DEX")
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantDeploymentDeleted: false,
 		},
 	}
 
@@ -246,27 +150,6 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 		setEnvFunc func(*testing.T, string)
 		argoCD     *argoprojv1alpha1.ArgoCD
 	}{
-		{
-			name: "dex with resources - DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					Config: "test-config",
-					Resources: &corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
-							corev1.ResourceCPU:    resourcev1.MustParse("250m"),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceMemory: resourcev1.MustParse("256Mi"),
-							corev1.ResourceCPU:    resourcev1.MustParse("500m"),
-						},
-					},
-				}
-			}),
-		},
 		{
 			name:       "dex with resources - .spec.sso.provider=dex",
 			setEnvFunc: nil,
@@ -526,26 +409,6 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 		wantPodSpec  corev1.PodSpec
 	}{
 		{
-			name: "update dex deployment - .spec.dex + DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Image = "justatest"
-				cr.Spec.Version = "latest"
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					Image:   "testdex",
-					Version: "v0.0.1",
-				}
-			},
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-				}
-			}),
-			wantPodSpec: desiredPodSpec,
-		},
-		{
 			name:       "update dex deployment - .spec.sso.provider=dex + .spec.sso.dex",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -614,26 +477,6 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 		wantServiceDeleted bool
 	}{
 		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			},
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantServiceDeleted: true,
-		},
-		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -666,22 +509,6 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 				}
 			}),
 			wantServiceDeleted: true,
-		},
-		{
-			name: "dex disabled but deployment not deleted because of existing dex configuration",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: nil,
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			updateEnvFunc: func(t *testing.T, env string) {
-				os.Unsetenv("DISABLE_DEX")
-			},
-			wantServiceDeleted: false,
 		},
 	}
 
@@ -732,26 +559,6 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 		wantServiceAccountDeleted bool
 	}{
 		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			},
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantServiceAccountDeleted: true,
-		},
-		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -784,22 +591,6 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 				}
 			}),
 			wantServiceAccountDeleted: true,
-		},
-		{
-			name: "dex disabled but sa not deleted because of existing dex configuration",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: nil,
-			updateEnvFunc: func(*testing.T, string) {
-				os.Unsetenv("DISABLE_DEX")
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantServiceAccountDeleted: false,
 		},
 	}
 
@@ -851,26 +642,6 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 		wantRoleDeleted bool
 	}{
 		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			},
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantRoleDeleted: true,
-		},
-		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -903,22 +674,6 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 				}
 			}),
 			wantRoleDeleted: true,
-		},
-		{
-			name: "dex disabled but sa not deleted because of existing dex configuration",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: nil,
-			updateEnvFunc: func(*testing.T, string) {
-				os.Unsetenv("DISABLE_DEX")
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantRoleDeleted: false,
 		},
 	}
 
@@ -975,26 +730,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 		wantRoleBindingDeleted bool
 	}{
 		{
-			name: "dex disabled using DISABLE_DEX",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantRoleBindingDeleted: true,
-		},
-		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
 			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
@@ -1027,22 +762,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 				}
 			}),
 			wantRoleBindingDeleted: true,
-		},
-		{
-			name: "dex disabled but sa not deleted because of existing dex configuration",
-			setEnvFunc: func(t *testing.T, envVar string) {
-				t.Setenv("DISABLE_DEX", envVar)
-			},
-			updateCrFunc: nil,
-			updateEnvFunc: func(*testing.T, string) {
-				os.Unsetenv("DISABLE_DEX")
-			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-				}
-			}),
-			wantRoleBindingDeleted: false,
 		},
 	}
 
