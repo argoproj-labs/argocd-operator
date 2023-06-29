@@ -531,7 +531,7 @@ teams:
   when: app.status.operationState.phase in ['Running']`
 
 	notificationsConfig["trigger.on-sync-status-unknown"] = `- description: Application status is 'Unknown'
-  end:
+  send:
   - app-sync-status-unknown
   when: app.status.sync.status == 'Unknown'`
 
