@@ -15,7 +15,6 @@ Name | Default | Description
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
-[**Dex**](#dex-options) | [Object] | Dex configuration options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
@@ -234,106 +233,6 @@ spec:
       replicas: 5
 ```
 
-## Dex Options
-
-!!! warning 
-    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.dex` to configure Dex.
-
-!!! note
-    `.spec.dex` field was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
-
-The following properties are available for configuring the Dex component.
-
-Name | Default | Description
---- | --- | ---
-Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
-Groups | [Empty] | Optional list of required groups a user must be a member of
-Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
-OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
-Resources | [Empty] | The container compute resources.
-Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
-
-### Dex Example
-
-The following examples show all properties set to the default values. Both configuration methods will be supported until v0.8.0
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: dex
-spec:
-  dex:
-    config: ""
-    groups:
-      - default
-    image: quay.io/dexidp/dex
-    openShiftOAuth: false
-    resources: {}
-    version: v2.21.0
-```
-OR
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: dex
-spec:
-  sso:
-    provider: dex
-    dex:
-      config: ""
-      groups:
-        - default
-      image: quay.io/dexidp/dex
-      openShiftOAuth: false
-      resources: {}
-      version: v2.21.0
-```
-
-Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
-
-
-### Dex OpenShift OAuth Example
-
-The following example configures Dex to use the OAuth server built into OpenShift.
-
-The `OpenShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: openshift-oauth
-spec:
-  dex:
-    openShiftOAuth: true
-  rbac:
-    defaultPolicy: 'role:readonly'
-    policy: |
-      g, cluster-admins, role:admin
-    scopes: '[groups]'
-```
-
-### Important Note regarding Role Mappings:
-
-To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
-
-A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
-
-```
-oc adm groups new cluster-admins
-oc adm groups add-users cluster-admins USER
-oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
-```
-
 ## Disable Admin
 
 Disable the admin user. This property maps directly to the `admin.enabled` field in the `argocd-cm` ConfigMap.
@@ -373,7 +272,6 @@ spec:
     "accounts.argocd-devops": "apiKey"
     "ping": "pong" // The same entry is reflected in Argo CD Configmap.
 ```
-
 
 ## GA Tracking ID
 
@@ -740,36 +638,6 @@ spec:
       my-git.org ssh-rsa AAAAB3NzaC...
       my-git.com ssh-rsa AAAAB3NzaC...
 ```
-
-## Keycloak Options
-
-The following properties are available for configuring Keycloak Single sign-on provider.
-
-Name | Default | Description
---- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
-Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
-RootCA | "" | root CA certificate for communicating with the OIDC provider
-VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
-
-### Keycloak Single sign-on Example
-
-The following example uses keycloak as Single sign-on option for Argo CD.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: status-badge-enabled
-spec:
-  sso:
-    provider: keycloak
-```
-
-Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
 
 ## Kustomize Build Options
 
@@ -1578,23 +1446,125 @@ spec:
 
 ## Single sign-on Options
 
-!!! warning
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.8.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
-
-!!! note
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields were earlier scheduled for removal in Argo CD operator v0.7.0, but have been extended to Argo CD operator v0.8.0.
-
 The following properties are available for configuring the Single sign-on component.
 
 Name | Default | Description
 --- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 [Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
 [Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
-Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are Dex and keycloak.
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are "dex" and "keycloak".
+
+## Dex Options
+
+The following properties are available for configuring the Dex component.
+
+Name | Default | Description
+--- | --- | ---
+Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
+Groups | [Empty] | Optional list of required groups a user must be a member of
+Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
+OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is present for `sso.dex.config`.
+Resources | [Empty] | The container compute resources.
+Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
+
+### Dex Example
+
+!!! note
+    `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
+
+The following examples show all properties set to the default values.  
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: dex
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: ""
+      groups:
+        - default
+      image: quay.io/dexidp/dex
+      openShiftOAuth: false
+      resources: {}
+      version: v2.21.0
+```
+
+Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
+
+### Dex OpenShift OAuth Example
+
+The following example configures Dex to use the OAuth server built into OpenShift.
+
+The `OpenShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: openshift-oauth
+spec:
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policy: |
+      g, cluster-admins, role:admin
+    scopes: '[groups]'
+```
+
+### Important Note regarding Role Mappings:
+
+To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
+
+A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
+
+```
+oc adm groups new cluster-admins
+oc adm groups add-users cluster-admins USER
+oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
+```
+
+## Keycloak Options
+
+The following properties are available for configuring Keycloak Single sign-on provider.
+
+Name | Default | Description
+--- | --- | ---
+Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
+RootCA | "" | root CA certificate for communicating with the OIDC provider
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
+
+### Keycloak Single sign-on Example
+
+!!! note
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
+The following example uses keycloak as Single sign-on option for Argo CD.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: status-badge-enabled
+spec:
+  sso:
+    provider: keycloak
+```
+
+Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
 
 ## System-Level Configuration
 

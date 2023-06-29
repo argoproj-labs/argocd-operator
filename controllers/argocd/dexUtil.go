@@ -3,20 +3,13 @@ package argocd
 import (
 	"fmt"
 	"os"
-	"reflect"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-)
-
-var (
-	isDisableDexSet bool
 )
 
 // getDexContainerImage will return the container image for the Dex server.
@@ -24,7 +17,7 @@ var (
 // There are three possible options for configuring the image, and this is the
 // order of preference.
 //
-// 1. from the Spec, the spec.dex field has an image and version to use for
+// 1. from the Spec, the spec.sso.dex field has an image and version to use for
 // generating an image reference.
 // 2. from the Environment, this looks for the `ARGOCD_DEX_IMAGE` field and uses
 // that if the spec is not configured.
@@ -36,9 +29,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := ""
 	tag := ""
 
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Image != "" {
-		img = cr.Spec.Dex.Image
-	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Image != "" {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Image != "" {
 		img = cr.Spec.SSO.Dex.Image
 	}
 
@@ -47,9 +38,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultImg = true
 	}
 
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Version != "" {
-		tag = cr.Spec.Dex.Version
-	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Version != "" {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Version != "" {
 		tag = cr.Spec.SSO.Dex.Version
 	}
 
@@ -80,9 +69,7 @@ func getDexResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := v1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.Resources != nil {
-		resources = *cr.Spec.Dex.Resources
-	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Resources != nil {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Resources != nil {
 		resources = *cr.Spec.SSO.Dex.Resources
 	}
 
@@ -95,26 +82,8 @@ func getDexConfig(cr *argoprojv1a1.ArgoCD) string {
 	// Allow override of config from CR
 	if cr.Spec.ExtraConfig["dex.config"] != "" {
 		config = cr.Spec.ExtraConfig["dex.config"]
-	} else if cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, v1alpha1.ArgoCDDexSpec{}) && len(cr.Spec.Dex.Config) > 0 {
-		config = cr.Spec.Dex.Config
 	} else if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && len(cr.Spec.SSO.Dex.Config) > 0 {
 		config = cr.Spec.SSO.Dex.Config
 	}
 	return config
-}
-
-func isDexDisabled() bool {
-
-	isDisableDexSet = false
-	if v, ok := os.LookupEnv("DISABLE_DEX"); ok && v != "" {
-
-		// isDisableDexSet helps us differentiate those cases where isDexDisabled() returns false either because it actually is set to false
-		// or because it isn't set at all. Since `DISABLE_DEX` may or may not be used anymore we have to account for this case as well
-		isDisableDexSet = true
-		return strings.ToLower(v) == "true"
-	}
-
-	// `DISABLE_DEX` is not in use
-	isDisableDexSet = false
-	return false
 }

@@ -548,56 +548,6 @@ spec:
                         type: integer
                     type: object
                 type: object
-              dex:
-                description: Dex defines the Dex server options for ArgoCD.
-                properties:
-                  config:
-                    description: Config is the dex connector configuration.
-                    type: string
-                  groups:
-                    description: Optional list of required groups a user must be a
-                      member of
-                    items:
-                      type: string
-                    type: array
-                  image:
-                    description: Image is the Dex container image.
-                    type: string
-                  openShiftOAuth:
-                    description: OpenShiftOAuth enables OpenShift OAuth authentication
-                      for the Dex server.
-                    type: boolean
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for Dex.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                    type: object
-                  version:
-                    description: Version is the Dex container image tag.
-                    type: string
-                type: object
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean
@@ -6201,9 +6151,6 @@ spec:
                         description: Version is the Dex container image tag.
                         type: string
                     type: object
-                  image:
-                    description: Image is the SSO container image.
-                    type: string
                   keycloak:
                     description: Keycloak contains the configuration for Argo CD keycloak
                       authentication
@@ -6253,39 +6200,6 @@ spec:
                   provider:
                     description: Provider installs and configures the given SSO Provider
                       with Argo CD.
-                    type: string
-                  resources:
-                    description: Resources defines the Compute Resources required
-                      by the container for SSO.
-                    properties:
-                      limits:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute
-                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                      requests:
-                        additionalProperties:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute
-                          resources required. If Requests is omitted for a container,
-                          it defaults to Limits if that is explicitly specified, otherwise
-                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                        type: object
-                    type: object
-                  verifyTLS:
-                    description: VerifyTLS set to false disables strict TLS validation.
-                    type: boolean
-                  version:
-                    description: Version is the SSO container image tag.
                     type: string
                 type: object
               statusBadgeEnabled:
@@ -6349,16 +6263,6 @@ spec:
                   state. Failed: At least one of the  Argo CD applicationSet controller
                   component Pods had a failure. Unknown: The state of the Argo CD
                   applicationSet controller component could not be obtained.'
-                type: string
-              dex:
-                description: 'Dex is a simple, high-level summary of where the Argo
-                  CD Dex component is in its lifecycle. There are four possible dex
-                  values: Pending: The Argo CD Dex component has been accepted by
-                  the Kubernetes system, but one or more of the required resources
-                  have not been created. Running: All of the required Pods for the
-                  Argo CD Dex component are in a Ready state. Failed: At least one
-                  of the  Argo CD Dex component Pods had a failure. Unknown: The state
-                  of the Argo CD Dex component could not be obtained.'
                 type: string
               host:
                 description: Host is the hostname of the Ingress.
@@ -6424,11 +6328,15 @@ spec:
                   one of the  Argo CD server component Pods had a failure. Unknown:
                   The state of the Argo CD server component could not be obtained.'
                 type: string
-              ssoConfig:
-                description: 'SSOConfig defines the status of SSO configuration. Success:
-                  Only one SSO provider is configured in CR. Failed: SSO configuration
-                  is illegal or more than one SSO providers are configured in CR.
-                  Unknown: The SSO configuration could not be obtained.'
+              sso:
+                description: 'SSO is a simple, high-level summary of where the Argo
+                  CD SSO(Dex/Keycloak) component is in its lifecycle. There are four
+                  possible sso values: Pending: The Argo CD SSO component has been
+                  accepted by the Kubernetes system, but one or more of the required
+                  resources have not been created. Running: All of the required Pods
+                  for the Argo CD SSO component are in a Ready state. Failed: At least
+                  one of the  Argo CD SSO component Pods had a failure. Unknown: The
+                  state of the Argo CD SSO component could not be obtained.'
                 type: string
             type: object
         type: object

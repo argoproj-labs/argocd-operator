@@ -46,9 +46,12 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-				Image:   "testing/dex",
-				Version: "latest",
+			a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+				Provider: v1alpha1.SSOProviderTypeDex,
+				Dex: &v1alpha1.ArgoCDDexSpec{
+					Image:   "testing/dex",
+					Version: "latest",
+				},
 			}
 		}},
 	},
@@ -640,8 +643,11 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-		ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			OpenShiftOAuth: true,
+		ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)

@@ -2,6 +2,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: argocd
-status:
-  phase: Available
-  ssoConfig: Unknown
+spec:
+  sso:
+    provider: keycloak
+    dex:
+      config: test

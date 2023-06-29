@@ -4,4 +4,4 @@ metadata:
   name: argocd
 status:
   phase: Available
-  ssoConfig: Failed
+  sso: Unknown
