@@ -51,9 +51,9 @@ jobs:
     steps:
       - name: Download kuttl plugin
         env:
-          KUTTL_VERSION: '0.10.0'
-          KUTTL_PLUGIN_SUM: 'ad21c0d2be495a8f6cfc0821e592ae61afd191ebd453156d9b204e2524fceaf2'
-          KUTTL_PLUGIN_FILENAME: 'kubectl-kuttl_0.10.0_linux_x86_64'
+          KUTTL_VERSION: '0.15.0'
+          KUTTL_PLUGIN_SUM: 'f6edcf22e238fc71b5aa389ade37a9efce596017c90f6994141c45215ba0f862'
+          KUTTL_PLUGIN_FILENAME: 'kubectl-kuttl_0.15.0_linux_x86_64'
         run: |
           set -x
           echo ${KUTTL_PLUGIN_FILENAME}
