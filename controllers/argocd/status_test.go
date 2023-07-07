@@ -2,12 +2,12 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 
+	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -17,66 +17,112 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCDForKeycloak()
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	d := newKeycloakDeployment(a)
+
+	// keycloak not installed
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Unknown", a.Status.SSO)
+
+	// keycloak installation started
+	r.Client.Create(context.TODO(), d)
+
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Pending", a.Status.SSO)
+
+	// keycloak installation completed
+	d.Status.ReadyReplicas = *d.Spec.Replicas
+	r.Client.Status().Update(context.TODO(), d)
+
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Running", a.Status.SSO)
+}
+
+func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCDForKeycloak()
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	assert.NoError(t, oappsv1.AddToScheme(r.Scheme))
+	templateAPIFound = true
+	defer removeTemplateAPI()
+
+	dc := getKeycloakDeploymentConfigTemplate(a)
+	dc.ObjectMeta.Name = defaultKeycloakIdentifier
+
+	// keycloak not installed
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Unknown", a.Status.SSO)
+
+	// keycloak installation started
+	r.Client.Create(context.TODO(), dc)
+
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Pending", a.Status.SSO)
+
+	// keycloak installation completed
+	dc.Status.ReadyReplicas = dc.Spec.Replicas
+	r.Client.Status().Update(context.TODO(), dc)
+
+	_ = r.reconcileStatusKeycloak(a)
+	assert.Equal(t, "Running", a.Status.SSO)
+}
+
+func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name             string
-		argoCD           *argoprojv1alpha1.ArgoCD
-		templateAPIfound bool
-		wantSSOConfig    string
-		wantErr          bool
-		Err              error
+		name          string
+		argoCD        *argoprojv1alpha1.ArgoCD
+		wantSSOStatus string
 	}{
-		{
-			name: "only dex configured",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.Dex = &argoprojv1alpha1.ArgoCDDexSpec{
-					Resources:      makeTestDexResources(),
-					OpenShiftOAuth: true,
-				}
-			}),
-			templateAPIfound: false,
-			wantSSOConfig:    "Success",
-			wantErr:          false,
-		},
-		{
-			name: "only keycloak configured",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
-				}
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: false,
-				}
-			}),
-			templateAPIfound: true,
-			wantSSOConfig:    "Success",
-			wantErr:          false,
-		},
 		{
 			name: "both dex and keycloak configured",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
 				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
-				}
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
 				}
 			}),
-			templateAPIfound: true,
-			wantSSOConfig:    "Failed",
-			wantErr:          true,
-			Err:              errors.New("multiple SSO configuration"),
+			wantSSOStatus: "Failed",
+		},
+		{
+			name: "sso provider dex but no .spec.sso.dex provided",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: argoprojv1alpha1.SSOProviderTypeDex,
+				}
+			}),
+			wantSSOStatus: "Failed",
 		},
 		{
 			name: "no sso configured",
 			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.Dex = &v1alpha1.ArgoCDDexSpec{}
+				cr.Spec.SSO = nil
 			}),
-			templateAPIfound: false,
-			wantSSOConfig:    "Unknown",
-			wantErr:          false,
+			wantSSOStatus: "Unknown",
+		},
+		{
+			name: "unsupported sso configured",
+			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+					Provider: "Unsupported",
+					Dex: &v1alpha1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			wantSSOStatus: "Failed",
 		},
 	}
 
@@ -86,18 +132,11 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 			r := makeTestReconciler(t, test.argoCD)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
-			err := r.reconcileSSO(test.argoCD)
+			r.reconcileSSO(test.argoCD)
 
-			err = r.reconcileStatusSSOConfig(test.argoCD)
-			if err != nil {
-				if !test.wantErr {
-					t.Errorf("Got unexpected error")
-				} else {
-					assert.Equal(t, test.Err, err)
-				}
-			}
+			r.reconcileStatusSSO(test.argoCD)
 
-			assert.Equal(t, test.wantSSOConfig, test.argoCD.Status.SSOConfig)
+			assert.Equal(t, test.wantSSOStatus, test.argoCD.Status.SSO)
 		})
 	}
 }

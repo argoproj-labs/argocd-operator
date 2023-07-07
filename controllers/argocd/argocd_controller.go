@@ -64,7 +64,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=batch,resources=cronjobs;jobs,verbs=*
 //+kubebuilder:rbac:groups=config.openshift.io,resources=clusterversions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=*
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheuses;servicemonitors;prometheusrules,verbs=*
+//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheuses;prometheusrules;servicemonitors,verbs=*
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=*
 //+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects,verbs=*
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=*,verbs=*
@@ -192,6 +192,6 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper)
 	return bldr.Complete(r)
 }

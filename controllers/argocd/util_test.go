@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,9 +46,12 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-				Image:   "testing/dex",
-				Version: "latest",
+			a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+				Provider: v1alpha1.SSOProviderTypeDex,
+				Dex: &v1alpha1.ArgoCDDexSpec{
+					Image:   "testing/dex",
+					Version: "latest",
+				},
 			}
 		}},
 	},
@@ -359,29 +361,6 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			},
 		},
 		{
-			"configured appSync",
-			[]argoCDOpt{appSync(time.Minute * 10)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--app-resync",
-				"600",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
-		},
-		{
 			"configured parallelism limit",
 			[]argoCDOpt{parallelismLimit(30)},
 			[]string{
@@ -664,8 +643,11 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-		ac.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			OpenShiftOAuth: true,
+		ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				OpenShiftOAuth: true,
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)

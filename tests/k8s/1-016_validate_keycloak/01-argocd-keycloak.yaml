@@ -7,7 +7,8 @@ metadata:
 spec:
   sso: 
     provider: keycloak
-    verifyTLS: false # required when running operator locally
+    keycloak:
+      verifyTLS: false # required when running operator locally
   server:
     ingress: 
       enabled: true
