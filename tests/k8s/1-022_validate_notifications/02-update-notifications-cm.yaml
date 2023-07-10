@@ -4,4 +4,5 @@ commands:
 - script: |
     set -e 
 
+    sleep 15
     kubectl patch cm argocd-notifications-cm -n $NAMESPACE --type merge -p '{"data": {"service.email.gmail": "{host: smtp4dev, port: 2525, from: fake@email.com}" }}'

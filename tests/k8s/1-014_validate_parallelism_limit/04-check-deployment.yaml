@@ -3,6 +3,8 @@ kind: TestStep
 commands:
 - script: |
     set -e
+    sleep 30
+
     expected="20"
     wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]')
     if ! echo "$wlCommand" | grep -Fxq -- "--kubectl-parallelism-limit"; then

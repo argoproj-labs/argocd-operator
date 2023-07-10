@@ -4,7 +4,21 @@ commands:
 - script: |
     set -e
     smtp4dev_pod=$(kubectl get pod -l=app=smtp4dev -o jsonpath='{.items[0].metadata.name}' -n $NAMESPACE)
+    if [ $? -eq 0 ]; then
+      echo "Successfully fetched smtp4dev_pod: ${smtp4dev_pod}"
+    else
+      echo "Failed to fetch smtp4dev_pod"
+      exit 1
+    fi
+
     output=$(kubectl -n $NAMESPACE exec -i "${smtp4dev_pod}" -- /bin/bash -c 'grep -rnw /tmp -e "Subject: Application my-app-3 has been created."')
+    if [ $? -eq 0 ]; then
+      echo "Successfully executed command in smtp4dev_pod"
+    else
+      echo "Failed to execute command in smtp4dev_pod"
+      exit 1
+    fi
+
     if [ -n "$output" ]; then
       echo "Email notification received: Application my-app-3 has been created."
       exit 0
