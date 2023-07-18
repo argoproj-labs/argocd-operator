@@ -29,7 +29,7 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // getArgoExportCommand will return the command for the ArgoCD export process.
@@ -149,7 +149,7 @@ func newJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.Job {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name, ""),
 		},
 	}
 }
@@ -160,7 +160,7 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name, ""),
 		},
 	}
 }
@@ -215,7 +215,7 @@ func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    common.DefaultLabels(cr.Name, ""),
 		},
 		Spec: newExportPodSpec(cr, argocdName, client),
 	}

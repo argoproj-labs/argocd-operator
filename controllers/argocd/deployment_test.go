@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -1681,7 +1681,7 @@ func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      test.serviceAccount,
 					Namespace: a.Namespace,
-					Labels:    argoutil.LabelsForCluster(a),
+					Labels:    argoutil.LabelsForCluster(a.Name, ""),
 				},
 			}
 			r.Client.Create(context.TODO(), sa)

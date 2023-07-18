@@ -25,7 +25,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var routeAPIFound = false
@@ -51,7 +51,7 @@ func newRoute(cr *argoprojv1a1.ArgoCD) *routev1.Route {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 	}
 }

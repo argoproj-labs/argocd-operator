@@ -23,7 +23,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var (
@@ -37,7 +37,7 @@ func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.Horizontal
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 	}
 }

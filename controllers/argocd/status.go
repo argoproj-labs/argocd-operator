@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
