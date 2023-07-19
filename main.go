@@ -31,6 +31,7 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"go.uber.org/zap/zapcore"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -84,6 +85,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
