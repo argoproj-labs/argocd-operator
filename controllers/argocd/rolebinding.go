@@ -25,7 +25,7 @@ func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
 			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr.Name, cr.Namespace, cr.Annotations),
 		},
 	}
 }
@@ -48,7 +48,7 @@ func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
 			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr.Name, cr.Namespace, cr.Annotations),
 			Namespace:   cr.Namespace,
 		},
 	}
@@ -60,7 +60,7 @@ func newRoleBindingForSupportNamespaces(cr *argoprojv1a1.ArgoCD, namespace strin
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace),
 			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr.Name, cr.Namespace, cr.Annotations),
 			Namespace:   namespace,
 		},
 	}

@@ -13,7 +13,7 @@ var (
 )
 
 // MutateFunc defines the function signature for any mutation functions that need to be executed by this package
-type MutateFunc func(cr *v1alpha1.ArgoCD, resource interface{}, client *ctrlClient.Client) error
+type MutateFunc func(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(m ...MutateFunc) {
