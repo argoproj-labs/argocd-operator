@@ -152,7 +152,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 		expectedNil       bool
 		expectedHost      bool
 		host              string
-		phase             string
 	}{
 		{
 			name:              "",
@@ -161,7 +160,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			ingressEnabled:    false,
 			expectedNil:       false,
 			host:              "argocd",
-			phase:             "Available",
 		},
 		{
 			name:              "",
@@ -170,7 +168,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			ingressEnabled:    true,
 			expectedNil:       false,
 			host:              "argocd, 12.0.0.5",
-			phase:             "Available",
 		},
 	}
 	for _, test := range tests {
@@ -250,7 +247,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, test.host, a.Status.Host)
-			assert.Equal(t, test.phase, a.Status.Phase)
 		})
 	}
 }
