@@ -438,14 +438,13 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	cm.Data[common.ArgoCDKeyServerURL] = r.getArgoServerURI(cr)
 	cm.Data[common.ArgoCDKeyUsersAnonymousEnabled] = fmt.Sprint(cr.Spec.UsersAnonymousEnabled)
 
-	// create dex config if dex is enabled either through DISABLE_DEX or through `.spec.sso`
+	// create dex config if dex is enabled through `.spec.sso`
 	if UseDex(cr) {
 		dexConfig := getDexConfig(cr)
 
-		// If no dexConfig expressed but openShiftOAuth is requested through either `.spec.dex` or `.spec.sso.dex`, use default
+		// If no dexConfig expressed but openShiftOAuth is requested through `.spec.sso.dex`, use default
 		// openshift dex config
-		if dexConfig == "" && (cr.Spec.Dex != nil && !reflect.DeepEqual(cr.Spec.Dex, &v1alpha1.ArgoCDDexSpec{}) && cr.Spec.Dex.OpenShiftOAuth ||
-			(cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth)) {
+		if dexConfig == "" && (cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
 				return err
@@ -477,13 +476,13 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error 
 	existingCM := &corev1.ConfigMap{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
 
-		// reconcile dex configuration if dex is enabled either through `DISABLE_DEX` or `.spec.sso.dex.provider` or there is
+		// reconcile dex configuration if dex is enabled `.spec.sso.dex.provider` or there is
 		// existing dex configuration
 		if UseDex(cr) {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider == v1alpha1.SSOProviderTypeKeycloak {
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeKeycloak {
 			// retain oidc.config during reconcilliation when keycloak is configured
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}

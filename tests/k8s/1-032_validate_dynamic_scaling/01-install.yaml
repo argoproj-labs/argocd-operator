@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  controller:
+    sharding:
+      dynamicScalingEnabled: true
+      minShards: 1
+      maxShards: 4
+      clustersPerShard: 1
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - command: sleep 30s

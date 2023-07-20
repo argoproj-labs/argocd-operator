@@ -153,3 +153,32 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(o client.Object) []reconcile.R
 
 	return result
 }
+
+// clusterSecretResourceMapper maps a watch event on a namespace, back to the
+// ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) clusterSecretResourceMapper(o client.Object) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	labels := o.GetLabels()
+	if v, ok := labels[common.ArgoCDSecretTypeLabel]; ok && v == "cluster" {
+		argocds := &argoprojv1alpha1.ArgoCDList{}
+		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
+		}
+	}
+
+	return result
+}

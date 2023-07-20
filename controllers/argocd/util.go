@@ -141,10 +141,6 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
-	if cr.Spec.Controller.AppSync != nil {
-		cmd = append(cmd, "--app-resync", strconv.FormatInt(int64(cr.Spec.Controller.AppSync.Seconds()), 10))
-	}
-
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
 
@@ -709,19 +705,16 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
-	// reconcile SSO first, because dex resources get reconciled through other function calls as well, not just through reconcileSSO (this is important
-	// so that dex resources can be appropriately cleaned up when DISABLE_DEX is set to true and the operator pod restarts but doesn't enter
-	// dex reconciliation again because dex is disabled, thus leaving hanging resources around if they are not also cleaned up in the main loop)
 	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
 	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
 	log.Info("reconciling SSO")
 	if err := r.reconcileSSO(cr); err != nil {
-		return err
+		log.Info(err.Error())
 	}
 
 	log.Info("reconciling status")
 	if err := r.reconcileStatus(cr); err != nil {
-		return err
+		log.Info(err.Error())
 	}
 
 	log.Info("reconciling roles")
@@ -939,7 +932,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -987,16 +980,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			// Handle deletion of SSO from Argo CD custom resource
 			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
 				err := r.deleteSSOConfiguration(newCR, oldCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
-			}
-
-			// trigger deletion of dex when dex configuration is removed from .spec.dex
-			if !reflect.DeepEqual(oldCR.Spec.Dex, newCR.Spec.Dex) && (newCR.Spec.Dex == nil ||
-				(newCR.Spec.Dex.Config == "" && !newCR.Spec.Dex.OpenShiftOAuth)) {
-				err := r.deleteDexResources(newCR)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))
@@ -1062,6 +1045,8 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
 
+	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
+
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
 	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
@@ -1070,6 +1055,12 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	// Watch for secrets of type TLS that might be created by external processes
 	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
+
+	// Watch for cluster secrets added to the argocd instance
+	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
+		}}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})

@@ -158,7 +158,7 @@ type CustomKeycloakAPIRealm struct {
 // There are three possible options for configuring the image, and this is the
 // order of preference.
 //
-// 1. from the Spec, the spec.sso field has an image and version to use for
+// 1. from the Spec, the spec.sso.keycloak field has an image and version to use for
 // generating an image reference.
 // 2. From the Environment, this looks for the `ARGOCD_KEYCLOAK_IMAGE` field and uses
 // that if the spec is not configured.
@@ -170,9 +170,7 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	img := ""
 	tag := ""
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Image != "" {
-		img = cr.Spec.SSO.Image
-	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Image != "" {
+	if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Image != "" {
 		img = cr.Spec.SSO.Keycloak.Image
 	}
 
@@ -184,9 +182,7 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultImg = true
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Version != "" {
-		tag = cr.Spec.SSO.Version
-	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Version != "" {
+	if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Version != "" {
 		tag = cr.Spec.SSO.Keycloak.Version
 	}
 
@@ -258,9 +254,7 @@ func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	resources := defaultKeycloakResources()
 
 	// Allow override of resource requirements from CR
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Resources != nil {
-		resources = *cr.Spec.SSO.Resources
-	} else if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Resources != nil {
+	if cr.Spec.SSO.Keycloak != nil && cr.Spec.SSO.Keycloak.Resources != nil {
 		resources = *cr.Spec.SSO.Keycloak.Resources
 	}
 
@@ -821,7 +815,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycl
 	}
 
 	// By default TLS Verification should be enabled.
-	if (cr.Spec.SSO.VerifyTLS == nil || *cr.Spec.SSO.VerifyTLS) && (cr.Spec.SSO.Keycloak == nil || (cr.Spec.SSO.Keycloak.VerifyTLS == nil || *cr.Spec.SSO.Keycloak.VerifyTLS)) {
+	if cr.Spec.SSO.Keycloak == nil || (cr.Spec.SSO.Keycloak.VerifyTLS == nil || *cr.Spec.SSO.Keycloak.VerifyTLS) {
 		tlsVerification = true
 	}
 

@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -558,8 +557,11 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
-		a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			Config: "test",
+		a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				Config: "test",
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)
@@ -584,8 +586,11 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Grafana.Enabled = true
-		a.Spec.Dex = &v1alpha1.ArgoCDDexSpec{
-			Config: "test",
+		a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			Provider: v1alpha1.SSOProviderTypeDex,
+			Dex: &v1alpha1.ArgoCDDexSpec{
+				Config: "test",
+			},
 		}
 	})
 	r := makeTestReconciler(t, a)
@@ -1359,11 +1364,6 @@ func operationProcessors(n int32) argoCDOpt {
 	}
 }
 
-func appSync(d time.Duration) argoCDOpt {
-	return func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.Controller.AppSync = &metav1.Duration{Duration: d}
-	}
-}
 func Test_UpdateNodePlacement(t *testing.T) {
 
 	deployment := &appsv1.Deployment{

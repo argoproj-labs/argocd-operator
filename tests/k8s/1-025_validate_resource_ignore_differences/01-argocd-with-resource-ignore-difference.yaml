@@ -16,7 +16,7 @@ spec:
           - abc
     resourceIdentifiers:
       - group: apps
-        kind: deployments
+        kind: Deployment
         customization:
           jqPathExpressions:
             - xyz

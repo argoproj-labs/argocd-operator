@@ -15,8 +15,8 @@ Name | Default | Description
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
-[**Dex**](#dex-options) | [Object] | Dex configuration options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
+[**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
 [**Grafana**](#grafana-options) | [Object] | Grafana configuration options.
@@ -145,16 +145,20 @@ spec:
 
 The following properties are available for configuring the Argo CD Application Controller component.
 
-Name | Default | Description
---- | --- | ---
-Processors.Operation | 10 | The number of operation processors.
-Processors.Status | 20 | The number of status processors.
-Resources | [Empty] | The container compute resources.
-LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
-AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications
-Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component.
-Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller.
-Env | [Empty] | Environment to set for the application controller workloads
+Name | Default | Description | Validation Criteira |
+--- | --- | --- | ---
+Processors.Operation | 10 | The number of operation processors. | |
+Processors.Status | 20 | The number of status processors. | |
+Resources | [Empty] | The container compute resources. | |
+LogLevel | info | The log level to be used by the ArgoCD Application Controller component. | Valid options are debug, info, error, and warn. |
+AppSync | 3m | AppSync is used to control the sync frequency of ArgoCD Applications | |
+Sharding.enabled | false | Whether to enable sharding on the ArgoCD Application Controller component. Useful when managing a large number of clusters to relieve memory pressure on the controller component. | |
+Sharding.replicas | 1 | The number of replicas that will be used to support sharding of the ArgoCD Application Controller. | Must be greater than 0 |
+Env | [Empty] | Environment to set for the application controller workloads | |
+Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the ArgoCD Application Controller component. This will ignore the configuration of `Sharding.enabled` and `Sharding.replicas` | |
+Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
+Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
+Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
 
 ### Controller Example
 
@@ -191,104 +195,42 @@ spec:
       value: '120'    
 ```
 
-## Dex Options
+The following example shows how to set multiple replicas of Argo CD Application Controller. This example will scale up/down the Argo CD Application Controller based on the parameter clustersPerShard. The number of replicas will be set between minShards and maxShards.
 
-!!! warning 
-    `.spec.dex` is deprecated and support will be removed in Argo CD operator v0.8.0. Please use `.spec.sso.dex` to configure Dex.
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sharding:
+      dynamicScalingEnabled: true
+      minShards: 2
+      maxShards: 5
+      clustersPerShard: 10
+```
 
 !!! note
-    `.spec.dex` field was earlier scheduled for removal in Argo CD operator v0.7.0, but has been extended to Argo CD operator v0.8.0.
+    In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
 
-The following properties are available for configuring the Dex component.
 
-Name | Default | Description
---- | --- | ---
-Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
-Groups | [Empty] | Optional list of required groups a user must be a member of
-Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
-OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is presnt for `Dex.Config`.
-Resources | [Empty] | The container compute resources.
-Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
+The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
 
-### Dex Example
-
-The following examples show all properties set to the default values. Both configuration methods will be supported until v0.8.0
-
-``` yaml
+```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: example-argocd
   labels:
-    example: dex
+    example: controller
 spec:
-  dex:
-    config: ""
-    groups:
-      - default
-    image: quay.io/dexidp/dex
-    openShiftOAuth: false
-    resources: {}
-    version: v2.21.0
-```
-OR
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: dex
-spec:
-  sso:
-    provider: dex
-    dex:
-      config: ""
-      groups:
-        - default
-      image: quay.io/dexidp/dex
-      openShiftOAuth: false
-      resources: {}
-      version: v2.21.0
-```
-
-Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
-
-
-### Dex OpenShift OAuth Example
-
-The following example configures Dex to use the OAuth server built into OpenShift.
-
-The `OpenShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: openshift-oauth
-spec:
-  dex:
-    openShiftOAuth: true
-  rbac:
-    defaultPolicy: 'role:readonly'
-    policy: |
-      g, cluster-admins, role:admin
-    scopes: '[groups]'
-```
-
-### Important Note regarding Role Mappings:
-
-To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
-
-A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
-
-```
-oc adm groups new cluster-admins
-oc adm groups add-users cluster-admins USER
-oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
+  controller:
+    sharding:
+      enabled: true
+      replicas: 5
 ```
 
 ## Disable Admin
@@ -308,6 +250,27 @@ metadata:
     example: disable-admin
 spec:
   disableAdmin: true
+```
+
+## Extra Config
+
+This is a generic mechanism to add new or otherwise-unsupported
+features to the argocd-cm configmap.  Manual edits to the argocd-cm
+configmap will otherwise be automatically reverted.
+
+This defaults to empty.
+
+## Extra Config Example
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  extraConfig:
+    "accounts.argocd-devops": "apiKey"
+    "ping": "pong" // The same entry is reflected in Argo CD Configmap.
 ```
 
 ## GA Tracking ID
@@ -676,36 +639,6 @@ spec:
       my-git.com ssh-rsa AAAAB3NzaC...
 ```
 
-## Keycloak Options
-
-The following properties are available for configuring Keycloak Single sign-on provider.
-
-Name | Default | Description
---- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
-Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
-RootCA | "" | root CA certificate for communicating with the OIDC provider
-VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
-Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
-
-### Keycloak Single sign-on Example
-
-The following example uses keycloak as Single sign-on option for Argo CD.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: status-badge-enabled
-spec:
-  sso:
-    provider: keycloak
-```
-
-Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
-
 ## Kustomize Build Options
 
 Build options/parameters to use with `kustomize build` (optional). This property maps directly to the `kustomize.buildOptions` field in the `argocd-cm` ConfigMap.
@@ -1014,35 +947,44 @@ There are two ways to customize resource behavior- the first way, only available
 !!! warning 
     `resourceCustomizations` is being deprecated, and support will be removed in Argo CD Operator v0.8.0 so is encouraged to use `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
 
-### Resource Customizations (with subkeys) Example
+### Resource Customizations (with subkeys)
 
-Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`. The following example defines a custom health check, custom action, and an ignoreDifferences config in the `argocd-cm` ConfigMap. Additionally, `.spec.resourceIgnoreDifferences.all` allows you to apply these specified settings to all resources managed by this Argo CD instance.
+Keys for `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` are in the form (respectively): `resource.customizations.health.<group_kind>`, `resource.customizations.ignoreDifferences.<group_kind>`, and `resource.customizations.actions.<group_kind>`.
 
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: argocd
+#### Application Level Configuration
+
+Argo CD allows ignoring differences at a specific JSON path, using [RFC6902 JSON patches](https://tools.ietf.org/html/rfc6902) and [JQ path expressions](https://stedolan.github.io/jq/manual/#path(path_expression)). It is also possible to ignore differences from fields owned by specific managers defined in `metadata.managedFields` in live resources.
+
+The following sample application is configured to ignore differences in `spec.replicas` for all deployments:
+
+```yaml
 spec:
   resourceIgnoreDifferences:
-    all:
-      jsonPointers:
-        - /spec/replicas
-      managedFieldsManagers:
-        - kube-controller-manager
     resourceIdentifiers:
-      - group: admissionregistration.k8s.io
-        kind: MutatingWebhookConfiguration
-        customization:
-          jqPathExpressions:
-            - '.webhooks[]?.clientConfig.caBundle'
-      - group: apps
-        kind: Deployment
-        customization:
-          managedFieldsManagers:
-            - kube-controller-manager
-          jsonPointers:
-            - /spec/replicas
+    - group: apps
+      kind: Deployment
+      customization:
+        jsonPointers:
+        - /spec/replicas
+```
+
+Note that the `group` field relates to the [Kubernetes API group](https://kubernetes.io/docs/reference/using-api/#api-groups) without the version.
+
+To ignore elements of a list, you can use JQ path expressions to identify list items based on item content:
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: apps
+      kind: Deployment
+      customization:
+        jqPathExpressions:
+        - .spec.template.spec.initContainers[] | select(.name == "injected-init-container")
+```
+
+The following example defines a custom health check in the `argocd-cm` ConfigMap:
+``` yaml
+spec:
   resourceHealthChecks:
     - group: certmanager.k8s.io
       kind: Certificate
@@ -1067,6 +1009,11 @@ spec:
         hs.status = "Progressing"
         hs.message = "Waiting for certificate"
         return hs
+```
+
+The following example defines a custom action in the `argocd-cm` ConfigMap:
+``` yaml
+spec:
   resourceActions:
     - group: apps
       kind: Deployment
@@ -1089,24 +1036,15 @@ spec:
             obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
             return obj
 ```
- After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+
+After applying these changes your `argocd-cm` Configmap should contain the following fields: 
 
 ```
-resource.customizations.ignoreDifferences.all: |
+resource.customizations.ignoreDifferences.apps_Deployment: |
   jsonPointers:
   - /spec/replicas
-  managedFieldsManagers:
-  - kube-controller-manager
-
-resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
-  jqpathexpressions:
-  - '.webhooks[]?.clientConfig.caBundle'
-
-resource.customizations.ignoreDifferences.apps_deployments: |
-  managedFieldsManagers:
-  - kube-controller-manager
-  jsonPointers:
-  - /spec/replicas
+  jqPathExpressions:
+  - .spec.template.spec.initContainers[] | select(.name == "injected-init-container")
 
 resource.customizations.health.certmanager.k8s.io_Certificate: |
   hs = {}
@@ -1148,6 +1086,63 @@ resource.customizations.actions.apps_Deployment: |
       end
       obj.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"] = os.date("!%Y-%m-%dT%XZ")
       return obj
+```
+
+#### System-Level Configuration
+The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind in `resource.customizations` key of `argocd-cm` ConfigMap. Following is an example of a customization which ignores the `caBundle` field of a `MutatingWebhookConfiguration` webhooks:
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      customization:
+        jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+```
+
+Resource customization can also be configured to ignore all differences made by a `managedField.manager` at the system level. The example bellow shows how to configure ArgoCD to ignore changes made by `kube-controller-manager` in `Deployment` resources.
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    resourceIdentifiers:
+    - group: apps
+      kind: Deployment
+      customization:
+        managedFieldsManagers:
+        - kube-controller-manager
+```
+
+It is possible to configure ignoreDifferences to be applied to all resources in every Application managed by an ArgoCD instance. In order to do so, resource customizations can be configured like in the example below:
+
+```yaml
+spec:
+  resourceIgnoreDifferences:
+    all:
+      managedFieldsManagers:
+        - kube-controller-manager
+      jsonPointers:
+        - /spec/replicas
+```
+
+After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+
+```
+resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+  jqPathExpressions:
+  - '.webhooks[]?.clientConfig.caBundle'
+
+resource.customizations.ignoreDifferences.apps_Deployment: |
+  managedFieldsManagers:
+  - kube-controller-manager
+
+resource.customizations.ignoreDifferences.all: |
+  managedFieldsManagers:
+  - kube-controller-manager
+  jsonPointers:
+  - /spec/replicas
 ```
 
 ### Resource Customizations Example
@@ -1451,23 +1446,158 @@ spec:
 
 ## Single sign-on Options
 
-!!! warning
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` are deprecated and support will be removed in Argo CD operator v0.8.0. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
-
-!!! note
-    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields were earlier scheduled for removal in Argo CD operator v0.7.0, but have been extended to Argo CD operator v0.8.0.
-
 The following properties are available for configuring the Single sign-on component.
 
 Name | Default | Description
 --- | --- | ---
-Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 [Keycloak](#keycloak-options) | [Object] | Configuration options for Keycloak SSO provider
 [Dex](#dex-options) | [Object] | Configuration options for Dex SSO provider
-Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are Dex and keycloak.
+Provider | [Empty] | The name of the provider used to configure Single sign-on. For now the supported options are "dex" and "keycloak".
+
+## Dex Options
+
+The following properties are available for configuring the Dex component.
+
+Name | Default | Description
+--- | --- | ---
+Config | [Empty] | The `dex.config` property in the `argocd-cm` ConfigMap.
+Groups | [Empty] | Optional list of required groups a user must be a member of
+Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `ARGOCD_DEX_IMAGE` environment variable.
+OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is present for `sso.dex.config`.
+Resources | [Empty] | The container compute resources.
+Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
+
+### Dex Example
+
+!!! note
+    `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
+
+The following examples show all properties set to the default values.  
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: dex
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: ""
+      groups:
+        - default
+      image: quay.io/dexidp/dex
+      openShiftOAuth: false
+      resources: {}
+      version: v2.21.0
+```
+
+Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
+
+### Dex OpenShift OAuth Example
+
+The following example configures Dex to use the OAuth server built into OpenShift.
+
+The `OpenShiftOAuth` property can be used to trigger the operator to auto configure the built-in OpenShift OAuth server. The RBAC `Policy` property is used to give the admin role in the Argo CD cluster to users in the OpenShift `cluster-admins` group.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: openshift-oauth
+spec:
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+  rbac:
+    defaultPolicy: 'role:readonly'
+    policy: |
+      g, cluster-admins, role:admin
+    scopes: '[groups]'
+```
+
+### Important Note regarding Role Mappings:
+
+To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
+
+A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
+
+```
+oc adm groups new cluster-admins
+oc adm groups add-users cluster-admins USER
+oc adm policy add-cluster-role-to-group cluster-admin cluster-admins
+```
+
+## Keycloak Options
+
+The following properties are available for configuring Keycloak Single sign-on provider.
+
+Name | Default | Description
+--- | --- | ---
+Image | OpenShift - `registry.redhat.io/rh-sso-7/sso75-openshift-rhel8` <br/> Kuberentes - `quay.io/keycloak/keycloak` | The container image for keycloak. This overrides the `ARGOCD_KEYCLOAK_IMAGE` environment variable.
 Resources | `Requests`: CPU=500m, Mem=512Mi, `Limits`: CPU=1000m, Mem=1024Mi | The container compute resources.
+RootCA | "" | root CA certificate for communicating with the OIDC provider
 VerifyTLS | true | Whether to enforce strict TLS checking when communicating with Keycloak service.
 Version | OpenShift - `sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3` (7.5.1) <br/> Kubernetes - `sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9` (15.0.2) | The tag to use with the keycloak container image.
+
+### Keycloak Single sign-on Example
+
+!!! note
+    `.spec.sso.Image`, `.spec.sso.Version`, `.spec.sso.Resources` and `.spec.sso.verifyTLS` fields are no longer supported in Argo CD operator v0.8.0 onwards. Please use equivalent fields under `.spec.sso.keycloak` to configure your keycloak instance.
+
+The following example uses keycloak as Single sign-on option for Argo CD.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: status-badge-enabled
+spec:
+  sso:
+    provider: keycloak
+```
+
+Please refer to the [keycloak user guide](../usage/keycloak/kubernetes.md) to learn more about configuring keycloak as a Single sign-on provider.
+
+## System-Level Configuration
+
+The comparison of resources with well-known issues can be customized at a system level. Ignored differences can be configured for a specified group and kind
+in `resource.customizations` key of `argocd-cm` ConfigMap. Following is an example of a customization which ignores the `caBundle` field
+of a `MutatingWebhookConfiguration` webhooks:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+    jqPathExpressions:
+    - '.webhooks[]?.clientConfig.caBundle'
+```
+
+Resource customization can also be configured to ignore all differences made by a `managedFieldsManager` at the system level. The example bellow shows how to configure ArgoCD to ignore changes made by `kube-controller-manager` in `Deployment` resources.
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.apps_Deployment: |
+    managedFieldsManagers:
+    - kube-controller-manager
+```
+
+It is possible to configure ignoreDifferences to be applied to all resources in every Application managed by an ArgoCD instance. In order to do so, resource customizations can be configured like in the example bellow:
+
+```yaml
+data:
+  resource.customizations.ignoreDifferences.all: |
+    managedFieldsManagers:
+    - kube-controller-manager
+    jsonPointers:
+    - /spec/replicas
+```
 
 ## TLS Options
 
