@@ -16,7 +16,6 @@ type RoleBindingRequest struct {
 	InstanceName string
 	Namespace    string
 	Component    string
-	Client       *ctrlClient.Client
 }
 
 // newRoleBinding returns a new RoleBinding instance.
