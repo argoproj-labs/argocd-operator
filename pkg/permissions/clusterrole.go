@@ -44,18 +44,20 @@ func newClusterRole(name, instanceName, instanceNamespace, component string, lab
 }
 
 func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error) {
-	var errCount int
+	var (
+		mutationErr error
+	)
 	clusterRole := newClusterRole(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
 			err := mutation(nil, clusterRole, request.Client)
 			if err != nil {
-				errCount++
+				mutationErr = err
 			}
 		}
-		if errCount > 0 {
-			return clusterRole, fmt.Errorf("RequestClusterRole: one or more mutation functions could not be applied")
+		if mutationErr != nil {
+			return clusterRole, fmt.Errorf("RequestRole: one or more mutation functions could not be applied: %s", mutationErr)
 		}
 	}
 	return clusterRole, nil

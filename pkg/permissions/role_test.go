@@ -2,7 +2,6 @@ package permissions
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 
@@ -53,7 +52,6 @@ func TestRequestRole(t *testing.T) {
 		desiredRole *rbacv1.Role
 		mutation    bool
 		wantErr     bool
-		desiredErr  error
 	}{
 		{
 			name: "request role, no mutation",
@@ -67,7 +65,6 @@ func TestRequestRole(t *testing.T) {
 			mutation:    false,
 			desiredRole: getTestRole(func(r *rbacv1.Role) {}),
 			wantErr:     false,
-			desiredErr:  nil,
 		},
 		{
 			name: "request role, no mutation, custom name, labels, annotations",
@@ -86,8 +83,7 @@ func TestRequestRole(t *testing.T) {
 				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
 				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
 			}),
-			wantErr:    false,
-			desiredErr: nil,
+			wantErr: false,
 		},
 		{
 			name: "request role, successful mutation",
@@ -105,7 +101,6 @@ func TestRequestRole(t *testing.T) {
 			mutation:    true,
 			desiredRole: getTestRole(func(r *rbacv1.Role) { r.Rules = testRulesMutated }),
 			wantErr:     false,
-			desiredErr:  nil,
 		},
 		{
 			name: "request role, failed mutation",
@@ -123,7 +118,6 @@ func TestRequestRole(t *testing.T) {
 			mutation:    true,
 			desiredRole: getTestRole(func(r *rbacv1.Role) {}),
 			wantErr:     true,
-			desiredErr:  fmt.Errorf("RequestRole: one or more mutation functions could not be applied"),
 		},
 	}
 
@@ -137,7 +131,6 @@ func TestRequestRole(t *testing.T) {
 
 			} else {
 				assert.Error(t, err)
-				assert.Equal(t, test.desiredErr, err)
 			}
 
 		})

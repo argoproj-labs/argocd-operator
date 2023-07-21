@@ -58,7 +58,7 @@ var (
 )
 
 func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
-	return errors.New("")
+	return errors.New("test-mutation-error")
 }
 
 func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {

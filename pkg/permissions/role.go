@@ -46,18 +46,20 @@ func newRole(name, instanceName, namespace, component string, labels, annotation
 }
 
 func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
-	var errCount int
+	var (
+		mutationErr error
+	)
 	role := newRole(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
 			err := mutation(nil, role, request.Client)
 			if err != nil {
-				errCount++
+				mutationErr = err
 			}
 		}
-		if errCount > 0 {
-			return role, fmt.Errorf("RequestRole: one or more mutation functions could not be applied")
+		if mutationErr != nil {
+			return role, fmt.Errorf("RequestRole: one or more mutation functions could not be applied: %s", mutationErr)
 		}
 	}
 

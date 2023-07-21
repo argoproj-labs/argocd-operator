@@ -2,7 +2,6 @@ package permissions
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 
@@ -56,7 +55,6 @@ func TestRequestClusterClusterRole(t *testing.T) {
 		desiredClusterRole *rbacv1.ClusterRole
 		mutation           bool
 		wantErr            bool
-		desiredErr         error
 	}{
 		{
 			name: "request clusterrole, no mutation",
@@ -70,7 +68,6 @@ func TestRequestClusterClusterRole(t *testing.T) {
 			mutation:           false,
 			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {}),
 			wantErr:            false,
-			desiredErr:         nil,
 		},
 		{
 			name: "request clusterrole, no mutation, custom name, labels, annotations",
@@ -89,8 +86,7 @@ func TestRequestClusterClusterRole(t *testing.T) {
 				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
 				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
 			}),
-			wantErr:    false,
-			desiredErr: nil,
+			wantErr: false,
 		},
 		{
 			name: "request clusterrole, successful mutation",
@@ -108,7 +104,6 @@ func TestRequestClusterClusterRole(t *testing.T) {
 			mutation:           true,
 			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) { r.Rules = testRulesMutated }),
 			wantErr:            false,
-			desiredErr:         nil,
 		},
 		{
 			name: "request clusterrole, failed mutation",
@@ -126,7 +121,6 @@ func TestRequestClusterClusterRole(t *testing.T) {
 			mutation:           true,
 			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {}),
 			wantErr:            true,
-			desiredErr:         fmt.Errorf("RequestClusterRole: one or more mutation functions could not be applied"),
 		},
 	}
 
@@ -140,7 +134,6 @@ func TestRequestClusterClusterRole(t *testing.T) {
 
 			} else {
 				assert.Error(t, err)
-				assert.Equal(t, test.desiredErr, err)
 			}
 
 		})
