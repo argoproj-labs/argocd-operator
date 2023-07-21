@@ -57,7 +57,7 @@ func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error)
 			}
 		}
 		if mutationErr != nil {
-			return clusterRole, fmt.Errorf("RequestRole: one or more mutation functions could not be applied: %s", mutationErr)
+			return clusterRole, fmt.Errorf("RequestClusterRole: one or more mutation functions could not be applied: %s", mutationErr)
 		}
 	}
 	return clusterRole, nil
