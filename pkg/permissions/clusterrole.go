@@ -13,12 +13,13 @@ import (
 )
 
 type ClusterRoleRequest struct {
-	Name                string
-	InstanceName        string
-	InstanceNamespace   string
-	InstanceAnnotations map[string]string
-	Component           string
-	Rules               []rbacv1.PolicyRule
+	Name              string
+	InstanceName      string
+	InstanceNamespace string
+	Labels            map[string]string
+	Annotations       map[string]string
+	Component         string
+	Rules             []rbacv1.PolicyRule
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -26,7 +27,7 @@ type ClusterRoleRequest struct {
 }
 
 // newClusterRole returns a new clusterRole instance.
-func newClusterRole(name, instanceName, instanceNamespace, component string, instanceAnnotations map[string]string, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {
+func newClusterRole(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {
 	crName := argoutil.GenerateUniqueResourceName(instanceName, instanceNamespace, component)
 	if name != "" {
 		crName = name
@@ -35,8 +36,8 @@ func newClusterRole(name, instanceName, instanceNamespace, component string, ins
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        crName,
-			Labels:      argoutil.LabelsForCluster(instanceName, component),
-			Annotations: argoutil.AnnotationsForCluster(instanceName, instanceNamespace, instanceAnnotations),
+			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
 		},
 		Rules: rules,
 	}
@@ -44,7 +45,7 @@ func newClusterRole(name, instanceName, instanceNamespace, component string, ins
 
 func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error) {
 	var errCount int
-	clusterRole := newClusterRole(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.InstanceAnnotations, request.Rules)
+	clusterRole := newClusterRole(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

@@ -11,16 +11,18 @@ import (
 )
 
 type ClusterRoleBindingRequest struct {
-	Name                string
-	InstanceName        string
-	InstanceNamespace   string
-	InstanceAnnotations map[string]string
-	Component           string
-	Client              *ctrlClient.Client
+	Name              string
+	InstanceName      string
+	InstanceNamespace string
+	Component         string
+	Labels            map[string]string
+	Annotations       map[string]string
+	RoleRef           rbacv1.RoleRef
+	Subjects          []rbacv1.Subject
 }
 
 // newClusterclusterRoleBinding returns a new clusterclusterRoleBinding instance.
-func newClusterRoleBinding(name, instanceName, instanceNamespace, component string, instanceAnnotations map[string]string) *rbacv1.ClusterRoleBinding {
+func newClusterRoleBinding(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, roleRef rbacv1.RoleRef, subjects []rbacv1.Subject) *rbacv1.ClusterRoleBinding {
 	crbName := argoutil.GenerateUniqueResourceName(instanceName, instanceNamespace, component)
 	if name != "" {
 		crbName = name
@@ -29,14 +31,16 @@ func newClusterRoleBinding(name, instanceName, instanceNamespace, component stri
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        crbName,
-			Labels:      argoutil.LabelsForCluster(instanceName, component),
-			Annotations: argoutil.AnnotationsForCluster(instanceName, instanceNamespace, instanceAnnotations),
+			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
 		},
+		RoleRef:  roleRef,
+		Subjects: subjects,
 	}
 }
 
 func RequestClusterRoleBinding(request ClusterRoleBindingRequest) *rbacv1.ClusterRoleBinding {
-	return newClusterRoleBinding(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.InstanceAnnotations)
+	return newClusterRoleBinding(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.RoleRef, request.Subjects)
 }
 
 func CreateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client ctrlClient.Client) error {

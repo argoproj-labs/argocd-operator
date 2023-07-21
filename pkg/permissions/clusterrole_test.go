@@ -73,18 +73,24 @@ func TestRequestClusterClusterRole(t *testing.T) {
 			desiredErr:         nil,
 		},
 		{
-			name: "request clusterrole, no mutation, custom name",
+			name: "request clusterrole, no mutation, custom name, labels, annotations",
 			rolReq: ClusterRoleRequest{
 				Name:              testName,
 				InstanceName:      testInstance,
 				InstanceNamespace: testInstanceNamespace,
 				Component:         testComponent,
+				Labels:            testKVP,
+				Annotations:       testKVP,
 				Rules:             testRules,
 			},
-			mutation:           false,
-			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) { r.Name = testName }),
-			wantErr:            false,
-			desiredErr:         nil,
+			mutation: false,
+			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {
+				r.Name = testName
+				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
+				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
+			}),
+			wantErr:    false,
+			desiredErr: nil,
 		},
 		{
 			name: "request clusterrole, successful mutation",

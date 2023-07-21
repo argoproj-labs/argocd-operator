@@ -40,6 +40,21 @@ var (
 			},
 		},
 	}
+	testRoleRef = rbacv1.RoleRef{
+		Kind:     "Role",
+		Name:     testName,
+		APIGroup: "rbac.authorization.k8s.io",
+	}
+	testSubjects = []rbacv1.Subject{
+		{
+			Kind:      "ServiceAccount",
+			Name:      testName,
+			Namespace: testNamespace,
+		},
+	}
+	testKVP = map[string]string{
+		"test-key": "test-value",
+	}
 )
 
 func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {

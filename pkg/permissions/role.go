@@ -18,6 +18,8 @@ type RoleRequest struct {
 	InstanceName string
 	Namespace    string
 	Component    string
+	Labels       map[string]string
+	Annotations  map[string]string
 	Rules        []rbacv1.PolicyRule
 
 	// array of functions to mutate role before returning to requester
@@ -26,7 +28,7 @@ type RoleRequest struct {
 }
 
 // newRole returns a new Role instance.
-func newRole(name, instanceName, namespace, component string,
+func newRole(name, instanceName, namespace, component string, labels, annotations map[string]string,
 	rules []rbacv1.PolicyRule) *rbacv1.Role {
 	roleName := argoutil.GenerateResourceName(instanceName, component)
 	if name != "" {
@@ -34,9 +36,10 @@ func newRole(name, instanceName, namespace, component string,
 	}
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
-			Namespace: namespace,
-			Labels:    argoutil.LabelsForCluster(instanceName, component),
+			Name:        roleName,
+			Namespace:   namespace,
+			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Annotations: annotations,
 		},
 		Rules: rules,
 	}
@@ -44,7 +47,7 @@ func newRole(name, instanceName, namespace, component string,
 
 func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
 	var errCount int
-	role := newRole(request.Name, request.InstanceName, request.Namespace, request.Component, request.Rules)
+	role := newRole(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

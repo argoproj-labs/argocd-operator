@@ -18,9 +18,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-type rolebindingOpt func(*rbacv1.RoleBinding)
+type roleBindingOpt func(*rbacv1.RoleBinding)
 
-func getTestRoleBinding(opts ...rolebindingOpt) *rbacv1.RoleBinding {
+func getTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
 	desiredRoleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
@@ -32,6 +32,8 @@ func getTestRoleBinding(opts ...rolebindingOpt) *rbacv1.RoleBinding {
 				common.ArgoCDKeyComponent: testComponent,
 			},
 		},
+		RoleRef:  testRoleRef,
+		Subjects: testSubjects,
 	}
 
 	for _, opt := range opts {
@@ -53,19 +55,27 @@ func TestRequestRoleBinding(t *testing.T) {
 				InstanceName: testInstance,
 				Namespace:    testNamespace,
 				Component:    testComponent,
+				RoleRef:      testRoleRef,
+				Subjects:     testSubjects,
 			},
 			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {}),
 		},
 		{
-			name: "request rolebinding, custom name",
+			name: "request rolebinding, custom name, labels, annotations",
 			rbReq: RoleBindingRequest{
 				Name:         testName,
 				InstanceName: testInstance,
 				Namespace:    testNamespace,
 				Component:    testComponent,
+				Labels:       testKVP,
+				Annotations:  testKVP,
+				RoleRef:      testRoleRef,
+				Subjects:     testSubjects,
 			},
 			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 				rb.Name = testName
+				rb.Labels = argoutil.MergeMaps(rb.Labels, testKVP)
+				rb.Annotations = argoutil.MergeMaps(rb.Annotations, testKVP)
 			}),
 		},
 	}
@@ -186,6 +196,7 @@ func TestUpdateRoleBinding(t *testing.T) {
 	}, existingRoleBinding)
 
 	assert.NoError(t, err)
+	assert.Equal(t, desiredRoleBinding.RoleRef, existingRoleBinding.RoleRef)
 	assert.Equal(t, desiredRoleBinding.Subjects, existingRoleBinding.Subjects)
 }
 

@@ -11,16 +11,17 @@ import (
 	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ServiceaccountRequest struct {
+type ServiceAccountRequest struct {
 	Name         string
 	InstanceName string
 	Namespace    string
 	Component    string
-	Client       *ctrlClient.Client
+	Labels       map[string]string
+	Annotations  map[string]string
 }
 
 // newServiceAccount returns a new ServiceAccount instance.
-func newServiceAccount(name, instanceName, namespace, component string) *corev1.ServiceAccount {
+func newServiceAccount(name, instanceName, namespace, component string, labels, annotations map[string]string) *corev1.ServiceAccount {
 	saName := argoutil.GenerateResourceName(instanceName, component)
 	if name != "" {
 		saName = name
@@ -29,12 +30,14 @@ func newServiceAccount(name, instanceName, namespace, component string) *corev1.
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName,
 			Namespace: namespace,
-			Labels:    argoutil.LabelsForCluster(instanceName, component),
+			Labels:    argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+
+			Annotations: annotations,
 		},
 	}
 }
-func RequestServiceaccount(request ServiceaccountRequest) *corev1.ServiceAccount {
-	return newServiceAccount(request.Name, request.InstanceName, request.Namespace, request.Component)
+func RequestServiceaccount(request ServiceAccountRequest) *corev1.ServiceAccount {
+	return newServiceAccount(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
 }
 
 func CreateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) error {

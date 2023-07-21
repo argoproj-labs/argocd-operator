@@ -70,18 +70,24 @@ func TestRequestRole(t *testing.T) {
 			desiredErr:  nil,
 		},
 		{
-			name: "request role, no mutation, custom name",
+			name: "request role, no mutation, custom name, labels, annotations",
 			rolReq: RoleRequest{
 				Name:         testName,
 				InstanceName: testInstance,
 				Namespace:    testNamespace,
 				Component:    testComponent,
+				Labels:       testKVP,
+				Annotations:  testKVP,
 				Rules:        testRules,
 			},
-			mutation:    false,
-			desiredRole: getTestRole(func(r *rbacv1.Role) { r.Name = testName }),
-			wantErr:     false,
-			desiredErr:  nil,
+			mutation: false,
+			desiredRole: getTestRole(func(r *rbacv1.Role) {
+				r.Name = testName
+				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
+				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
+			}),
+			wantErr:    false,
+			desiredErr: nil,
 		},
 		{
 			name: "request role, successful mutation",
