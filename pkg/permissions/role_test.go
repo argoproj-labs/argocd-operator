@@ -233,6 +233,13 @@ func TestUpdateRole(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredRole.Rules, existingRole.Rules)
+
+	testClient = fake.NewClientBuilder().Build()
+	existingRole = getTestRole(func(r *rbacv1.Role) {
+		r.Name = testName
+	})
+	err = UpdateRole(existingRole, testClient)
+	assert.Error(t, err)
 }
 
 func TestDeleteRole(t *testing.T) {
@@ -251,4 +258,8 @@ func TestDeleteRole(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsNotFound(err))
+
+	testClient = fake.NewClientBuilder().Build()
+	err = DeleteRole(testName, testNamespace, testClient)
+	assert.NoError(t, err)
 }

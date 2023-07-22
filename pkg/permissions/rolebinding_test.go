@@ -198,6 +198,13 @@ func TestUpdateRoleBinding(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, desiredRoleBinding.RoleRef, existingRoleBinding.RoleRef)
 	assert.Equal(t, desiredRoleBinding.Subjects, existingRoleBinding.Subjects)
+
+	testClient = fake.NewClientBuilder().Build()
+	existingRoleBinding = getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+		rb.Name = testName
+	})
+	err = UpdateRoleBinding(existingRoleBinding, testClient)
+	assert.Error(t, err)
 }
 
 func TestDeleteRoleBinding(t *testing.T) {
@@ -216,4 +223,8 @@ func TestDeleteRoleBinding(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsNotFound(err))
+
+	testClient = fake.NewClientBuilder().Build()
+	err = DeleteRoleBinding(testName, testNamespace, testClient)
+	assert.NoError(t, err)
 }

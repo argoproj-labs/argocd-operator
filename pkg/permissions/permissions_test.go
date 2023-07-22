@@ -14,7 +14,10 @@ var (
 	testInstanceNamespace = "test-instance-ns"
 	testNamespace         = "test-ns"
 	testComponent         = "test-component"
-	testRules             = []rbacv1.PolicyRule{
+	testKey               = "test-key"
+	testVal               = "test-value"
+
+	testRules = []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{
 				"",
@@ -53,7 +56,7 @@ var (
 		},
 	}
 	testKVP = map[string]string{
-		"test-key": "test-value",
+		testKey: testVal,
 	}
 )
 
@@ -72,5 +75,5 @@ func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, clien
 		obj.Rules = testRulesMutated
 		return nil
 	}
-	return errors.New("")
+	return errors.New("test-mutation-error")
 }

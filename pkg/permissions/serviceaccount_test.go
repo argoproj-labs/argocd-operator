@@ -184,6 +184,13 @@ func TestUpdateServiceAccount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, desiredServiceAccount.ImagePullSecrets, existingServiceAccount.ImagePullSecrets)
 	assert.Equal(t, desiredServiceAccount.AutomountServiceAccountToken, existingServiceAccount.AutomountServiceAccountToken)
+
+	testClient = fake.NewClientBuilder().Build()
+	existingServiceAccount = getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = testName
+	})
+	err = UpdateServiceAccount(existingServiceAccount, testClient)
+	assert.Error(t, err)
 }
 
 func TestDeleteServiceAccount(t *testing.T) {
@@ -202,4 +209,8 @@ func TestDeleteServiceAccount(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsNotFound(err))
+
+	testClient = fake.NewClientBuilder().Build()
+	err = DeleteServiceAccount(testName, testNamespace, testClient)
+	assert.NoError(t, err)
 }

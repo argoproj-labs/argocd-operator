@@ -232,6 +232,13 @@ func TestUpdateClusterRole(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredClusterRole.Rules, existingClusterRole.Rules)
+
+	testClient = fake.NewClientBuilder().Build()
+	existingClusterRole = getTestClusterRole(func(cr *rbacv1.ClusterRole) {
+		cr.Name = testName
+	})
+	err = UpdateClusterRole(existingClusterRole, testClient)
+	assert.Error(t, err)
 }
 
 func TestDeleteClusterRole(t *testing.T) {
@@ -249,4 +256,8 @@ func TestDeleteClusterRole(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.True(t, k8serrors.IsNotFound(err))
+
+	testClient = fake.NewClientBuilder().Build()
+	err = DeleteClusterRole(testName, testClient)
+	assert.NoError(t, err)
 }
