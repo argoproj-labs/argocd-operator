@@ -43,7 +43,7 @@ func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, clien
 			return nil
 		}
 	}
-	return errors.New("unexpected error")
+	return errors.New("test-mutation-error")
 }
 
 type NamespaceOpt func(*corev1.Namespace)
@@ -244,11 +244,11 @@ func TestUpdateNamespace(t *testing.T) {
 	assert.Equal(t, desiredNamespace.Labels, existingNamespace.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	desiredNamespace = getTestNamespace(func(ns *corev1.Namespace) {
+	existingNamespace = getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = testName
 		ns.Labels = testKVP
 	})
-	err = UpdateNamespace(desiredNamespace, testClient)
+	err = UpdateNamespace(existingNamespace, testClient)
 	assert.Error(t, err)
 
 }
@@ -270,10 +270,6 @@ func TestDeleteNamespace(t *testing.T) {
 	assert.True(t, k8serrors.IsNotFound(err))
 
 	testClient = fake.NewClientBuilder().Build()
-	desiredNamespace := getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
-		ns.Labels = testKVP
-	})
-	err = DeleteNamespace(desiredNamespace.Name, testClient)
+	err = DeleteNamespace(testName, testClient)
 	assert.NoError(t, err)
 }
