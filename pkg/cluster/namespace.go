@@ -12,6 +12,7 @@ import (
 	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// NamespaceRequest objects contain all the required information to produce a namespace object in return
 type NamespaceRequest struct {
 	Name        string
 	Labels      map[string]string
@@ -19,7 +20,7 @@ type NamespaceRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    ctrlClient.Client
+	Client    interface{}
 }
 
 func newNamespace(name string, labels, annotations map[string]string) *corev1.Namespace {
@@ -32,6 +33,8 @@ func newNamespace(name string, labels, annotations map[string]string) *corev1.Na
 	}
 }
 
+// RequestNamesapce accepts a NamespaceRequest object and returns a populated namespace resource.
+// It also runs any specified mutations to the namespace resource before returning it
 func RequestNamespace(request NamespaceRequest) (*corev1.Namespace, error) {
 	var (
 		mutationErr error
@@ -52,10 +55,12 @@ func RequestNamespace(request NamespaceRequest) (*corev1.Namespace, error) {
 	return namespace, nil
 }
 
+// CreateNamespace creates a provided namespace on the cluster
 func CreateNamespace(namespace *corev1.Namespace, client ctrlClient.Client) error {
 	return client.Create(context.TODO(), namespace)
 }
 
+// GetNamespace retrieves a specified namespace from the cluster
 func GetNamespace(name string, client ctrlClient.Client) (*corev1.Namespace, error) {
 	existingNamespace := &corev1.Namespace{}
 	err := client.Get(context.TODO(), ctrlClient.ObjectKey{Name: name}, existingNamespace)
@@ -65,6 +70,7 @@ func GetNamespace(name string, client ctrlClient.Client) (*corev1.Namespace, err
 	return existingNamespace, nil
 }
 
+// ListNamespace returns a list of namespaces from the cluster after applying specified listOptions
 func ListNamespaces(client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.NamespaceList, error) {
 	existingNamespaces := &corev1.NamespaceList{}
 	err := client.List(context.TODO(), existingNamespaces, listOptions...)
@@ -74,6 +80,7 @@ func ListNamespaces(client ctrlClient.Client, listOptions []ctrlClient.ListOptio
 	return existingNamespaces, nil
 }
 
+// UpdateNamespace updates a provided namespace on the cluster
 func UpdateNamespace(namespace *corev1.Namespace, client ctrlClient.Client) error {
 	_, err := GetNamespace(namespace.Name, client)
 	if err != nil {
@@ -87,6 +94,7 @@ func UpdateNamespace(namespace *corev1.Namespace, client ctrlClient.Client) erro
 	return nil
 }
 
+// DeleteNamespace deletes a specified namespace from the cluster
 func DeleteNamespace(name string, client ctrlClient.Client) error {
 	existingNamespace, err := GetNamespace(name, client)
 	if err != nil {
