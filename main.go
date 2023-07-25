@@ -93,9 +93,7 @@ func main() {
 	printVersion()
 
 	// Inspect cluster to verify availability of extra features
-	if err := argocd.InspectCluster(); err != nil {
-		setupLog.Info("unable to inspect cluster")
-	}
+	argocd.InspectCluster()
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
@@ -177,14 +175,14 @@ func main() {
 		}
 	}
 
-	if err = (&argocd.ReconcileArgoCD{
+	if err = (&argocd.ArgoCDReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
 	}
-	if err = (&argocdexport.ReconcileArgoCDExport{
+	if err = (&argocdexport.ArgoCDReconcilerExport{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

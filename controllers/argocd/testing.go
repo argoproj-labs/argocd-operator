@@ -49,12 +49,12 @@ func ZapLogger(development bool) logr.Logger {
 	return zap.New(zap.UseDevMode(development))
 }
 
-func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
+func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	return &ReconcileArgoCD{
+	return &ArgoCDReconciler{
 		Client: cl,
 		Scheme: s,
 	}
@@ -281,30 +281,30 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 	}
 }
 
-func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
+func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
 		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: managedBy}
 	}
 
 	if r.ManagedNamespaces == nil {
-		r.ManagedNamespaces = &corev1.NamespaceList{}
+		r.ManagedNamespaces = make(map[string]string)
 	}
-	r.ManagedNamespaces.Items = append(r.ManagedNamespaces.Items, *ns)
+	r.ManagedNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
 }
 
-func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, n string, managedBy string) error {
+func createNamespaceManagedByClusterArgoCDLabel(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
 		ns.Labels = map[string]string{common.ArgoCDManagedByClusterArgoCDLabel: managedBy}
 	}
 
-	if r.ManagedSourceNamespaces == nil {
-		r.ManagedSourceNamespaces = make(map[string]string)
+	if r.SourceNamespaces == nil {
+		r.SourceNamespaces = make(map[string]string)
 	}
-	r.ManagedSourceNamespaces[ns.Name] = ""
+	r.SourceNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
 }

@@ -66,7 +66,7 @@ func newServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.Argo
 }
 
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
-func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if !cr.Spec.Grafana.Enabled {
@@ -102,7 +102,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.
-func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("metrics", "metrics", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
@@ -129,7 +129,7 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
-func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
 	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
 		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
@@ -180,7 +180,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Argo
 }
 
 // reconcileRedisHAMasterService will ensure that the "master" Service is present for Redis when running in HA mode.
-func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if !cr.Spec.HA.Enabled {
@@ -218,7 +218,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD)
 }
 
 // reconcileRedisHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
-func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
@@ -258,7 +258,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) 
 }
 
 // reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
-func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) error {
 
 	if err := r.reconcileRedisHAAnnounceServices(cr); err != nil {
 		return err
@@ -275,7 +275,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) erro
 }
 
 // reconcileRedisService will ensure that the Service for Redis is present.
-func (r *ReconcileArgoCD) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis", "redis", cr)
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
@@ -354,7 +354,7 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 }
 
 // reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
-func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
 
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
@@ -391,7 +391,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
-func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server-metrics", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		return nil // Service found, do nothing
@@ -417,7 +417,7 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD)
 }
 
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
-func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
@@ -455,7 +455,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoprojv1a1.ArgoCD) error 
 }
 
 // reconcileServices will ensure that all Services are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServices(cr *argoprojv1a1.ArgoCD) error {
 
 	if err := r.reconcileDexService(cr); err != nil {
 		log.Error(err, "error reconciling dex service")

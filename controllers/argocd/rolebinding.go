@@ -83,7 +83,7 @@ func newRoleBindingWithname(name string, cr *argoprojv1a1.ArgoCD) *v1.RoleBindin
 }
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
-func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -97,7 +97,7 @@ func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
 // This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
-func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var sa *corev1.ServiceAccount
 	var error error
 
@@ -109,20 +109,22 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		return error
 	}
 
-	for _, namespace := range r.ManagedNamespaces.Items {
+	for ns, _ := range r.ManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
+		namespace := &corev1.Namespace{}
+		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: ns}, namespace)
 		if namespace.DeletionTimestamp != nil {
 			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 				delete(namespace.Labels, common.ArgoCDManagedByLabel)
-				_ = r.Client.Update(context.TODO(), &namespace)
+				_ = r.Client.Update(context.TODO(), namespace)
 			}
 			continue
 		}
 
 		list := &argoprojv1a1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
-		err := r.Client.List(context.TODO(), list, listOption)
+		err = r.Client.List(context.TODO(), list, listOption)
 		if err != nil {
 			return err
 		}
@@ -334,7 +336,7 @@ func newRoleBindingWithNameForApplicationSourceNamespaces(name, namespace string
 	return roleBinding
 }
 
-func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoprojv1a1.ArgoCD) error {
 
 	// get expected name
 	roleBinding := newClusterRoleBindingWithname(name, cr)

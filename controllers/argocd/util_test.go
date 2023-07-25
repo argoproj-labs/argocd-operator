@@ -226,7 +226,7 @@ func TestGetArgoServerURI(t *testing.T) {
 	for _, tt := range argoServerURITests {
 		t.Run(tt.name, func(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
-			r := &ReconcileArgoCD{}
+			r := &ArgoCDReconciler{}
 			setRouteAPIFound(t, tt.routeEnabled)
 			result := r.getArgoServerURI(cr)
 			if result != tt.want {
@@ -577,8 +577,9 @@ func TestSetManagedNamespaces(t *testing.T) {
 	err := r.setManagedNamespaces(a)
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(r.ManagedNamespaces.Items), 3)
-	for _, n := range r.ManagedNamespaces.Items {
+	assert.Equal(t, len(r.ManagedNamespaces), 3)
+	for n, _ := range r.ManagedNamespaces {
+		
 		if n.Labels[common.ArgoCDManagedByLabel] != testNamespace && n.Name != testNamespace {
 			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
 		}
@@ -609,8 +610,8 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	err := r.setManagedSourceNamespaces(a)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(r.ManagedSourceNamespaces))
-	assert.Contains(t, r.ManagedSourceNamespaces, "test-namespace-1")
+	assert.Equal(t, 1, len(r.SourceNamespaces))
+	assert.Contains(t, r.SourceNamespaces, "test-namespace-1")
 }
 
 func TestGenerateRandomString(t *testing.T) {
@@ -639,8 +640,8 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 	return encoded
 }
 
-// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
-func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
+// TestArgoCDReconciler_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
 		ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{

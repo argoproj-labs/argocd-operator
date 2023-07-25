@@ -35,9 +35,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
-var _ reconcile.Reconciler = &ReconcileArgoCD{}
+var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
-func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
+func TestArgoCDReconciler_reconcileTLSCerts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
 	r := makeTestReconciler(t, a)
@@ -59,7 +59,7 @@ func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
+func TestArgoCDReconciler_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
 	r := makeTestReconciler(t, a)
@@ -96,7 +96,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) {
+func TestArgoCDReconciler_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -122,7 +122,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) 
 	}
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	defaultConfigMapData := map[string]string{
@@ -208,7 +208,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
+func TestArgoCDReconciler_reconcileEmptyArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -235,7 +235,7 @@ func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestReconcileArgoCDCM_withRepoCredentials(t *testing.T) {
+func TestArgoCDReconcilerCM_withRepoCredentials(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	a.Spec.RepositoryCredentials = `
@@ -273,7 +273,7 @@ func TestReconcileArgoCDCM_withRepoCredentials(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.DisableAdmin = true
@@ -295,7 +295,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -371,7 +371,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -416,7 +416,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 }
 
 // When dex is enabled, dexConfig should be present in argocd-cm, when disabled, it should be removed
-func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -508,7 +508,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 	}
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		kv := argoprojv1alpha1.KustomizeVersionSpec{
@@ -536,7 +536,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing
 	}
 }
 
-func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
+func TestArgoCDReconciler_reconcileGPGKeysConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.DisableAdmin = true
@@ -555,7 +555,7 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	// Currently the gpg keys configmap is empty
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -640,7 +640,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceInclusions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	customizations := "testing: testing"
 	updatedCustomizations := "updated-testing: updated-testing"
@@ -680,7 +680,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	customizations := "testing: testing"
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
@@ -703,7 +703,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *te
 	}
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	desiredIgnoreDifferenceCustomization :=
@@ -829,7 +829,7 @@ func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
 		})
 	}
 }
-func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
+func TestArgoCDReconciler_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 

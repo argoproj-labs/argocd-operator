@@ -41,7 +41,7 @@ var (
 		"argocd-server"}
 )
 
-func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -83,7 +83,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_replicas(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
+func TestArgoCDReconciler_reconcile_ServerDeployment_replicas(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	var (
@@ -156,7 +156,7 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_replicas(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_loglevel(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	repoDeps := []*argoprojv1alpha1.ArgoCD{
@@ -208,7 +208,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_loglevel(t *testing.T) {
 
 // reconcileRepoDeployment creates a Deployment with the correct volumes for the
 // repo-server.
-func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_volumes(t *testing.T) {
 	t.Run("create default volumes", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -251,7 +251,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_volumes(t *testing.T) {
 	})
 }
 
-func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
+func TestArgoCDReconciler_reconcile_ServerDeployment_env(t *testing.T) {
 	t.Run("Test some env set in argocd-server", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -285,7 +285,7 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_env(t *testing.T) {
 	t.Run("Test some env set in argocd-repo-server", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -382,7 +382,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 
 // reconcileRepoDeployment creates a Deployment with the correct mounts for the
 // repo-server.
-func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_mounts(t *testing.T) {
 	t.Run("Create default mounts", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -425,7 +425,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 	})
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_initContainers(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		ic := corev1.Container{
@@ -448,7 +448,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[1].Name, "test-init-container")
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_missingInitContainers(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	d := &appsv1.Deployment{
@@ -483,7 +483,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_missingInitContainers(t *testin
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
 }
-func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_unexpectedInitContainer(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	d := &appsv1.Deployment{
@@ -525,7 +525,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_unexpectedInitContainer(t *test
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Name, "copyutil")
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_command(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -548,7 +548,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 
 // reconcileRepoDeployments creates a Deployment with the proxy settings from the
 // environment propagated.
-func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployments_proxy(t *testing.T) {
 
 	t.Setenv("HTTP_PROXY", testHTTPProxy)
 	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
@@ -581,7 +581,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy(t *testing.T) {
 //
 // If the deployments already exist, they should be updated to reflect the new
 // environment variables.
-func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployments_proxy_update_existing(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
@@ -621,7 +621,7 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 }
 
 // TODO: This should be subsumed into testing of the HA setup.
-func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployments_HA_proxy(t *testing.T) {
 	t.Setenv("HTTP_PROXY", testHTTPProxy)
 	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
 	t.Setenv("no_proxy", testNoProxy)
@@ -638,7 +638,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy(t *testing.T) {
 	assertDeploymentHasProxyVars(t, r.Client, "argocd-redis-ha-haproxy")
 }
 
-func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployments_HA_proxy_with_resources(t *testing.T) {
 	t.Setenv("HTTP_PROXY", testHTTPProxy)
 	t.Setenv("HTTPS_PROXY", testHTTPSProxy)
 	t.Setenv("no_proxy", testNoProxy)
@@ -700,7 +700,7 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 }
 
-func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	d := &appsv1.Deployment{
@@ -778,7 +778,7 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileDeployment_nodePlacement(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployment_nodePlacement(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD((func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.NodePlacement = &argoprojv1alpha1.ArgoCDNodePlacementSpec{
@@ -831,7 +831,7 @@ func deploymentDefaultTolerations() []corev1.Toleration {
 	return toleration
 }
 
-func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
+func TestArgoCDReconciler_reconcileRepoServerRedisTLS(t *testing.T) {
 	t.Run("with DisableTLSVerification = false (the default)", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
@@ -889,7 +889,7 @@ func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 	})
 }
 
-func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
+func TestArgoCDReconciler_reconcileServerDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -1100,7 +1100,7 @@ func TestArgoCDServerCommand_isMergable(t *testing.T) {
 	assert.Error(t, isMergable(extraCMDArgs, cmd))
 }
 
-func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
+func TestArgoCDReconciler_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Server.Insecure = true
@@ -1183,7 +1183,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
-func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T) {
+func TestArgoCDReconciler_reconcileServerDeploymentChangedToInsecure(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -1269,7 +1269,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
-func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
 
@@ -1288,7 +1288,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
 
@@ -1311,7 +1311,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisDeployment(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
@@ -1325,7 +1325,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment(t *testing.T) {
 	assert.Equal(t, int32(3), *d.Spec.Replicas)
 }
 
-func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisDeployment_testImageUpgrade(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
@@ -1347,7 +1347,7 @@ func TestReconcileArgoCD_reconcileRedisDeployment_testImageUpgrade(t *testing.T)
 	assert.Equal(t, newRedis.Spec.Template.Spec.Containers[0].Image, "docker.io/redis/redis:latest")
 }
 
-func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisDeployment_with_error(t *testing.T) {
 	// tests reconciler hook for redis deployment
 	cr := makeTestArgoCD()
 	r := makeTestReconciler(t, cr)
@@ -1649,7 +1649,7 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 	return mounts
 }
 
-func TestReconcileArgoCD_reconcile_RepoServerChanges(t *testing.T) {
+func TestArgoCDReconciler_reconcile_RepoServerChanges(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
