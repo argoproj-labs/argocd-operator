@@ -72,6 +72,11 @@ func CreateEvent(client client.Client, eventType, action, message, reason string
 	return client.Create(context.TODO(), event)
 }
 
+// GenerateResourceName generates names for namespace scoped scoped resources
+func GenerateResourceName(instanceName, component string) string {
+	return fmt.Sprintf("%s-%s", instanceName, component)
+}
+
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
 // The result will be stored in the given object.
 func FetchObject(client client.Client, namespace string, name string, obj client.Object) error {
@@ -108,9 +113,8 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 }
 
 // LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
-	labels := common.DefaultLabels(cr.Name)
-	return labels
+func LabelsForCluster(instanceName, component string) map[string]string {
+	return common.DefaultLabels(instanceName, component)
 }
 
 // annotationsForCluster returns the annotations for all cluster resources.

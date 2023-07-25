@@ -30,7 +30,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 func getRedisHAReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
@@ -45,7 +45,7 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 	}
 }

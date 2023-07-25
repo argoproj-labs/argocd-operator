@@ -30,7 +30,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // createRBACConfigMap will create the Argo CD RBAC ConfigMap resource.
@@ -286,7 +286,7 @@ func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 	}
 }
