@@ -517,8 +517,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1028,7 +1028,9 @@ spec:
           - create
         serviceAccountName: argocd-operator-controller-manager
       deployments:
-      - name: argocd-operator-controller-manager
+      - label:
+          control-plane: argocd-operator
+        name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -1042,19 +1044,6 @@ spec:
             spec:
               containers:
               - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy@sha256:db06cc4c084dd0253134f156dddaaf53ef1c3fb3cc809e5d81711baa4029ea4c
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                resources: {}
-              - args:
-                - --health-probe-bind-address=:8081
-                - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
                 command:
                 - /manager
