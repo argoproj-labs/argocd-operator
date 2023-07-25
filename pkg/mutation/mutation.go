@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -22,7 +21,7 @@ func Register(m ...MutateFunc) {
 	mutateFuncs = append(mutateFuncs, m...)
 }
 
-func ApplyReconcilerMutation(cr *v1alpha1.ArgoCD, resource interface{}, client *ctrlClient.Client) error {
+func ApplyReconcilerMutation(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, mutateFunc := range mutateFuncs {
