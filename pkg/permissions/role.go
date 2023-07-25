@@ -13,6 +13,7 @@ import (
 	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// RoleRequest objects contain all the required information to produce a role object in return
 type RoleRequest struct {
 	Name         string
 	InstanceName string
@@ -45,6 +46,8 @@ func newRole(name, instanceName, namespace, component string, labels, annotation
 	}
 }
 
+// RequestRole creates a Role object based on the provided RoleRequest.
+// It applies any specified mutation functions to the Role.
 func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
 	var (
 		mutationErr error
@@ -66,10 +69,12 @@ func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
 	return role, nil
 }
 
+// CreateRole creates the specified Role using the provided client.
 func CreateRole(role *rbacv1.Role, client ctrlClient.Client) error {
 	return client.Create(context.TODO(), role)
 }
 
+// GetRole retrieves the Role with the given name and namespace using the provided client.
 func GetRole(name, namespace string, client ctrlClient.Client) (*rbacv1.Role, error) {
 	existingRole := &rbacv1.Role{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRole)
@@ -79,6 +84,7 @@ func GetRole(name, namespace string, client ctrlClient.Client) (*rbacv1.Role, er
 	return existingRole, nil
 }
 
+// ListRoles returns a list of Role objects in the specified namespace using the provided client and list options.
 func ListRoles(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*rbacv1.RoleList, error) {
 	existingRoles := &rbacv1.RoleList{}
 	err := client.List(context.TODO(), existingRoles, listOptions...)
@@ -88,6 +94,7 @@ func ListRoles(namespace string, client ctrlClient.Client, listOptions []ctrlCli
 	return existingRoles, nil
 }
 
+// UpdateRole updates the specified Role using the provided client.
 func UpdateRole(role *rbacv1.Role, client ctrlClient.Client) error {
 	_, err := GetRole(role.Name, role.Namespace, client)
 	if err != nil {
@@ -101,6 +108,8 @@ func UpdateRole(role *rbacv1.Role, client ctrlClient.Client) error {
 	return nil
 }
 
+// DeleteRole deletes the Role with the given name and namespace using the provided client.
+// It ignores the "not found" error if the Role does not exist.
 func DeleteRole(name, namespace string, client ctrlClient.Client) error {
 	existingRole, err := GetRole(name, namespace, client)
 	if err != nil {

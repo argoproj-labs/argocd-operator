@@ -77,7 +77,7 @@ func TestRequestServiceAccount(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gotSa := RequestServiceaccount(test.saReq)
+			gotSa := RequestServiceAccount(test.saReq)
 			assert.Equal(t, test.desiredSa, gotSa)
 		})
 	}

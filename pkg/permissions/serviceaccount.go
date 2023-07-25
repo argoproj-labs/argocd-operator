@@ -36,14 +36,18 @@ func newServiceAccount(name, instanceName, namespace, component string, labels, 
 		},
 	}
 }
-func RequestServiceaccount(request ServiceAccountRequest) *corev1.ServiceAccount {
+
+// RequestServiceAccount creates a new ServiceAccount object based on the provided ServiceAccountRequest.
+func RequestServiceAccount(request ServiceAccountRequest) *corev1.ServiceAccount {
 	return newServiceAccount(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
 }
 
+// CreateServiceAccount creates the given ServiceAccount using the provided client.
 func CreateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) error {
 	return client.Create(context.TODO(), sa)
 }
 
+// GetServiceAccount retrieves the ServiceAccount with the specified name and namespace from the client.
 func GetServiceAccount(name, namespace string, client ctrlClient.Client) (*corev1.ServiceAccount, error) {
 	existingSA := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingSA)
@@ -53,6 +57,7 @@ func GetServiceAccount(name, namespace string, client ctrlClient.Client) (*corev
 	return existingSA, nil
 }
 
+// ListServiceAccounts lists all ServiceAccounts in the specified namespace using the provided client and list options.
 func ListServiceAccounts(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.ServiceAccountList, error) {
 	existingSAs := &corev1.ServiceAccountList{}
 	err := client.List(context.TODO(), existingSAs, listOptions...)
@@ -62,6 +67,7 @@ func ListServiceAccounts(namespace string, client ctrlClient.Client, listOptions
 	return existingSAs, nil
 }
 
+// UpdateServiceAccount updates the given ServiceAccount using the provided client.
 func UpdateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) error {
 	_, err := GetServiceAccount(sa.Name, sa.Namespace, client)
 	if err != nil {
@@ -75,6 +81,7 @@ func UpdateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) e
 	return nil
 }
 
+// DeleteServiceAccount deletes the ServiceAccount with the specified name and namespace from the client.
 func DeleteServiceAccount(name, namespace string, client ctrlClient.Client) error {
 	existingSA, err := GetServiceAccount(name, namespace, client)
 	if err != nil {

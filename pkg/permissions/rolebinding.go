@@ -40,14 +40,17 @@ func newRoleBinding(name, instanceName, namespace, component string, labels, ann
 	}
 }
 
+// RequestRoleBinding creates a new RoleBinding based on the provided RoleBindingRequest parameters.
 func RequestRoleBinding(request RoleBindingRequest) *rbacv1.RoleBinding {
 	return newRoleBinding(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations, request.RoleRef, request.Subjects)
 }
 
+// CreateRoleBinding creates a RoleBinding resource using the provided client.
 func CreateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
 	return client.Create(context.TODO(), rb)
 }
 
+// GetRoleBinding retrieves an existing RoleBinding resource specified by its name and namespace.
 func GetRoleBinding(name, namespace string, client ctrlClient.Client) (*rbacv1.RoleBinding, error) {
 	existingRB := &rbacv1.RoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRB)
@@ -57,6 +60,7 @@ func GetRoleBinding(name, namespace string, client ctrlClient.Client) (*rbacv1.R
 	return existingRB, nil
 }
 
+// ListRoleBindings lists all RoleBinding resources in a given namespace.
 func ListRoleBindings(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*rbacv1.RoleBindingList, error) {
 	existingRBs := &rbacv1.RoleBindingList{}
 	err := client.List(context.TODO(), existingRBs, listOptions...)
@@ -66,6 +70,7 @@ func ListRoleBindings(namespace string, client ctrlClient.Client, listOptions []
 	return existingRBs, nil
 }
 
+// UpdateRoleBinding updates an existing RoleBinding resource.
 func UpdateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
 	_, err := GetRoleBinding(rb.Name, rb.Namespace, client)
 	if err != nil {
@@ -79,6 +84,7 @@ func UpdateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
 	return nil
 }
 
+// DeleteRoleBinding deletes an existing RoleBinding resource specified by its name and namespace.
 func DeleteRoleBinding(name, namespace string, client ctrlClient.Client) error {
 	existingRB, err := GetRoleBinding(name, namespace, client)
 	if err != nil {

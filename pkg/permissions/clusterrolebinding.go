@@ -39,14 +39,17 @@ func newClusterRoleBinding(name, instanceName, instanceNamespace, component stri
 	}
 }
 
+// RequestClusterRoleBinding creates a ClusterRoleBinding object based on the provided ClusterRoleBindingRequest.
 func RequestClusterRoleBinding(request ClusterRoleBindingRequest) *rbacv1.ClusterRoleBinding {
 	return newClusterRoleBinding(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.RoleRef, request.Subjects)
 }
 
+// CreateClusterRoleBinding creates the specified ClusterRoleBinding using the provided client.
 func CreateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client ctrlClient.Client) error {
 	return client.Create(context.TODO(), crb)
 }
 
+// GetClusterRoleBinding retrieves the ClusterRoleBinding with the given name using the provided client.
 func GetClusterRoleBinding(name string, client ctrlClient.Client) (*rbacv1.ClusterRoleBinding, error) {
 	existingCRB := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(context.TODO(), ctrlClient.ObjectKey{Name: name}, existingCRB)
@@ -56,6 +59,7 @@ func GetClusterRoleBinding(name string, client ctrlClient.Client) (*rbacv1.Clust
 	return existingCRB, nil
 }
 
+// ListClusterRoleBindings returns a list of ClusterRoleBinding objects using the provided client and list options.
 func ListClusterRoleBindings(client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*rbacv1.ClusterRoleBindingList, error) {
 	existingCRBs := &rbacv1.ClusterRoleBindingList{}
 	err := client.List(context.TODO(), existingCRBs, listOptions...)
@@ -65,6 +69,7 @@ func ListClusterRoleBindings(client ctrlClient.Client, listOptions []ctrlClient.
 	return existingCRBs, nil
 }
 
+// UpdateClusterRoleBinding updates the specified ClusterRoleBinding using the provided client.
 func UpdateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client ctrlClient.Client) error {
 	_, err := GetClusterRoleBinding(crb.Name, client)
 	if err != nil {
@@ -78,6 +83,8 @@ func UpdateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client ctrlClient.
 	return nil
 }
 
+// DeleteClusterRoleBinding deletes the ClusterRoleBinding with the given name using the provided client.
+// It ignores the "not found" error if the ClusterRoleBinding does not exist.
 func DeleteClusterRoleBinding(name string, client ctrlClient.Client) error {
 	existingCRB, err := GetClusterRoleBinding(name, client)
 	if err != nil {
