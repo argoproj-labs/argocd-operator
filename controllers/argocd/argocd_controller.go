@@ -22,6 +22,7 @@ import (
 	"time"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/prometheus/client_golang/prometheus"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -110,8 +111,8 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
 		if newPhase != "" {
 			ActiveInstanceMap[request.Namespace] = newPhase
-			ActiveInstancesByPhase.WithLabelValues(newPhase).Add(1)
-			ActiveInstancesTotal.Add(1)
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
+			ActiveInstancesTotal.Inc()
 		}
 	} else {
 		// If we discover an existing instance's phase has changed since we last saw it
@@ -120,9 +121,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		// total instance count remains the same
 		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
 			ActiveInstanceMap[argocd.Namespace] = newPhase
-			ActiveInstancesByPhase.WithLabelValues(newPhase).Add(1)
-			ActiveInstancesByPhase.WithLabelValues(oldPhase).Add(-1)
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
+			ActiveInstancesByPhase.WithLabelValues(oldPhase).Dec()
 		}
+		ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
 	}
 
 	if argocd.GetDeletionTimestamp() != nil {
@@ -130,8 +132,10 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
 		// by phase as well as total
 		delete(ActiveInstanceMap, argocd.Namespace)
-		ActiveInstancesByPhase.WithLabelValues(newPhase).Add(-1)
-		ActiveInstancesTotal.Add(-1)
+		ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
+		ActiveInstancesTotal.Dec()
+		ActiveInstanceReconciliationCount.DeleteLabelValues(argocd.Namespace)
+		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": argocd.Namespace})
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
