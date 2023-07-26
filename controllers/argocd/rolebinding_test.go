@@ -25,7 +25,7 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newTestNamespace", a.Namespace))
 
-	workloadIdentifier := "xrb"
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
