@@ -72,9 +72,14 @@ func CreateEvent(client client.Client, eventType, action, message, reason string
 	return client.Create(context.TODO(), event)
 }
 
-// GenerateResourceName generates names for namespace scoped scoped resources
+// GenerateResourceName generates names for namespace scoped resources
 func GenerateResourceName(instanceName, component string) string {
 	return fmt.Sprintf("%s-%s", instanceName, component)
+}
+
+// GenerateUniqueResourceName generates unique names for cluster scoped resources
+func GenerateUniqueResourceName(instanceName, instanceNamespace, component string) string {
+	return fmt.Sprintf("%s-%s-%s", instanceName, instanceNamespace, component)
 }
 
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
@@ -118,10 +123,6 @@ func LabelsForCluster(instanceName, component string) map[string]string {
 }
 
 // annotationsForCluster returns the annotations for all cluster resources.
-func AnnotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
-	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.ObjectMeta.Annotations {
-		annotations[key] = val
-	}
-	return annotations
+func AnnotationsForCluster(instanceName, instanceNamespace string) map[string]string {
+	return common.DefaultAnnotations(instanceName, instanceNamespace)
 }
