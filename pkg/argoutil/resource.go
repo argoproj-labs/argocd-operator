@@ -72,7 +72,7 @@ func CreateEvent(client client.Client, eventType, action, message, reason string
 	return client.Create(context.TODO(), event)
 }
 
-// GenerateResourceName generates names for namespace scoped scoped resources
+// GenerateResourceName generates names for namespace scoped resources
 func GenerateResourceName(instanceName, component string) string {
 	return fmt.Sprintf("%s-%s", instanceName, component)
 }
