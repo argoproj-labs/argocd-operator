@@ -1,0 +1,28 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd-1
+  namespace: test-ns-1
+status:
+  phase: Available
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd-2
+  namespace: test-ns-2
+status:
+  phase: Available
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: argocd-operator
+  name: argocd-operator-controller-manager-metrics-service
+  namespace: argocd-operator-system

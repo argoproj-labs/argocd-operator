@@ -1,0 +1,28 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: sleep 10
+- script: |
+
+    CLUSTER_IP=$(kubectl get service argocd-operator-controller-manager-metrics-service -n argocd-operator-system -ojsonpath='{.spec.clusterIP}')
+
+    METRICS=$(kubectl exec -i shell-demo --container nginx -- /bin/bash -c "curl http://$CLUSTER_IP:8443/metrics")
+
+    expected_active_instances=3
+    expected_available_instances=2
+    expected_pending_instances=1
+
+    EXPECTED_ACTIVE_INSTANCES_STR="active_argocd_instances_total ${expected_active_instances}"
+
+    EXPECTED_ACTIVE_AVAILABLE_INSTANCES_STR="active_argocd_instances_by_phase{phase=\"Available\"} ${expected_available_instances}"
+
+    EXPECTED_ACTIVE_PENDING_INSTANCES_STR="active_argocd_instances_by_phase{phase=\"Pending\"} ${expected_pending_instances}"
+
+
+    if [[   "$METRICS" == *"$EXPECTED_ACTIVE_INSTANCES_STR"* &&  
+            "$METRICS" == *"$EXPECTED_ACTIVE_AVAILABLE_INSTANCES_STR"* && 
+            "$METRICS" == *"$EXPECTED_ACTIVE_PENDING_INSTANCES_STR"* ]]; then
+            exit 0
+        else 
+            exit 1
+    fi  
