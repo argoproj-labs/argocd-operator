@@ -128,7 +128,7 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
-			// cr.ObjectMeta.Namespace doesn't contain argocd instance, so don't create any role that isn't the application-controller or the server 
+			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
 			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
 				continue
 			}
