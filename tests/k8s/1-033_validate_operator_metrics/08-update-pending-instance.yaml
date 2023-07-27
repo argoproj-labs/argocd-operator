@@ -1,5 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-- script: |
-    kubectl patch argocd argocd-3 --type=json -p="[{'op': 'remove', 'path': '/spec/version'}]" -n test-ns-3
