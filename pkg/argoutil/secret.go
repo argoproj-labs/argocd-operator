@@ -34,21 +34,21 @@ func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*co
 	return secret, FetchObject(client, meta.Namespace, name, secret)
 }
 
+// NewSecret returns a new Secret based on the given metadata.
+func NewSecret(cr *argoprojv1a1.ArgoCD) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: LabelsForCluster(cr.Name, ""),
+		},
+		Type: corev1.SecretTypeOpaque,
+	}
+}
+
 // NewTLSSecret returns a new TLS Secret based on the given metadata with the provided suffix on the Name.
 func NewTLSSecret(cr *argoprojv1a1.ArgoCD, suffix string) *corev1.Secret {
 	secret := NewSecretWithSuffix(cr, suffix)
 	secret.Type = corev1.SecretTypeTLS
 	return secret
-}
-
-// NewSecret returns a new Secret based on the given metadata.
-func NewSecret(cr *argoprojv1a1.ArgoCD) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: LabelsForCluster(cr),
-		},
-		Type: corev1.SecretTypeOpaque,
-	}
 }
 
 // NewSecretWithName returns a new Secret based on the given metadata with the provided Name.

@@ -16,7 +16,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
@@ -24,8 +24,8 @@ func newClusterRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      argoutil.LabelsForCluster(cr),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(cr.Name, cr.Namespace), cr.Annotations),
 		},
 	}
 }
@@ -47,8 +47,8 @@ func newRoleBinding(cr *argoprojv1a1.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      argoutil.LabelsForCluster(cr),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(cr.Name, cr.Namespace), cr.Annotations),
 			Namespace:   cr.Namespace,
 		},
 	}
@@ -59,8 +59,8 @@ func newRoleBindingForSupportNamespaces(cr *argoprojv1a1.ArgoCD, namespace strin
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace),
-			Labels:      argoutil.LabelsForCluster(cr),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(cr.Name, cr.Namespace), cr.Annotations),
 			Namespace:   namespace,
 		},
 	}

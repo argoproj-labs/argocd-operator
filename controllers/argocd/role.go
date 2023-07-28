@@ -16,7 +16,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // newRole returns a new Role instance.
@@ -25,7 +25,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateResourceName(name, cr),
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 		Rules: rules,
 	}
@@ -36,7 +36,7 @@ func newRoleForApplicationSourceNamespaces(name, namespace string, rules []v1.Po
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
 			Namespace: namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
+			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
 		},
 		Rules: rules,
 	}
@@ -55,8 +55,8 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
-			Labels:      argoutil.LabelsForCluster(cr),
-			Annotations: argoutil.AnnotationsForCluster(cr),
+			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(cr.Name, cr.Namespace), cr.Annotations),
 		},
 		Rules: rules,
 	}
