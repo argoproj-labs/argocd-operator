@@ -29,18 +29,15 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"gopkg.in/yaml.v2"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
-	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sethvargo/go-password/password"
 	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -56,22 +53,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-// verifyVersionAPI will verify that the template API is present.
-func verifyVersionAPI() error {
-	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	versionAPIFound = found
-	return nil
-}
 
 // generateArgoAdminPassword will generate and return the admin password for Argo CD.
 func generateArgoAdminPassword() ([]byte, error) {
@@ -1148,7 +1134,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
 			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
 				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
-					k8sClient, err := initK8sClient()
+					k8sClient, err := argoutil.GetK8sClient()
 					if err != nil {
 						return false
 					}
@@ -1170,7 +1156,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
+				k8sClient, err := argoutil.GetK8sClient()
 				if err != nil {
 					return false
 				}
@@ -1192,7 +1178,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
-				k8sClient, err := initK8sClient()
+				k8sClient, err := argoutil.GetK8sClient()
 
 				if err != nil {
 					return false
@@ -1289,22 +1275,6 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 		}
 	}
 	return nil
-}
-
-func initK8sClient() (*kubernetes.Clientset, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return nil, err
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return nil, err
-	}
-
-	return k8sClient, nil
 }
 
 // getLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
@@ -1437,72 +1407,11 @@ func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj
 	return nil
 }
 
-func isProxyCluster() bool {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "failed to get k8s config")
-	}
-
-	// Initialize config client.
-	configClient, err := configv1client.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, "failed to initialize openshift config client")
-		return false
-	}
-
-	proxy, err := configClient.Proxies().Get(context.TODO(), "cluster", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "failed to get proxy configuration")
-		return false
-	}
-
-	if proxy.Spec.HTTPSProxy != "" {
-		log.Info("proxy configuration detected")
-		return true
-	}
-
-	return false
-}
-
-func getOpenShiftAPIURL() string {
-	k8s, err := initK8sClient()
-	if err != nil {
-		log.Error(err, "failed to initialize k8s client")
-	}
-
-	cm, err := k8s.CoreV1().ConfigMaps("openshift-console").Get(context.TODO(), "console-config", metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "")
-	}
-
-	var cf string
-	if v, ok := cm.Data["console-config.yaml"]; ok {
-		cf = v
-	}
-
-	data := make(map[string]interface{})
-	err = yaml.Unmarshal([]byte(cf), data)
-	if err != nil {
-		log.Error(err, "")
-	}
-
-	var apiURL interface{}
-	var out string
-	if c, ok := data["clusterInfo"]; ok {
-		ci, _ := c.(map[interface{}]interface{})
-
-		apiURL = ci["masterPublicURL"]
-		out = fmt.Sprintf("%v", apiURL)
-	}
-
-	return out
-}
-
 func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
-	if !IsVersionAPIAvailable() {
+	if !cluster.IsVersionAPIAvailable() {
 		return
 	}
-	version, err := getClusterVersion(client)
+	version, err := cluster.GetClusterVersion(client)
 	if err != nil {
 		log.Error(err, "couldn't get OpenShift version")
 	}
@@ -1517,22 +1426,6 @@ func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec
 			podspec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
 		}
 	}
-}
-
-// getClusterVersion returns the OpenShift Cluster version in which the operator is installed
-func getClusterVersion(client client.Client) (string, error) {
-	if !IsVersionAPIAvailable() {
-		return "", nil
-	}
-	clusterVersion := &configv1.ClusterVersion{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: "version"}, clusterVersion)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return "", nil
-		}
-		return "", err
-	}
-	return clusterVersion.Status.Desired.Version, nil
 }
 
 // generateRandomBytes returns a securely generated random bytes.

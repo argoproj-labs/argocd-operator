@@ -25,6 +25,7 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
 	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
@@ -32,7 +33,6 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	template "github.com/openshift/api/template/v1"
-	oappsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 	oauthclient "github.com/openshift/client-go/oauth/clientset/versioned/typed/oauth/v1"
 	templatev1client "github.com/openshift/client-go/template/clientset/versioned/typed/template/v1"
 	"gopkg.in/yaml.v2"
@@ -963,8 +963,12 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 	// No Identity Provider is configured by default for non-openshift environments.
 	if IsTemplateAPIAvailable() {
 		baseURL := "https://kubernetes.default.svc.cluster.local"
-		if isProxyCluster() {
-			baseURL = getOpenShiftAPIURL()
+		if cluster.IsProxyCluster() {
+			var err error
+			baseURL, err = cluster.GetOpenShiftAPIURL()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		ks.IdentityProviders = []*keycloakv1alpha1.KeycloakIdentityProvider{
@@ -1147,19 +1151,7 @@ func (r *ArgoCDReconciler) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kR
 
 // HandleKeycloakPodDeletion resets the Realm Creation Status to false when keycloak pod is deleted.
 func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return err
-	}
-
-	// Initialize deployment config client.
-	dcClient, err := oappsv1client.NewForConfig(cfg)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create apps client for Deployment config %s in namespace %s",
-			dc.Name, dc.Namespace))
-		return err
-	}
+	dcClient, err := argoutil.GetOAppsClient()
 
 	log.Info("Set the Realm Creation status annoation to false")
 	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
