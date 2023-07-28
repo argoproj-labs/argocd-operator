@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -15,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -579,9 +581,10 @@ func TestSetManagedNamespaces(t *testing.T) {
 
 	assert.Equal(t, len(r.ManagedNamespaces), 3)
 	for n, _ := range r.ManagedNamespaces {
-		
-		if n.Labels[common.ArgoCDManagedByLabel] != testNamespace && n.Name != testNamespace {
-			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
+		namespace := &corev1.Namespace{}
+		_ = r.Client.Get(context.TODO(), client.ObjectKey{Name: n}, namespace)
+		if namespace.Labels[common.ArgoCDManagedByLabel] != testNamespace && namespace.Name != testNamespace {
+			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", namespace.Name, testNamespace)
 		}
 	}
 }
