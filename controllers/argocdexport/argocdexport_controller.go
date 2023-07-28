@@ -32,12 +32,12 @@ import (
 
 var log = logr.Log.WithName("controller_argocdexport")
 
-// blank assignment to verify that ArgoCDReconcilerExport implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ArgoCDReconcilerExport{}
+// blank assignment to verify that ArgoCDExportReconciler implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ArgoCDExportReconciler{}
 
-// ArgoCDReconcilerExport reconciles a ArgoCDExport object
+// ArgoCDExportReconciler reconciles a ArgoCDExport object
 // TODO(update) rename to ArgoCDExportReconciler
-type ArgoCDReconcilerExport struct {
+type ArgoCDExportReconciler struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	Client client.Client
@@ -51,7 +51,7 @@ type ArgoCDReconcilerExport struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *ArgoCDReconcilerExport) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+func (r *ArgoCDExportReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logr.FromContext(ctx, "Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling ArgoCDExport")
 
@@ -69,7 +69,7 @@ func (r *ArgoCDReconcilerExport) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{}, err
 	}
 
-	if err := r.ArgoCDReconcilerExportResources(export); err != nil {
+	if err := r.ArgoCDExportReconcilerResources(export); err != nil {
 		// Error reconciling ArgoCDExport sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -78,7 +78,7 @@ func (r *ArgoCDReconcilerExport) Reconcile(ctx context.Context, request ctrl.Req
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ArgoCDReconcilerExport) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ArgoCDExportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bld := ctrl.NewControllerManagedBy(mgr)
 	setResourceWatches(bld)
 	return bld.Complete(r)

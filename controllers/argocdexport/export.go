@@ -38,7 +38,7 @@ func generateBackupKey() ([]byte, error) {
 }
 
 // reconcileExport will ensure that the resources for the export process are present for the ArgoCDExport.
-func (r *ArgoCDReconcilerExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileExport(cr *argoprojv1a1.ArgoCDExport) error {
 	log.Info("reconciling export secret")
 	if err := r.reconcileExportSecret(cr); err != nil {
 		return err
@@ -60,7 +60,7 @@ func (r *ArgoCDReconcilerExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) 
 }
 
 // reconcileExportSecret will ensure that the Secret used for the export process is present.
-func (r *ArgoCDReconcilerExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
 	name := argoutil.FetchStorageSecretName(cr)
 	// Dummy CR to retrieve secret
 	a := &argoprojv1a1.ArgoCD{}
@@ -96,7 +96,7 @@ func (r *ArgoCDReconcilerExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDEx
 }
 
 // validateExport will ensure that the given ArgoCDExport is valid.
-func (r *ArgoCDReconcilerExport) validateExport(cr *argoprojv1alpha1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) validateExport(cr *argoprojv1alpha1.ArgoCDExport) error {
 	if len(cr.Status.Phase) <= 0 {
 		cr.Status.Phase = "Pending"
 		return r.Client.Status().Update(context.TODO(), cr)

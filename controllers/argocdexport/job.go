@@ -222,7 +222,7 @@ func newPodTemplateSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client
 }
 
 // reconcileCronJob will ensure that the CronJob for the ArgoCDExport is present.
-func (r *ArgoCDReconcilerExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil {
 		return nil // Do nothing if storage options not set
 	}
@@ -257,7 +257,7 @@ func (r *ArgoCDReconcilerExport) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport)
 }
 
 // reconcileJob will ensure that the Job for the ArgoCDExport is present.
-func (r *ArgoCDReconcilerExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileJob(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil {
 		return nil // Do nothing if storage options not set
 	}
@@ -287,7 +287,7 @@ func (r *ArgoCDReconcilerExport) reconcileJob(cr *argoprojv1a1.ArgoCDExport) err
 	return r.Client.Create(context.TODO(), job)
 }
 
-func (r *ArgoCDReconcilerExport) argocdName(namespace string) (string, error) {
+func (r *ArgoCDExportReconciler) argocdName(namespace string) (string, error) {
 	argocds := &argoprojv1a1.ArgoCDList{}
 	if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: namespace}); err != nil {
 		return "", err

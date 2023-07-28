@@ -28,7 +28,7 @@ import (
 )
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
-func (r *ArgoCDReconcilerExport) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil || strings.ToLower(cr.Spec.Storage.Backend) != common.ArgoCDExportStorageBackendLocal {
 		return nil // Do nothing if storage or local options not set
 	}
@@ -41,7 +41,7 @@ func (r *ArgoCDReconcilerExport) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDEx
 }
 
 // reconcilePVC will ensure that the PVC for the ArgoCDExport is present.
-func (r *ArgoCDReconcilerExport) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Status.Phase == common.ArgoCDStatusCompleted {
 		return nil // Nothing to see here, move along...
 	}

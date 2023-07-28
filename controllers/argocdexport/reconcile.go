@@ -23,8 +23,8 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
-// ArgoCDReconcilerExportResources will reconcile all ArgoCDExport resources for the give CR.
-func (r *ArgoCDReconcilerExport) ArgoCDReconcilerExportResources(cr *argoprojv1a1.ArgoCDExport) error {
+// ArgoCDExportReconcilerResources will reconcile all ArgoCDExport resources for the give CR.
+func (r *ArgoCDExportReconciler) ArgoCDExportReconcilerResources(cr *argoprojv1a1.ArgoCDExport) error {
 	if err := r.validateExport(cr); err != nil {
 		return err
 	}

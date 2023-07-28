@@ -198,7 +198,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
 	}
-	if err = (&argocdexport.ArgoCDReconcilerExport{
+	if err = (&argocdexport.ArgoCDExportReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
