@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	goruntime "runtime"
+	"strconv"
 	"strings"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
@@ -75,17 +76,30 @@ func printVersion() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
+	var (
+		metricsAddr          string
+		enableLeaderElection bool
+		probeAddr            string
+		logLevel             string
+		loglevelInt          = 0
+	)
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&logLevel, "loglevel", "0", "The desired logr verbosity level")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
+	loglevelInt, err := strconv.Atoi(logLevel)
+	if err != nil {
+		setupLog.Error(err, "could not set desired log level, defaulting to 0")
+	}
+
 	opts := zap.Options{
 		Development: true,
 		TimeEncoder: zapcore.RFC3339TimeEncoder,
+		Level:       zapcore.Level(-1 * loglevelInt),
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
