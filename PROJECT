@@ -22,4 +22,14 @@ resources:
   kind: ArgoCDExport
   path: github.com/argoproj-labs/argocd-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  group: argoproj.io
+  kind: ArgoCD
+  path: github.com/argoproj-labs/argocd-operator/api/v1beta1
+  version: v1beta1
+  webhooks:
+    conversion: true
+    webhookVersion: v1
 version: "3"

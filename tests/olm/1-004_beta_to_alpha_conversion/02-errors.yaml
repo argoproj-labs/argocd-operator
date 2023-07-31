@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  labels:
+    example: dex
+spec:
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+  server:
+    route: 
+      enabled: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+  labels:
+    example: dex
+spec:
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+  server:
+    route: 
+      enabled: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server

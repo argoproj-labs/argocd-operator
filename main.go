@@ -49,7 +49,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	argoprojiov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -62,7 +63,8 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(argoprojiov1alpha1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -132,7 +134,12 @@ func main() {
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err := argoprojiov1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := v1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := v1beta1.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -190,6 +197,14 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
 		os.Exit(1)
+	}
+
+	// Start webhook only if ENABLE_CONVERSION_WEBHOOK is set
+	if strings.EqualFold(os.Getenv("ENABLE_CONVERSION_WEBHOOK"), "true") {
+		if err = (&v1beta1.ArgoCD{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "ArgoCD")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 
