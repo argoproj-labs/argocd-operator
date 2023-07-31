@@ -75,12 +75,30 @@ func printVersion() {
 	setupLog.Info(fmt.Sprintf("Version of %s-operator: %v", common.ArgoCDAppName, version.Version))
 }
 
+// func extractValue(labelSelectorFlag string) (map[string]string, string) {
+// 	// Split the labelSelector string by "=" and get the map[string]string format
+// 	var labelSelector map[string]string
+// 	key, value, isFound := strings.Cut(labelSelectorFlag, "=")
+// 	if !isFound {
+// 		// In case the labelSelector is not in the expected format, return an empty string or handle the error accordingly
+// 		err := "Label Selector not found or Invalid Label Slector format"
+// 		return nil, err
+// 	}
+// 	labelSelector[key] = value
+// 	return labelSelector, ""
+// }
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
+	var labelSelectorFlag string
+	var labelSelector map[string]string
+
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&labelSelectorFlag, "label-selector", "", "The label selector is used to map to a subset of ArgoCD instances to reconcile")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -183,10 +201,18 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	key, value, isFound := strings.Cut(labelSelectorFlag, "=")
+	if !isFound {
+		// In case the labelSelector is not in the expected format, return an empty string or handle the error accordingly
+		setupLog.Error(nil, "Label Selector not found or Invalid Label Slector format")
+		os.Exit(1)
+	}
+	labelSelector[key] = value
 
 	if err = (&argocd.ReconcileArgoCD{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		LabelSelector: labelSelector,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCD")
 		os.Exit(1)
