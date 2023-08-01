@@ -124,8 +124,9 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
 			ActiveInstancesByPhase.WithLabelValues(oldPhase).Dec()
 		}
-		ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
 	}
+
+	ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
 
 	if argocd.GetDeletionTimestamp() != nil {
 
