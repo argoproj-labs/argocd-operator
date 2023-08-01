@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -49,14 +50,32 @@ func ZapLogger(development bool) logr.Logger {
 	return zap.New(zap.UseDevMode(development))
 }
 
+type namespaceOpt func(*corev1.Namespace)
+
+func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
+	a := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "test-ns",
+			Labels: make(map[string]string),
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	logger := ctrl.Log.WithName("test-logger")
+
 	return &ArgoCDReconciler{
 		Client: cl,
 		Scheme: s,
+		Logger: logger,
 	}
 }
 
@@ -284,13 +303,13 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: managedBy}
+		ns.Labels = map[string]string{common.ArgoCDResourcesManagedByLabel: managedBy}
 	}
 
-	if r.ManagedNamespaces == nil {
-		r.ManagedNamespaces = make(map[string]string)
+	if r.ResourceManagedNamespaces == nil {
+		r.ResourceManagedNamespaces = make(map[string]string)
 	}
-	r.ManagedNamespaces[ns.Name] = ""
+	r.ResourceManagedNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
 }
@@ -298,13 +317,13 @@ func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 func createNamespaceManagedByClusterArgoCDLabel(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDManagedByClusterArgoCDLabel: managedBy}
+		ns.Labels = map[string]string{common.ArgoCDAppsManagedByLabel: managedBy}
 	}
 
-	if r.SourceNamespaces == nil {
-		r.SourceNamespaces = make(map[string]string)
+	if r.AppManagedNamespaces == nil {
+		r.AppManagedNamespaces = make(map[string]string)
 	}
-	r.SourceNamespaces[ns.Name] = ""
+	r.AppManagedNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
 }

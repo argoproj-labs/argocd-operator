@@ -131,7 +131,7 @@ func (r *ArgoCDReconciler) namespaceResourceMapper(o client.Object) []reconcile.
 	var result = []reconcile.Request{}
 
 	labels := o.GetLabels()
-	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
+	if v, ok := labels[common.ArgoCDResourcesManagedByLabel]; ok {
 		argocds := &argoprojv1alpha1.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result

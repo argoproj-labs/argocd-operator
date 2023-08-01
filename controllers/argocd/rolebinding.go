@@ -109,14 +109,14 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 		return error
 	}
 
-	for ns, _ := range r.ManagedNamespaces {
+	for ns, _ := range r.ResourceManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		namespace := &corev1.Namespace{}
 		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: ns}, namespace)
 		if namespace.DeletionTimestamp != nil {
-			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
-				delete(namespace.Labels, common.ArgoCDManagedByLabel)
+			if _, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
+				delete(namespace.Labels, common.ArgoCDResourcesManagedByLabel)
 				_ = r.Client.Update(context.TODO(), namespace)
 			}
 			continue
@@ -231,7 +231,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 			// do not reconcile rolebindings for namespaces already containing managed-by label
 			// as it already contains rolebindings with permissions to manipulate application resources
 			// reconciled during reconcilation of ManagedNamespaces
-			if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+			if value, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
 				log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 				continue
 			}
@@ -281,7 +281,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 
 			if roleBindingExists {
 				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
-				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Namespace {
+				if n, ok := namespace.Labels[common.ArgoCDAppsManagedByLabel]; !ok || n == cr.Namespace {
 					continue
 				}
 				// if the RoleRef changes, delete the existing role binding and create a new one

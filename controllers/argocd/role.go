@@ -102,14 +102,14 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 	var roles []*v1.Role
 
 	// create policy rules for each namespace
-	for ns, _ := range r.ManagedNamespaces {
+	for ns, _ := range r.ResourceManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		namespace := &corev1.Namespace{}
 		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: ns}, namespace)
 		if namespace.DeletionTimestamp != nil {
-			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
-				delete(namespace.Labels, common.ArgoCDManagedByLabel)
+			if _, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
+				delete(namespace.Labels, common.ArgoCDResourcesManagedByLabel)
 				_ = r.Client.Update(context.TODO(), namespace)
 			}
 			continue
@@ -202,11 +202,11 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
+		if value, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok && value != "" {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
-			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
-				delete(r.SourceNamespaces, namespace.Name)
+			if val, ok1 := namespace.Labels[common.ArgoCDAppsManagedByLabel]; ok1 && val == cr.Namespace {
+				delete(r.AppManagedNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -231,7 +231,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 
 		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
 		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
-		if _, ok := r.SourceNamespaces[sourceNamespace]; ok {
+		if _, ok := r.AppManagedNamespaces[sourceNamespace]; ok {
 			// If sourceNamespace includes the name but role is missing in the namespace, create the role
 			if reflect.DeepEqual(existingRole, v1.Role{}) {
 				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
@@ -243,7 +243,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		}
 
 		// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
-		if value, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && value != "" {
+		if value, ok := namespace.Labels[common.ArgoCDAppsManagedByLabel]; ok && value != "" {
 			log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
 			continue
 		}
@@ -253,7 +253,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 			return nil, err
 		}
 		// Update namespace with managed-by-cluster-argocd label
-		namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+		namespace.Labels[common.ArgoCDAppsManagedByLabel] = cr.Namespace
 		if err := r.Client.Update(context.TODO(), namespace); err != nil {
 			log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
 		}
@@ -266,8 +266,8 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		}
 		roles = append(roles, &existingRole)
 
-		if _, ok := r.SourceNamespaces[sourceNamespace]; !ok {
-			r.SourceNamespaces[sourceNamespace] = ""
+		if _, ok := r.AppManagedNamespaces[sourceNamespace]; !ok {
+			r.AppManagedNamespaces[sourceNamespace] = ""
 		}
 
 	}

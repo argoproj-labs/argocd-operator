@@ -217,11 +217,11 @@ const (
 	// ArgoCDSecretTypeLabel is needed for cluster secrets
 	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
 
-	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
-	ArgoCDManagedByLabel = "argocd.argoproj.io/managed-by"
+	// ArgoCDResourcesManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
+	ArgoCDResourcesManagedByLabel = "argocd.argoproj.io/managed-by"
 
-	// ArgoCDManagedByClusterArgoCDLabel is needed to identify namespace mentioned as sourceNamespace on ArgoCD
-	ArgoCDManagedByClusterArgoCDLabel = "argocd.argoproj.io/managed-by-cluster-argocd"
+	// ArgoCDAppsManagedByLabel is needed to identify namespace mentioned as sourceNamespace on ArgoCD
+	ArgoCDAppsManagedByLabel = "argocd.argoproj.io/managed-by-cluster-argocd"
 
 	// ArgoCDControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD application controller
 	ArgoCDControllerClusterRoleEnvName = "CONTROLLER_CLUSTER_ROLE"

@@ -833,7 +833,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error
 func (r *ArgoCDReconciler) removeManagedByLabelFromNamespaces(namespace string) error {
 	nsList := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: namespace,
+		common.ArgoCDResourcesManagedByLabel: namespace,
 	}
 	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
 		return err
@@ -850,10 +850,10 @@ func (r *ArgoCDReconciler) removeManagedByLabelFromNamespaces(namespace string) 
 			continue
 		}
 
-		if n, ok := ns.Labels[common.ArgoCDManagedByLabel]; !ok || n != namespace {
+		if n, ok := ns.Labels[common.ArgoCDResourcesManagedByLabel]; !ok || n != namespace {
 			continue
 		}
-		delete(ns.Labels, common.ArgoCDManagedByLabel)
+		delete(ns.Labels, common.ArgoCDResourcesManagedByLabel)
 		if err := r.Client.Update(context.TODO(), ns); err != nil {
 			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
 		}
@@ -1029,7 +1029,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
-			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
+			common.ArgoCDAppsManagedByLabel: "cluster",
 		}}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
@@ -1146,8 +1146,8 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// 2. if yes, check if the old and new values are different, if yes,
 			// first deleteRBACs for the old value & return true.
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
-			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
-				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
+			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok {
+				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && valOld != valNew {
 					k8sClient, err := initK8sClient()
 					if err != nil {
 						return false
@@ -1169,7 +1169,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			}
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
-			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
+			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && ns != "" {
 				k8sClient, err := initK8sClient()
 				if err != nil {
 					return false
@@ -1191,7 +1191,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
+			if ns, ok := e.Object.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && ns != "" {
 				k8sClient, err := initK8sClient()
 
 				if err != nil {
@@ -1330,49 +1330,11 @@ func getLogFormat(logField string) string {
 	return common.ArgoCDDefaultLogFormat
 }
 
-func (r *ArgoCDReconciler) setManagedNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	for _, namespace := range namespaces.Items {
-		r.ManagedNamespaces[namespace.Name] = ""
-	}
-	return nil
-}
-
-func (r *ArgoCDReconciler) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.SourceNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	for _, namespace := range namespaces.Items {
-		r.SourceNamespaces[namespace.Name] = ""
-	}
-
-	return nil
-}
-
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
-	for ns, _ := range r.SourceNamespaces {
+	for ns, _ := range r.AppManagedNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
 			for _, namespace := range cr.Spec.SourceNamespaces {
@@ -1388,7 +1350,7 @@ func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.
 				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
 				continue
 			}
-			delete(r.SourceNamespaces, ns)
+			delete(r.AppManagedNamespaces, ns)
 		}
 	}
 	return nil
@@ -1403,7 +1365,7 @@ func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj
 		return nil
 	}
 	// Remove managed-by-cluster-argocd from the namespace
-	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
+	delete(namespace.Labels, common.ArgoCDAppsManagedByLabel)
 	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}

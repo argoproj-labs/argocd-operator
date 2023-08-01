@@ -559,7 +559,7 @@ func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testNamespace",
 					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: a.Namespace,
+						common.ArgoCDResourcesManagedByLabel: a.Namespace,
 					},
 				},
 			},
