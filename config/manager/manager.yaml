@@ -55,5 +55,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
+        - name : LABEL_SELECTOR
+          value: ""
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

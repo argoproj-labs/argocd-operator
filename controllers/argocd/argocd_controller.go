@@ -46,7 +46,7 @@ type ReconcileArgoCD struct {
 	ManagedNamespaces *corev1.NamespaceList
 	// Stores a list of SourceNamespaces as values
 	ManagedSourceNamespaces map[string]string
-	LabelSelector           map[string]string
+	LabelSelector           string
 }
 
 var log = logr.Log.WithName("controller_argocd")
