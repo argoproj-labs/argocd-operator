@@ -25,7 +25,7 @@ func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newTestNamespace", a.Namespace))
 
-	workloadIdentifier := "xrb"
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
 
@@ -66,6 +66,18 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	workloadIdentifier = common.ArgoCDRedisHAComponent
 	expectedRedisHaRules := policyRuleForRedisHa(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisHaRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+
+	// check no redis rolebinding is created for the new namespace with managed-by label
+	workloadIdentifier = common.ArgoCDRedisComponent
+	expectedRedisRules := policyRuleForRedis(r.Client)
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisRules, a))
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
+
+	// check no grafana rolebinding is created for the new namespace with managed-by label
+	workloadIdentifier = common.ArgoCDOperatorGrafanaComponent
+	expectedGrafanaRules := policyRuleForGrafana(r.Client)
+	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedGrafanaRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }
 
