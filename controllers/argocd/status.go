@@ -328,6 +328,7 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 // reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 	cr.Status.Host = ""
+	cr.Status.Phase = "Available"
 
 	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
@@ -364,6 +365,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
 					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
 						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = ""
 						cr.Status.Phase = "Pending"
@@ -372,6 +374,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
 						cr.Status.Host = route.Status.Ingress[0].Host
+						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = "Unavailable"
 						cr.Status.Phase = "Pending"
@@ -400,6 +403,7 @@ func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				}
 				hosts = strings.Join(s, ", ")
 				cr.Status.Host = hosts
+				cr.Status.Phase = "Available"
 			}
 		}
 	}
