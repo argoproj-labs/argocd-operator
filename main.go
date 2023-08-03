@@ -76,19 +76,6 @@ func printVersion() {
 	setupLog.Info(fmt.Sprintf("Version of %s-operator: %v", common.ArgoCDAppName, version.Version))
 }
 
-// func extractValue(labelSelectorFlag string) (map[string]string, string) {
-// 	// Split the labelSelector string by "=" and get the map[string]string format
-// 	var labelSelector map[string]string
-// 	key, value, isFound := strings.Cut(labelSelectorFlag, "=")
-// 	if !isFound {
-// 		// In case the labelSelector is not in the expected format, return an empty string or handle the error accordingly
-// 		err := "Label Selector not found or Invalid Label Slector format"
-// 		return nil, err
-// 	}
-// 	labelSelector[key] = value
-// 	return labelSelector, ""
-// }
-
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
