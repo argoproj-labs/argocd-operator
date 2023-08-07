@@ -102,6 +102,36 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_ReconcileLabel(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD()
+
+	r := makeTestReconciler(t, a)
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	a.SetLabels(map[string]string{"foo": "bar"})
+	err := r.Client.Update(ctx, a)
+	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
+
+	// t.Setenv("ARGOCD_LABEL_SELECTOR", "foo=bar")
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	res, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+	if res.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+	// below comments will be removed
+	// fmt.Println(os.Getenv("ARGOCD_LABEL_SELECTOR"))
+	// fmt.Println(a.Labels)
+	// fmt.Println(r.LabelSelector)
+}
+
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
