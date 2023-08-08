@@ -110,6 +110,7 @@ func TestReconcileArgoCD_ReconcileLabel(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
+	r.LabelSelector = "foo=bar"
 	a.SetLabels(map[string]string{"foo": "bar"})
 	err := r.Client.Update(ctx, a)
 	fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
