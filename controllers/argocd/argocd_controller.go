@@ -20,32 +20,52 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-
-	corev1 "k8s.io/api/core/v1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/configmap"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// blank assignment to verify that ReconcileArgoCD implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileArgoCD{}
+// blank assignment to verify that ArgoCDReconciler implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
 // ArgoCDReconciler reconciles a ArgoCD object
-// TODO(upgrade): rename to ArgoCDRecoonciler
-type ReconcileArgoCD struct {
+type ArgoCDReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	ManagedNamespaces *corev1.NamespaceList
-	// Stores a list of SourceNamespaces as values
-	ManagedSourceNamespaces map[string]string
+	Scheme        *runtime.Scheme
+	Instance      *v1alpha1.ArgoCD
+	ClusterScoped bool
+	Logger        logr.Logger
+
+	ManagedNamespaces map[string]string
+	SourceNamespaces  map[string]string
+
+	SecretController        *secret.SecretReconciler
+	ConfigMapController     *configmap.ConfigMapReconciler
+	RedisController         *redis.RedisReconciler
+	ReposerverController    *reposerver.RepoServerReconciler
+	ServerController        *server.ServerReconciler
+	NotificationsController *notifications.NotificationsReconciler
+	AppController           *appcontroller.AppControllerReconciler
+	AppsetController        *applicationset.ApplicationSetReconciler
+	SSOController           *sso.SSOReconciler
 }
 
-var log = logr.Log.WithName("controller_argocd")
+var log = ctrl.Log.WithName("controller_argocd")
 
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
@@ -73,9 +93,8 @@ var log = logr.Log.WithName("controller_argocd")
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	reqLogger := logr.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
-	reqLogger.Info("Reconciling ArgoCD")
+func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
 
 	argocd := &argoproj.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
@@ -90,56 +109,59 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if argocd.GetDeletionTimestamp() != nil {
-		if argocd.IsDeletionFinalizerPresent() {
-			if err := r.deleteClusterResources(argocd); err != nil {
+	r.Instance = argocd
+	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
+	r.Logger = argocdControllerLog.WithValues("instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
+
+	if r.Instance.GetDeletionTimestamp() != nil {
+		if r.Instance.IsDeletionFinalizerPresent() {
+			if err := r.deleteClusterResources(r.Instance); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
 			if isRemoveManagedByLabelOnArgoCDDeletion() {
-				if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
-					return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
+				if err := r.removeManagedByLabelFromNamespaces(r.Instance.Namespace); err != nil {
+					return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", r.Instance.Namespace, err)
 				}
 			}
 
-			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
+			if err := r.removeUnmanagedSourceNamespaceResources(r.Instance); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
 			}
 
-			if err := r.removeDeletionFinalizer(argocd); err != nil {
+			if err := r.removeDeletionFinalizer(r.Instance); err != nil {
 				return reconcile.Result{}, err
 			}
 
 			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
 			// is created in the same namespace in the future, that instance is appropriately tracked
-			if _, ok := DeprecationEventEmissionTracker[argocd.Namespace]; ok {
-				delete(DeprecationEventEmissionTracker, argocd.Namespace)
+			if _, ok := DeprecationEventEmissionTracker[r.Instance.Namespace]; ok {
+				delete(DeprecationEventEmissionTracker, r.Instance.Namespace)
 			}
 		}
 		return reconcile.Result{}, nil
 	}
 
-	if !argocd.IsDeletionFinalizerPresent() {
-		if err := r.addDeletionFinalizer(argocd); err != nil {
+	if !r.Instance.IsDeletionFinalizerPresent() {
+		if err := r.addDeletionFinalizer(r.Instance); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 
-	// get the latest version of argocd instance before reconciling
-	if err = r.Client.Get(ctx, request.NamespacedName, argocd); err != nil {
+	if err = r.setManagedNamespaces(r.Instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if err = r.setManagedNamespaces(argocd); err != nil {
+	if err = r.setManagedSourceNamespaces(r.Instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if err = r.setManagedSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, err
-	}
+	// if err := r.reconcileResources(r.Instance); err != nil {
+	// 	// Error reconciling ArgoCD sub-resources - requeue the request.
+	// 	return reconcile.Result{}, err
+	// }
 
-	if err := r.reconcileResources(argocd); err != nil {
-		// Error reconciling ArgoCD sub-resources - requeue the request.
+	if err = r.reconcileControllers(); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -148,8 +170,121 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper)
 	return bldr.Complete(r)
+}
+
+func (r *ArgoCDReconciler) reconcileControllers() error {
+
+	// core components, return reconciliation errors
+	if err := r.SecretController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile secret controller")
+		return err
+	}
+
+	if err := r.ConfigMapController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile configmap controller")
+		return err
+	}
+
+	if err := r.AppController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile application controller")
+		return err
+	}
+
+	if err := r.ServerController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile server")
+		return err
+	}
+
+	if err := r.RedisController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile redis controller")
+		return err
+	}
+
+	if err := r.ReposerverController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile reposerver controller")
+		return err
+	}
+
+	// non-core components, don't return reconciliation errors
+	if err := r.AppsetController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile applicationset controller")
+	}
+
+	if err := r.NotificationsController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile notifications controller")
+	}
+
+	if err := r.SSOController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile SSO controller")
+	}
+
+	return nil
+}
+
+func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
+	r.SecretController = &secret.SecretReconciler{
+		Client:            &r.Client,
+		Scheme:            r.Scheme,
+		Instance:          r.Instance,
+		ClusterScoped:     r.ClusterScoped,
+		ManagedNamespaces: r.ManagedNamespaces,
+	}
+
+	r.ConfigMapController = &configmap.ConfigMapReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
+
+	r.RedisController = &redis.RedisReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
+
+	r.ReposerverController = &reposerver.RepoServerReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
+
+	r.ServerController = &server.ServerReconciler{
+		Client:            &r.Client,
+		Scheme:            r.Scheme,
+		Instance:          r.Instance,
+		ClusterScoped:     r.ClusterScoped,
+		ManagedNamespaces: r.ManagedNamespaces,
+		SourceNamespaces:  r.SourceNamespaces,
+	}
+
+	r.NotificationsController = &notifications.NotificationsReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
+
+	r.AppController = &appcontroller.AppControllerReconciler{
+		Client:            &r.Client,
+		Scheme:            r.Scheme,
+		Instance:          r.Instance,
+		ClusterScoped:     r.ClusterScoped,
+		ManagedNamespaces: r.ManagedNamespaces,
+		SourceNamespaces:  r.SourceNamespaces,
+	}
+
+	r.AppsetController = &applicationset.ApplicationSetReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
+
+	r.SSOController = &sso.SSOReconciler{
+		Client:   &r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
 }

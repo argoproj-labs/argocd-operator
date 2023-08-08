@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
+func TestArgoCDReconciler_clusterRoleBindingMapper(t *testing.T) {
 
 	type fields struct {
 		client client.Client
@@ -92,18 +92,18 @@ func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileArgoCD{
+			r := &ArgoCDReconciler{
 				Client: tt.fields.client,
 				Scheme: tt.fields.scheme,
 			}
 			if got := r.clusterResourceMapper(tt.args.o); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReconcileArgoCD.clusterRoleBindingMapper() = %v, want %v", got, tt.want)
+				t.Errorf("ArgoCDReconciler.clusterRoleBindingMapper() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
+func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -320,7 +320,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
+func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -537,7 +537,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
+func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
 	a.Namespace = "newTestNamespace"
@@ -587,7 +587,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := r.namespaceResourceMapper(tt.o); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ReconcileArgoCD.namespaceResourceMapper(), got = %v, want = %v", got, tt.want)
+				t.Errorf("ArgoCDReconciler.namespaceResourceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})
 	}

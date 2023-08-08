@@ -693,7 +693,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 	}
 }
 
-func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 
 	// Create Keycloak Ingress
 	ing := newKeycloakIngress(cr)
@@ -756,7 +756,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // prepares a keycloak config which is used in creating keycloak realm configuration.
-func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
+func (r *ArgoCDReconciler) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
 
 	var tlsVerification bool
 	// Get keycloak hostname from route.
@@ -834,7 +834,7 @@ func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycl
 }
 
 // prepares a keycloak config which is used in creating keycloak realm configuration for kubernetes.
-func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
+func (r *ArgoCDReconciler) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
 
 	// Get keycloak hostname from ingress.
 	// keycloak hostname is required to post realm configuration to keycloak when keycloak cannot be accessed using service name
@@ -1004,7 +1004,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 }
 
 // Gets Keycloak Server cert. This cert is used to authenticate the api calls to the Keycloak service.
-func (r *ReconcileArgoCD) getKCServerCert(cr *argoprojv1a1.ArgoCD) ([]byte, error) {
+func (r *ArgoCDReconciler) getKCServerCert(cr *argoprojv1a1.ArgoCD) ([]byte, error) {
 
 	sslCertsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1030,7 +1030,7 @@ func getOAuthClient(ns string) string {
 }
 
 // Updates OIDC configuration for ArgoCD.
-func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRouteURL string) error {
+func (r *ArgoCDReconciler) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRouteURL string) error {
 
 	// Update the ArgoCD client secret for OIDC in argocd-secret.
 	argoCDSecret := &corev1.Secret{
@@ -1176,7 +1176,7 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
 
 	// TemplateAPI is available, Install keycloak using openshift templates.
 	if IsTemplateAPIAvailable() {
@@ -1341,7 +1341,7 @@ func deleteKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // Installs and configures Keycloak for OpenShift
-func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 
 	templateInstanceRef, err := newKeycloakTemplateInstance(cr)
 	if err != nil {
@@ -1460,7 +1460,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD)
 }
 
 // Installs and configures Keycloak for Kubernetes
-func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
 
 	err := r.newKeycloakInstance(cr)
 	if err != nil {

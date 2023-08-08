@@ -22,7 +22,7 @@ import (
 )
 
 // reconcileStorage will ensure that the storage options for the ArgoCDExport are present.
-func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileStorage(cr *argoprojv1a1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil {
 		cr.Spec.Storage = &argoprojv1a1.ArgoCDExportStorageSpec{
 			Backend: common.ArgoCDExportStorageBackendLocal,

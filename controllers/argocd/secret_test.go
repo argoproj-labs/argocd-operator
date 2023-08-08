@@ -54,7 +54,7 @@ func byteMapKeys(m map[string][]byte) []string {
 	return r
 }
 
-func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
+func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -208,7 +208,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 
 }
 
-func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
+func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -248,7 +248,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 
 }
 
-func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
+func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
 	argocd := &v1alpha1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -419,7 +419,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 	})
 }
 
-func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
+func Test_ArgoCDReconciler_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)

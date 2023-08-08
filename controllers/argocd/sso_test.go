@@ -37,7 +37,7 @@ import (
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
-func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
+func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
 	t.Helper()
 	s := scheme.Scheme
 	// Register template scheme
@@ -49,7 +49,7 @@ func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.
 	routev1.Install(s)
 
 	cl := fake.NewFakeClientWithScheme(s, objs...)
-	return &ReconcileArgoCD{
+	return &ArgoCDReconciler{
 		Client: cl,
 		Scheme: s,
 	}

@@ -65,7 +65,7 @@ func newIngressWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *networkingv1.
 }
 
 // reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
-func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileArgoServerIngress(cr); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
-func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.Ingress.Enabled {
@@ -166,7 +166,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.GRPC.Ingress.Enabled {
@@ -241,7 +241,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoCD
 }
 
 // reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
@@ -318,7 +318,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
-func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
@@ -392,7 +392,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
-func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoprojv1a1.ArgoCD) error {
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {

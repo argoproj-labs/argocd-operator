@@ -59,7 +59,7 @@ func verifyTemplateAPI() error {
 // The operator must support `.spec.sso.dex` fields for dex, and `.spec.sso.keycloak` fields for keycloak.
 // The operator must identify edge cases involving partial configurations of specs, spec mismatch with
 // active provider, contradicting configuration etc, and throw the appropriate errors.
-func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// reset ssoConfigLegalStatus at the beginning of each SSO reconciliation round
 	ssoConfigLegalStatus = ssoLegalUnknown
@@ -184,7 +184,7 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, oldCr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, oldCr *argoprojv1a1.ArgoCD) error {
 
 	log.Info("uninstalling existing SSO configuration")
 
