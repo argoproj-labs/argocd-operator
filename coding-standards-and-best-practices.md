@@ -8,7 +8,7 @@
 - If adding new functionality in the `argoutil` package - check if the function would fit in any existing file, if not create a new one. It's better to have many focused files within the package (`strings.go` , `maps.go` , `resource.go` etc) than 1 big file called `util.go` with a random assortment of functions in it
 
 
-# Controller packages & testing
+# Controller packages, resources & testing
 
 - Each package must have its own constants.go if we define any package/controller specific constants
 - Each package must have its own `util.go / helper.go` to contain functions related to the package but not directly to the reconciliation of a particular resource
@@ -19,6 +19,12 @@
   - `names` - names of controller-specific resources
   - `miscellaneous`
 - Each managed resource's reconcile function should be in a dedicated file for that resource type
+- Each resource created by the operator should have the correct set of labels with appropriate values:
+	- `app.kubernetes.io/name` - `<resource-name>`
+	- `app.kubernetes.io/instance` - `argocd-<argocd-instance-name>`
+	- `app.kubernetes.io/part-of` - `argocd`
+	- `app.kubernetes.io/component` - `<component-name>`
+	- `app.kubernetes.io/managed-by` - `argocd-operator`
 - Each package should define common testing variables/functions in the `<package_name>_test.go` file, which should be accessed across the package
 
 # Error handling
