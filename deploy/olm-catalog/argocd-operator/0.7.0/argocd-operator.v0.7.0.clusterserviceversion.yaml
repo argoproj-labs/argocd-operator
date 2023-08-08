@@ -1072,12 +1072,12 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: argocd-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: argocd-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
