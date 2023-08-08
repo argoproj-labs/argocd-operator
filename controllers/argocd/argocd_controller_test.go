@@ -38,14 +38,14 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
-var _ reconcile.Reconciler = &ReconcileArgoCD{}
+var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
 // When the ArgoCD object has been marked as deleting, we should not reconcile,
 // and trigger the creation of new objects.
 //
 // We have owner references set on created resources, this triggers automatic
 // deletion of the associated objects.
-func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
+func TestArgoCDReconciler_Reconcile_with_deleted(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
@@ -73,7 +73,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_Reconcile(t *testing.T) {
+func TestArgoCDReconciler_Reconcile(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -102,7 +102,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
+func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -177,7 +177,7 @@ func deletedAt(now time.Time) argoCDOpt {
 	}
 }
 
-func TestReconcileArgoCD_CleanUp(t *testing.T) {
+func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
 

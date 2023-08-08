@@ -56,7 +56,7 @@ func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 	return nil
 }
 
-func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
+func (r *ArgoCDReconciler) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
 	if cr.Spec.Import == nil {
 		return nil
 	}
@@ -402,7 +402,7 @@ func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.A
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 
 	if err := r.reconcileDexDeployment(cr); err != nil {
 		log.Error(err, "error reconciling dex deployment")
@@ -437,7 +437,7 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSFo
 }
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
-func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
@@ -569,7 +569,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
-func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useTLS bool) error {
+func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
@@ -669,7 +669,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 }
 
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
-func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
@@ -875,7 +875,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	automountToken := false
 	if cr.Spec.Repo.MountSAToken {
@@ -1177,7 +1177,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
-func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
@@ -1343,7 +1343,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, use
 }
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
-func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
+func (r *ArgoCDReconciler) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
 	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
 		return nil

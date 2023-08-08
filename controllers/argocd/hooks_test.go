@@ -45,7 +45,7 @@ func testErrorHook(cr *argoprojv1alpha1.ArgoCD, v interface{}, s string) error {
 	return errMsg
 }
 
-func TestReconcileArgoCD_testDeploymentHook(t *testing.T) {
+func TestArgoCDReconciler_testDeploymentHook(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 
@@ -58,7 +58,7 @@ func TestReconcileArgoCD_testDeploymentHook(t *testing.T) {
 	assert.Equal(t, &expectedReplicas, testDeployment.Spec.Replicas)
 }
 
-func TestReconcileArgoCD_testMultipleHooks(t *testing.T) {
+func TestArgoCDReconciler_testMultipleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 
@@ -80,7 +80,7 @@ func TestReconcileArgoCD_testMultipleHooks(t *testing.T) {
 	assert.Equal(t, want, testClusterRole.Rules)
 }
 
-func TestReconcileArgoCD_hooks_end_upon_error(t *testing.T) {
+func TestArgoCDReconciler_hooks_end_upon_error(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 	Register(testErrorHook, testClusterRoleHook)

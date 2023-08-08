@@ -18,4 +18,8 @@
 
 set -e 
 
-kubectl kuttl test ./tests/k8s ./tests/ha --config ./tests/kuttl-tests.yaml 
+# Comment out existing test suite invokation, redirect to new directory set up for controller
+# specific tests
+
+# kubectl kuttl test ./tests/k8s ./tests/ha --config ./tests/kuttl-tests.yaml 
+kubectl kuttl test ./tests/controller --config ./tests/controller/kuttl-tests.yaml 

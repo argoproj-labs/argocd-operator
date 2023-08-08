@@ -68,7 +68,7 @@ func controllerDefaultVolumeMounts() []corev1.VolumeMount {
 	return mounts
 }
 
-func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -80,7 +80,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
-func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -120,7 +120,7 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
-func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -158,7 +158,7 @@ func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withRedisTLS(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -190,7 +190,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.
 	}
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -223,7 +223,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T)
 	}
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withUpgrade(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
@@ -236,7 +236,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T
 	assert.Errorf(t, err, "not found")
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withResources(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDWithResources(func(a *argoprojv1alpha1.ArgoCD) {
 		a.Spec.Import = &argoprojv1alpha1.ArgoCDImportSpec{
@@ -298,7 +298,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing
 	assert.False(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -373,7 +373,7 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 	}
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
@@ -485,7 +485,7 @@ func Test_ContainsValidImage(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *testing.T) {
+func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {

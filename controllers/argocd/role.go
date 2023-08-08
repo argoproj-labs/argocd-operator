@@ -63,7 +63,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 }
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -98,24 +98,26 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
 // Managed by a single instance of ArgoCD.
-func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
 	// create policy rules for each namespace
-	for _, namespace := range r.ManagedNamespaces.Items {
+	for ns, _ := range r.ManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
+		namespace := &corev1.Namespace{}
+		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: ns}, namespace)
 		if namespace.DeletionTimestamp != nil {
 			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 				delete(namespace.Labels, common.ArgoCDManagedByLabel)
-				_ = r.Client.Update(context.TODO(), &namespace)
+				_ = r.Client.Update(context.TODO(), namespace)
 			}
 			continue
 		}
 
 		list := &argoprojv1a1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
-		err := r.Client.List(context.TODO(), list, listOption)
+		err = r.Client.List(context.TODO(), list, listOption)
 		if err != nil {
 			return nil, err
 		}
@@ -186,7 +188,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
 	// create policy rules for each source namespace for ArgoCD Server
@@ -204,7 +206,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
 			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
-				delete(r.ManagedSourceNamespaces, namespace.Name)
+				delete(r.SourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -229,7 +231,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 
 		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
 		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
-		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; ok {
+		if _, ok := r.SourceNamespaces[sourceNamespace]; ok {
 			// If sourceNamespace includes the name but role is missing in the namespace, create the role
 			if reflect.DeepEqual(existingRole, v1.Role{}) {
 				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
@@ -264,15 +266,15 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 		roles = append(roles, &existingRole)
 
-		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
-			r.ManagedSourceNamespaces[sourceNamespace] = ""
+		if _, ok := r.SourceNamespaces[sourceNamespace]; !ok {
+			r.SourceNamespaces[sourceNamespace] = ""
 		}
 
 	}
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
+func (r *ArgoCDReconciler) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 		allowed = true
