@@ -31,7 +31,7 @@ import (
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileStatusApplicationController(cr); err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (r *ReconcileArgoCD) reconcileStatus(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusApplicationController will ensure that the ApplicationController Status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusApplicationController(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
@@ -94,7 +94,7 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoprojv1a1.
 }
 
 // reconcileStatusDex will ensure that the Dex status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
@@ -117,7 +117,7 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	if IsTemplateAPIAvailable() {
@@ -158,7 +158,7 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
@@ -180,7 +180,7 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoprojv1
 }
 
 // reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
 	status := ssoConfigLegalStatus
@@ -204,7 +204,7 @@ func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
 	var phase string
 
 	if cr.Status.ApplicationController == "Running" && cr.Status.Redis == "Running" && cr.Status.Repo == "Running" && cr.Status.Server == "Running" {
@@ -221,7 +221,7 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusRedis will ensure that the Redis status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	if !cr.Spec.HA.Enabled {
@@ -255,7 +255,7 @@ func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
@@ -277,7 +277,7 @@ func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusServer will ensure that the Server status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("server", "server", cr)
@@ -300,7 +300,7 @@ func (r *ReconcileArgoCD) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileStatusNotifications will ensure that the Notifications status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
@@ -326,7 +326,7 @@ func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD) 
 }
 
 // reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 	cr.Status.Host = ""
 	cr.Status.Phase = "Available"
 

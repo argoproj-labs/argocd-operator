@@ -146,7 +146,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 }
 
 // reconcileArgoSecret will ensure that the Argo CD Secret is present.
-func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
 	secret := argoutil.NewSecretWithName(cr, common.ArgoCDSecretName)
 
@@ -199,7 +199,7 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
-func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "cluster")
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
@@ -221,7 +221,7 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
-func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewTLSSecret(cr, "tls")
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
@@ -256,7 +256,7 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) err
 }
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
-func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) error {
 	secret := argoutil.NewSecretWithSuffix(cr, "ca")
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
@@ -274,7 +274,7 @@ func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) erro
 }
 
 // reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
-func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileClusterMainSecret(cr); err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoprojv1a1.ArgoCD) error
 }
 
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
-func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
+func (r *ArgoCDReconciler) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
 
 	if secret.Data == nil {
@@ -360,7 +360,7 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, s
 }
 
 // reconcileGrafanaSecret will ensure that the Grafana Secret is present.
-func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error {
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -422,7 +422,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error 
 }
 
 // reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
-func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
 	var clusterConfigInstance bool
 	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
 	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
@@ -503,7 +503,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Arg
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) error {
 	var tlsSecretObj corev1.Secret
 	var sha256sum string
 
@@ -571,7 +571,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoprojv1a1.ArgoCD) 
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
 	var tlsSecretObj corev1.Secret
 	var sha256sum string
 
@@ -670,7 +670,7 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD, useTL
 }
 
 // reconcileSecrets will reconcile all ArgoCD Secret resources.
-func (r *ReconcileArgoCD) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
 	if err := r.reconcileClusterSecrets(cr); err != nil {
 		return err
 	}
@@ -682,7 +682,7 @@ func (r *ReconcileArgoCD) reconcileSecrets(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) getClusterSecrets(cr *argoprojv1a1.ArgoCD) (*corev1.SecretList, error) {
+func (r *ArgoCDReconciler) getClusterSecrets(cr *argoprojv1a1.ArgoCD) (*corev1.SecretList, error) {
 
 	clusterSecrets := &corev1.SecretList{}
 	opts := &client.ListOptions{

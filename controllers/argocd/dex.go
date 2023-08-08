@@ -41,7 +41,7 @@ func UseDex(cr *argoprojv1a1.ArgoCD) bool {
 }
 
 // getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
-func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
+func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoprojv1a1.ArgoCD) (*str
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
-func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoprojv1a1.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 
@@ -133,7 +133,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 }
 
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
-func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
+func (r *ArgoCDReconciler) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string, error) {
 
 	groups := []string{}
 
@@ -167,7 +167,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoprojv1a1.ArgoCD) (string
 }
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
-func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) error {
 
 	// if openShiftOAuth set to false in `.spec.sso.dex`, no need to configure it
 	if cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth {
@@ -203,7 +203,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
-func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
@@ -352,7 +352,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error 
 }
 
 // reconcileDexService will ensure that the Service for Dex is present.
-func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
@@ -397,7 +397,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
-func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 
 	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
 		log.Error(err, "error reconciling dex role")
@@ -441,7 +441,7 @@ func (r *ReconcileArgoCD) reconcileDexResources(cr *argoprojv1a1.ArgoCD) error {
 // RoleBinding and deployment are dependent on these resouces. During deletion the order is reversed.
 // Deployment and RoleBinding must be deleted before the role and sa. deleteDexResources will only be called during
 // delete events, so we don't need to worry about duplicate, recurring reconciliation calls
-func (r *ReconcileArgoCD) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) deleteDexResources(cr *argoprojv1a1.ArgoCD) error {
 
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}

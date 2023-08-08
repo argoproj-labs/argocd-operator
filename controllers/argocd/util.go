@@ -63,15 +63,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var (
-	versionAPIFound = false
-)
-
-// IsVersionAPIAvailable returns true if the version api is present
-func IsVersionAPIAvailable() bool {
-	return versionAPIFound
-}
-
 // verifyVersionAPI will verify that the template API is present.
 func verifyVersionAPI() error {
 	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
@@ -271,7 +262,7 @@ func getArgoServerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements
 
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
-func (r *ReconcileArgoCD) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
+func (r *ArgoCDReconciler) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 	host := nameWithSuffix("server", cr) // Default to service name
 
 	// Use the external hostname provided by the user
@@ -618,29 +609,8 @@ func fqdnServiceRef(service string, port int, cr *argoprojv1a1.ArgoCD) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", nameWithSuffix(service, cr), cr.Namespace, port)
 }
 
-// InspectCluster will verify the availability of extra features available to the cluster, such as Prometheus and
-// OpenShift Routes.
-func InspectCluster() error {
-	if err := verifyPrometheusAPI(); err != nil {
-		return err
-	}
-
-	if err := verifyRouteAPI(); err != nil {
-		return err
-	}
-
-	if err := verifyTemplateAPI(); err != nil {
-		return err
-	}
-
-	if err := verifyVersionAPI(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
-func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling CA secret")
 	if err := r.reconcileClusterCASecret(cr); err != nil {
 		return err
@@ -653,7 +623,7 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD)
 	return nil
 }
 
-func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
+func (r *ArgoCDReconciler) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 	var tlsSecretObj corev1.Secret
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
 	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
@@ -703,7 +673,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
 	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
@@ -833,7 +803,7 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
 	selector, err := argocdInstanceSelector(cr.Name)
 	if err != nil {
 		return err
@@ -860,7 +830,7 @@ func (r *ReconcileArgoCD) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error 
 	return nil
 }
 
-func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) error {
+func (r *ArgoCDReconciler) removeManagedByLabelFromNamespaces(namespace string) error {
 	nsList := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: namespace,
@@ -904,7 +874,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 	return selector.Add(*requirement), nil
 }
 
-func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
 	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
@@ -912,7 +882,7 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) e
 	return nil
 }
 
-func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
@@ -932,7 +902,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper handler.MapFunc) *builder.Builder {
+func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -1067,9 +1037,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
-	if err := InspectCluster(); err != nil {
-		log.Info("unable to inspect cluster")
-	}
+	InspectCluster()
 
 	if IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
@@ -1111,7 +1079,7 @@ func int64Ptr(val int64) *int64 {
 
 // triggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
-func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+func (r *ArgoCDReconciler) triggerRollout(obj interface{}, key string) error {
 	switch res := obj.(type) {
 	case *appsv1.Deployment:
 		return r.triggerDeploymentRollout(res, key)
@@ -1362,7 +1330,8 @@ func getLogFormat(logField string) string {
 	return common.ArgoCDDefaultLogFormat
 }
 
-func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
+func (r *ArgoCDReconciler) setManagedNamespaces(cr *argoproj.ArgoCD) error {
+	r.ManagedNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByLabel: cr.Namespace,
@@ -1374,12 +1343,14 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	}
 
 	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	r.ManagedNamespaces = namespaces
+	for _, namespace := range namespaces.Items {
+		r.ManagedNamespaces[namespace.Name] = ""
+	}
 	return nil
 }
 
-func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedSourceNamespaces = make(map[string]string)
+func (r *ArgoCDReconciler) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
+	r.SourceNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
@@ -1391,7 +1362,7 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 	}
 
 	for _, namespace := range namespaces.Items {
-		r.ManagedSourceNamespaces[namespace.Name] = ""
+		r.SourceNamespaces[namespace.Name] = ""
 	}
 
 	return nil
@@ -1399,9 +1370,9 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
-func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
-	for ns, _ := range r.ManagedSourceNamespaces {
+	for ns, _ := range r.SourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
 			for _, namespace := range cr.Spec.SourceNamespaces {
@@ -1417,13 +1388,13 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
 				continue
 			}
-			delete(r.ManagedSourceNamespaces, ns)
+			delete(r.SourceNamespaces, ns)
 		}
 	}
 	return nil
 }
 
-func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
+func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
 	namespace := corev1.Namespace{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
 		if !errors.IsNotFound(err) {

@@ -57,7 +57,7 @@ func getServiceAccountName(crName, name string) string {
 }
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
-func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -77,7 +77,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoprojv1a1.ArgoCD) erro
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var role *v1.ClusterRole
 	var err error
 
@@ -93,11 +93,11 @@ func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string,
 	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
-func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	return r.reconcileRoleBinding(name, rules, cr)
 }
 
-func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ArgoCDReconciler) reconcileServiceAccount(name string, cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
 	exists := true

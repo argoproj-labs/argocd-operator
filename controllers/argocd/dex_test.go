@@ -18,7 +18,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -61,7 +61,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 }
 
 // When Dex is enabled dex deployment should be created, when disabled the Dex deployment should be removed
-func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexDeployment_removes_dex_when_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -142,7 +142,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 	}
 }
 
-func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
+func TestArgoCDReconciler_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -207,7 +207,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 	a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
@@ -312,7 +312,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	assert.Equal(t, want, deployment.Spec.Template.Spec)
 }
 
-func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	desiredPodSpec := corev1.PodSpec{
@@ -465,7 +465,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 }
 
 // When Dex is enabled dex service should be created, when disabled the Dex service should be removed
-func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexService_removes_dex_when_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -547,7 +547,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 }
 
 // When Dex is enabled dex serviceaccount should be created, when disabled the Dex serviceaccount should be removed
-func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileDexServiceAccount_removes_dex_when_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -630,7 +630,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 }
 
 // When Dex is enabled dex role should be created, when disabled the Dex role should be removed
-func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileRole_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -718,7 +718,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 }
 
 // When Dex is enabled dex roleBinding should be created, when disabled the Dex roleBinding should be removed
-func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
+func TestArgoCDReconciler_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
