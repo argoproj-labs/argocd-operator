@@ -19,8 +19,9 @@ var (
 	testKey       = "test-key"
 	testVal       = "test-value"
 
-	testDeploymentNameMutated = "mutated-name"
-	testKVP                   = map[string]string{
+	testDeploymentNameMutated  = "mutated-name"
+	testStatefulSetNameMutated = "mutated-name"
+	testKVP                    = map[string]string{
 		testKey: testVal,
 	}
 )
@@ -30,7 +31,13 @@ func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client in
 }
 
 func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
-	obj := resource.(*appsv1.Deployment)
-	obj.Name = testDeploymentNameMutated
-	return nil
+	switch obj := resource.(type) {
+	case *appsv1.Deployment:
+		obj.Name = testDeploymentNameMutated
+		return nil
+	case *appsv1.StatefulSet:
+		obj.Name = testStatefulSetNameMutated
+		return nil
+	}
+	return errors.New("test-mutation-error")
 }
