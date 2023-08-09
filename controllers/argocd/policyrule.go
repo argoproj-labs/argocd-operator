@@ -6,6 +6,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
 	v1 "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -331,10 +332,10 @@ func getPolicyRuleClusterRoleList() []struct {
 }
 
 func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
-	if IsVersionAPIAvailable() {
+	if cluster.IsVersionAPIAvailable() {
 		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
 		resourceName := "nonroot"
-		version, err := getClusterVersion(client)
+		version, err := cluster.GetClusterVersion(client)
 		if err != nil {
 			log.Error(err, "couldn't get OpenShift version")
 		}
