@@ -26,6 +26,7 @@ var (
 	testStatefulSetNameMutated      = "mutated-name"
 	testDeploymentConfigNameMutated = "mutated-name"
 	testSecretNameMutated           = "mutated-name"
+	testConfigMapNameMutated        = "mutated-name"
 	testKVP                         = map[string]string{
 		testKey: testVal,
 	}
@@ -48,6 +49,9 @@ func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, clien
 		return nil
 	case *corev1.Secret:
 		obj.Name = testSecretNameMutated
+		return nil
+	case *corev1.ConfigMap:
+		obj.Name = testConfigMapNameMutated
 		return nil
 	}
 	return errors.New("test-mutation-error")
