@@ -5,6 +5,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	// "github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	oappsv1 "github.com/openshift/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,15 +17,16 @@ var (
 	testInstance          = "test-instance"
 	testInstanceNamespace = "test-instance-ns"
 	testNamespace         = "test-ns"
-	testNameSpaceMutated  = "test-ns-mutated"
 	testComponent         = "test-component"
 	testKey               = "test-key"
 	testVal               = "test-value"
+	// testNameSpaceMutated  = "test-ns-mutated"
 
-	testDeploymentNameMutated  = "mutated-name"
-	testStatefulSetNameMutated = "mutated-name"
-	testSecretNameMutated      = "mutated-name"
-	testKVP                    = map[string]string{
+	testDeploymentNameMutated       = "mutated-name"
+	testStatefulSetNameMutated      = "mutated-name"
+	testDeploymentConfigNameMutated = "mutated-name"
+	testSecretNameMutated           = "mutated-name"
+	testKVP                         = map[string]string{
 		testKey: testVal,
 	}
 )
@@ -40,6 +42,9 @@ func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, clien
 		return nil
 	case *appsv1.StatefulSet:
 		obj.Name = testStatefulSetNameMutated
+		return nil
+	case *oappsv1.DeploymentConfig:
+		obj.Name = testDeploymentConfigNameMutated
 		return nil
 	case *corev1.Secret:
 		obj.Name = testSecretNameMutated

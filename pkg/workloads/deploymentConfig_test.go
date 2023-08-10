@@ -26,7 +26,7 @@ func getTestDeploymentConfig(opts ...deploymentConfigOpt) *oappsv1.DeploymentCon
 	desiredDeploymentConfig := &oappsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
+			Namespace: testInstanceNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -48,82 +48,84 @@ func getTestDeploymentConfig(opts ...deploymentConfigOpt) *oappsv1.DeploymentCon
 
 func TestRequestDeploymentConfig(t *testing.T) {
 
-	testClient := fake.NewClientBuilder().Build()
+	s := scheme.Scheme
+	assert.NoError(t, oappsv1.AddToScheme(s))
+	testClient := fake.NewClientBuilder().WithScheme(s).Build()
 
 	tests := []struct {
 		name                    string
-		deployReq               DeploymentConfigRequest
+		deploymentConfigReq     DeploymentConfigRequest
 		desiredDeploymentConfig *oappsv1.DeploymentConfig
 		mutation                bool
 		wantErr                 bool
 	}{
 		{
 			name: "request deploymentConfig, no mutation",
-			deployReq: DeploymentConfigRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+			deploymentConfigReq: DeploymentConfigRequest{
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
 			},
 			mutation:                false,
-			desiredDeploymentConfig: getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {}),
+			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {}),
 			wantErr:                 false,
 		},
 		{
 			name: "request deploymentConfig, no mutation, custom name, labels, annotations",
-			deployReq: DeploymentConfigRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
+			deploymentConfigReq: DeploymentConfigRequest{
+				Name:              testName,
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
+				Labels:            testKVP,
+				Annotations:       testKVP,
 			},
 			mutation: false,
-			desiredDeploymentConfig: getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {
-				d.Name = testName
-				d.Labels = argoutil.MergeMaps(d.Labels, testKVP)
-				d.Annotations = argoutil.MergeMaps(d.Annotations, testKVP)
+			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+				dc.Name = testName
+				dc.Labels = argoutil.MergeMaps(dc.Labels, testKVP)
+				dc.Annotations = argoutil.MergeMaps(dc.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},
-		// {
-		// 	name: "request deploymentConfig, successful mutation",
-		// 	deployReq: DeploymentConfigRequest{
-		// 		Name:         "",
-		// 		InstanceName: testInstance,
-		// 		Namespace:    testNamespace,
-		// 		Component:    testComponent,
-		// 		Mutations: []mutation.MutateFunc{
-		// 			testMutationFuncSuccessful,
-		// 		},
-		// 		Client: testClient,
-		// 	},
-		// 	mutation:                true,
-		// 	desiredDeploymentConfig: getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) { d.Name = testDeploymentConfigNameMutated }),
-		// 	wantErr:                 false,
-		// },
+		{
+			name: "request deploymentConfig, successful mutation",
+			deploymentConfigReq: DeploymentConfigRequest{
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
+				Mutations: []mutation.MutateFunc{
+					testMutationFuncSuccessful,
+				},
+				Client: testClient,
+			},
+			mutation:                true,
+			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) { dc.Name = testDeploymentConfigNameMutated }),
+			wantErr:                 false,
+		},
 		{
 			name: "request deploymentConfig, failed mutation",
-			deployReq: DeploymentConfigRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+			deploymentConfigReq: DeploymentConfigRequest{
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
 			mutation:                true,
-			desiredDeploymentConfig: getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {}),
+			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {}),
 			wantErr:                 true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gotDeploymentConfig, err := RequestDeploymentConfig(test.deployReq)
+			gotDeploymentConfig, err := RequestDeploymentConfig(test.deploymentConfigReq)
 
 			if !test.wantErr {
 				assert.NoError(t, err)
@@ -148,6 +150,7 @@ func TestCreateDeploymentConfig(t *testing.T) {
 			APIVersion: "apps.openshift.io/v1",
 		}
 		dc.Name = testName
+		dc.Namespace = testNamespace
 	})
 	err := CreateDeploymentConfig(desiredDeploymentConfig, testClient)
 	assert.NoError(t, err)
@@ -166,8 +169,9 @@ func TestGetDeploymentConfig(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, oappsv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {
-		d.Name = testName
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+		dc.Name = testName
+		dc.Namespace = testNamespace
 	})).Build()
 
 	_, err := GetDeploymentConfig(testName, testNamespace, testClient)
@@ -181,14 +185,16 @@ func TestGetDeploymentConfig(t *testing.T) {
 }
 
 func TestListDeploymentConfigs(t *testing.T) {
-	deploymentConfig1 := getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {
-		d.Name = "deploymentConfig-1"
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+	deploymentConfig1 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+		dc.Name = "deploymentConfig-1"
+		dc.Namespace = testNamespace
+		dc.Labels[common.ArgoCDKeyComponent] = "new-component-1"
 	})
-	deploymentConfig2 := getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) { d.Name = "deploymentConfig-2" })
-	deploymentConfig3 := getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {
-		d.Name = "deploymentConfig-3"
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+	deploymentConfig2 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) { dc.Name = "deploymentConfig-2" })
+	deploymentConfig3 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+		dc.Name = "deploymentConfig-3"
+		dc.Namespace = testNamespace
+		dc.Labels[common.ArgoCDKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -218,7 +224,6 @@ func TestListDeploymentConfigs(t *testing.T) {
 	sort.Strings(existingDeploymentConfigs)
 
 	assert.Equal(t, desiredDeploymentConfigs, existingDeploymentConfigs)
-
 }
 
 func TestUpdateDeploymentConfig(t *testing.T) {
@@ -228,6 +233,7 @@ func TestUpdateDeploymentConfig(t *testing.T) {
 	// Create the initial DeploymentConfig
 	initialDeploymentConfig := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 		dc.Name = testName
+		dc.Namespace = testNamespace
 	})
 
 	// Create the client with the initial DeploymentConfig
@@ -237,8 +243,10 @@ func TestUpdateDeploymentConfig(t *testing.T) {
 	desiredDeploymentConfig := &oappsv1.DeploymentConfig{}
 	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredDeploymentConfig)
 	assert.NoError(t, err)
+	desiredDeploymentConfig.Labels = map[string]string{
+		"some-label": "value",
+	}
 
-	// Update the DeploymentConfig
 	err = UpdateDeploymentConfig(desiredDeploymentConfig, testClient)
 	assert.NoError(t, err)
 
@@ -249,11 +257,12 @@ func TestUpdateDeploymentConfig(t *testing.T) {
 	}, existingDeploymentConfig)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredDeploymentConfig.Name, existingDeploymentConfig.Name)
+	assert.Equal(t, desiredDeploymentConfig.Labels, existingDeploymentConfig.Labels)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	existingDeploymentConfig = getTestDeploymentConfig(func(d *oappsv1.DeploymentConfig) {
-		d.Name = testName
+	existingDeploymentConfig = getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+		dc.Name = testName
+		dc.Labels = nil
 	})
 	err = UpdateDeploymentConfig(existingDeploymentConfig, testClient)
 	assert.Error(t, err)
@@ -265,6 +274,7 @@ func TestDeleteDeploymentConfig(t *testing.T) {
 
 	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 		dc.Name = testName
+		dc.Namespace = testNamespace
 	})).Build()
 
 	err := DeleteDeploymentConfig(testName, testNamespace, testClient)

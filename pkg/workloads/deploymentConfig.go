@@ -15,12 +15,12 @@ import (
 
 // DeploymentConfigRequest objects contain all the required information to produce a deploymentConfig object in return
 type DeploymentConfigRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
+	Name              string
+	InstanceName      string
+	InstanceNamespace string
+	Component         string
+	Labels            map[string]string
+	Annotations       map[string]string
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -28,7 +28,7 @@ type DeploymentConfigRequest struct {
 }
 
 // newDeploymentConfig returns a new DeploymentConfig instance for the given ArgoCD.
-func newDeploymentConfig(name, instanceName, namespace, component string, labels, annotations map[string]string) *oappsv1.DeploymentConfig {
+func newDeploymentConfig(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *oappsv1.DeploymentConfig {
 	var deploymentConfigName string
 	if name != "" {
 		deploymentConfigName = name
@@ -39,9 +39,9 @@ func newDeploymentConfig(name, instanceName, namespace, component string, labels
 	return &oappsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        deploymentConfigName,
-			Namespace:   namespace,
+			Namespace:   instanceNamespace,
 			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: annotations,
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
 		},
 	}
 }
@@ -100,7 +100,7 @@ func RequestDeploymentConfig(request DeploymentConfigRequest) (*oappsv1.Deployme
 	var (
 		mutationErr error
 	)
-	deploymentConfig := newDeploymentConfig(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
+	deploymentConfig := newDeploymentConfig(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

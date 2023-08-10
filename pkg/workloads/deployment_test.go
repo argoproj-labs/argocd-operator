@@ -25,12 +25,16 @@ func getTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
 	desiredDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
+			Namespace: testInstanceNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
 				common.ArgoCDKeyManagedBy: testInstance,
 				common.ArgoCDKeyComponent: testComponent,
+			},
+			Annotations: map[string]string{
+				common.AnnotationName:      testInstance,
+				common.AnnotationNamespace: testInstanceNamespace,
 			},
 		},
 	}
@@ -55,10 +59,10 @@ func TestRequestDeployment(t *testing.T) {
 		{
 			name: "request deployment, no mutation",
 			deployReq: DeploymentRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
 			},
 			mutation:          false,
 			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {}),
@@ -67,12 +71,12 @@ func TestRequestDeployment(t *testing.T) {
 		{
 			name: "request deployment, no mutation, custom name, labels, annotations",
 			deployReq: DeploymentRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
+				Name:              testName,
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
+				Labels:            testKVP,
+				Annotations:       testKVP,
 			},
 			mutation: false,
 			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
@@ -85,10 +89,10 @@ func TestRequestDeployment(t *testing.T) {
 		{
 			name: "request deployment, successful mutation",
 			deployReq: DeploymentRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
@@ -101,10 +105,10 @@ func TestRequestDeployment(t *testing.T) {
 		{
 			name: "request deployment, failed mutation",
 			deployReq: DeploymentRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+				Name:              "",
+				InstanceName:      testInstance,
+				InstanceNamespace: testInstanceNamespace,
+				Component:         testComponent,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
@@ -141,6 +145,7 @@ func TestCreateDeployment(t *testing.T) {
 			APIVersion: "apps/v1",
 		}
 		d.Name = testName
+		d.Namespace = testNamespace
 	})
 	err := CreateDeployment(desiredDeployment, testClient)
 	assert.NoError(t, err)
@@ -158,6 +163,7 @@ func TestCreateDeployment(t *testing.T) {
 func TestGetDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
+		d.Namespace = testNamespace
 	})).Build()
 
 	_, err := GetDeployment(testName, testNamespace, testClient)
@@ -173,6 +179,7 @@ func TestGetDeployment(t *testing.T) {
 func TestListDeployments(t *testing.T) {
 	deployment1 := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-1"
+		d.Namespace = testNamespace
 		d.Labels[common.ArgoCDKeyComponent] = "new-component-1"
 	})
 	deployment2 := getTestDeployment(func(d *appsv1.Deployment) { d.Name = "deployment-2" })
@@ -205,16 +212,17 @@ func TestListDeployments(t *testing.T) {
 	sort.Strings(existingDeployments)
 
 	assert.Equal(t, desiredDeployments, existingDeployments)
-
 }
 
 func TestUpdateDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
+		d.Namespace = testNamespace
 	})).Build()
 
 	desiredDeployment := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
+		d.Namespace = testNamespace
 	})
 	err := UpdateDeployment(desiredDeployment, testClient)
 	assert.NoError(t, err)
@@ -231,6 +239,7 @@ func TestUpdateDeployment(t *testing.T) {
 	testClient = fake.NewClientBuilder().Build()
 	existingDeployment = getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
+		d.Namespace = testNamespace
 	})
 	err = UpdateDeployment(existingDeployment, testClient)
 	assert.Error(t, err)
@@ -239,6 +248,7 @@ func TestUpdateDeployment(t *testing.T) {
 func TestDeleteDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
+		d.Namespace = testNamespace
 	})).Build()
 
 	err := DeleteDeployment(testName, testNamespace, testClient)

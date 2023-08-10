@@ -15,12 +15,12 @@ import (
 
 // DeploymentRequest objects contain all the required information to produce a deployment object in return
 type DeploymentRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
+	Name              string
+	InstanceName      string
+	InstanceNamespace string
+	Component         string
+	Labels            map[string]string
+	Annotations       map[string]string
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -28,7 +28,7 @@ type DeploymentRequest struct {
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(name, instanceName, namespace, component string, labels, annotations map[string]string) *appsv1.Deployment {
+func newDeployment(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *appsv1.Deployment {
 	var deploymentName string
 	if name != "" {
 		deploymentName = name
@@ -39,9 +39,9 @@ func newDeployment(name, instanceName, namespace, component string, labels, anno
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        deploymentName,
-			Namespace:   namespace,
+			Namespace:   instanceNamespace,
 			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: annotations,
+			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
 		},
 	}
 }
@@ -100,7 +100,7 @@ func RequestDeployment(request DeploymentRequest) (*appsv1.Deployment, error) {
 	var (
 		mutationErr error
 	)
-	deployment := newDeployment(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
+	deployment := newDeployment(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
