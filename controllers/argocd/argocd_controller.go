@@ -47,7 +47,8 @@ type ReconcileArgoCD struct {
 	ManagedNamespaces *corev1.NamespaceList
 	// Stores a list of SourceNamespaces as values
 	ManagedSourceNamespaces map[string]string
-	LabelSelector           string
+	// Stores label selector to use to reconcile a subset of ArgoCD
+	LabelSelector string
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -110,13 +111,13 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	// Fetch labelSelector from r.LabelSelector (command-line option)
 	labelSelector, err := labels.Parse(r.LabelSelector)
 	if err != nil {
-		fmt.Printf("error parsing the labelSelector '%s'.", labelSelector)
+		reqLogger.Info("error parsing the labelSelector '%s'.", labelSelector)
 		return reconcile.Result{}, err
 	}
 
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
-		fmt.Printf("the ArgoCD instance does not match the label selector %s and skipping for reconcillation", r.LabelSelector)
+		reqLogger.Info("the ArgoCD instance does not match the label selector %s and skipping for reconcillation", r.LabelSelector)
 		return reconcile.Result{}, nil
 	}
 

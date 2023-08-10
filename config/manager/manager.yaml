@@ -57,7 +57,7 @@ spec:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
         - name : ARGOCD_LABEL_SELECTOR
-        valueFrom:
+          valueFrom:
             fieldRef:
               fieldPath: metadata.labels[ARGOCD_LABEL_SELECTOR]
       serviceAccountName: controller-manager
