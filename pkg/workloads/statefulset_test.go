@@ -61,7 +61,7 @@ func TestRequestStatefulSet(t *testing.T) {
 				Component:    testComponent,
 			},
 			mutation:           false,
-			desiredStatefulSet: getTestStatefulSet(func(d *appsv1.StatefulSet) {}),
+			desiredStatefulSet: getTestStatefulSet(func(ss *appsv1.StatefulSet) {}),
 			wantErr:            false,
 		},
 		{
@@ -74,9 +74,9 @@ func TestRequestStatefulSet(t *testing.T) {
 				Labels:       testKVP,
 			},
 			mutation: false,
-			desiredStatefulSet: getTestStatefulSet(func(d *appsv1.StatefulSet) {
-				d.Name = testName
-				d.Labels = argoutil.MergeMaps(d.Labels, testKVP)
+			desiredStatefulSet: getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+				ss.Name = testName
+				ss.Labels = argoutil.MergeMaps(ss.Labels, testKVP)
 			}),
 			wantErr: false,
 		},
@@ -93,7 +93,7 @@ func TestRequestStatefulSet(t *testing.T) {
 				Client: testClient,
 			},
 			mutation:           true,
-			desiredStatefulSet: getTestStatefulSet(func(d *appsv1.StatefulSet) { d.Name = testStatefulSetNameMutated }),
+			desiredStatefulSet: getTestStatefulSet(func(ss *appsv1.StatefulSet) { ss.Name = testStatefulSetNameMutated }),
 			wantErr:            false,
 		},
 		{
@@ -109,7 +109,7 @@ func TestRequestStatefulSet(t *testing.T) {
 				Client: testClient,
 			},
 			mutation:           true,
-			desiredStatefulSet: getTestStatefulSet(func(d *appsv1.StatefulSet) {}),
+			desiredStatefulSet: getTestStatefulSet(func(ss *appsv1.StatefulSet) {}),
 			wantErr:            true,
 		},
 	}
@@ -133,12 +133,12 @@ func TestRequestStatefulSet(t *testing.T) {
 func TestCreateStatefulSet(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredStatefulSet := getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.TypeMeta = metav1.TypeMeta{
+	desiredStatefulSet := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.TypeMeta = metav1.TypeMeta{
 			Kind:       "StatefulSet",
 			APIVersion: "apps/v1",
 		}
-		d.Name = testName
+		ss.Name = testName
 	})
 	err := CreateStatefulSet(desiredStatefulSet, testClient)
 	assert.NoError(t, err)
@@ -154,8 +154,8 @@ func TestCreateStatefulSet(t *testing.T) {
 }
 
 func TestGetStatefulSet(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = testName
 	})).Build()
 
 	_, err := GetStatefulSet(testName, testNamespace, testClient)
@@ -169,14 +169,14 @@ func TestGetStatefulSet(t *testing.T) {
 }
 
 func TestListStatefulSets(t *testing.T) {
-	StatefulSet1 := getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = "StatefulSet-1"
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+	StatefulSet1 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = "StatefulSet-1"
+		ss.Labels[common.ArgoCDKeyComponent] = "new-component-1"
 	})
-	StatefulSet2 := getTestStatefulSet(func(d *appsv1.StatefulSet) { d.Name = "StatefulSet-2" })
-	StatefulSet3 := getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = "StatefulSet-3"
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+	StatefulSet2 := getTestStatefulSet(func(ss *appsv1.StatefulSet) { ss.Name = "StatefulSet-2" })
+	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = "StatefulSet-3"
+		ss.Labels[common.ArgoCDKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -206,12 +206,16 @@ func TestListStatefulSets(t *testing.T) {
 }
 
 func TestUpdateStatefulSet(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = testName
 	})).Build()
 
-	desiredStatefulSet := getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = testName
+	desiredStatefulSet := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = testName
+		ss.Spec.Template.Spec.NodeSelector = map[string]string{
+			"kubernetes.io/os": "linux",
+		}
+
 	})
 	err := UpdateStatefulSet(desiredStatefulSet, testClient)
 	assert.NoError(t, err)
@@ -226,16 +230,16 @@ func TestUpdateStatefulSet(t *testing.T) {
 	assert.Equal(t, desiredStatefulSet.Name, existingStatefulSet.Name)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingStatefulSet = getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = testName
+	existingStatefulSet = getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = testName
 	})
 	err = UpdateStatefulSet(existingStatefulSet, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteStatefulSet(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(d *appsv1.StatefulSet) {
-		d.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+		ss.Name = testName
 	})).Build()
 
 	err := DeleteStatefulSet(testName, testNamespace, testClient)

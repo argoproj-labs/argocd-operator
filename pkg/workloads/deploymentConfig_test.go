@@ -244,7 +244,7 @@ func TestUpdateDeploymentConfig(t *testing.T) {
 	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredDeploymentConfig)
 	assert.NoError(t, err)
 	desiredDeploymentConfig.Labels = map[string]string{
-		"some-label": "value",
+		"control-plane": "argocd-operator",
 	}
 
 	err = UpdateDeploymentConfig(desiredDeploymentConfig, testClient)

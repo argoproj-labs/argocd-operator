@@ -223,6 +223,9 @@ func TestUpdateDeployment(t *testing.T) {
 	desiredDeployment := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
 		d.Namespace = testNamespace
+		d.Labels = map[string]string{
+			"control-plane": "argocd-operator",
+		}
 	})
 	err := UpdateDeployment(desiredDeployment, testClient)
 	assert.NoError(t, err)

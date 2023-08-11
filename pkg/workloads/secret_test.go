@@ -214,6 +214,9 @@ func TestUpdateSecret(t *testing.T) {
 
 	desiredSecret := getTestSecret(func(s *corev1.Secret) {
 		s.Name = testName
+		s.Data = map[string][]byte{
+			"admin.password": []byte("testpassword2023"),
+		}
 	})
 	err := UpdateSecret(desiredSecret, testClient)
 	assert.NoError(t, err)
