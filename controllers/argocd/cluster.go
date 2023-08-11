@@ -5,27 +5,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	configv1 "github.com/openshift/api/config/v1"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 )
-
-var (
-	versionAPIFound = false
-)
-
-// IsVersionAPIAvailable returns true if the version api is present
-func IsVersionAPIAvailable() bool {
-	return versionAPIFound
-}
-
-// VerifyVersionAPI will verify that the cluster version API is present.
-func VerifyVersionAPI() error {
-	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	versionAPIFound = found
-	return nil
-}
 
 // InspectCluster will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
 func InspectCluster() {
@@ -41,7 +22,7 @@ func InspectCluster() {
 	// 	// TO DO: log error verifying template API (warn)
 	// }
 
-	if err := VerifyVersionAPI(); err != nil {
+	if err := cluster.VerifyVersionAPI(); err != nil {
 		// TO DO: log error verifying version API (warn)
 	}
 }

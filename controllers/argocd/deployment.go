@@ -26,6 +26,7 @@ import (
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -823,7 +824,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
-	version, err := getClusterVersion(r.Client)
+	version, err := cluster.GetClusterVersion(r.Client)
 	if err != nil {
 		log.Error(err, "error getting cluster version")
 	}
