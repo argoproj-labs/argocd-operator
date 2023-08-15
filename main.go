@@ -39,6 +39,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -168,7 +169,7 @@ func main() {
 	}
 
 	// Set up the scheme for openshift config if available
-	if argocd.IsVersionAPIAvailable() {
+	if cluster.IsVersionAPIAvailable() {
 		if err := configv1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
