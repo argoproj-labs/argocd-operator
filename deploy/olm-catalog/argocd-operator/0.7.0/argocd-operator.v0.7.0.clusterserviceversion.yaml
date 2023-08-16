@@ -349,6 +349,38 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Config is the dex connector configuration.
+        displayName: Configuration
+        path: dex.config
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Dex container image.
+        displayName: Image
+        path: dex.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
+          Dex server.
+        displayName: OpenShift OAuth Enabled'
+        path: dex.openShiftOAuth
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for Dex.
+        displayName: Resource Requirements'
+        path: dex.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Version is the Dex container image tag.
+        displayName: Version
+        path: dex.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: GAAnonymizeUsers toggles user IDs being hashed before sending
           to google analytics.
         displayName: Google Analytics Anonymize Users'
@@ -748,6 +780,17 @@ spec:
         path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Dex is a simple, high-level summary of where the Argo CD Dex
+          component is in its lifecycle. There are four possible dex values: Pending:
+          The Argo CD Dex component has been accepted by the Kubernetes system, but
+          one or more of the required resources have not been created. Running: All
+          of the required Pods for the Argo CD Dex component are in a Ready state.
+          Failed: At least one of the  Argo CD Dex component Pods had a failure. Unknown:
+          The state of the Argo CD Dex component could not be obtained.'
+        displayName: Dex
+        path: dex
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'NotificationsController is a simple, high-level summary of where
           the Argo CD notifications controller component is in its lifecycle. There
           are four possible NotificationsController values: Pending: The Argo CD notifications
@@ -805,15 +848,12 @@ spec:
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak)
-          component is in its lifecycle. There are four possible sso values: Pending:
-          The Argo CD SSO component has been accepted by the Kubernetes system, but
-          one or more of the required resources have not been created. Running: All
-          of the required Pods for the Argo CD SSO component are in a Ready state.
-          Failed: At least one of the  Argo CD SSO component Pods had a failure. Unknown:
-          The state of the Argo CD SSO component could not be obtained.'
-        displayName: SSO
-        path: sso
+      - description: 'SSOConfig defines the status of SSO configuration. Success:
+          Only one SSO provider is configured in CR. Failed: SSO configuration is
+          illegal or more than one SSO providers are configured in CR. Unknown: The
+          SSO configuration could not be obtained.'
+        displayName: SSOConfig
+        path: ssoConfig
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
@@ -964,7 +1004,6 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheuses
-          - prometheusrules
           - servicemonitors
           verbs:
           - '*'
@@ -1033,15 +1072,28 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: argocd-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: argocd-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
                 command:
                 - /manager
@@ -1050,7 +1102,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator:v0.7.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:5541a1c2323016b767f53bcadf696ebd199903d2048f7bd2aee377a332ea5f2c
                 livenessProbe:
                   httpGet:
                     path: /healthz
