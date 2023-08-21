@@ -25,7 +25,7 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
-	workloadIdentifier := common.ArgoCDApplicationControllerComponent 
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
@@ -231,7 +231,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	// Create a managed namespace
 	assert.NoError(t, createNamespace(r, "managedNS", a.Namespace))
 
-	workloadIdentifier := common.ArgoCDApplicationControllerComponent 
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)

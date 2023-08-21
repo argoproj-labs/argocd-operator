@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1alpha1
+  kind: ArgoCD
+  metadata:
+    name: argocd
