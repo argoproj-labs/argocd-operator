@@ -125,6 +125,94 @@ metadata:
           "spec": {
             "argocd": "argocd-sample"
           }
+        },
+        {
+          "apiVersion": "argoproj.io/v1beta1",
+          "kind": "ArgoCD",
+          "metadata": {
+            "name": "argocd-sample"
+          },
+          "spec": {
+            "controller": {
+              "resources": {
+                "limits": {
+                  "cpu": "2000m",
+                  "memory": "2048Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "1024Mi"
+                }
+              }
+            },
+            "ha": {
+              "enabled": false,
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "128Mi"
+                }
+              }
+            },
+            "redis": {
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "128Mi"
+                }
+              }
+            },
+            "repo": {
+              "resources": {
+                "limits": {
+                  "cpu": "1000m",
+                  "memory": "512Mi"
+                },
+                "requests": {
+                  "cpu": "250m",
+                  "memory": "256Mi"
+                }
+              }
+            },
+            "server": {
+              "resources": {
+                "limits": {
+                  "cpu": "500m",
+                  "memory": "256Mi"
+                },
+                "requests": {
+                  "cpu": "125m",
+                  "memory": "128Mi"
+                }
+              },
+              "route": {
+                "enabled": true
+              }
+            },
+            "sso": {
+              "dex": {
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                }
+              },
+              "provider": "dex"
+            }
+          }
         }
       ]
     capabilities: Deep Insights
@@ -248,6 +336,615 @@ spec:
       - kind: ArgoCD
         name: ""
         version: v1alpha1
+      - kind: ArgoCDExport
+        name: ""
+        version: v1alpha1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      - kind: CronJob
+        name: ""
+        version: v1
+      - kind: Deployment
+        name: ""
+        version: v1
+      - kind: Ingress
+        name: ""
+        version: v1
+      - kind: Job
+        name: ""
+        version: v1
+      - kind: PersistentVolumeClaim
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Prometheus
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: v1
+      - kind: Route
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ServiceMonitor
+        name: ""
+        version: v1
+      - kind: StatefulSet
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: ApplicationInstanceLabelKey is the key name where Argo CD injects
+          the app name as a tracking label.
+        displayName: Application Instance Label Key'
+        path: applicationInstanceLabelKey
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: applicationSet.webhookServer.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: applicationSet.webhookServer.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: applicationSet.webhookServer.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: ConfigManagementPlugins is used to specify additional config
+          management plugins.
+        displayName: Config Management Plugins'
+        path: configManagementPlugins
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Operation is the number of application operation processors.
+        displayName: Operation Processor Count'
+        path: controller.processors.operation
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Status is the number of application status processors.
+        displayName: Status Processor Count'
+        path: controller.processors.status
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
+        - urn:alm:descriptor:com.tectonic.ui:number
+      - description: Resources defines the Compute Resources required by the container
+          for the Application Controller.
+        displayName: Resource Requirements'
+        path: controller.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Controller
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Config is the dex connector configuration.
+        displayName: Configuration
+        path: dex.config
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Dex container image.
+        displayName: Image
+        path: dex.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
+          Dex server.
+        displayName: OpenShift OAuth Enabled'
+        path: dex.openShiftOAuth
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for Dex.
+        displayName: Resource Requirements'
+        path: dex.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Version is the Dex container image tag.
+        displayName: Version
+        path: dex.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: GAAnonymizeUsers toggles user IDs being hashed before sending
+          to google analytics.
+        displayName: Google Analytics Anonymize Users'
+        path: gaAnonymizeUsers
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: GATrackingID is the google analytics tracking ID to use.
+        displayName: Google Analytics Tracking ID'
+        path: gaTrackingID
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Enabled will toggle Grafana support globally for ArgoCD.
+        displayName: Enabled
+        path: grafana.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: grafana.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Grafana container image.
+        displayName: Image
+        path: grafana.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: grafana.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for Grafana.
+        displayName: Resource Requirements'
+        path: grafana.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: grafana.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Size is the replica count for the Grafana Deployment.
+        displayName: Size
+        path: grafana.size
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:podCount
+      - description: Version is the Grafana container image tag.
+        displayName: Version
+        path: grafana.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle HA support globally for Argo CD.
+        displayName: Enabled
+        path: ha.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:HA
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: HelpChatText is the text for getting chat help, defaults to "Chat
+          now!"
+        displayName: Help Chat Text'
+        path: helpChatText
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: HelpChatURL is the URL for getting chat help, this will typically
+          be your Slack channel for support.
+        displayName: Help Chat URL'
+        path: helpChatURL
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Image is the ArgoCD container image for all ArgoCD components.
+        displayName: Image
+        path: image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Name of an ArgoCDExport from which to import data.
+        displayName: Name
+        path: import.name
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Namespace for the ArgoCDExport, defaults to the same namespace
+          as the ArgoCD.
+        displayName: Namespace
+        path: import.namespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: InitialRepositories to configure Argo CD with upon creation of
+          the cluster.
+        displayName: Initial Repositories'
+        path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: KustomizeVersions is a listing of configured versions of Kustomize
+          to be made available within ArgoCD.
+        displayName: Kustomize Build Options'
+        path: kustomizeVersions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: OIDCConfig is the OIDC configuration as an alternative to dex.
+        displayName: OIDC Config'
+        path: oidcConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Enabled will toggle Prometheus support globally for ArgoCD.
+        displayName: Enabled
+        path: prometheus.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: prometheus.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: prometheus.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: prometheus.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Size is the replica count for the Prometheus StatefulSet.
+        displayName: Size
+        path: prometheus.size
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:podCount
+      - description: DefaultPolicy is the name of the default role which Argo CD will
+          falls back to, when authorizing API requests (optional). If omitted or empty,
+          users may be still be able to login, but will see no apps, projects, etc...
+        displayName: Default Policy'
+        path: rbac.defaultPolicy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Policy is CSV containing user-defined RBAC policies and role
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
+          inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
+          for additional information.'
+        displayName: Policy
+        path: rbac.policy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Scopes controls which OIDC scopes to examine during rbac enforcement
+          (in addition to `sub` scope). If omitted, defaults to: ''[groups]''.'
+        displayName: Scopes
+        path: rbac.scopes
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Redis container image.
+        displayName: Image
+        path: redis.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Resources defines the Compute Resources required by the container
+          for Redis.
+        displayName: Resource Requirements'
+        path: redis.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Version is the Redis container image tag.
+        displayName: Version
+        path: redis.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Redis
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Resources defines the Compute Resources required by the container
+          for Redis.
+        displayName: Resource Requirements'
+        path: repo.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Repo
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ResourceActions customizes resource action behavior.
+        displayName: Resource Action Customizations'
+        path: resourceActions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: 'ResourceCustomizations customizes resource behavior. Keys are
+          in the form: group/Kind. Please note that this is being deprecated in favor
+          of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.'
+        displayName: Resource Customizations'
+        path: resourceCustomizations
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceExclusions is used to completely ignore entire classes
+          of resource group/kinds.
+        displayName: Resource Exclusions'
+        path: resourceExclusions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceHealthChecks customizes resource health check behavior.
+        displayName: Resource Health Check Customizations'
+        path: resourceHealthChecks
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceIgnoreDifferences customizes resource ignore difference
+          behavior.
+        displayName: Resource Ignore Difference Customizations'
+        path: resourceIgnoreDifferences
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: ResourceTrackingMethod defines how Argo CD should track resources
+          that it manages
+        displayName: Resource Tracking Method'
+        path: resourceTrackingMethod
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Enabled will toggle autoscaling support for the Argo CD Server
+          component.
+        displayName: Autoscale Enabled'
+        path: server.autoscale.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: GRPC Host
+        path: server.grpc.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Ingress defines the desired state for the Argo CD Server GRPC
+          Ingress.
+        displayName: GRPC Ingress Enabled'
+        path: server.grpc.ingress
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: server.grpc.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Host is the hostname to use for Ingress/Route resources.
+        displayName: Host
+        path: server.host
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Enabled will toggle the creation of the Ingress.
+        displayName: Ingress Enabled'
+        path: server.ingress.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Insecure toggles the insecure flag.
+        displayName: Insecure
+        path: server.insecure
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for the Argo CD server component.
+        displayName: Resource Requirements'
+        path: server.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Enabled will toggle the creation of the OpenShift Route.
+        displayName: Route Enabled'
+        path: server.route.enabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Grafana
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Type is the ServiceType to use for the Service resource.
+        displayName: Service Type'
+        path: server.service.type
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Config is the dex connector configuration.
+        displayName: Configuration
+        path: sso.dex.config
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Image is the Dex container image.
+        displayName: Image
+        path: sso.dex.image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: OpenShiftOAuth enables OpenShift OAuth authentication for the
+          Dex server.
+        displayName: OpenShift OAuth Enabled'
+        path: sso.dex.openShiftOAuth
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Resources defines the Compute Resources required by the container
+          for Dex.
+        displayName: Resource Requirements'
+        path: sso.dex.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: Version is the Dex container image tag.
+        displayName: Version
+        path: sso.dex.version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: StatusBadgeEnabled toggles application status badge feature.
+        displayName: Status Badge Enabled'
+        path: statusBadgeEnabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: UsersAnonymousEnabled toggles anonymous user access. The anonymous
+          users get default role permissions specified argocd-rbac-cm.
+        displayName: Anonymous Users Enabled'
+        path: usersAnonymousEnabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: Version is the tag to use with the ArgoCD container image for
+          all ArgoCD components.
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: 'ApplicationController is a simple, high-level summary of where
+          the Argo CD application controller component is in its lifecycle. There
+          are four possible ApplicationController values: Pending: The Argo CD application
+          controller component has been accepted by the Kubernetes system, but one
+          or more of the required resources have not been created. Running: All of
+          the required Pods for the Argo CD application controller component are in
+          a Ready state. Failed: At least one of the  Argo CD application controller
+          component Pods had a failure. Unknown: The state of the Argo CD application
+          controller component could not be obtained.'
+        displayName: ApplicationController
+        path: applicationController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'ApplicationSetController is a simple, high-level summary of
+          where the Argo CD applicationSet controller component is in its lifecycle.
+          There are four possible ApplicationSetController values: Pending: The Argo
+          CD applicationSet controller component has been accepted by the Kubernetes
+          system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD applicationSet controller
+          component are in a Ready state. Failed: At least one of the  Argo CD applicationSet
+          controller component Pods had a failure. Unknown: The state of the Argo
+          CD applicationSet controller component could not be obtained.'
+        displayName: ApplicationSetController
+        path: applicationSetController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'NotificationsController is a simple, high-level summary of where
+          the Argo CD notifications controller component is in its lifecycle. There
+          are four possible NotificationsController values: Pending: The Argo CD notifications
+          controller component has been accepted by the Kubernetes system, but one
+          or more of the required resources have not been created. Running: All of
+          the required Pods for the Argo CD notifications controller component are
+          in a Ready state. Failed: At least one of the  Argo CD notifications controller
+          component Pods had a failure. Unknown: The state of the Argo CD notifications
+          controller component could not be obtained.'
+        displayName: NotificationsController
+        path: notificationsController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Phase is a simple, high-level summary of where the ArgoCD is
+          in its lifecycle. There are four possible phase values: Pending: The ArgoCD
+          has been accepted by the Kubernetes system, but one or more of the required
+          resources have not been created. Available: All of the resources for the
+          ArgoCD are ready. Failed: At least one resource has experienced a failure.
+          Unknown: The state of the ArgoCD phase could not be obtained.'
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Redis is a simple, high-level summary of where the Argo CD Redis
+          component is in its lifecycle. There are four possible redis values: Pending:
+          The Argo CD Redis component has been accepted by the Kubernetes system,
+          but one or more of the required resources have not been created. Running:
+          All of the required Pods for the Argo CD Redis component are in a Ready
+          state. Failed: At least one of the  Argo CD Redis component Pods had a failure.
+          Unknown: The state of the Argo CD Redis component could not be obtained.'
+        displayName: Redis
+        path: redis
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Repo is a simple, high-level summary of where the Argo CD Repo
+          component is in its lifecycle. There are four possible repo values: Pending:
+          The Argo CD Repo component has been accepted by the Kubernetes system, but
+          one or more of the required resources have not been created. Running: All
+          of the required Pods for the Argo CD Repo component are in a Ready state.
+          Failed: At least one of the  Argo CD Repo component Pods had a failure.
+          Unknown: The state of the Argo CD Repo component could not be obtained.'
+        displayName: Repo
+        path: repo
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'Server is a simple, high-level summary of where the Argo CD
+          server component is in its lifecycle. There are four possible server values:
+          Pending: The Argo CD server component has been accepted by the Kubernetes
+          system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD server component are in
+          a Ready state. Failed: At least one of the  Argo CD server component Pods
+          had a failure. Unknown: The state of the Argo CD server component could
+          not be obtained.'
+        displayName: Server
+        path: server
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak)
+          component is in its lifecycle. There are four possible sso values: Pending:
+          The Argo CD SSO component has been accepted by the Kubernetes system, but
+          one or more of the required resources have not been created. Running: All
+          of the required Pods for the Argo CD SSO component are in a Ready state.
+          Failed: At least one of the  Argo CD SSO component Pods had a failure. Unknown:
+          The state of the Argo CD SSO component could not be obtained.'
+        displayName: SSO
+        path: sso
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      version: v1alpha1
+    - description: ArgoCD is the Schema for the argocds API
+      displayName: Argo CD
+      kind: ArgoCD
+      name: argocds.argoproj.io
+      resources:
+      - kind: ArgoCD
+        name: ""
+        version: v1beta1
       - kind: ArgoCDExport
         name: ""
         version: v1alpha1
@@ -816,7 +1513,7 @@ spec:
         path: sso
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      version: v1alpha1
+      version: v1beta1
   description: |
     ## Overview
 
@@ -1050,6 +1747,8 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: ENABLE_CONVERSION_WEBHOOK
+                  value: "true"
                 image: quay.io/argoprojlabs/argocd-operator:v0.8.0
                 livenessProbe:
                   httpGet:
@@ -1058,6 +1757,10 @@ spec:
                   initialDelaySeconds: 15
                   periodSeconds: 20
                 name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
                 readinessProbe:
                   httpGet:
                     path: /readyz
@@ -1112,9 +1815,9 @@ spec:
         serviceAccountName: argocd-operator-controller-manager
     strategy: deployment
   installModes:
-  - supported: true
+  - supported: false
     type: OwnNamespace
-  - supported: true
+  - supported: false
     type: SingleNamespace
   - supported: false
     type: MultiNamespace
@@ -1138,3 +1841,16 @@ spec:
     name: Argo CD Community
   replaces: argocd-operator.v0.7.0
   version: 0.8.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1alpha1
+    - v1beta1
+    containerPort: 443
+    conversionCRDs:
+    - argocds.argoproj.io
+    deploymentName: argocd-operator-controller-manager
+    generateName: cargocds.kb.io
+    sideEffects: None
+    targetPort: 9443
+    type: ConversionWebhook
+    webhookPath: /convert
