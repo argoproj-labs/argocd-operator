@@ -36,6 +36,7 @@ func init() {
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 // Important: Run "make" to regenerate code after modifying this file
 
+// +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 is deprecated, please use v1beta1 instead."
 //+kubebuilder:object:root=true
 
 // ArgoCD is the Schema for the argocds API
@@ -620,6 +621,19 @@ type ArgoCDSSOSpec struct {
 
 	// Keycloak contains the configuration for Argo CD keycloak authentication
 	Keycloak *ArgoCDKeycloakSpec `json:"keycloak,omitempty"`
+
+	// Deprecated field. Support dropped in v1beta1 version.
+	// Image is the SSO container image.
+	Image string `json:"image,omitempty"`
+	// Deprecated field. Support dropped in v1beta1 version.
+	// Resources defines the Compute Resources required by the container for SSO.
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Deprecated field. Support dropped in v1beta1 version.
+	// VerifyTLS set to false disables strict TLS validation.
+	VerifyTLS *bool `json:"verifyTLS,omitempty"`
+	// Deprecated field. Support dropped in v1beta1 version.
+	// Version is the SSO container image tag.
+	Version string `json:"version,omitempty"`
 }
 
 // KustomizeVersionSpec is used to specify information about a kustomize version to be used within ArgoCD.
@@ -802,6 +816,10 @@ type ArgoCDSpec struct {
 
 	// Banner defines an additional banner to be displayed in Argo CD UI
 	Banner *Banner `json:"banner,omitempty"`
+
+	// Deprecated field. Support dropped in v1beta1 version.
+	// Dex defines the Dex server options for ArgoCD.
+	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD
