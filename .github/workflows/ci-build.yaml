@@ -48,6 +48,10 @@ jobs:
       matrix:
         k3s-version: [ v1.27.1 ]
         # k3s-version: [v1.20.2, v1.19.2, v1.18.9, v1.17.11, v1.16.15]
+    env:
+      K3D_REGISTRY: registry.localhost
+      K3D_REGISTRY_DOMAIN: k3d-registry.localhost
+      K3D_REGISTRY_PORT: 5000
     steps:
       - name: Download kuttl plugin
         env:
@@ -67,7 +71,10 @@ jobs:
           set -x
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash
           sudo mkdir -p $HOME/.kube && sudo chown -R runner $HOME/.kube
-          k3d cluster create --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1
+          # setup registry & patch hosts file for registry domain resolution
+          k3d registry create ${K3D_REGISTRY} --port ${K3D_REGISTRY_PORT}
+          echo "127.0.0.1 ${K3D_REGISTRY_DOMAIN}" | sudo tee -a /etc/hosts
+          k3d cluster create --registry-use "${K3D_REGISTRY_DOMAIN}:${K3D_REGISTRY_PORT}" --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1
           kubectl version
           k3d version
       - name: Checkout code
@@ -90,18 +97,19 @@ jobs:
       - name: Download Go dependencies
         run: |
           go mod download
-      - name: Run the operator locally
+      - name: Run the operator via OLM
         env:
           ARGOCD_CLUSTER_CONFIG_NAMESPACES: argocd-e2e-cluster-config
-        run: |
-          set -o pipefail
-          make install generate fmt vet
-          # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
+          REGISTRY: ${{ env.K3D_REGISTRY_DOMAIN }}:${{ env.K3D_REGISTRY_PORT }}
+          VERSION: "0.8.0"
+        run: ./hack/olm-install.sh
       - name: Run tests
         run: |
           set -o pipefail
           bash hack/test.sh 2>&1 | tee /tmp/e2e-test.log
+      - name: Save operator logs
+        if: ${{ failure() }}
+        run: kubectl logs -n operators deployment.apps/argocd-operator-controller-manager > /tmp/e2e-operator-run.log
       - name: Upload operator logs
         uses: actions/upload-artifact@v2
         with:
