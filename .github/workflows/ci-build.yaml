@@ -77,6 +77,24 @@ jobs:
           k3d cluster create --registry-use "${K3D_REGISTRY_DOMAIN}:${K3D_REGISTRY_PORT}" --servers 3 --image rancher/k3s:${{ matrix.k3s-version }}-k3s1
           kubectl version
           k3d version
+      - name: Download and install Operator SDK
+        env:
+          SDK_VERSION: 1.11.0
+          SDK_CHECKSUM: 'b1f6fb02c619cfcdb46edf41cbeb4d66f627fd8bba122edaeeb06718965299eb'
+        run: |
+          set -ue
+          set -o pipefail
+          curl -sLf --retry 3 \
+            -o /tmp/operator-sdk_linux_amd64 \
+            https://github.com/operator-framework/operator-sdk/releases/download/v1.11.0/operator-sdk_linux_amd64
+          calculated=$(sha256sum /tmp/operator-sdk_linux_amd64 | awk '{print $1}')
+          if test "${calculated}" != "${SDK_CHECKSUM}"; then
+            echo "FAILED TO VALIDATE CHECKSUM" >&2
+            echo "Download is: ${calculated}"
+            echo "Should: ${SDK_CHECKSUM}"
+            exit 1
+          fi
+          sudo install -m 0755 /tmp/operator-sdk_linux_amd64 /usr/local/bin/operator-sdk
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Setup Golang
