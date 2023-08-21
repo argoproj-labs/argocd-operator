@@ -235,4 +235,7 @@ const (
 	// ArgoCDClusterConfigNamespacesEnvVar is the environment variable that contains the list of namespaces allowed to host cluster config
 	// instances
 	ArgoCDClusterConfigNamespacesEnvVar = "ARGOCD_CLUSTER_CONFIG_NAMESPACES"
+
+	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
+	ArgoCDComponentStatus = "ArgoCDComponentStatus"
 )
