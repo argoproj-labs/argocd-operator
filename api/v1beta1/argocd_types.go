@@ -748,10 +748,7 @@ type ArgoCDSpec struct {
 	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
-	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
-	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`
-
+	// Deprecated field. Support dropped in v1beta1 version.
 	// ResourceHealthChecks customizes resource health check behavior.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Health Check Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ResourceHealthChecks []ResourceHealthCheck `json:"resourceHealthChecks,omitempty"`

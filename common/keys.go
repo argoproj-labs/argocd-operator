@@ -121,9 +121,6 @@ const (
 	// ArgoCDKeyRelease is the prometheus release key for labels.
 	ArgoCDKeyRelease = "release"
 
-	// ArgoCDKeyResourceCustomizations is the configuration key for resource customizations.
-	ArgoCDKeyResourceCustomizations = "resource.customizations"
-
 	// ArgoCDKeyResourceExclusions is the configuration key for resource exclusions.
 	ArgoCDKeyResourceExclusions = "resource.exclusions"
 

@@ -679,29 +679,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	customizations := "testing: testing"
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.ResourceCustomizations = customizations
-	})
-	r := makeTestReconciler(t, a)
-
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
-
-	if c := cm.Data["resource.customizations"]; c != customizations {
-		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
-	}
-}
-
 func TestReconcileArgoCD_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -792,42 +769,6 @@ managedfieldsmanagers:
 	}
 }
 
-func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
-
-	resourceCustomizationsEvent := &corev1.Event{
-		Reason:  "DeprecationNotice",
-		Message: "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.",
-		Action:  "Deprecated",
-	}
-
-	tests := []struct {
-		name       string
-		argoCD     *argoproj.ArgoCD
-		wantEvents []*corev1.Event
-	}{
-		{
-			name: "ResourceCustomizations used",
-			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
-				ac.Spec.ResourceCustomizations = "testing: testing"
-			}),
-			wantEvents: []*corev1.Event{resourceCustomizationsEvent},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			r := makeFakeReconciler(t, test.argoCD)
-			err := r.reconcileArgoConfigMap(test.argoCD)
-			assert.NoError(t, err)
-			gotEventList := &corev1.EventList{}
-			err = r.Client.List(context.TODO(), gotEventList)
-			assert.NoError(t, err)
-			assert.Equal(t, len(test.wantEvents), len(gotEventList.Items))
-		})
-	}
-}
 func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)
