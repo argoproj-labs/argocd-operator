@@ -25,8 +25,8 @@ type serviceMonitorOpt func(*monitoringv1.ServiceMonitor)
 func getTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonitor {
 	desiredServiceMonitor := &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
+			Name:      testName,
+			Namespace: testNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -66,54 +66,77 @@ func TestRequestServiceMonitor(t *testing.T) {
 
 	tests := []struct {
 		name                  string
+		objectMeta            metav1.ObjectMeta
+		spec                  monitoringv1.ServiceMonitorSpec
 		serviceMonitorReq     ServiceMonitorRequest
 		desiredServiceMonitor *monitoringv1.ServiceMonitor
-		mutation              bool
 		wantErr               bool
 	}{
 		{
 			name: "request serviceMonitor, no mutation",
 			serviceMonitorReq: ServiceMonitorRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Selector: metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
 					},
 				},
-				Endpoints: []monitoringv1.Endpoint{
-					{
-						Port: common.ArgoCDKeyMetrics,
+				Spec: monitoringv1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+						},
+					},
+					Endpoints: []monitoringv1.Endpoint{
+						{
+							Port: common.ArgoCDKeyMetrics,
+						},
 					},
 				},
 			},
-			mutation:              false,
 			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
 			wantErr:               false,
 		},
 		{
 			name: "request serviceMonitor, no mutation, custom name, labels, annotations",
 			serviceMonitorReq: ServiceMonitorRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
-				Selector: metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+						testKey:                   testVal,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+						testKey:                    testVal,
 					},
 				},
-				Endpoints: []monitoringv1.Endpoint{
-					{
-						Port: common.ArgoCDKeyMetrics,
+				Spec: monitoringv1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+						},
+					},
+					Endpoints: []monitoringv1.Endpoint{
+						{
+							Port: common.ArgoCDKeyMetrics,
+						},
 					},
 				},
 			},
-			mutation: false,
 			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 				sm.Name = testName
 				sm.Labels = argoutil.MergeMaps(sm.Labels, testKVP)
@@ -124,52 +147,74 @@ func TestRequestServiceMonitor(t *testing.T) {
 		{
 			name: "request serviceMonitor, successful mutation",
 			serviceMonitorReq: ServiceMonitorRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceMonitorNameMutated,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: monitoringv1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+						},
+					},
+					Endpoints: []monitoringv1.Endpoint{
+						{
+							Port: common.ArgoCDKeyMetrics,
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
-				Selector: metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
-					},
-				},
-				Endpoints: []monitoringv1.Endpoint{
-					{
-						Port: common.ArgoCDKeyMetrics,
-					},
-				},
 			},
-			mutation:              true,
 			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = testServiceMonitorNameMutated }),
 			wantErr:               false,
 		},
 		{
 			name: "request serviceMonitor, failed mutation",
 			serviceMonitorReq: ServiceMonitorRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: monitoringv1.ServiceMonitorSpec{
+					Selector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+						},
+					},
+					Endpoints: []monitoringv1.Endpoint{
+						{
+							Port: common.ArgoCDKeyMetrics,
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
-				Selector: metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
-					},
-				},
-				Endpoints: []monitoringv1.Endpoint{
-					{
-						Port: common.ArgoCDKeyMetrics,
-					},
-				},
 			},
-			mutation:              true,
 			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
 			wantErr:               true,
 		},

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,14 +14,8 @@ import (
 
 // ServiceMonitorRequest objects contain all the required information to produce a serviceMonitor object in return
 type ServiceMonitorRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
-	Selector          metav1.LabelSelector
-	Endpoints         []monitoringv1.Endpoint
+	ObjectMeta metav1.ObjectMeta
+	Spec       monitoringv1.ServiceMonitorSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -30,25 +23,10 @@ type ServiceMonitorRequest struct {
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance for the given ArgoCD.
-func newServiceMonitor(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, selector metav1.LabelSelector, endpoints []monitoringv1.Endpoint) *monitoringv1.ServiceMonitor {
-	var serviceMonitorName string
-	if name != "" {
-		serviceMonitorName = name
-	} else {
-		serviceMonitorName = argoutil.GenerateResourceName(instanceName, component)
-
-	}
+func newServiceMonitor(objectMeta metav1.ObjectMeta, spec monitoringv1.ServiceMonitorSpec) *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        serviceMonitorName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
-		},
-		Spec: monitoringv1.ServiceMonitorSpec{
-			Selector:  selector,
-			Endpoints: endpoints,
-		},
+		ObjectMeta: objectMeta,
+		Spec:       spec,
 	}
 }
 
@@ -106,7 +84,7 @@ func RequestServiceMonitor(request ServiceMonitorRequest) (*monitoringv1.Service
 	var (
 		mutationErr error
 	)
-	serviceMonitor := newServiceMonitor(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.Selector, request.Endpoints)
+	serviceMonitor := newServiceMonitor(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
