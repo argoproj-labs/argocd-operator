@@ -28,7 +28,7 @@ func getTestClusterRole(opts ...clusterRoleOpt) *rbacv1.ClusterRole {
 			Labels: map[string]string{
 				common.AppK8sKeyName:      testInstance,
 				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
 				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{

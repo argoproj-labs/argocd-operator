@@ -29,7 +29,7 @@ func getTestSecret(opts ...secretOpt) *corev1.Secret {
 			Labels: map[string]string{
 				common.AppK8sKeyName:      testInstance,
 				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
 				common.AppK8sKeyComponent: testComponent,
 			},
 		},

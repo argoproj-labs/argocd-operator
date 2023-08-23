@@ -853,7 +853,7 @@ func filterObjectsBySelector(c client.Client, objectList client.ObjectList, sele
 
 func argocdInstanceSelector(name string) (labels.Selector, error) {
 	selector := labels.NewSelector()
-	requirement, err := labels.NewRequirement(common.AppK8sKeyManagedBy, selection.Equals, []string{name})
+	requirement, err := labels.NewRequirement(common.AppK8sKeyInstance, selection.Equals, []string{name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a requirement for %w", err)
 	}
