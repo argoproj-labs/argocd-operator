@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 // common test variables used across workloads tests

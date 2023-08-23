@@ -8,8 +8,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -345,8 +345,6 @@ func TestUpdatePrometheusRule(t *testing.T) {
 	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredPrometheusRule)
 	assert.NoError(t, err)
 
-	duration := "1m"
-
 	newRuleGroups := []monitoringv1.RuleGroup{
 		{
 			Name: common.ArgoCDComponentStatus,
@@ -360,7 +358,7 @@ func TestUpdatePrometheusRule(t *testing.T) {
 						Type:   intstr.String,
 						StrVal: "test-expr",
 					},
-					For: (*monitoringv1.Duration)(&duration),
+					For: "1m",
 					Labels: map[string]string{
 						"severity": "critical",
 					},
