@@ -16,12 +16,10 @@ package common
 
 import "time"
 
+// names
 const (
 	// ArgoCDAppName is the application name for labels.
 	ArgoCDAppName = "argocd"
-
-	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
-	ArgoCDCASuffix = "ca"
 
 	// ArgoCDConfigMapName is the upstream hard-coded ArgoCD ConfigMap name.
 	ArgoCDConfigMapName = "argocd-cm"
@@ -29,29 +27,8 @@ const (
 	// ArgoCDGPGKeysConfigMapName is the upstream hard-coded ArgoCD gpg-keys ConfigMap name.
 	ArgoCDGPGKeysConfigMapName = "argocd-gpg-keys-cm"
 
-	// ArgoCDDuration365Days is a duration representing 365 days.
-	ArgoCDDuration365Days = time.Hour * 24 * 365
-
 	// ArgoCDExportName is the export name for labels.
 	ArgoCDExportName = "argocd.export"
-
-	// ArgoCDExportStorageBackendAWS is the value for the AWS storage backend.
-	ArgoCDExportStorageBackendAWS = "aws"
-
-	// ArgoCDExportStorageBackendAzure is the value for the Azure storage backend.
-	ArgoCDExportStorageBackendAzure = "azure"
-
-	// ArgoCDExportStorageBackendGCP is the value for the GCP storage backend.
-	ArgoCDExportStorageBackendGCP = "gcp"
-
-	// ArgoCDExportStorageBackendLocal is the value for the local storage backend.
-	ArgoCDExportStorageBackendLocal = "local"
-
-	// ArgoCDGrafanaConfigMapSuffix is the default suffix for the Grafana configuration ConfigMap.
-	ArgoCDGrafanaConfigMapSuffix = "grafana-config"
-
-	// ArgoCDGrafanaDashboardConfigMapSuffix is the default suffix for the Grafana dashboards ConfigMap.
-	ArgoCDGrafanaDashboardConfigMapSuffix = "grafana-dashboards"
 
 	// ArgoCDKnownHostsConfigMapName is the upstream hard-coded SSH known hosts data ConfigMap name.
 	ArgoCDKnownHostsConfigMapName = "argocd-ssh-known-hosts-cm"
@@ -71,9 +48,6 @@ const (
 	// ArgoCDSecretName is the upstream hard-coded ArgoCD Secret name.
 	ArgoCDSecretName = "argocd-secret"
 
-	// ArgoCDStatusCompleted is the completed status value.
-	ArgoCDStatusCompleted = "Completed"
-
 	// ArgoCDTLSCertsConfigMapName is the upstream hard-coded TLS certificate data ConfigMap name.
 	ArgoCDTLSCertsConfigMapName = "argocd-tls-certs-cm"
 
@@ -86,6 +60,48 @@ const (
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"
 
+	// ArgoCDOperatorName is the name of the operator that manages Argo CD instances and workloads
+	ArgoCDOperatorName = "argocd-operator"
+)
+
+// suffixes
+const (
+	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
+	ArgoCDCASuffix = "ca"
+
+	// ArgoCDGrafanaConfigMapSuffix is the default suffix for the Grafana configuration ConfigMap.
+	ArgoCDGrafanaConfigMapSuffix = "grafana-config"
+
+	// ArgoCDGrafanaDashboardConfigMapSuffix is the default suffix for the Grafana dashboards ConfigMap.
+	ArgoCDGrafanaDashboardConfigMapSuffix = "grafana-dashboards"
+
 	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
 	ApplicationSetServiceNameSuffix = "applicationset-controller"
+)
+
+// values
+const (
+	// ArgoCDDuration365Days is a duration representing 365 days.
+	ArgoCDDuration365Days = time.Hour * 24 * 365
+
+	// ArgoCDExportStorageBackendAWS is the value for the AWS storage backend.
+	ArgoCDExportStorageBackendAWS = "aws"
+
+	// ArgoCDExportStorageBackendAzure is the value for the Azure storage backend.
+	ArgoCDExportStorageBackendAzure = "azure"
+
+	// ArgoCDExportStorageBackendGCP is the value for the GCP storage backend.
+	ArgoCDExportStorageBackendGCP = "gcp"
+
+	// ArgoCDExportStorageBackendLocal is the value for the local storage backend.
+	ArgoCDExportStorageBackendLocal = "local"
+
+	// ArgoCDStatusCompleted is the completed status value.
+	ArgoCDStatusCompleted = "Completed"
+
+	// ArgoCDDefaultServer is the default server address
+	ArgoCDDefaultServer = "https://kubernetes.default.svc"
+
+	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
+	K8sOSLinux = "linux"
 )

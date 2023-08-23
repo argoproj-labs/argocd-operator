@@ -19,9 +19,9 @@ func (r *ArgoCDReconciler) clusterResourceMapper(o client.Object) []reconcile.Re
 	namespacedArgoCDObject := client.ObjectKey{}
 
 	for k, v := range crbAnnotations {
-		if k == common.AnnotationName {
+		if k == common.ArgoCDArgoprojKeyName {
 			namespacedArgoCDObject.Name = v
-		} else if k == common.AnnotationNamespace {
+		} else if k == common.ArgoCDArgoprojKeyNamespace {
 			namespacedArgoCDObject.Namespace = v
 		}
 	}
@@ -113,7 +113,7 @@ func (r *ArgoCDReconciler) tlsSecretMapper(o client.Object) []reconcile.Request 
 		if !ok {
 			return result
 		}
-		if owner, ok := secret.Annotations[common.AnnotationName]; ok {
+		if owner, ok := secret.Annotations[common.ArgoCDArgoprojKeyName]; ok {
 			namespacedArgoCDObject.Name = owner
 			namespacedArgoCDObject.Namespace = o.GetNamespace()
 			result = []reconcile.Request{
@@ -131,7 +131,7 @@ func (r *ArgoCDReconciler) namespaceResourceMapper(o client.Object) []reconcile.
 	var result = []reconcile.Request{}
 
 	labels := o.GetLabels()
-	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
+	if v, ok := labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
 		argocds := &argoprojv1alpha1.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
@@ -160,7 +160,7 @@ func (r *ArgoCDReconciler) clusterSecretResourceMapper(o client.Object) []reconc
 	var result = []reconcile.Request{}
 
 	labels := o.GetLabels()
-	if v, ok := labels[common.ArgoCDSecretTypeLabel]; ok && v == "cluster" {
+	if v, ok := labels[common.ArgoCDArgoprojKeySecretType]; ok && v == "cluster" {
 		argocds := &argoprojv1alpha1.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result

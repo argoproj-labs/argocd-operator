@@ -513,7 +513,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+		common.AppK8sKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {

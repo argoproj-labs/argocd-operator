@@ -27,14 +27,14 @@ func getTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testInstanceNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 	}
@@ -180,19 +180,19 @@ func TestListDeployments(t *testing.T) {
 	deployment1 := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-1"
 		d.Namespace = testNamespace
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	deployment2 := getTestDeployment(func(d *appsv1.Deployment) { d.Name = "deployment-2" })
 	deployment3 := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-3"
-		d.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		deployment1, deployment2, deployment3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

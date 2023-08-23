@@ -26,14 +26,14 @@ func getTestClusterRole(opts ...clusterRoleOpt) *rbacv1.ClusterRole {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: argoutil.GenerateUniqueResourceName(testInstance, testInstanceNamespace, testComponent),
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Rules: testRules,
@@ -179,19 +179,19 @@ func TestGetClusterRole(t *testing.T) {
 func TestListClusterRoles(t *testing.T) {
 	role1 := getTestClusterRole(func(r *rbacv1.ClusterRole) {
 		r.Name = "role-1"
-		r.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	role2 := getTestClusterRole(func(r *rbacv1.ClusterRole) { r.Name = "role-2" })
 	role3 := getTestClusterRole(func(r *rbacv1.ClusterRole) {
 		r.Name = "role-3"
-		r.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		role1, role2, role3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

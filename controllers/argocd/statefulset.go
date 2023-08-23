@@ -45,7 +45,7 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -56,20 +56,20 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 	ss.ObjectMeta.Name = name
 
 	lbls := ss.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	lbls[common.ArgoCDKeyComponent] = component
+	lbls[common.AppK8sKeyName] = name
+	lbls[common.AppK8sKeyComponent] = component
 	ss.ObjectMeta.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: name,
+				common.AppK8sKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: name,
+					common.AppK8sKeyName: name,
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -98,7 +98,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+			common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
 		},
 	}
 
@@ -109,7 +109,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+			common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
 		},
 	}
 
@@ -118,10 +118,10 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+						common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
 					},
 				},
-				TopologyKey: common.ArgoCDKeyHostname,
+				TopologyKey: common.K8sKeyHostname,
 			}},
 		},
 	}
@@ -592,10 +592,10 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: nameWithSuffix("argocd-application-controller", cr),
+							common.AppK8sKeyName: nameWithSuffix("argocd-application-controller", cr),
 						},
 					},
-					TopologyKey: common.ArgoCDKeyHostname,
+					TopologyKey: common.K8sKeyHostname,
 				},
 				Weight: int32(100),
 			},
@@ -603,10 +603,10 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								common.ArgoCDKeyPartOf: common.ArgoCDAppName,
+								common.AppK8sKeyPartOf: common.ArgoCDAppName,
 							},
 						},
-						TopologyKey: common.ArgoCDKeyHostname,
+						TopologyKey: common.K8sKeyHostname,
 					},
 					Weight: int32(5),
 				}},
@@ -751,7 +751,7 @@ func containsInvalidImage(cr *argoprojv1a1.ArgoCD, r *ArgoCDReconciler) bool {
 	brokenPod := false
 
 	podList := &corev1.PodList{}
-	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	listOption := client.MatchingLabels{common.AppK8sKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
 
 	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
 		log.Error(err, "Failed to list Pods")

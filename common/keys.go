@@ -14,10 +14,7 @@
 
 package common
 
-import (
-	corev1 "k8s.io/api/core/v1"
-)
-
+// ArgoCD keys
 const (
 	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting..
 	ArgoCDKeyAdminEnabled = "admin.enabled"
@@ -37,17 +34,8 @@ const (
 	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
 	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
 
-	// ArgoCDKeyComponent is the resource component key for labels.
-	ArgoCDKeyComponent = "app.kubernetes.io/component"
-
-	// ArgoCDKeyDexOAuthRedirectURI is the key for the OAuth Redirect URI annotation.
-	ArgoCDKeyDexOAuthRedirectURI = "serviceaccounts.openshift.io/oauth-redirecturi.argocd"
-
 	// ArgoCDKeyDexConfig is the key for dex configuration.
 	ArgoCDKeyDexConfig = "dex.config"
-
-	// ArgoCDKeyFailureDomainZone is the failure-domain zone key for labels.
-	ArgoCDKeyFailureDomainZone = "failure-domain.beta.kubernetes.io/zone"
 
 	// ArgoCDKeyGATrackingID is the configuration key for the Google  Analytics Tracking ID.
 	ArgoCDKeyGATrackingID = "ga.trackingid"
@@ -70,41 +58,14 @@ const (
 	// ArgoCDKeyHelpChatText is the congifuration key for the help chat text.
 	ArgoCDKeyHelpChatText = "help.chatText"
 
-	// ArgoCDKeyHostname is the resource hostname key for labels.
-	ArgoCDKeyHostname = "kubernetes.io/hostname"
-
-	// ArgoCDKeyIngressBackendProtocol is the backend-protocol key for labels.
-	ArgoCDKeyIngressBackendProtocol = "nginx.ingress.kubernetes.io/backend-protocol"
-
-	// ArgoCDKeyIngressClass is the ingress class key for labels.
-	ArgoCDKeyIngressClass = "kubernetes.io/ingress.class"
-
-	// ArgoCDKeyIngressSSLRedirect is the ssl force-redirect key for labels.
-	ArgoCDKeyIngressSSLRedirect = "nginx.ingress.kubernetes.io/force-ssl-redirect"
-
-	// ArgoCDKeyIngressSSLPassthrough is the ssl passthrough key for labels.
-	ArgoCDKeyIngressSSLPassthrough = "nginx.ingress.kubernetes.io/ssl-passthrough"
-
 	// ArgoCDKeyKustomizeBuildOptions is the configuration key for the kustomize build options.
 	ArgoCDKeyKustomizeBuildOptions = "kustomize.buildOptions"
 
 	// ArgoCDKeyMetrics is the resource metrics key for labels.
 	ArgoCDKeyMetrics = "metrics"
 
-	// ArgoCDKeyName is the resource name key for labels.
-	ArgoCDKeyName = "app.kubernetes.io/name"
-
 	// ArgoCDKeyOIDCConfig is the configuration key for the OIDC configuration.
 	ArgoCDKeyOIDCConfig = "oidc.config"
-
-	// ArgoCDKeyPartOf is the resource part-of key for labels.
-	ArgoCDKeyPartOf = "app.kubernetes.io/part-of"
-
-	// ArgoCDKeyManagedBy is the managed-by key for labels.
-	ArgoCDKeyManagedBy = "app.kubernetes.io/managed-by"
-
-	// ArgoCDKeyStatefulSetPodName is the resource StatefulSet Pod Name key for labels.
-	ArgoCDKeyStatefulSetPodName = "statefulset.kubernetes.io/pod-name"
 
 	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
 	ArgoCDKeyPrometheus = "prometheus"
@@ -133,10 +94,6 @@ const (
 	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
 	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
 
-	// ArgoCDRepoImageEnvName is the environment variable used to get the image
-	// to used for the Dex container.
-	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
-
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
 
@@ -161,25 +118,97 @@ const (
 	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
 	ArgoCDKeyBannerURL = "ui.bannerurl"
 
-	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
-	ArgoCDKeyTLSCACert = "ca.crt"
-
-	// ArgoCDKeyTLSCert is the key for TLS certificates.
-	ArgoCDKeyTLSCert = corev1.TLSCertKey
-
-	// ArgoCDKeyTLSPrivateKey is the key for TLS private keys.
-	ArgoCDKeyTLSPrivateKey = corev1.TLSPrivateKeyKey
-
 	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
 	ArgoCDPolicyMatcherMode = "policy.matchMode"
 
-	// ArgoCDKeyTolerateUnreadyEndpounts is the resource tolerate unready endpoints key for labels.
-	ArgoCDKeyTolerateUnreadyEndpounts = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
-
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
+	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
+	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
+)
+
+// openshift.io keys
+const (
+	// SAOpenshiftKeyOAuthRedirectURI is the key for the OAuth Redirect URI annotation.
+	SAOpenshiftKeyOAuthRedirectURI = "serviceaccounts.openshift.io/oauth-redirecturi.argocd"
+
+	// ServiceBetaOpenshiftKeyCertSecret is the annotation on services used to
+	// request a TLS certificate from OpenShift's Service CA for AutoTLS
+	ServiceBetaOpenshiftKeyCertSecret = "service.beta.openshift.io/serving-cert-secret-name"
+)
+
+// kubernetes.io keys
+const (
+	// AppK8sKeyName is the resource name key for labels.
+	AppK8sKeyName = "app.kubernetes.io/name"
+
+	// AppK8sKeyInstance is the instance name key for labels.
+	AppK8sKeyInstance = "app.kubernetes.io/instance"
+
+	// AppK8sKeyPartOf is the resource part-of key for labels.
+	AppK8sKeyPartOf = "app.kubernetes.io/part-of"
+
+	// AppK8sKeyComponent is the resource component key for labels.
+	AppK8sKeyComponent = "app.kubernetes.io/component"
+
+	// AppK8sKeyManagedBy is the managed-by key for labels.
+	AppK8sKeyManagedBy = "app.kubernetes.io/managed-by"
+
+	// StatefulSetK8sKeyPodName is the resource StatefulSet Pod Name key for labels.
+	StatefulSetK8sKeyPodName = "statefulset.kubernetes.io/pod-name"
+
+	// K8sKeyOS is the os key for labels.
+	K8sKeyOS = "kubernetes.io/os"
+
+	// K8sKeyHostname is the resource hostname key for labels.
+	K8sKeyHostname = "kubernetes.io/hostname"
+
+	// K8sKeyIngressClass is the ingress class key for labels.
+	K8sKeyIngressClass = "kubernetes.io/ingress.class"
+
+	// NginxIngressK8sKeyBackendProtocol is the backend-protocol key for labels.
+	NginxIngressK8sKeyBackendProtocol = "nginx.ingress.kubernetes.io/backend-protocol"
+
+	// NginxIngressK8sKeyForceSSLRedirect is the ssl force-redirect key for labels.
+	NginxIngressK8sKeyForceSSLRedirect = "nginx.ingress.kubernetes.io/force-ssl-redirect"
+
+	// NginxIngressK8sKeySSLPassthrough is the ssl passthrough key for labels.
+	NginxIngressK8sKeySSLPassthrough = "nginx.ingress.kubernetes.io/ssl-passthrough"
+
+	// ServiceAlphaK8sKeyTolerateUnreadyEndpoints is the resource tolerate unready endpoints key for labels.
+	ServiceAlphaK8sKeyTolerateUnreadyEndpoints = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
+
+	// FailureDomainBetaK8sKeyZone is the failure-domain zone key for labels.
+	FailureDomainBetaK8sKeyZone = "failure-domain.beta.kubernetes.io/zone"
+)
+
+// arogproj.io keys
+const (
+	// ArgoCDArgoprojKeyName is the annotation on child resources that specifies which ArgoCD instance
+	// name a specific object is associated with
+	ArgoCDArgoprojKeyName = "argocds.argoproj.io/name"
+
+	// ArgoCDArgoprojKeyNamespace is the annotation on child resources that specifies which ArgoCD instance
+	// namespace a specific object is associated with
+	ArgoCDArgoprojKeyNamespace = "argocds.argoproj.io/namespace"
+
+	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
+	ArgoprojKeyFinalizer = "argoproj.io/finalizer"
+
+	// ArgoCDArgoprojKeySecretType is needed for cluster secrets
+	ArgoCDArgoprojKeySecretType = "argocd.argoproj.io/secret-type"
+
+	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
+	ArgoCDArgoprojKeyManagedBy = "argocd.argoproj.io/managed-by"
+
+	// ArgoCDArgoprojKeyManagedByClusterArgoCD is needed to identify namespace mentioned as sourceNamespace on ArgoCD
+	ArgoCDArgoprojKeyManagedByClusterArgoCD = "argocd.argoproj.io/managed-by-cluster-argocd"
+)
+
+// env vars
+const (
 	// ArgoCDDexImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.
 	ArgoCDDexImageEnvName = "ARGOCD_DEX_IMAGE"
@@ -191,6 +220,10 @@ const (
 	// ArgoCDKeycloakImageEnvName is the environment variable used to get the image
 	// to used for the Keycloak container.
 	ArgoCDKeycloakImageEnvName = "ARGOCD_KEYCLOAK_IMAGE"
+
+	// ArgoCDRepoImageEnvName is the environment variable used to get the image
+	// to used for the Dex container.
+	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
 
 	// ArgoCDRedisHAProxyImageEnvName is the environment variable used to get the image
 	// to used for the Redis HA Proxy container.
@@ -208,29 +241,11 @@ const (
 	// to used for the Grafana container.
 	ArgoCDGrafanaImageEnvName = "ARGOCD_GRAFANA_IMAGE"
 
-	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
-	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"
-
-	// ArgoCDDefaultServer is the default server address
-	ArgoCDDefaultServer = "https://kubernetes.default.svc"
-
-	// ArgoCDSecretTypeLabel is needed for cluster secrets
-	ArgoCDSecretTypeLabel = "argocd.argoproj.io/secret-type"
-
-	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
-	ArgoCDManagedByLabel = "argocd.argoproj.io/managed-by"
-
-	// ArgoCDManagedByClusterArgoCDLabel is needed to identify namespace mentioned as sourceNamespace on ArgoCD
-	ArgoCDManagedByClusterArgoCDLabel = "argocd.argoproj.io/managed-by-cluster-argocd"
-
 	// ArgoCDControllerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD application controller
 	ArgoCDControllerClusterRoleEnvName = "CONTROLLER_CLUSTER_ROLE"
 
 	// ArgoCDServerClusterRoleEnvName is an environment variable to specify a custom cluster role for Argo CD server
 	ArgoCDServerClusterRoleEnvName = "SERVER_CLUSTER_ROLE"
-
-	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
-	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
 
 	// ArgoCDClusterConfigNamespacesEnvVar is the environment variable that contains the list of namespaces allowed to host cluster config
 	// instances

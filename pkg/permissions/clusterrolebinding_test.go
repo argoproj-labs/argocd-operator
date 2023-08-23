@@ -25,14 +25,14 @@ func getTestClusterRoleBinding(opts ...clusterRoleBindingOpt) *rbacv1.ClusterRol
 		ObjectMeta: metav1.ObjectMeta{
 			Name: argoutil.GenerateUniqueResourceName(testInstance, testInstanceNamespace, testComponent),
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		RoleRef:  testRoleRef,
@@ -131,21 +131,21 @@ func TestGetClusterRoleBinding(t *testing.T) {
 func TestListClusterRoleBindings(t *testing.T) {
 	crb1 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-1"
-		crb.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		crb.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	crb2 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-2"
 	})
 	crb3 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-3"
-		crb.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		crb.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		crb1, crb2, crb3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

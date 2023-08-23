@@ -26,10 +26,10 @@ func getTestServiceAccount(opts ...serviceAccountOpt) *corev1.ServiceAccount {
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 		},
 	}
@@ -124,19 +124,19 @@ func TestGetServiceAccount(t *testing.T) {
 func TestListServiceAccounts(t *testing.T) {
 	sa1 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-1"
-		sa.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		sa.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	sa2 := getTestServiceAccount(func(sa *corev1.ServiceAccount) { sa.Name = "sa-2" })
 	sa3 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-3"
-		sa.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		sa.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		sa1, sa2, sa3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

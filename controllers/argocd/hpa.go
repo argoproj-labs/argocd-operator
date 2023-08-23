@@ -37,7 +37,7 @@ func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.Horizontal
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -47,7 +47,7 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoprojv1a1.ArgoCD) *a
 	hpa.ObjectMeta.Name = name
 
 	lbls := hpa.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.AppK8sKeyName] = name
 	hpa.ObjectMeta.Labels = lbls
 
 	return hpa

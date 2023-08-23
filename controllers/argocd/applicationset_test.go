@@ -156,7 +156,7 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 
 	expectedSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: deployment.Name,
+			common.AppK8sKeyName: deployment.Name,
 		},
 	}
 

@@ -27,14 +27,14 @@ func getTestHorizontalPodAutoscaler(opts ...horizontalPodAutoscalerOpt) *autosca
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testInstanceNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 	}
@@ -180,19 +180,19 @@ func TestListHorizontalPodAutoscalers(t *testing.T) {
 	horizontalPodAutoscaler1 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-1"
 		hpa.Namespace = testNamespace
-		hpa.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		hpa.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) { hpa.Name = "horizontalPodAutoscaler-2" })
 	horizontalPodAutoscaler3 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-3"
-		hpa.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		hpa.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		horizontalPodAutoscaler1, horizontalPodAutoscaler2, horizontalPodAutoscaler3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

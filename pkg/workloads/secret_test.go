@@ -27,10 +27,10 @@ func getTestSecret(opts ...secretOpt) *corev1.Secret {
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 		},
 	}
@@ -173,19 +173,19 @@ func TestGetSecret(t *testing.T) {
 func TestListSecrets(t *testing.T) {
 	secret1 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-1"
-		s.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	secret2 := getTestSecret(func(s *corev1.Secret) { s.Name = "secret-2" })
 	secret3 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-3"
-		s.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		secret1, secret2, secret3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

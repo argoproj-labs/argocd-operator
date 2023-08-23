@@ -568,8 +568,8 @@ func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{

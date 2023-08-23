@@ -934,7 +934,7 @@ type WebhookServerSpec struct {
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoCDDeletionFinalizer {
+		if finalizer == common.ArgoprojKeyFinalizer {
 			return true
 		}
 	}

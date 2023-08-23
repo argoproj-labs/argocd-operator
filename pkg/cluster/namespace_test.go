@@ -186,14 +186,14 @@ func TestListNamespaces(t *testing.T) {
 	namespace1 := getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-1"
 		ns.Labels = map[string]string{
-			common.ArgoCDKeyComponent: "new-component-1",
+			common.AppK8sKeyComponent: "new-component-1",
 		}
 	})
 	namespace2 := getTestNamespace(func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
 	namespace3 := getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-3"
 		ns.Labels = map[string]string{
-			common.ArgoCDKeyComponent: "new-component-2",
+			common.AppK8sKeyComponent: "new-component-2",
 		}
 	})
 
@@ -201,7 +201,7 @@ func TestListNamespaces(t *testing.T) {
 		namespace1, namespace2, namespace3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

@@ -26,10 +26,10 @@ func getTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: testInstance,
+				common.AppK8sKeyComponent: testComponent,
 			},
 		},
 		RoleRef:  testRoleRef,
@@ -131,19 +131,19 @@ func TestGetRoleBinding(t *testing.T) {
 func TestListRoleBindings(t *testing.T) {
 	rb1 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-1"
-		rb.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		rb.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	rb2 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) { rb.Name = "rb-2" })
 	rb3 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-3"
-		rb.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		rb.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		rb1, rb2, rb3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

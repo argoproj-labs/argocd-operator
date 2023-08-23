@@ -284,7 +284,7 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDManagedByLabel: managedBy}
+		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedBy: managedBy}
 	}
 
 	if r.ManagedNamespaces == nil {
@@ -298,7 +298,7 @@ func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 func createNamespaceManagedByClusterArgoCDLabel(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDManagedByClusterArgoCDLabel: managedBy}
+		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedByClusterArgoCD: managedBy}
 	}
 
 	if r.SourceNamespaces == nil {
