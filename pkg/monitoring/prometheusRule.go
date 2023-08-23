@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,13 +14,15 @@ import (
 
 // PrometheusRuleRequest objects contain all the required information to produce a prometheusRule object in return
 type PrometheusRuleRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
-	RuleGroups        []monitoringv1.RuleGroup
+	ObjectMeta metav1.ObjectMeta
+	Spec       monitoringv1.PrometheusRuleSpec
+	// Name              string
+	// InstanceName      string
+	// InstanceNamespace string
+	// Component         string
+	// Labels            map[string]string
+	// Annotations       map[string]string
+	// RuleGroups        []monitoringv1.RuleGroup
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,24 +30,10 @@ type PrometheusRuleRequest struct {
 }
 
 // newPrometheusRule returns a new PrometheusRule instance for the given ArgoCD.
-func newPrometheusRule(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, ruleGroups []monitoringv1.RuleGroup) *monitoringv1.PrometheusRule {
-	var prometheusRuleName string
-	if name != "" {
-		prometheusRuleName = name
-	} else {
-		prometheusRuleName = argoutil.GenerateResourceName(instanceName, component)
-
-	}
+func newPrometheusRule(objectMeta metav1.ObjectMeta, spec monitoringv1.PrometheusRuleSpec) *monitoringv1.PrometheusRule {
 	return &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        prometheusRuleName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
-		},
-		Spec: monitoringv1.PrometheusRuleSpec{
-			Groups: ruleGroups,
-		},
+		ObjectMeta: objectMeta,
+		Spec:       spec,
 	}
 }
 
@@ -104,7 +91,7 @@ func RequestPrometheusRule(request PrometheusRuleRequest) (*monitoringv1.Prometh
 	var (
 		mutationErr error
 	)
-	prometheusRule := newPrometheusRule(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.RuleGroups)
+	prometheusRule := newPrometheusRule(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

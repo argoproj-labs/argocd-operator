@@ -66,8 +66,6 @@ func TestRequestServiceMonitor(t *testing.T) {
 
 	tests := []struct {
 		name                  string
-		objectMeta            metav1.ObjectMeta
-		spec                  monitoringv1.ServiceMonitorSpec
 		serviceMonitorReq     ServiceMonitorRequest
 		desiredServiceMonitor *monitoringv1.ServiceMonitor
 		wantErr               bool

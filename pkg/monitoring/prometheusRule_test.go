@@ -26,8 +26,8 @@ type prometheusRuleOpt func(*monitoringv1.PrometheusRule)
 func getTestPrometheusRule(opts ...prometheusRuleOpt) *monitoringv1.PrometheusRule {
 	desiredPrometheusRule := &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
+			Name:      testName,
+			Namespace: testNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -75,16 +75,28 @@ func TestRequestPrometheusRule(t *testing.T) {
 		{
 			name: "request prometheusRule, no mutation",
 			prometheusRuleReq: PrometheusRuleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				RuleGroups: []monitoringv1.RuleGroup{
-					{
-						Name: common.ArgoCDComponentStatus,
-						Rules: []monitoringv1.Rule{
-							{
-								Alert: "test alert",
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: monitoringv1.PrometheusRuleSpec{
+					Groups: []monitoringv1.RuleGroup{
+						{
+							Name: common.ArgoCDComponentStatus,
+							Rules: []monitoringv1.Rule{
+								{
+									Alert: "test alert",
+								},
 							},
 						},
 					},
@@ -97,18 +109,30 @@ func TestRequestPrometheusRule(t *testing.T) {
 		{
 			name: "request prometheusRule, no mutation, custom name, labels, annotations",
 			prometheusRuleReq: PrometheusRuleRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
-				RuleGroups: []monitoringv1.RuleGroup{
-					{
-						Name: common.ArgoCDComponentStatus,
-						Rules: []monitoringv1.Rule{
-							{
-								Alert: "test alert",
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+						testKey:                   testVal,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+						testKey:                    testVal,
+					},
+				},
+				Spec: monitoringv1.PrometheusRuleSpec{
+					Groups: []monitoringv1.RuleGroup{
+						{
+							Name: common.ArgoCDComponentStatus,
+							Rules: []monitoringv1.Rule{
+								{
+									Alert: "test alert",
+								},
 							},
 						},
 					},
@@ -125,24 +149,36 @@ func TestRequestPrometheusRule(t *testing.T) {
 		{
 			name: "request prometheusRule, successful mutation",
 			prometheusRuleReq: PrometheusRuleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Mutations: []mutation.MutateFunc{
-					testMutationFuncSuccessful,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testPrometheusRuleNameMutated,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
 				},
-				Client: testClient,
-				RuleGroups: []monitoringv1.RuleGroup{
-					{
-						Name: common.ArgoCDComponentStatus,
-						Rules: []monitoringv1.Rule{
-							{
-								Alert: "test alert",
+				Spec: monitoringv1.PrometheusRuleSpec{
+					Groups: []monitoringv1.RuleGroup{
+						{
+							Name: common.ArgoCDComponentStatus,
+							Rules: []monitoringv1.Rule{
+								{
+									Alert: "test alert",
+								},
 							},
 						},
 					},
 				},
+				Mutations: []mutation.MutateFunc{
+					testMutationFuncSuccessful,
+				},
+				Client: testClient,
 			},
 			mutation:              true,
 			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) { pr.Name = testPrometheusRuleNameMutated }),
@@ -151,24 +187,36 @@ func TestRequestPrometheusRule(t *testing.T) {
 		{
 			name: "request prometheusRule, failed mutation",
 			prometheusRuleReq: PrometheusRuleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
 				},
-				Client: testClient,
-				RuleGroups: []monitoringv1.RuleGroup{
-					{
-						Name: common.ArgoCDComponentStatus,
-						Rules: []monitoringv1.Rule{
-							{
-								Alert: "test alert",
+				Spec: monitoringv1.PrometheusRuleSpec{
+					Groups: []monitoringv1.RuleGroup{
+						{
+							Name: common.ArgoCDComponentStatus,
+							Rules: []monitoringv1.Rule{
+								{
+									Alert: "test alert",
+								},
 							},
 						},
 					},
 				},
+				Mutations: []mutation.MutateFunc{
+					testMutationFuncFailed,
+				},
+				Client: testClient,
 			},
 			mutation:              true,
 			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {}),
