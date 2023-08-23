@@ -16,13 +16,6 @@ import (
 type PrometheusRuleRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       monitoringv1.PrometheusRuleSpec
-	// Name              string
-	// InstanceName      string
-	// InstanceNamespace string
-	// Component         string
-	// Labels            map[string]string
-	// Annotations       map[string]string
-	// RuleGroups        []monitoringv1.RuleGroup
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
