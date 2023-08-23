@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,12 +14,8 @@ import (
 
 // ServiceRequest objects contain all the required information to produce a service object in return
 type ServiceRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       corev1.ServiceSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -28,21 +23,10 @@ type ServiceRequest struct {
 }
 
 // newService returns a new Service instance for the given ArgoCD.
-func newService(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *corev1.Service {
-	var serviceName string
-	if name != "" {
-		serviceName = name
-	} else {
-		serviceName = argoutil.GenerateResourceName(instanceName, component)
-
-	}
+func newService(objectMeta metav1.ObjectMeta, spec corev1.ServiceSpec) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        serviceName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
-		},
+		ObjectMeta: objectMeta,
+		Spec:       spec,
 	}
 }
 
@@ -100,7 +84,7 @@ func RequestService(request ServiceRequest) (*corev1.Service, error) {
 	var (
 		mutationErr error
 	)
-	service := newService(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
+	service := newService(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

@@ -23,10 +23,11 @@ import (
 type ingressOpt func(*networkingv1.Ingress)
 
 func getTestIngress(opts ...ingressOpt) *networkingv1.Ingress {
+	nginx := "nginx"
 	desiredIngress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
+			Name:      testName,
+			Namespace: testNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -36,6 +37,22 @@ func getTestIngress(opts ...ingressOpt) *networkingv1.Ingress {
 			Annotations: map[string]string{
 				common.AnnotationName:      testInstance,
 				common.AnnotationNamespace: testInstanceNamespace,
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			IngressClassName: &nginx,
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: "foo.bar.com",
+				},
+			},
+			TLS: []networkingv1.IngressTLS{
+				{
+					Hosts: []string{
+						"test.host.com",
+					},
+					SecretName: common.ArgoCDSecretName,
+				},
 			},
 		},
 	}
@@ -51,6 +68,7 @@ func TestRequestIngress(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, networkingv1.AddToScheme(s))
 	testClient := fake.NewClientBuilder().WithScheme(s).Build()
+	nginx := "nginx"
 
 	tests := []struct {
 		name           string
@@ -62,10 +80,36 @@ func TestRequestIngress(t *testing.T) {
 		{
 			name: "request ingress, no mutation",
 			ingressReq: IngressRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: &nginx,
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "foo.bar.com",
+						},
+					},
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts: []string{
+								"test.host.com",
+							},
+							SecretName: common.ArgoCDSecretName,
+						},
+					},
+				},
 			},
 			mutation:       false,
 			desiredIngress: getTestIngress(func(i *networkingv1.Ingress) {}),
@@ -74,12 +118,38 @@ func TestRequestIngress(t *testing.T) {
 		{
 			name: "request ingress, no mutation, custom name, labels, annotations",
 			ingressReq: IngressRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+						testKey:                   testVal,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+						testKey:                    testVal,
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: &nginx,
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "foo.bar.com",
+						},
+					},
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts: []string{
+								"test.host.com",
+							},
+							SecretName: common.ArgoCDSecretName,
+						},
+					},
+				},
 			},
 			mutation: false,
 			desiredIngress: getTestIngress(func(i *networkingv1.Ingress) {
@@ -92,10 +162,36 @@ func TestRequestIngress(t *testing.T) {
 		{
 			name: "request ingress, successful mutation",
 			ingressReq: IngressRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testIngressNameMutated,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: &nginx,
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "foo.bar.com",
+						},
+					},
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts: []string{
+								"test.host.com",
+							},
+							SecretName: common.ArgoCDSecretName,
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
@@ -108,10 +204,36 @@ func TestRequestIngress(t *testing.T) {
 		{
 			name: "request ingress, failed mutation",
 			ingressReq: IngressRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: &nginx,
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "foo.bar.com",
+						},
+					},
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts: []string{
+								"test.host.com",
+							},
+							SecretName: common.ArgoCDSecretName,
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},

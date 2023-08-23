@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,12 +14,8 @@ import (
 
 // IngressRequest objects contain all the required information to produce a ingress object in return
 type IngressRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       networkingv1.IngressSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -28,21 +23,10 @@ type IngressRequest struct {
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.
-func newIngress(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *networkingv1.Ingress {
-	var ingressName string
-	if name != "" {
-		ingressName = name
-	} else {
-		ingressName = argoutil.GenerateResourceName(instanceName, component)
-
-	}
+func newIngress(objectMeta metav1.ObjectMeta, spec networkingv1.IngressSpec) *networkingv1.Ingress {
 	return &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        ingressName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
-		},
+		ObjectMeta: objectMeta,
+		Spec:       spec,
 	}
 }
 
@@ -100,7 +84,7 @@ func RequestIngress(request IngressRequest) (*networkingv1.Ingress, error) {
 	var (
 		mutationErr error
 	)
-	ingress := newIngress(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
+	ingress := newIngress(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

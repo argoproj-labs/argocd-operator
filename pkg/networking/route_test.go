@@ -26,8 +26,8 @@ type routeOpt func(*routev1.Route)
 func getTestRoute(opts ...routeOpt) *routev1.Route {
 	desiredRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
+			Name:      testName,
+			Namespace: testNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -37,6 +37,14 @@ func getTestRoute(opts ...routeOpt) *routev1.Route {
 			Annotations: map[string]string{
 				common.AnnotationName:      testInstance,
 				common.AnnotationNamespace: testInstanceNamespace,
+			},
+		},
+		Spec: routev1.RouteSpec{
+			TLS: &routev1.TLSConfig{
+				Termination: "reencrypt",
+			},
+			To: routev1.RouteTargetReference{
+				Name: testApplicationName,
 			},
 		},
 	}
@@ -63,10 +71,28 @@ func TestRequestRoute(t *testing.T) {
 		{
 			name: "request route, no mutation",
 			routeReq: RouteRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: routev1.RouteSpec{
+					TLS: &routev1.TLSConfig{
+						Termination: "reencrypt",
+					},
+					To: routev1.RouteTargetReference{
+						Name: testApplicationName,
+					},
+				},
 			},
 			mutation:     false,
 			desiredRoute: getTestRoute(func(r *routev1.Route) {}),
@@ -75,12 +101,30 @@ func TestRequestRoute(t *testing.T) {
 		{
 			name: "request route, no mutation, custom name, labels, annotations",
 			routeReq: RouteRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+						testKey:                   testVal,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+						testKey:                    testVal,
+					},
+				},
+				Spec: routev1.RouteSpec{
+					TLS: &routev1.TLSConfig{
+						Termination: "reencrypt",
+					},
+					To: routev1.RouteTargetReference{
+						Name: testApplicationName,
+					},
+				},
 			},
 			mutation: false,
 			desiredRoute: getTestRoute(func(r *routev1.Route) {
@@ -93,10 +137,28 @@ func TestRequestRoute(t *testing.T) {
 		{
 			name: "request route, successful mutation",
 			routeReq: RouteRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testRouteNameMutated,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: routev1.RouteSpec{
+					TLS: &routev1.TLSConfig{
+						Termination: "reencrypt",
+					},
+					To: routev1.RouteTargetReference{
+						Name: testApplicationName,
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
@@ -109,10 +171,28 @@ func TestRequestRoute(t *testing.T) {
 		{
 			name: "request route, failed mutation",
 			routeReq: RouteRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: routev1.RouteSpec{
+					TLS: &routev1.TLSConfig{
+						Termination: "reencrypt",
+					},
+					To: routev1.RouteTargetReference{
+						Name: testApplicationName,
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},

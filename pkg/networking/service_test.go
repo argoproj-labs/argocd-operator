@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -24,8 +25,8 @@ type serviceOpt func(*corev1.Service)
 func getTestService(opts ...serviceOpt) *corev1.Service {
 	desiredService := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
+			Name:      testName,
+			Namespace: testNamespace,
 			Labels: map[string]string{
 				common.ArgoCDKeyName:      testInstance,
 				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
@@ -35,6 +36,17 @@ func getTestService(opts ...serviceOpt) *corev1.Service {
 			Annotations: map[string]string{
 				common.AnnotationName:      testInstance,
 				common.AnnotationNamespace: testInstanceNamespace,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       80,
+					TargetPort: intstr.FromInt(8080),
+				},
 			},
 		},
 	}
@@ -59,10 +71,31 @@ func TestRequestService(t *testing.T) {
 		{
 			name: "request service, no mutation",
 			deployReq: ServiceRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "http",
+							Protocol:   corev1.ProtocolTCP,
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
 			},
 			mutation:       false,
 			desiredService: getTestService(func(s *corev1.Service) {}),
@@ -71,12 +104,33 @@ func TestRequestService(t *testing.T) {
 		{
 			name: "request service, no mutation, custom name, labels, annotations",
 			deployReq: ServiceRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+						testKey:                   testVal,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+						testKey:                    testVal,
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "http",
+							Protocol:   corev1.ProtocolTCP,
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
 			},
 			mutation: false,
 			desiredService: getTestService(func(s *corev1.Service) {
@@ -89,10 +143,31 @@ func TestRequestService(t *testing.T) {
 		{
 			name: "request service, successful mutation",
 			deployReq: ServiceRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceNameMutated,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "http",
+							Protocol:   corev1.ProtocolTCP,
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
@@ -105,10 +180,31 @@ func TestRequestService(t *testing.T) {
 		{
 			name: "request service, failed mutation",
 			deployReq: ServiceRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testName,
+					Namespace: testNamespace,
+					Labels: map[string]string{
+						common.ArgoCDKeyName:      testInstance,
+						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
+						common.ArgoCDKeyManagedBy: testInstance,
+						common.ArgoCDKeyComponent: testComponent,
+					},
+					Annotations: map[string]string{
+						common.AnnotationName:      testInstance,
+						common.AnnotationNamespace: testInstanceNamespace,
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Type: corev1.ServiceTypeClusterIP,
+					Ports: []corev1.ServicePort{
+						{
+							Name:       "http",
+							Protocol:   corev1.ProtocolTCP,
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},

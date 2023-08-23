@@ -16,6 +16,7 @@ var (
 	testInstanceNamespace = "test-instance-ns"
 	testNamespace         = "test-ns"
 	testComponent         = "test-component"
+	testApplicationName   = "test-application-name"
 	testKey               = "test-key"
 	testVal               = "test-value"
 
