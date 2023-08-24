@@ -55,6 +55,14 @@ var (
 				},
 			},
 		},
+		{
+			Name: "sso-probe-netrc-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium: "Memory",
+				},
+			},
+		},
 	}
 )
 
