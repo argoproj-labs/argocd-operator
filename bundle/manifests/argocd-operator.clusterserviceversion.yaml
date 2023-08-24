@@ -685,9 +685,10 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: 'ResourceCustomizations customizes resource behavior. Keys are
-          in the form: group/Kind. Please note that this is being deprecated in favor
-          of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.'
+      - description: 'Deprecated field. Support dropped in v1beta1 version. ResourceCustomizations
+          customizes resource behavior. Keys are in the form: group/Kind. Please note
+          that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
+          and ResourceActions.'
         displayName: Resource Customizations'
         path: resourceCustomizations
         x-descriptors:
@@ -1269,8 +1270,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: Deprecated field. Support dropped in v1beta1 version. ResourceHealthChecks
-          customizes resource health check behavior.
+      - description: ResourceHealthChecks customizes resource health check behavior.
         displayName: Resource Health Check Customizations'
         path: resourceHealthChecks
         x-descriptors:

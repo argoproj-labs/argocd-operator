@@ -5669,10 +5669,11 @@ spec:
                   type: object
                 type: array
               resourceCustomizations:
-                description: 'ResourceCustomizations customizes resource behavior.
-                  Keys are in the form: group/Kind. Please note that this is being
-                  deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
-                  and ResourceActions.'
+                description: 'Deprecated field. Support dropped in v1beta1 version.
+                  ResourceCustomizations customizes resource behavior. Keys are in
+                  the form: group/Kind. Please note that this is being deprecated
+                  in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and
+                  ResourceActions.'
                 type: string
               resourceExclusions:
                 description: ResourceExclusions is used to completely ignore entire
@@ -12064,8 +12065,8 @@ spec:
                   classes of resource group/kinds.
                 type: string
               resourceHealthChecks:
-                description: Deprecated field. Support dropped in v1beta1 version.
-                  ResourceHealthChecks customizes resource health check behavior.
+                description: ResourceHealthChecks customizes resource health check
+                  behavior.
                 items:
                   description: Resource Customization for custom health check
                   properties:
