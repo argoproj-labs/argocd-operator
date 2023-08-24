@@ -228,7 +228,7 @@ func TestUpdateSecret(t *testing.T) {
 	}, existingSecret)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredSecret.Name, existingSecret.Name)
+	assert.Equal(t, desiredSecret.Data, existingSecret.Data)
 
 	testClient = fake.NewClientBuilder().Build()
 	existingSecret = getTestSecret(func(d *corev1.Secret) {
