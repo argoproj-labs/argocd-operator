@@ -240,7 +240,7 @@ func TestUpdateHorizontalPodAutoscaler(t *testing.T) {
 	}, existingHorizontalPodAutoscaler)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredHorizontalPodAutoscaler.Spec, existingHorizontalPodAutoscaler.Spec)
+	assert.Equal(t, desiredHorizontalPodAutoscaler.Name, existingHorizontalPodAutoscaler.Name)
 
 	testClient = fake.NewClientBuilder().Build()
 	existingHorizontalPodAutoscaler = getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {

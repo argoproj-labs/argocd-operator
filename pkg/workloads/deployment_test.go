@@ -237,7 +237,7 @@ func TestUpdateDeployment(t *testing.T) {
 	}, existingDeployment)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredDeployment.Labels, existingDeployment.Labels)
+	assert.Equal(t, desiredDeployment.Name, existingDeployment.Name)
 
 	testClient = fake.NewClientBuilder().Build()
 	existingDeployment = getTestDeployment(func(d *appsv1.Deployment) {

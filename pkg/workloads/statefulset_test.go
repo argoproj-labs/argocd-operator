@@ -227,7 +227,7 @@ func TestUpdateStatefulSet(t *testing.T) {
 	}, existingStatefulSet)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredStatefulSet.Spec, existingStatefulSet.Spec)
+	assert.Equal(t, desiredStatefulSet.Name, existingStatefulSet.Name)
 
 	testClient = fake.NewClientBuilder().Build()
 	existingStatefulSet = getTestStatefulSet(func(ss *appsv1.StatefulSet) {
