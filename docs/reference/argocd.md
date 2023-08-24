@@ -38,7 +38,7 @@ Name | Default | Description
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
 [**ResourceHealthChecks**](#resource-customizations) | [Empty] | Customizes resource health check behavior.
 [**ResourceIgnoreDifferences**](#resource-customizations) | [Empty] | Customizes resource ignore difference behavior.
-[**ResourceActions**](#resource-customizations) | [Empty] | Customizes customizes resource action behavior.
+[**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
 [**ResourceTrackingMethod**](#resource-tracking-method) | `label` | The resource tracking method Argo CD should use.
