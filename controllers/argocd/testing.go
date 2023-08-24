@@ -37,6 +37,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 const (
@@ -51,6 +52,7 @@ func ZapLogger(development bool) logr.Logger {
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	s := scheme.Scheme
+	assert.NoError(t, argoproj.AddToScheme(s))
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -60,10 +62,10 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	}
 }
 
-type argoCDOpt func(*argoprojv1alpha1.ArgoCD)
+type argoCDOpt func(*argoproj.ArgoCD)
 
-func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
@@ -75,18 +77,18 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForKeycloak() *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
 		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+		Spec: argoproj.ArgoCDSpec{
+			SSO: &argoproj.ArgoCDSSOSpec{
 				Provider: "keycloak",
 			},
-			Server: argoprojv1alpha1.ArgoCDServerSpec{
-				Route: argoprojv1alpha1.ArgoCDRouteSpec{
+			Server: argoproj.ArgoCDServerSpec{
+				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
 				},
 			},
@@ -95,26 +97,26 @@ func makeTestArgoCDForKeycloak() *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
 		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			ApplicationSet: &argoprojv1alpha1.ArgoCDApplicationSet{
+		Spec: argoproj.ArgoCDSpec{
+			ApplicationSet: &argoproj.ArgoCDApplicationSet{
 				Resources: makeTestApplicationSetResources(),
 			},
-			HA: argoprojv1alpha1.ArgoCDHASpec{
+			HA: argoproj.ArgoCDHASpec{
 				Resources: makeTestHAResources(),
 			},
-			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+			SSO: &argoproj.ArgoCDSSOSpec{
 				Provider: "dex",
-				Dex: &argoprojv1alpha1.ArgoCDDexSpec{
+				Dex: &argoproj.ArgoCDDexSpec{
 					Resources: makeTestDexResources(),
 				},
 			},
-			Controller: argoprojv1alpha1.ArgoCDApplicationControllerSpec{
+			Controller: argoproj.ArgoCDApplicationControllerSpec{
 				Resources: makeTestControllerResources(),
 			},
 		},
@@ -181,7 +183,7 @@ func makeTestPolicyRules() []v1.PolicyRule {
 
 func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
-	return func(a *argoprojv1alpha1.ArgoCD) {
+	return func(a *argoproj.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
 		assert.NoError(t, err)
 		cert, err := argoutil.NewSelfSignedCACertificate(a.Name, key)

@@ -28,13 +28,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
-func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "entrypoint.sh")
@@ -58,7 +58,7 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	return cmd
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling applicationset serviceaccounts")
 	sa, err := r.reconcileApplicationSetServiceAccount(cr)
@@ -91,7 +91,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoprojv1a1.Arg
 }
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
-func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
 
 	setAppSetLabels(&deploy.ObjectMeta)
@@ -185,7 +185,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoprojv1a1.Arg
 
 }
 
-func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+func applicationSetContainer(cr *argoproj.ArgoCD) corev1.Container {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",
@@ -254,7 +254,7 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	}
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName("applicationset-controller", cr)
 	setAppSetLabels(&sa.ObjectMeta)
@@ -283,7 +283,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoprojv1a1
 	return sa, err
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.Role, error) {
 
 	policyRules := []v1.PolicyRule{
 
@@ -385,7 +385,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (
 	return role, r.Client.Update(context.TODO(), role)
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
 
 	name := "applicationset-controller"
 
@@ -428,7 +428,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.Ar
 	return r.Client.Create(context.TODO(), roleBinding)
 }
 
-func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
+func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 
 	img := ""
@@ -458,7 +458,7 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
-func getApplicationSetResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+func getApplicationSetResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -476,7 +476,7 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 }
 
 // reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
-func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)

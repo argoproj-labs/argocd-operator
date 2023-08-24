@@ -23,7 +23,8 @@ import (
 	"strings"
 	"time"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
@@ -38,7 +39,7 @@ import (
 // getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0.
-func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getArgoCDRepoServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
 		return cr.Spec.Repo.Replicas
 	}
@@ -49,14 +50,14 @@ func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
-func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
 		return cr.Spec.Server.Replicas
 	}
 	return nil
 }
 
-func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1.ArgoCDExport {
+func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1.ArgoCDExport {
 	if cr.Spec.Import == nil {
 		return nil
 	}
@@ -66,14 +67,14 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a1
 		namespace = *cr.Spec.Import.Namespace
 	}
 
-	export := &argoprojv1a1.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	if argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
 		return export
 	}
 	return nil
 }
 
-func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
+func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	name := argoutil.NameWithSuffix(export.ObjectMeta, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
@@ -81,14 +82,14 @@ func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
 	return name
 }
 
-func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string {
+func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
 	backend := common.ArgoCDExportStorageBackendLocal
 	namespace := cr.ObjectMeta.Namespace
 	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
 		namespace = *cr.Spec.Import.Namespace
 	}
 
-	export := &argoprojv1a1.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	if argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
 		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
 			backend = export.Spec.Storage.Backend
@@ -98,7 +99,7 @@ func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string 
 }
 
 // getArgoImportCommand will return the command for the ArgoCD import process.
-func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []string {
+func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
@@ -107,7 +108,7 @@ func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []strin
 	return cmd
 }
 
-func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
+func getArgoImportContainerEnv(cr *argoprojv1alpha1.ArgoCDExport) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	switch cr.Spec.Storage.Backend {
@@ -141,7 +142,7 @@ func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 }
 
 // getArgoImportContainerImage will return the container image for the Argo CD import process.
-func getArgoImportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
+func getArgoImportContainerImage(cr *argoprojv1alpha1.ArgoCDExport) string {
 	img := common.ArgoCDDefaultExportJobImage
 	if len(cr.Spec.Image) > 0 {
 		img = cr.Spec.Image
@@ -173,7 +174,7 @@ func getArgoImportVolumeMounts() []corev1.VolumeMount {
 }
 
 // getArgoImportVolumes will return the Volumes for the given ArgoCDExport.
-func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
+func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	volumes := make([]corev1.Volume, 0)
 
 	if cr.Spec.Storage != nil && cr.Spec.Storage.Backend == common.ArgoCDExportStorageBackendLocal {
@@ -225,7 +226,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 }
 
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
+func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "uid_entrypoint.sh")
@@ -272,7 +273,7 @@ func getArgoCmpServerInitCommand() []string {
 }
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
+func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -341,17 +342,17 @@ func isMergable(extraArgs []string, cmd []string) error {
 }
 
 // getDexServerAddress will return the Dex server address.
-func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
+func getDexServerAddress(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
-func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
+func getRepoServerAddress(cr *argoproj.ArgoCD) string {
 	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -362,7 +363,7 @@ func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 }
 
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
-func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
 
@@ -397,12 +398,12 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 }
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
-func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
 // reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 
 	if err := r.reconcileDexDeployment(cr); err != nil {
 		log.Error(err, "error reconciling dex deployment")
@@ -437,7 +438,7 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSFo
 }
 
 // reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
-func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
@@ -569,7 +570,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) er
 }
 
 // reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
-func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useTLS bool) error {
+func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
@@ -669,7 +670,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useT
 }
 
 // reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
-func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
@@ -875,7 +876,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.ArgoC
 }
 
 // reconcileRepoDeployment will ensure the Deployment resource is present for the ArgoCD Repo component.
-func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	automountToken := false
 	if cr.Spec.Repo.MountSAToken {
@@ -1177,7 +1178,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useTL
 }
 
 // reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
-func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
