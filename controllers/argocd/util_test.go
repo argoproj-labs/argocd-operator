@@ -62,7 +62,7 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
+			t.Setenv(common.ArgoCDDexImageEnvVar, dexTestImage)
 		},
 	},
 	{
@@ -83,7 +83,7 @@ var imageTests = []struct {
 		imageFunc: getArgoContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+			t.Setenv(common.ArgoCDImageEnvVar, argoTestImage)
 		},
 	},
 	{
@@ -105,7 +105,7 @@ var imageTests = []struct {
 		imageFunc: getGrafanaContainerImage,
 		want:      grafanaTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
+			t.Setenv(common.ArgoCDGrafanaImageEnvVar, grafanaTestImage)
 		},
 	},
 	{
@@ -127,7 +127,7 @@ var imageTests = []struct {
 		imageFunc: getRedisContainerImage,
 		want:      redisTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
+			t.Setenv(common.ArgoCDRedisImageEnvVar, redisTestImage)
 		},
 	},
 	{
@@ -151,7 +151,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAContainerImage,
 		want:      redisHATestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
+			t.Setenv(common.ArgoCDRedisHAImageEnvVar, redisHATestImage)
 		},
 	},
 	{
@@ -175,7 +175,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
+			t.Setenv(common.ArgoCDRedisHAProxyImageEnvVar, redisHAProxyTestImage)
 		},
 	},
 }

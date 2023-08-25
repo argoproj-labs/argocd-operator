@@ -141,7 +141,7 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 
@@ -172,7 +172,7 @@ func getRepoServerContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -316,7 +316,7 @@ func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultGrafanaVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDGrafanaImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -371,7 +371,7 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultRedisVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -390,7 +390,7 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultRedisVersionHA
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisHAImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -416,7 +416,7 @@ func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultTag = true
 	}
 
-	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 

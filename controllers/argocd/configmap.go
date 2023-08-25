@@ -49,7 +49,7 @@ func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argopro
 
 // getApplicationInstanceLabelKey will return the application instance label key  for the given ArgoCD.
 func getApplicationInstanceLabelKey(cr *argoprojv1a1.ArgoCD) string {
-	key := common.ArgoCDDefaultApplicationInstanceLabelKey
+	key := common.AppK8sKeyInstance
 	if len(cr.Spec.ApplicationInstanceLabelKey) > 0 {
 		key = cr.Spec.ApplicationInstanceLabelKey
 	}

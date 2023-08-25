@@ -24,6 +24,22 @@ const (
 
 	// ArgoCDDefaultControllerParellelismLimit is the default parallelism limit for application controller
 	ArgoCDDefaultControllerParallelismLimit = int32(10)
+
+	// ArgoCDDefaultControllerResourceLimitCPU is the default CPU limit when not specified for the Argo CD application
+	// controller contianer.
+	ArgoCDDefaultControllerResourceLimitCPU = "1000m"
+
+	// ArgoCDDefaultControllerResourceLimitMemory is the default memory limit when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceLimitMemory = "64Mi"
+
+	// ArgoCDDefaultControllerResourceRequestCPU is the default CPU requested when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceRequestCPU = "250m"
+
+	// ArgoCDDefaultControllerResourceRequestMemory is the default memory requested when not specified for the Argo CD
+	// application controller contianer.
+	ArgoCDDefaultControllerResourceRequestMemory = "32Mi"
 )
 
 // server
@@ -147,6 +163,9 @@ const (
 
 // grafana
 const (
+	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component
+	ArgoCDOperatorGrafanaComponent = "argocd-grafana"
+
 	// ArgoCDDefaultGrafanaAdminUsername is the Grafana admin username to use when not specified.
 	ArgoCDDefaultGrafanaAdminUsername = "admin"
 
@@ -214,14 +233,14 @@ const (
 // General ArgoCD defaults
 const (
 
+	// ArgoCDDefaultServer is the default server address
+	ArgoCDDefaultServer = "https://kubernetes.default.svc"
+
 	// ArgoCDDefaultLogLevel is the default log level to be used by all ArgoCD components.
 	ArgoCDDefaultLogLevel = "info"
 
 	// ArgoCDDefaultLogFormat is the default log format to be used by all ArgoCD components.
 	ArgoCDDefaultLogFormat = "text"
-
-	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component
-	ArgoCDOperatorGrafanaComponent = "argocd-grafana"
 
 	// ArgoCDDefaultAdminPasswordLength is the length of the generated default admin password.
 	ArgoCDDefaultAdminPasswordLength = 32
@@ -231,9 +250,6 @@ const (
 
 	// ArgoCDDefaultAdminPasswordNumSymbols is the number of symbols to use for the generated default admin password.
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
-
-	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
-	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
 
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
@@ -252,22 +268,6 @@ const (
 
 	// ArgoCDDefaultConfigManagementPlugins is the default configuration value for the config management plugins.
 	ArgoCDDefaultConfigManagementPlugins = ""
-
-	// ArgoCDDefaultControllerResourceLimitCPU is the default CPU limit when not specified for the Argo CD application
-	// controller contianer.
-	ArgoCDDefaultControllerResourceLimitCPU = "1000m"
-
-	// ArgoCDDefaultControllerResourceLimitMemory is the default memory limit when not specified for the Argo CD
-	// application controller contianer.
-	ArgoCDDefaultControllerResourceLimitMemory = "64Mi"
-
-	// ArgoCDDefaultControllerResourceRequestCPU is the default CPU requested when not specified for the Argo CD
-	// application controller contianer.
-	ArgoCDDefaultControllerResourceRequestCPU = "250m"
-
-	// ArgoCDDefaultControllerResourceRequestMemory is the default memory requested when not specified for the Argo CD
-	// application controller contianer.
-	ArgoCDDefaultControllerResourceRequestMemory = "32Mi"
 
 	// ArgoCDDefaultGATrackingID is the default Google Analytics tracking ID.
 	ArgoCDDefaultGATrackingID = ""

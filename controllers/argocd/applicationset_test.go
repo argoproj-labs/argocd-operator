@@ -333,7 +333,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name:                   "verify env var substitution overrides default",
 			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
-			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
+			envVars:                map[string]string{common.ArgoCDImageEnvVar: "custom-env-image"},
 			expectedContainerImage: "custom-env-image",
 		},
 
@@ -343,7 +343,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 				Image:   "custom-image",
 				Version: "custom-version",
 			},
-			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
+			envVars:                map[string]string{common.ArgoCDImageEnvVar: "custom-env-image"},
 			expectedContainerImage: "custom-image:custom-version",
 		},
 	}
@@ -351,8 +351,8 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			for testEnvName, testEnvValue := range test.envVars {
-				t.Setenv(testEnvName, testEnvValue)
+			for testEnvVar, testEnvValue := range test.envVars {
+				t.Setenv(testEnvVar, testEnvValue)
 			}
 
 			a := makeTestArgoCD()

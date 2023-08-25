@@ -312,10 +312,10 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 
 func getCustomRoleName(name string) string {
 	if name == common.ArgoCDApplicationControllerComponent {
-		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
+		return os.Getenv(common.ArgoCDControllerClusterRoleEnvVar)
 	}
 	if name == common.ArgoCDServerComponent {
-		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
+		return os.Getenv(common.ArgoCDServerClusterRoleEnvVar)
 	}
 	return ""
 }

@@ -965,7 +965,7 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	if a.Spec.ApplicationInstanceLabelKey != "" {
 		return a.Spec.ApplicationInstanceLabelKey
 	} else {
-		return common.ArgoCDDefaultApplicationInstanceLabelKey
+		return common.AppK8sKeyInstance
 	}
 }
 

@@ -193,7 +193,7 @@ func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		}
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDKeycloakImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDKeycloakImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
