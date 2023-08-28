@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 
 	corev1 "k8s.io/api/core/v1"
@@ -16,12 +15,10 @@ import (
 
 // SecretRequest objects contain all the required information to produce a secret object in return
 type SecretRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Data       map[string][]byte
+	StringData map[string]string
+	Type       corev1.SecretType
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,21 +26,13 @@ type SecretRequest struct {
 }
 
 // newSecret returns a new Secret instance for the given ArgoCD.
-func newSecret(name, instanceName, namespace, component string, labels, annotations map[string]string) *corev1.Secret {
-	var secretName string
-	if name != "" {
-		secretName = name
-	} else {
-		secretName = argoutil.GenerateResourceName(instanceName, component)
+func newSecret(objMeta metav1.ObjectMeta, data map[string][]byte, stringData map[string]string, secretType corev1.SecretType) *corev1.Secret {
 
-	}
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        secretName,
-			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: annotations,
-		},
+		ObjectMeta: objMeta,
+		Data:       data,
+		StringData: stringData,
+		Type:       secretType,
 	}
 }
 
@@ -101,7 +90,7 @@ func RequestSecret(request SecretRequest) (*corev1.Secret, error) {
 	var (
 		mutationErr error
 	)
-	secret := newSecret(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
+	secret := newSecret(request.ObjectMeta, request.Data, request.StringData, request.Type)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

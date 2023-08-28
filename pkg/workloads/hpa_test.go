@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -24,19 +23,10 @@ type horizontalPodAutoscalerOpt func(*autoscaling.HorizontalPodAutoscaler)
 func getTestHorizontalPodAutoscaler(opts ...horizontalPodAutoscalerOpt) *autoscaling.HorizontalPodAutoscaler {
 	desiredHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
-			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
+		Spec: autoscaling.HorizontalPodAutoscalerSpec{},
 	}
 
 	for _, opt := range opts {
@@ -53,70 +43,81 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 		name                           string
 		hpaReq                         HorizontalPodAutoscalerRequest
 		desiredHorizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler
-		mutation                       bool
 		wantErr                        bool
 	}{
 		{
-			name: "request horizontalPodAutoscaler, no mutation",
-			hpaReq: HorizontalPodAutoscalerRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-			},
-			mutation:                       false,
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {}),
-			wantErr:                        false,
-		},
-		{
 			name: "request horizontalPodAutoscaler, no mutation, custom name, labels, annotations",
 			hpaReq: HorizontalPodAutoscalerRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: autoscaling.HorizontalPodAutoscalerSpec{
+					MaxReplicas: testReplicasMutated,
+				},
 			},
-			mutation: false,
 			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
 				hpa.Name = testName
-				hpa.Labels = argoutil.MergeMaps(hpa.Labels, testKVP)
-				hpa.Annotations = argoutil.MergeMaps(hpa.Annotations, testKVP)
+				hpa.Namespace = testNamespace
+				hpa.Labels = testKVP
+				hpa.Annotations = testKVP
+				hpa.Spec.MaxReplicas = testReplicasMutated
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request horizontalPodAutoscaler, successful mutation",
 			hpaReq: HorizontalPodAutoscalerRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: autoscaling.HorizontalPodAutoscalerSpec{
+					MaxReplicas: testReplicasMutated,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:                       true,
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) { hpa.Name = testHorizontalPodAutoscalerNameMutated }),
-			wantErr:                        false,
+			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+				hpa.Name = testNameMutated
+				hpa.Namespace = testNamespace
+				hpa.Labels = testKVP
+				hpa.Annotations = testKVP
+				hpa.Spec.MaxReplicas = testReplicasMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request horizontalPodAutoscaler, failed mutation",
 			hpaReq: HorizontalPodAutoscalerRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: autoscaling.HorizontalPodAutoscalerSpec{
+					MaxReplicas: testReplicasMutated,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:                       true,
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {}),
-			wantErr:                        true,
+			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+				hpa.Name = testName
+				hpa.Namespace = testNamespace
+				hpa.Labels = testKVP
+				hpa.Annotations = testKVP
+				hpa.Spec.MaxReplicas = testReplicasMutated
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -146,6 +147,8 @@ func TestCreateHorizontalPodAutoscaler(t *testing.T) {
 		}
 		hpa.Name = testName
 		hpa.Namespace = testNamespace
+		hpa.Labels = testKVP
+		hpa.Annotations = testKVP
 	})
 	err := CreateHorizontalPodAutoscaler(desiredHorizontalPodAutoscaler, testClient)
 	assert.NoError(t, err)
