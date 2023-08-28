@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -24,16 +23,9 @@ type roleOpt func(*rbacv1.Role)
 func getTestRole(opts ...roleOpt) *rbacv1.Role {
 	desiredRole := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
-		Rules: testRules,
 	}
 
 	for _, opt := range opts {
@@ -50,74 +42,76 @@ func TestRequestRole(t *testing.T) {
 		name        string
 		rolReq      RoleRequest
 		desiredRole *rbacv1.Role
-		mutation    bool
 		wantErr     bool
 	}{
 		{
-			name: "request role, no mutation",
-			rolReq: RoleRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Rules:        testRules,
-			},
-			mutation:    false,
-			desiredRole: getTestRole(func(r *rbacv1.Role) {}),
-			wantErr:     false,
-		},
-		{
 			name: "request role, no mutation, custom name, labels, annotations",
 			rolReq: RoleRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
-				Rules:        testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 			},
-			mutation: false,
 			desiredRole: getTestRole(func(r *rbacv1.Role) {
 				r.Name = testName
-				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
-				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
+				r.Namespace = testNamespace
+				r.Labels = testKVP
+				r.Annotations = testKVP
+				r.Rules = testRules
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request role, successful mutation",
 			rolReq: RoleRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Rules:        testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:    true,
-			desiredRole: getTestRole(func(r *rbacv1.Role) { r.Rules = testRulesMutated }),
-			wantErr:     false,
+			desiredRole: getTestRole(func(r *rbacv1.Role) {
+				r.Name = testName
+				r.Namespace = testNamespace
+				r.Labels = testKVP
+				r.Annotations = testKVP
+				r.Rules = testRulesMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request role, failed mutation",
 			rolReq: RoleRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Rules:        testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:    true,
-			desiredRole: getTestRole(func(r *rbacv1.Role) {}),
-			wantErr:     true,
+			desiredRole: getTestRole(func(r *rbacv1.Role) {
+				r.Name = testName
+				r.Namespace = testNamespace
+				r.Labels = testKVP
+				r.Annotations = testKVP
+				r.Rules = testRulesMutated
+
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -146,6 +140,9 @@ func TestCreateRole(t *testing.T) {
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
 		r.Name = testName
+		r.Namespace = testNamespace
+		r.Labels = testKVP
+		r.Annotations = testKVP
 	})
 	err := CreateRole(desiredRole, testClient)
 	assert.NoError(t, err)
@@ -163,6 +160,7 @@ func TestCreateRole(t *testing.T) {
 func TestGetRole(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestRole(func(r *rbacv1.Role) {
 		r.Name = testName
+		r.Namespace = testNamespace
 	})).Build()
 
 	_, err := GetRole(testName, testNamespace, testClient)
@@ -216,11 +214,13 @@ func TestListRoles(t *testing.T) {
 func TestUpdateRole(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestRole(func(r *rbacv1.Role) {
 		r.Name = testName
+		r.Namespace = testNamespace
 	})).Build()
 
 	desiredRole := getTestRole(func(r *rbacv1.Role) {
 		r.Name = testName
 		r.Rules = testRulesMutated
+		r.Namespace = testNamespace
 	})
 	err := UpdateRole(desiredRole, testClient)
 	assert.NoError(t, err)

@@ -23,14 +23,8 @@ type serviceAccountOpt func(*corev1.ServiceAccount)
 func getTestServiceAccount(opts ...serviceAccountOpt) *corev1.ServiceAccount {
 	desiredServiceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
 	}
 
@@ -48,27 +42,18 @@ func TestRequestServiceAccount(t *testing.T) {
 		desiredSa *corev1.ServiceAccount
 	}{
 		{
-			name: "request service account",
-			saReq: ServiceAccountRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-			},
-			desiredSa: getTestServiceAccount(func(sa *corev1.ServiceAccount) {}),
-		},
-		{
 			name: "request service account, custom name, labels, annotations",
 			saReq: ServiceAccountRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
 			},
 			desiredSa: getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 				sa.Name = testName
+				sa.Namespace = testNamespace
 				sa.Labels = argoutil.MergeMaps(sa.Labels, testKVP)
 				sa.Annotations = argoutil.MergeMaps(sa.Annotations, testKVP)
 			}),
@@ -92,6 +77,9 @@ func TestCreateServiceAccount(t *testing.T) {
 			APIVersion: "v1",
 		}
 		sa.Name = testName
+		sa.Namespace = testNamespace
+		sa.Labels = testKVP
+		sa.Annotations = testKVP
 	})
 	err := CreateServiceAccount(desiredServiceAccount, testClient)
 	assert.NoError(t, err)
@@ -109,6 +97,7 @@ func TestCreateServiceAccount(t *testing.T) {
 func TestGetServiceAccount(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = testName
+		sa.Namespace = testNamespace
 	})).Build()
 
 	_, err := GetServiceAccount(testName, testNamespace, testClient)
@@ -161,6 +150,7 @@ func TestListServiceAccounts(t *testing.T) {
 func TestUpdateServiceAccount(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = testName
+		sa.Namespace = testNamespace
 	})).Build()
 
 	desiredServiceAccount := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
@@ -170,6 +160,7 @@ func TestUpdateServiceAccount(t *testing.T) {
 				Name: "new-secret",
 			},
 		}
+		sa.Namespace = testNamespace
 	})
 
 	err := UpdateServiceAccount(desiredServiceAccount, testClient)

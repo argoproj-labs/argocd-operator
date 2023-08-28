@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -24,17 +23,8 @@ type clusterRoleOpt func(*rbacv1.ClusterRole)
 func getTestClusterRole(opts ...clusterRoleOpt) *rbacv1.ClusterRole {
 	desiredClusterClusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: argoutil.GenerateUniqueResourceName(testInstance, testInstanceNamespace, testComponent),
-			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
 		Rules: testRules,
 	}
@@ -57,70 +47,67 @@ func TestRequestClusterClusterRole(t *testing.T) {
 		wantErr            bool
 	}{
 		{
-			name: "request clusterrole, no mutation",
-			rolReq: ClusterRoleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Rules:             testRules,
-			},
-			mutation:           false,
-			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {}),
-			wantErr:            false,
-		},
-		{
 			name: "request clusterrole, no mutation, custom name, labels, annotations",
 			rolReq: ClusterRoleRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
-				Rules:             testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 			},
 			mutation: false,
 			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {
 				r.Name = testName
-				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
-				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
+				r.Labels = testKVP
+				r.Annotations = testKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request clusterrole, successful mutation",
 			rolReq: ClusterRoleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Rules:             testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:           true,
-			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) { r.Rules = testRulesMutated }),
-			wantErr:            false,
+			mutation: true,
+			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {
+				r.Name = testName
+				r.Labels = testKVP
+				r.Annotations = testKVP
+				r.Rules = testRulesMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request clusterrole, failed mutation",
 			rolReq: ClusterRoleRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Rules:             testRules,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Rules: testRules,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:           true,
-			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {}),
-			wantErr:            true,
+			mutation: true,
+			desiredClusterRole: getTestClusterRole(func(r *rbacv1.ClusterRole) {
+				r.Name = testName
+				r.Labels = testKVP
+				r.Annotations = testKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -149,6 +136,8 @@ func TestCreateClusterRole(t *testing.T) {
 			Kind:       "ClusterRole",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
+		r.Labels = testKVP
+		r.Annotations = testKVP
 
 	})
 	err := CreateClusterRole(desiredClusterRole, testClient)
