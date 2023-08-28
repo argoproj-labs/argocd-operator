@@ -264,19 +264,19 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-1"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-1"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-2"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-2"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-2"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-3"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-2"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-2"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-4"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-1"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-5"
@@ -284,7 +284,7 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-6"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-3"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-3"
 		}),
 	)
 
@@ -327,7 +327,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-2"
-			n.Labels[common.ArgoCDAppsManagedByLabel] = "instance-2"
+			n.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD] = "instance-2"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-3"
@@ -341,7 +341,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-6"
-			n.Labels[common.ArgoCDResourcesManagedByLabel] = "instance-1"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
 		}),
 	)
 
@@ -360,7 +360,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels{
-			common.ArgoCDAppsManagedByLabel: r.Instance.Namespace,
+			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: r.Instance.Namespace,
 		},
 	}
 	existingManagedNamesapces, _ := cluster.ListNamespaces(r.Client, listOptions)
