@@ -41,4 +41,7 @@ const (
 
 	// ArgoCDMetrics is the resource metrics key for labels.
 	ArgoCDMetrics = "metrics"
+
+	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
+	ArgoCDComponentStatus = "ArgoCDComponentStatus"
 )
