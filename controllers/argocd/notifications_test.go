@@ -211,7 +211,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 
 	expectedSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: deployment.Name,
+			common.AppK8sKeyName: deployment.Name,
 		},
 	}
 

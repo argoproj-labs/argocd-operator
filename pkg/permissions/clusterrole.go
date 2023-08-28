@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -37,8 +38,8 @@ func newClusterRole(name, instanceName, instanceNamespace, component string, lab
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        crName,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(crName, instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
 		},
 		Rules: rules,
 	}

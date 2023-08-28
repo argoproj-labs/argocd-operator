@@ -141,7 +141,7 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 
@@ -172,7 +172,7 @@ func getRepoServerContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultArgoVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -316,7 +316,7 @@ func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultGrafanaVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDGrafanaImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -371,7 +371,7 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultRedisVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -390,7 +390,7 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultRedisVersionHA
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisHAImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -416,7 +416,7 @@ func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		defaultTag = true
 	}
 
-	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 
@@ -651,7 +651,7 @@ func (r *ArgoCDReconciler) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 		// For secrets without owner (i.e. manually created), we apply some
 		// heuristics. This may not be as accurate (e.g. if the user made a
 		// typo in the resource's name), but should be good enough for now.
-		if _, ok := tlsSecretObj.Annotations[common.AnnotationName]; ok {
+		if _, ok := tlsSecretObj.Annotations[common.ArgoCDArgoprojKeyName]; ok {
 			return true
 		}
 	}
@@ -819,7 +819,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error
 func (r *ArgoCDReconciler) removeManagedByLabelFromNamespaces(namespace string) error {
 	nsList := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDResourcesManagedByLabel: namespace,
+		common.ArgoCDArgoprojKeyManagedBy: namespace,
 	}
 	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
 		return err
@@ -836,10 +836,10 @@ func (r *ArgoCDReconciler) removeManagedByLabelFromNamespaces(namespace string) 
 			continue
 		}
 
-		if n, ok := ns.Labels[common.ArgoCDResourcesManagedByLabel]; !ok || n != namespace {
+		if n, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedBy]; !ok || n != namespace {
 			continue
 		}
-		delete(ns.Labels, common.ArgoCDResourcesManagedByLabel)
+		delete(ns.Labels, common.ArgoCDArgoprojKeyManagedBy)
 		if err := r.Client.Update(context.TODO(), ns); err != nil {
 			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
 		}
@@ -853,7 +853,7 @@ func filterObjectsBySelector(c client.Client, objectList client.ObjectList, sele
 
 func argocdInstanceSelector(name string) (labels.Selector, error) {
 	selector := labels.NewSelector()
-	requirement, err := labels.NewRequirement(common.ArgoCDKeyManagedBy, selection.Equals, []string{name})
+	requirement, err := labels.NewRequirement(common.AppK8sKeyInstance, selection.Equals, []string{name})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a requirement for %w", err)
 	}
@@ -861,7 +861,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 }
 
 func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
-	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoprojKeyFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
@@ -869,7 +869,7 @@ func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) 
 }
 
 func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
-	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoprojKeyFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
 	}
@@ -1015,7 +1015,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 	// Watch for cluster secrets added to the argocd instance
 	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
-			common.ArgoCDAppsManagedByLabel: "cluster",
+			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: "cluster",
 		}}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
@@ -1132,8 +1132,8 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// 2. if yes, check if the old and new values are different, if yes,
 			// first deleteRBACs for the old value & return true.
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
-			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok {
-				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && valOld != valNew {
+			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok {
+				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && valOld != valNew {
 					k8sClient, err := argoutil.GetK8sClient()
 					if err != nil {
 						return false
@@ -1155,7 +1155,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			}
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
-			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && ns != "" {
+			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && ns != "" {
 				k8sClient, err := argoutil.GetK8sClient()
 				if err != nil {
 					return false
@@ -1177,7 +1177,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if ns, ok := e.Object.GetLabels()[common.ArgoCDResourcesManagedByLabel]; ok && ns != "" {
+			if ns, ok := e.Object.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && ns != "" {
 				k8sClient, err := argoutil.GetK8sClient()
 
 				if err != nil {
@@ -1208,7 +1208,7 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
 
 	// List all the roles created for ArgoCD using the label selector
-	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.AppK8sKeyPartOf: common.ArgoCDAppName}}
 	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to list roles for namespace: %s", sourceNS))
@@ -1244,7 +1244,7 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
 
 	// Get the cluster secret used for configuring ArgoCD
-	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))
@@ -1335,7 +1335,7 @@ func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj
 		return nil
 	}
 	// Remove managed-by-cluster-argocd from the namespace
-	delete(namespace.Labels, common.ArgoCDAppsManagedByLabel)
+	delete(namespace.Labels, common.ArgoCDArgoprojKeyManagedByClusterArgoCD)
 	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}

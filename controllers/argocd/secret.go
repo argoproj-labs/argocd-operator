@@ -57,10 +57,10 @@ func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret)
 
 // hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
 func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
-	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
-	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
-	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
-	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
+	actualCert := string(actual.Data[corev1.TLSCertKey])
+	actualKey := string(actual.Data[corev1.TLSPrivateKeyKey])
+	expectedCert := string(expected.Data[corev1.TLSCertKey])
+	expectedKey := string(expected.Data[corev1.TLSPrivateKeyKey])
 
 	if actualCert != expectedCert || actualKey != expectedKey {
 		log.Info("tls secret has changed")
@@ -180,8 +180,8 @@ func (r *ArgoCDReconciler) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		common.ArgoCDKeyAdminPassword:      []byte(hashedPassword),
 		common.ArgoCDKeyAdminPasswordMTime: nowBytes(),
 		common.ArgoCDKeyServerSecretKey:    sessionKey,
-		common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
-		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
+		corev1.TLSCertKey:                  tlsSecret.Data[corev1.TLSCertKey],
+		corev1.TLSPrivateKeyKey:            tlsSecret.Data[corev1.TLSPrivateKeyKey],
 	}
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex {
@@ -329,8 +329,8 @@ func (r *ArgoCDReconciler) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, 
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
-		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
-		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
+		secret.Data[corev1.TLSCertKey] = tlsSecret.Data[corev1.TLSCertKey]
+		secret.Data[corev1.TLSPrivateKeyKey] = tlsSecret.Data[corev1.TLSPrivateKeyKey]
 		changed = true
 	}
 
@@ -425,7 +425,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error
 func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
 	var clusterConfigInstance bool
 	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
-	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
+	secret.Labels[common.ArgoCDArgoprojKeySecretType] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
 			"insecure": false,
@@ -434,7 +434,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Ar
 
 	namespaceList := corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDResourcesManagedByLabel: cr.Namespace,
+		common.ArgoCDArgoprojKeyManagedBy: cr.Namespace,
 	}
 	if err := r.Client.List(context.TODO(), &namespaceList, listOption); err != nil {
 		return err
@@ -687,7 +687,7 @@ func (r *ArgoCDReconciler) getClusterSecrets(cr *argoprojv1a1.ArgoCD) (*corev1.S
 	clusterSecrets := &corev1.SecretList{}
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			common.ArgoCDSecretTypeLabel: "cluster",
+			common.ArgoCDArgoprojKeySecretType: "cluster",
 		}),
 		Namespace: cr.Namespace,
 	}

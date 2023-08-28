@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,9 +38,9 @@ func newStatefulSet(name, instanceName, namespace, component string, labels map[
 	}
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        StatefulSetName,
-			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Name:      StatefulSetName,
+			Namespace: namespace,
+			Labels:    argoutil.MergeMaps(common.DefaultLabels(StatefulSetName, instanceName, component), labels),
 		},
 	}
 }

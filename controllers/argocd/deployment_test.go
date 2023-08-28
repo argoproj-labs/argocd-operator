@@ -1681,7 +1681,7 @@ func TestArgoCDReconciler_reconcile_RepoServerChanges(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      test.serviceAccount,
 					Namespace: a.Namespace,
-					Labels:    argoutil.LabelsForCluster(a.Name, ""),
+					Labels:    common.DefaultLabels(a.Name, a.Name, ""),
 				},
 			}
 			r.Client.Create(context.TODO(), sa)

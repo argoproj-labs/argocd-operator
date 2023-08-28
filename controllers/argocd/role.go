@@ -25,7 +25,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateResourceName(name, cr),
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 		Rules: rules,
 	}
@@ -36,7 +36,7 @@ func newRoleForApplicationSourceNamespaces(name, namespace string, rules []v1.Po
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
 			Namespace: namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 		Rules: rules,
 	}
@@ -55,8 +55,8 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
-			Labels:      argoutil.LabelsForCluster(cr.Name, ""),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(cr.Name, cr.Namespace), cr.Annotations),
+			Labels:      common.DefaultLabels(cr.Name, cr.Name, ""),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(cr.Name, cr.Namespace), cr.Annotations),
 		},
 		Rules: rules,
 	}
@@ -108,8 +108,8 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 		namespace := &corev1.Namespace{}
 		err := r.Client.Get(context.TODO(), client.ObjectKey{Name: ns}, namespace)
 		if namespace.DeletionTimestamp != nil {
-			if _, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
-				delete(namespace.Labels, common.ArgoCDResourcesManagedByLabel)
+			if _, ok := namespace.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
+				delete(namespace.Labels, common.ArgoCDArgoprojKeyManagedBy)
 				_ = r.Client.Update(context.TODO(), namespace)
 			}
 			continue
@@ -202,11 +202,11 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
-		if value, ok := namespace.Labels[common.ArgoCDResourcesManagedByLabel]; ok && value != "" {
+		if value, ok := namespace.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok && value != "" {
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
-			if val, ok1 := namespace.Labels[common.ArgoCDAppsManagedByLabel]; ok1 && val == cr.Namespace {
-				delete(r.AppManagedNamespaces, namespace.Name)
+			if val, ok1 := namespace.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD]; ok1 && val == cr.Namespace {
+				delete(r.SourceNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -243,7 +243,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		}
 
 		// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
-		if value, ok := namespace.Labels[common.ArgoCDAppsManagedByLabel]; ok && value != "" {
+		if value, ok := namespace.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD]; ok && value != "" {
 			log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
 			continue
 		}
@@ -253,7 +253,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 			return nil, err
 		}
 		// Update namespace with managed-by-cluster-argocd label
-		namespace.Labels[common.ArgoCDAppsManagedByLabel] = cr.Namespace
+		namespace.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD] = cr.Namespace
 		if err := r.Client.Update(context.TODO(), namespace); err != nil {
 			log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
 		}

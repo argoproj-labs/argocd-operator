@@ -148,7 +148,7 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+			a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
 			r := makeTestReconciler(t, a)
 
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
@@ -164,7 +164,7 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: test.nsName,
 				Labels: map[string]string{
-					common.ArgoCDResourcesManagedByLabel: a.Namespace,
+					common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
 				}},
 			}
 			err = r.Client.Create(context.TODO(), ns)
@@ -183,12 +183,12 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: ns.Name}, ns))
 			if test.isRemoveManagedByLabelOnArgoCDDeletionSet {
 				// Check if the managed-by label gets removed from the new namespace
-				if _, ok := ns.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
-					t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDResourcesManagedByLabel, ns.Name)
+				if _, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
+					t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDArgoprojKeyManagedBy, ns.Name)
 				}
 			} else {
 				// Check if the managed-by label still exists in the new namespace
-				assert.Equal(t, ns.Labels[common.ArgoCDResourcesManagedByLabel], a.Namespace)
+				assert.Equal(t, ns.Labels[common.ArgoCDArgoprojKeyManagedBy], a.Namespace)
 			}
 		})
 	}
@@ -196,7 +196,7 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 
 func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
 
 	resources := []runtime.Object{a}
 	resources = append(resources, clusterResources(a)...)
@@ -249,8 +249,8 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	// check if namespace label was removed
 	ns := &corev1.Namespace{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: a.Namespace}, ns))
-	if _, ok := ns.Labels[common.ArgoCDResourcesManagedByLabel]; ok {
-		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDResourcesManagedByLabel, a.Namespace)
+	if _, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
+		t.Errorf("Expected the label[%v] to be removed from the namespace[%v]", common.ArgoCDArgoprojKeyManagedBy, a.Namespace)
 	}
 }
 

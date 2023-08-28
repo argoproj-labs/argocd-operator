@@ -27,10 +27,10 @@ func getTestStatefulSet(opts ...statefulSetOpt) *appsv1.StatefulSet {
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 		},
 	}
@@ -171,19 +171,19 @@ func TestGetStatefulSet(t *testing.T) {
 func TestListStatefulSets(t *testing.T) {
 	StatefulSet1 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-1"
-		ss.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		ss.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	StatefulSet2 := getTestStatefulSet(func(ss *appsv1.StatefulSet) { ss.Name = "StatefulSet-2" })
 	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-3"
-		ss.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		StatefulSet1, StatefulSet2, StatefulSet3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)
@@ -227,7 +227,7 @@ func TestUpdateStatefulSet(t *testing.T) {
 	}, existingStatefulSet)
 
 	assert.NoError(t, err)
-	assert.Equal(t, desiredStatefulSet.Name, existingStatefulSet.Name)
+	assert.Equal(t, desiredStatefulSet.Spec, existingStatefulSet.Spec)
 
 	testClient = fake.NewClientBuilder().Build()
 	existingStatefulSet = getTestStatefulSet(func(ss *appsv1.StatefulSet) {

@@ -357,7 +357,7 @@ func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -368,20 +368,20 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 	deploy.ObjectMeta.Name = name
 
 	lbls := deploy.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	lbls[common.ArgoCDKeyComponent] = component
+	lbls[common.AppK8sKeyName] = name
+	lbls[common.AppK8sKeyComponent] = component
 	deploy.ObjectMeta.Labels = lbls
 
 	deploy.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.ArgoCDKeyName: name,
+				common.AppK8sKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.ArgoCDKeyName: name,
+					common.AppK8sKeyName: name,
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -680,10 +680,10 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+								common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
 							},
 						},
-						TopologyKey: common.ArgoCDKeyFailureDomainZone,
+						TopologyKey: common.FailureDomainBetaK8sKeyZone,
 					},
 					Weight: int32(100),
 				},
@@ -692,10 +692,10 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 				{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+							common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
 						},
 					},
-					TopologyKey: common.ArgoCDKeyHostname,
+					TopologyKey: common.K8sKeyHostname,
 				},
 			},
 		},

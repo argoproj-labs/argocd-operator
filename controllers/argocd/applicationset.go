@@ -451,7 +451,7 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	}
 
 	// If an env var is specified then use that, but don't override the spec values (if they are present)
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
@@ -513,7 +513,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+		common.AppK8sKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
