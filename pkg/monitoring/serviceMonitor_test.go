@@ -28,25 +28,25 @@ func getTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonit
 			Name:      testName,
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+					common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 				},
 			},
 			Endpoints: []monitoringv1.Endpoint{
 				{
-					Port: common.ArgoCDKeyMetrics,
+					Port: common.ArgoCDMetrics,
 				},
 			},
 		},
@@ -77,25 +77,25 @@ func TestRequestServiceMonitor(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
 						{
-							Port: common.ArgoCDKeyMetrics,
+							Port: common.ArgoCDMetrics,
 						},
 					},
 				},
@@ -110,27 +110,27 @@ func TestRequestServiceMonitor(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 						testKey:                   testVal,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
-						testKey:                    testVal,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						testKey:                           testVal,
 					},
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
 						{
-							Port: common.ArgoCDKeyMetrics,
+							Port: common.ArgoCDMetrics,
 						},
 					},
 				},
@@ -149,25 +149,25 @@ func TestRequestServiceMonitor(t *testing.T) {
 					Name:      testServiceMonitorNameMutated,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
 						{
-							Port: common.ArgoCDKeyMetrics,
+							Port: common.ArgoCDMetrics,
 						},
 					},
 				},
@@ -186,25 +186,25 @@ func TestRequestServiceMonitor(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDKeyMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
 						{
-							Port: common.ArgoCDKeyMetrics,
+							Port: common.ArgoCDMetrics,
 						},
 					},
 				},
@@ -283,13 +283,13 @@ func TestListServiceMonitors(t *testing.T) {
 	serviceMonitor1 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-1"
 		sm.Namespace = testNamespace
-		sm.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		sm.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	serviceMonitor2 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = "serviceMonitor-2" })
 	serviceMonitor3 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-3"
 		sm.Namespace = testNamespace
-		sm.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		sm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -299,7 +299,7 @@ func TestListServiceMonitors(t *testing.T) {
 		serviceMonitor1, serviceMonitor2, serviceMonitor3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

@@ -29,14 +29,14 @@ func getTestPrometheusRule(opts ...prometheusRuleOpt) *monitoringv1.PrometheusRu
 			Name:      testName,
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Spec: monitoringv1.PrometheusRuleSpec{
@@ -79,14 +79,14 @@ func TestRequestPrometheusRule(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.PrometheusRuleSpec{
@@ -113,16 +113,16 @@ func TestRequestPrometheusRule(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 						testKey:                   testVal,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
-						testKey:                    testVal,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						testKey:                           testVal,
 					},
 				},
 				Spec: monitoringv1.PrometheusRuleSpec{
@@ -153,14 +153,14 @@ func TestRequestPrometheusRule(t *testing.T) {
 					Name:      testPrometheusRuleNameMutated,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.PrometheusRuleSpec{
@@ -191,14 +191,14 @@ func TestRequestPrometheusRule(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: monitoringv1.PrometheusRuleSpec{
@@ -289,13 +289,13 @@ func TestListPrometheusRules(t *testing.T) {
 	prometheusRule1 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-1"
 		pr.Namespace = testNamespace
-		pr.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		pr.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	prometheusRule2 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) { pr.Name = "prometheusRule-2" })
 	prometheusRule3 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-3"
 		pr.Namespace = testNamespace
-		pr.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		pr.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -305,7 +305,7 @@ func TestListPrometheusRules(t *testing.T) {
 		prometheusRule1, prometheusRule2, prometheusRule3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)
