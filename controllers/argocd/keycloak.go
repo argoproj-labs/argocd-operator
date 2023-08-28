@@ -223,7 +223,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
-			FailureThreshold: 3,
+			TimeoutSeconds: 120,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -243,7 +243,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
 		ReadinessProbe: &corev1.Probe{
-			FailureThreshold: 20,
+			TimeoutSeconds: 120,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -253,7 +253,6 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 					},
 				},
 			},
-			InitialDelaySeconds: 60,
 		},
 		Resources: getKeycloakResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
@@ -267,12 +266,18 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 				Name:      "service-ca",
 				ReadOnly:  true,
 			},
+			{
+				Name:      "sso-probe-netrc-volume",
+				MountPath: "/mnt/rh-sso",
+				ReadOnly:  false,
+			},
 		},
 	}
 }
 
 func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.DeploymentConfig {
 	ns := cr.Namespace
+	var medium corev1.StorageMedium = "Memory"
 	keycloakContainer := getKeycloakContainer(cr)
 
 	dc := &appsv1.DeploymentConfig{
@@ -339,6 +344,14 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "${APPLICATION_NAME}-service-ca",
 									},
+								},
+							},
+						},
+						{
+							Name: "sso-probe-netrc-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{
+									Medium: medium,
 								},
 							},
 						},

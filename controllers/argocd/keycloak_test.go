@@ -59,6 +59,14 @@ var (
 				},
 			},
 		},
+		{
+			Name: "sso-probe-netrc-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium: "Memory",
+				},
+			},
+		},
 	}
 )
 
@@ -111,7 +119,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 			}),
 			updateCrFunc:       nil,
 			templateAPIFound:   true,
-			wantContainerImage: "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3",
+			wantContainerImage: "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d",
 		},
 		{
 			name: "ArgoCDKeycloakImageEnvName env var set",
@@ -268,7 +276,7 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	}
 	kc := getKeycloakContainer(a)
 	assert.Equal(t,
-		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3", kc.Image)
+		"registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d", kc.Image)
 	assert.Equal(t, corev1.PullAlways, kc.ImagePullPolicy)
 	assert.Equal(t, "${APPLICATION_NAME}", kc.Name)
 }
