@@ -31,7 +31,6 @@ const (
 	ssoLegalSuccess          string = "Success"
 	ssoLegalFailed           string = "Failed"
 	illegalSSOConfiguration  string = "illegal SSO configuration: "
-	multipleSSOConfiguration string = "multiple SSO configuration: "
 )
 
 var (
