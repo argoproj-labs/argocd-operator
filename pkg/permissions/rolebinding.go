@@ -3,8 +3,6 @@ package permissions
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,37 +11,24 @@ import (
 )
 
 type RoleBindingRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
-	RoleRef      rbacv1.RoleRef
-	Subjects     []rbacv1.Subject
+	ObjectMeta metav1.ObjectMeta
+	RoleRef    rbacv1.RoleRef
+	Subjects   []rbacv1.Subject
 }
 
 // newRoleBinding returns a new RoleBinding instance.
-func newRoleBinding(name, instanceName, namespace, component string, labels, annotations map[string]string, roleRef rbacv1.RoleRef, subjects []rbacv1.Subject) *rbacv1.RoleBinding {
-	rbName := argoutil.GenerateResourceName(instanceName, component)
-	if name != "" {
-		rbName = name
-	}
+func newRoleBinding(objMeta metav1.ObjectMeta, roleRef rbacv1.RoleRef, subjects []rbacv1.Subject) *rbacv1.RoleBinding {
+
 	return &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        rbName,
-			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(common.DefaultLabels(rbName, instanceName, component), labels),
-			Annotations: annotations,
-		},
-		RoleRef:  roleRef,
-		Subjects: subjects,
+		ObjectMeta: objMeta,
+		RoleRef:    roleRef,
+		Subjects:   subjects,
 	}
 }
 
 // RequestRoleBinding creates a new RoleBinding based on the provided RoleBindingRequest parameters.
 func RequestRoleBinding(request RoleBindingRequest) *rbacv1.RoleBinding {
-	return newRoleBinding(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations, request.RoleRef, request.Subjects)
+	return newRoleBinding(request.ObjectMeta, request.RoleRef, request.Subjects)
 }
 
 // CreateRoleBinding creates a RoleBinding resource using the provided client.

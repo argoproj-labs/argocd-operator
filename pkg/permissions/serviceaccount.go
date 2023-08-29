@@ -3,8 +3,6 @@ package permissions
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,34 +11,20 @@ import (
 )
 
 type ServiceAccountRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
+	ObjectMeta metav1.ObjectMeta
 }
 
 // newServiceAccount returns a new ServiceAccount instance.
-func newServiceAccount(name, instanceName, namespace, component string, labels, annotations map[string]string) *corev1.ServiceAccount {
-	saName := argoutil.GenerateResourceName(instanceName, component)
-	if name != "" {
-		saName = name
-	}
-	return &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      saName,
-			Namespace: namespace,
-			Labels:    argoutil.MergeMaps(common.DefaultLabels(saName, instanceName, component), labels),
+func newServiceAccount(objMeta metav1.ObjectMeta) *corev1.ServiceAccount {
 
-			Annotations: annotations,
-		},
+	return &corev1.ServiceAccount{
+		ObjectMeta: objMeta,
 	}
 }
 
 // RequestServiceAccount creates a new ServiceAccount object based on the provided ServiceAccountRequest.
 func RequestServiceAccount(request ServiceAccountRequest) *corev1.ServiceAccount {
-	return newServiceAccount(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations)
+	return newServiceAccount(request.ObjectMeta)
 }
 
 // CreateServiceAccount creates the given ServiceAccount using the provided client.

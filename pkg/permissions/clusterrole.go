@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,13 +13,8 @@ import (
 
 // ClusterRoleRequest objects contain all the required information to produce a clusterRole object in return
 type ClusterRoleRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Labels            map[string]string
-	Annotations       map[string]string
-	Component         string
-	Rules             []rbacv1.PolicyRule
+	ObjectMeta metav1.ObjectMeta
+	Rules      []rbacv1.PolicyRule
 
 	// array of functions to mutate clusterRole before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,19 +22,10 @@ type ClusterRoleRequest struct {
 }
 
 // newClusterRole returns a new clusterRole instance.
-func newClusterRole(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {
-	crName := argoutil.GenerateUniqueResourceName(instanceName, instanceNamespace, component)
-	if name != "" {
-		crName = name
-	}
-
+func newClusterRole(objMeta metav1.ObjectMeta, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        crName,
-			Labels:      argoutil.MergeMaps(common.DefaultLabels(crName, instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
-		},
-		Rules: rules,
+		ObjectMeta: objMeta,
+		Rules:      rules,
 	}
 }
 
@@ -52,7 +36,7 @@ func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error)
 		mutationErr error
 	)
 
-	clusterRole := newClusterRole(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.Rules)
+	clusterRole := newClusterRole(request.ObjectMeta, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

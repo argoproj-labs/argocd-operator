@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -24,15 +23,10 @@ type secretOpt func(*corev1.Secret)
 func getTestSecret(opts ...secretOpt) *corev1.Secret {
 	desiredSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
+		StringData: map[string]string{},
 	}
 
 	for _, opt := range opts {
@@ -49,70 +43,75 @@ func TestRequestSecret(t *testing.T) {
 		name          string
 		deployReq     SecretRequest
 		desiredSecret *corev1.Secret
-		mutation      bool
 		wantErr       bool
 	}{
 		{
-			name: "request secret, no mutation",
-			deployReq: SecretRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-			},
-			mutation:      false,
-			desiredSecret: getTestSecret(func(d *corev1.Secret) {}),
-			wantErr:       false,
-		},
-		{
 			name: "request secret, no mutation, custom name, labels, annotations",
 			deployReq: SecretRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				StringData: testKVP,
+				Type:       corev1.SecretTypeBasicAuth,
 			},
-			mutation: false,
-			desiredSecret: getTestSecret(func(d *corev1.Secret) {
-				d.Name = testName
-				d.Labels = argoutil.MergeMaps(d.Labels, testKVP)
-				d.Annotations = argoutil.MergeMaps(d.Annotations, testKVP)
+			desiredSecret: getTestSecret(func(s *corev1.Secret) {
+				s.Name = testName
+				s.Namespace = testNamespace
+				s.Labels = testKVP
+				s.Annotations = testKVP
+				s.StringData = testKVP
+				s.Type = corev1.SecretTypeBasicAuth
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request secret, successful mutation",
 			deployReq: SecretRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				StringData: testKVP,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:      true,
-			desiredSecret: getTestSecret(func(d *corev1.Secret) { d.Name = testSecretNameMutated }),
-			wantErr:       false,
+			desiredSecret: getTestSecret(func(s *corev1.Secret) {
+				s.Name = testNameMutated
+				s.Namespace = testNamespace
+				s.Labels = testKVP
+				s.Annotations = testKVP
+				s.StringData = testKVPMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request secret, failed mutation",
 			deployReq: SecretRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:      true,
-			desiredSecret: getTestSecret(func(d *corev1.Secret) {}),
-			wantErr:       true,
+			desiredSecret: getTestSecret(func(s *corev1.Secret) {
+				s.Name = testName
+				s.Namespace = testNamespace
+				s.Labels = testKVP
+				s.Annotations = testKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -135,12 +134,16 @@ func TestRequestSecret(t *testing.T) {
 func TestCreateSecret(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredSecret := getTestSecret(func(d *corev1.Secret) {
-		d.TypeMeta = metav1.TypeMeta{
+	desiredSecret := getTestSecret(func(s *corev1.Secret) {
+		s.TypeMeta = metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		}
-		d.Name = testName
+		s.Name = testName
+		s.Namespace = testNamespace
+		s.Labels = testKVP
+		s.Annotations = testKVP
+		s.StringData = testKVP
 	})
 	err := CreateSecret(desiredSecret, testClient)
 	assert.NoError(t, err)
@@ -158,6 +161,8 @@ func TestCreateSecret(t *testing.T) {
 func TestGetSecret(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestSecret(func(s *corev1.Secret) {
 		s.Name = testName
+		s.Namespace = testNamespace
+		s.StringData = testKVP
 	})).Build()
 
 	_, err := GetSecret(testName, testNamespace, testClient)
@@ -210,10 +215,12 @@ func TestListSecrets(t *testing.T) {
 func TestUpdateSecret(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestSecret(func(s *corev1.Secret) {
 		s.Name = testName
+		s.Namespace = testNamespace
 	})).Build()
 
 	desiredSecret := getTestSecret(func(s *corev1.Secret) {
 		s.Name = testName
+		s.Namespace = testNamespace
 		s.Data = map[string][]byte{
 			"admin.password": []byte("testpassword2023"),
 		}

@@ -79,6 +79,37 @@ Follow general golang conventions when it comes to naming your files. Some of th
 - filenames can (and should) repeat for files dealing with similar responsibilities across different packages, so that a predictable and intuitive file structure is maintained.
 
 
+
+# Constants
+
+All existing constants can be broken down into the following catagories and sub-catagories:
+- defaults: constants that define fall back values and only get activated if user has not explicitly set a value for a given field 
+  - No specific sub categories; defaults can be grouped by function - image/resource constraints etc
+- env var: constants that store environment variable values
+  - No specific sub categories
+- keys: constants that are used as keys as part of key-value pairs in various maps across the operator 
+  - General ArgoCD Keys: Keys that are used for Argo CD wide settings
+  - Component specific Keys: Keys used in constants that are specific to a given Argo CD component
+  - Domain specific keys: Keys that are mostly used in labels/annotations, and typically follow a `group.domain/label-name` format. We can group all such constants
+	together for ease of access
+- names: constants that represent fixed names for resources
+  - names: constants that represent fixed names for resources
+  - suffixes: constants that represent suffixes used to make unique/ component specific resources
+- values: constants that represent standardized field values in maps and other structs, as well as states
+  - no specific sub categories
+
+This structure of constants can be applied to a project wide level, as well as individual component levels. For the project level these constants are defined in separate files in the `common` folder. For individual components they can all be stored in the same `constants.go` file, separeated out into these sections.
+
+## Naming convention
+
+- General Argo CD constant names should start with "ArgoCD.." eg: `ArgoCDDefaultLogLevel`
+- Component specific constants should start with the component name, e.g: `GrafanaDefaultVersion`
+- Domain specific Keys should be named to represent the key itself. For eg:
+  - `app.kubernetes.io/name` should be stored in a const named `AppK8sKeyName`
+  - `argocd.argoproj.io/test` => `ArgoCDArgoprojKeyTest`
+- Environment variable constants should end in `EnvVar`. Eg: `DexImageEnvVar`
+
+General rule of thumb is to make constant names as descriptive as possible (without making them too long) so that it easy to understand what it represents without needing to go to its definition
 # Error handling
 
 - If a function is reconciling a single resource in a single namespace, return errors immediately, as that resource is critical to the component
