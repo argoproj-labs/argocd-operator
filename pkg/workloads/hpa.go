@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,12 +14,8 @@ import (
 
 // HorizontalPodAutoscalerRequest objects contain all the required information to produce a horizontalPodAutoscaler object in return
 type HorizontalPodAutoscalerRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       autoscaling.HorizontalPodAutoscalerSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,21 +23,11 @@ type HorizontalPodAutoscalerRequest struct {
 }
 
 // newHorizontalPodAutoscaler returns a new HorizontalPodAutoscaler instance for the given ArgoCD.
-func newHorizontalPodAutoscaler(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *autoscaling.HorizontalPodAutoscaler {
-	var horizontalPodAutoscalerName string
-	if name != "" {
-		horizontalPodAutoscalerName = name
-	} else {
-		horizontalPodAutoscalerName = argoutil.GenerateResourceName(instanceName, component)
+func newHorizontalPodAutoscaler(objMeta metav1.ObjectMeta, spec autoscaling.HorizontalPodAutoscalerSpec) *autoscaling.HorizontalPodAutoscaler {
 
-	}
 	return &autoscaling.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        horizontalPodAutoscalerName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(common.DefaultLabels(horizontalPodAutoscalerName, instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
-		},
+		ObjectMeta: objMeta,
+		Spec:       spec,
 	}
 }
 
@@ -101,7 +85,7 @@ func RequestHorizontalPodAutoscaler(request HorizontalPodAutoscalerRequest) (*au
 	var (
 		mutationErr error
 	)
-	horizontalPodAutoscaler := newHorizontalPodAutoscaler(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
+	horizontalPodAutoscaler := newHorizontalPodAutoscaler(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

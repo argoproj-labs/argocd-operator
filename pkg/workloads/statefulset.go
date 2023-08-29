@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,32 +14,19 @@ import (
 
 // StatefulRequest objects contain all the required information to produce a stateful object in return
 type StatefulSetRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-
+	ObjectMeta metav1.ObjectMeta
+	Spec       appsv1.StatefulSetSpec
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
 	Client    interface{}
 }
 
 // newStateful returns a new Stateful instance for the given ArgoCD.
-func newStatefulSet(name, instanceName, namespace, component string, labels map[string]string) *appsv1.StatefulSet {
-	var StatefulSetName string
-	if name != "" {
-		StatefulSetName = name
-	} else {
-		StatefulSetName = argoutil.GenerateResourceName(instanceName, component)
+func newStatefulSet(objMeta metav1.ObjectMeta, spec appsv1.StatefulSetSpec) *appsv1.StatefulSet {
 
-	}
 	return &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      StatefulSetName,
-			Namespace: namespace,
-			Labels:    argoutil.MergeMaps(common.DefaultLabels(StatefulSetName, instanceName, component), labels),
-		},
+		ObjectMeta: objMeta,
+		Spec:       spec,
 	}
 }
 
@@ -99,7 +84,7 @@ func RequestStatefulSet(request StatefulSetRequest) (*appsv1.StatefulSet, error)
 	var (
 		mutationErr error
 	)
-	StatefulSet := newStatefulSet(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels)
+	StatefulSet := newStatefulSet(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

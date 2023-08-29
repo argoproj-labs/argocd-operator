@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,20 +22,9 @@ type clusterRoleBindingOpt func(*rbacv1.ClusterRoleBinding)
 func getTestClusterRoleBinding(opts ...clusterRoleBindingOpt) *rbacv1.ClusterRoleBinding {
 	desiredClusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: argoutil.GenerateUniqueResourceName(testInstance, testInstanceNamespace, testComponent),
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
-		RoleRef:  testRoleRef,
-		Subjects: testSubjects,
 	}
 
 	for _, opt := range opts {
@@ -51,34 +39,26 @@ func TestRequestClusterRoleBinding(t *testing.T) {
 		crbReq     ClusterRoleBindingRequest
 		desiredCrb *rbacv1.ClusterRoleBinding
 	}{
-		{
-			name: "request clusterrolebinding",
-			crbReq: ClusterRoleBindingRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				RoleRef:           testRoleRef,
-				Subjects:          testSubjects,
-			},
-			desiredCrb: getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {}),
-		},
+
 		{
 			name: "request clusterrolebinding, custom name, labels, annotations",
 			crbReq: ClusterRoleBindingRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
-				RoleRef:           testRoleRef,
-				Subjects:          testSubjects,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+
+				RoleRef:  testRoleRef,
+				Subjects: testSubjects,
 			},
 			desiredCrb: getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 				crb.Name = testName
-				crb.Labels = argoutil.MergeMaps(crb.Labels, testKVP)
-				crb.Annotations = argoutil.MergeMaps(crb.Annotations, testKVP)
+				crb.Labels = testKVP
+				crb.Annotations = testKVP
+				crb.RoleRef = testRoleRef
+				crb.Subjects = testSubjects
+
 			}),
 		},
 	}
@@ -100,6 +80,8 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
 		crb.Name = testName
+		crb.Labels = testKVP
+		crb.Annotations = testKVP
 	})
 	err := CreateClusterRoleBinding(desiredClusterRoleBinding, testClient)
 	assert.NoError(t, err)

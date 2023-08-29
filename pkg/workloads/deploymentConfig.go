@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,12 +14,8 @@ import (
 
 // DeploymentConfigRequest objects contain all the required information to produce a deploymentConfig object in return
 type DeploymentConfigRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       oappsv1.DeploymentConfigSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,21 +23,10 @@ type DeploymentConfigRequest struct {
 }
 
 // newDeploymentConfig returns a new DeploymentConfig instance for the given ArgoCD.
-func newDeploymentConfig(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *oappsv1.DeploymentConfig {
-	var deploymentConfigName string
-	if name != "" {
-		deploymentConfigName = name
-	} else {
-		deploymentConfigName = argoutil.GenerateResourceName(instanceName, component)
-
-	}
+func newDeploymentConfig(objMeta metav1.ObjectMeta, spec oappsv1.DeploymentConfigSpec) *oappsv1.DeploymentConfig {
 	return &oappsv1.DeploymentConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        deploymentConfigName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(common.DefaultLabels(deploymentConfigName, instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
-		},
+		ObjectMeta: objMeta,
+		Spec:       spec,
 	}
 }
 
@@ -101,8 +84,7 @@ func RequestDeploymentConfig(request DeploymentConfigRequest) (*oappsv1.Deployme
 	var (
 		mutationErr error
 	)
-	deploymentConfig := newDeploymentConfig(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
-
+	deploymentConfig := newDeploymentConfig(request.ObjectMeta, request.Spec)
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
 			err := mutation(nil, deploymentConfig, request.Client)

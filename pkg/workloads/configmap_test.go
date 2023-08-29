@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -24,19 +23,10 @@ type configMapOpt func(*corev1.ConfigMap)
 func getTestConfigMap(opts ...configMapOpt) *corev1.ConfigMap {
 	desiredConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
+		Data: make(map[string]string),
 	}
 
 	for _, opt := range opts {
@@ -53,70 +43,75 @@ func TestRequestConfigMap(t *testing.T) {
 		name             string
 		deployReq        ConfigMapRequest
 		desiredConfigMap *corev1.ConfigMap
-		mutation         bool
 		wantErr          bool
 	}{
 		{
-			name: "request configMap, no mutation",
-			deployReq: ConfigMapRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-			},
-			mutation:         false,
-			desiredConfigMap: getTestConfigMap(func(d *corev1.ConfigMap) {}),
-			wantErr:          false,
-		},
-		{
 			name: "request configMap, no mutation, custom name, labels, annotations",
 			deployReq: ConfigMapRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Data: testKVP,
 			},
-			mutation: false,
 			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
 				cm.Name = testName
-				cm.Labels = argoutil.MergeMaps(cm.Labels, testKVP)
-				cm.Annotations = argoutil.MergeMaps(cm.Annotations, testKVP)
+				cm.Namespace = testNamespace
+				cm.Labels = testKVP
+				cm.Annotations = testKVP
+				cm.Data = testKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request configMap, successful mutation",
 			deployReq: ConfigMapRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Data: testKVP,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:         true,
-			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) { cm.Name = testConfigMapNameMutated }),
-			wantErr:          false,
+			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
+				cm.Name = testNameMutated
+				cm.Namespace = testNamespace
+				cm.Labels = testKVP
+				cm.Annotations = testKVP
+				cm.Data = testKVPMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request configMap, failed mutation",
 			deployReq: ConfigMapRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Data: testKVP,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:         true,
-			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {}),
-			wantErr:          true,
+			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
+				cm.Name = testName
+				cm.Namespace = testNamespace
+				cm.Labels = testKVP
+				cm.Annotations = testKVP
+				cm.Data = testKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -146,6 +141,9 @@ func TestCreateConfigMap(t *testing.T) {
 		}
 		cm.Name = testName
 		cm.Namespace = testNamespace
+		cm.Labels = testKVP
+		cm.Annotations = testKVP
+		cm.Data = testKVP
 	})
 	err := CreateConfigMap(desiredConfigMap, testClient)
 	assert.NoError(t, err)
@@ -161,9 +159,11 @@ func TestCreateConfigMap(t *testing.T) {
 }
 
 func TestGetConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(d *corev1.ConfigMap) {
-		d.Name = testName
-		d.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = testName
+		cm.Namespace = testNamespace
+		cm.Data = testKVP
+
 	})).Build()
 
 	_, err := GetConfigMap(testName, testNamespace, testClient)
@@ -177,15 +177,18 @@ func TestGetConfigMap(t *testing.T) {
 }
 
 func TestListConfigMaps(t *testing.T) {
-	configMap1 := getTestConfigMap(func(d *corev1.ConfigMap) {
-		d.Name = "configMap-1"
-		d.Namespace = testNamespace
-		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
+	configMap1 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = "configMap-1"
+		cm.Namespace = testNamespace
+		cm.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		cm.Data = testKVP
+
 	})
-	configMap2 := getTestConfigMap(func(d *corev1.ConfigMap) { d.Name = "configMap-2" })
-	configMap3 := getTestConfigMap(func(d *corev1.ConfigMap) {
-		d.Name = "configMap-3"
-		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
+	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) { cm.Name = "configMap-2" })
+	configMap3 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = "configMap-3"
+		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		cm.Data = testKVP
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -218,6 +221,7 @@ func TestUpdateConfigMap(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = testName
 		cm.Namespace = testNamespace
+		cm.Data = testKVP
 	})).Build()
 
 	desiredConfigMap := getTestConfigMap(func(cm *corev1.ConfigMap) {
@@ -251,9 +255,9 @@ func TestUpdateConfigMap(t *testing.T) {
 }
 
 func TestDeleteConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(d *corev1.ConfigMap) {
-		d.Name = testName
-		d.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = testName
+		cm.Namespace = testNamespace
 	})).Build()
 
 	err := DeleteConfigMap(testName, testNamespace, testClient)

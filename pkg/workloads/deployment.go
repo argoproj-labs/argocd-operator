@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,12 +14,8 @@ import (
 
 // DeploymentRequest objects contain all the required information to produce a deployment object in return
 type DeploymentRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       appsv1.DeploymentSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,21 +23,11 @@ type DeploymentRequest struct {
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string) *appsv1.Deployment {
-	var deploymentName string
-	if name != "" {
-		deploymentName = name
-	} else {
-		deploymentName = argoutil.GenerateResourceName(instanceName, component)
+func newDeployment(objMeta metav1.ObjectMeta, spec appsv1.DeploymentSpec) *appsv1.Deployment {
 
-	}
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        deploymentName,
-			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(common.DefaultLabels(deploymentName, instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
-		},
+		ObjectMeta: objMeta,
+		Spec:       spec,
 	}
 }
 
@@ -101,7 +85,7 @@ func RequestDeployment(request DeploymentRequest) (*appsv1.Deployment, error) {
 	var (
 		mutationErr error
 	)
-	deployment := newDeployment(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations)
+	deployment := newDeployment(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
