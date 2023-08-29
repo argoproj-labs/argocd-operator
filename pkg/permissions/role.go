@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -39,7 +40,7 @@ func newRole(name, instanceName, namespace, component string, labels, annotation
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        roleName,
 			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(roleName, instanceName, component), labels),
 			Annotations: annotations,
 		},
 		Rules: rules,

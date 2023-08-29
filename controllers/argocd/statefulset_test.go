@@ -470,7 +470,7 @@ func Test_ContainsValidImage(t *testing.T) {
 	po := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
+				common.AppK8sKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
 			},
 		},
 	}
@@ -536,13 +536,13 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 		})
 
 		clusterSecret1 := argoutil.NewSecretWithSuffix(a, "cluster1")
-		clusterSecret1.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+		clusterSecret1.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
 		clusterSecret2 := argoutil.NewSecretWithSuffix(a, "cluster2")
-		clusterSecret2.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+		clusterSecret2.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
 		clusterSecret3 := argoutil.NewSecretWithSuffix(a, "cluster3")
-		clusterSecret3.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+		clusterSecret3.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
 		r := makeTestReconciler(t, a)
 		assert.NoError(t, r.Client.Create(context.TODO(), clusterSecret1))

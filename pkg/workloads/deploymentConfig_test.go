@@ -28,14 +28,14 @@ func getTestDeploymentConfig(opts ...deploymentConfigOpt) *oappsv1.DeploymentCon
 			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
 			Namespace: testInstanceNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 	}
@@ -188,13 +188,13 @@ func TestListDeploymentConfigs(t *testing.T) {
 	deploymentConfig1 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 		dc.Name = "deploymentConfig-1"
 		dc.Namespace = testNamespace
-		dc.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		dc.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	deploymentConfig2 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) { dc.Name = "deploymentConfig-2" })
 	deploymentConfig3 := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 		dc.Name = "deploymentConfig-3"
 		dc.Namespace = testNamespace
-		dc.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		dc.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -204,7 +204,7 @@ func TestListDeploymentConfigs(t *testing.T) {
 		deploymentConfig1, deploymentConfig2, deploymentConfig3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

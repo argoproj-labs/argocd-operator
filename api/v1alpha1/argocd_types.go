@@ -934,7 +934,7 @@ type WebhookServerSpec struct {
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoCDDeletionFinalizer {
+		if finalizer == common.ArgoprojKeyFinalizer {
 			return true
 		}
 	}
@@ -965,7 +965,7 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	if a.Spec.ApplicationInstanceLabelKey != "" {
 		return a.Spec.ApplicationInstanceLabelKey
 	} else {
-		return common.ArgoCDDefaultApplicationInstanceLabelKey
+		return common.AppK8sKeyInstance
 	}
 }
 
