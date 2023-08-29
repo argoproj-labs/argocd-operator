@@ -88,4 +88,7 @@ const (
 
 	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
 	ApplicationSetServiceNameSuffix = "applicationset-controller"
+
+	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
+	ArgoCDComponentStatus = "ArgoCDComponentStatus"
 )
