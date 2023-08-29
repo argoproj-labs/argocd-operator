@@ -3,6 +3,7 @@ package permissions
 import (
 	"context"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,8 +32,8 @@ func newClusterRoleBinding(name, instanceName, instanceNamespace, component stri
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        crbName,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(crbName, instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
 		},
 		RoleRef:  roleRef,
 		Subjects: subjects,

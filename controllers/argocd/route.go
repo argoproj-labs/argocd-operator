@@ -51,7 +51,7 @@ func newRoute(cr *argoprojv1a1.ArgoCD) *routev1.Route {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -62,7 +62,7 @@ func newRouteWithName(name string, cr *argoprojv1a1.ArgoCD) *routev1.Route {
 	route.ObjectMeta.Name = name
 
 	lbls := route.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.AppK8sKeyName] = name
 	route.ObjectMeta.Labels = lbls
 
 	return route

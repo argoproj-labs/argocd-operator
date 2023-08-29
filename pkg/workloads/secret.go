@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 
@@ -41,7 +42,7 @@ func newSecret(name, instanceName, namespace, component string, labels, annotati
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        secretName,
 			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(secretName, instanceName, component), labels),
 			Annotations: annotations,
 		},
 	}

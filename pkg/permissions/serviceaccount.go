@@ -3,6 +3,7 @@ package permissions
 import (
 	"context"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,7 +31,7 @@ func newServiceAccount(name, instanceName, namespace, component string, labels, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      saName,
 			Namespace: namespace,
-			Labels:    argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
+			Labels:    argoutil.MergeMaps(common.DefaultLabels(saName, instanceName, component), labels),
 
 			Annotations: annotations,
 		},

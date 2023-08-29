@@ -29,14 +29,14 @@ func getTestRoute(opts ...routeOpt) *routev1.Route {
 			Name:      testName,
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Spec: routev1.RouteSpec{
@@ -75,14 +75,14 @@ func TestRequestRoute(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: routev1.RouteSpec{
@@ -105,16 +105,16 @@ func TestRequestRoute(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 						testKey:                   testVal,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
-						testKey:                    testVal,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						testKey:                           testVal,
 					},
 				},
 				Spec: routev1.RouteSpec{
@@ -141,14 +141,14 @@ func TestRequestRoute(t *testing.T) {
 					Name:      testRouteNameMutated,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: routev1.RouteSpec{
@@ -175,14 +175,14 @@ func TestRequestRoute(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: routev1.RouteSpec{
@@ -269,13 +269,13 @@ func TestListRoutes(t *testing.T) {
 	route1 := getTestRoute(func(r *routev1.Route) {
 		r.Name = "route-1"
 		r.Namespace = testNamespace
-		r.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	route2 := getTestRoute(func(r *routev1.Route) { r.Name = "route-2" })
 	route3 := getTestRoute(func(r *routev1.Route) {
 		r.Name = "route-3"
 		r.Namespace = testNamespace
-		r.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -285,7 +285,7 @@ func TestListRoutes(t *testing.T) {
 		route1, route2, route3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

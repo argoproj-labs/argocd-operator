@@ -41,7 +41,7 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      meta.Name,
 			Namespace: meta.Namespace,
-			Labels:    common.DefaultLabels(meta.Name, ""),
+			Labels:    common.DefaultLabels(meta.Name, meta.Name, ""),
 		},
 	}
 }
@@ -50,6 +50,6 @@ func NewPersistentVolumeClaim(meta metav1.ObjectMeta) *corev1.PersistentVolumeCl
 func NewPersistentVolumeClaimWithName(name string, meta metav1.ObjectMeta) *corev1.PersistentVolumeClaim {
 	pvc := NewPersistentVolumeClaim(meta)
 	pvc.ObjectMeta.Name = name
-	pvc.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	pvc.ObjectMeta.Labels[common.AppK8sKeyName] = name
 	return pvc
 }

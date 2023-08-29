@@ -17,7 +17,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		// Annotation is inserted, update is required
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, true)
-		atls, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
+		atls, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
 		assert.Equal(t, ok, true)
 		assert.Equal(t, atls, "some-secret")
 
@@ -29,12 +29,12 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		routeAPIFound = true
 		svc := newService(a)
 		svc.Annotations = make(map[string]string)
-		svc.Annotations[common.AnnotationOpenShiftServiceCA] = "some-secret"
+		svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = "some-secret"
 
 		// Annotation getting removed, update required
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", false)
 		assert.Equal(t, needUpdate, true)
-		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
+		_, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
 		assert.Equal(t, ok, false)
 
 		// Annotation does not exist, no update required
@@ -46,7 +46,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		svc := newService(a)
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, false)
-		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
+		_, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
 		assert.Equal(t, ok, false)
 	})
 }

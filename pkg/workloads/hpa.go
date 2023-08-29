@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -40,8 +41,8 @@ func newHorizontalPodAutoscaler(name, instanceName, instanceNamespace, component
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        horizontalPodAutoscalerName,
 			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(horizontalPodAutoscalerName, instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
 		},
 	}
 }

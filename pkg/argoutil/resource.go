@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -118,11 +117,11 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 }
 
 // LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(instanceName, component string) map[string]string {
-	return common.DefaultLabels(instanceName, component)
-}
+// func LabelsForCluster(instanceName, component string) map[string]string {
+// 	return common.DefaultLabels(instanceName, component)
+// }
 
 // annotationsForCluster returns the annotations for all cluster resources.
-func AnnotationsForCluster(instanceName, instanceNamespace string) map[string]string {
-	return common.DefaultAnnotations(instanceName, instanceNamespace)
-}
+// func AnnotationsForCluster(instanceName, instanceNamespace string) map[string]string {
+// 	return common.DefaultAnnotations(instanceName, instanceNamespace)
+// }
