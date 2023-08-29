@@ -268,7 +268,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 				Name:      "argocd-repo-server-tls",
 				Namespace: "argocd-operator",
 				Annotations: map[string]string{
-					common.AnnotationName: "argocd",
+					common.ArgoCDArgoprojKeyName: "argocd",
 				},
 			},
 			Type: corev1.SecretTypeTLS,
@@ -485,7 +485,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 				Name:      "argocd-operator-redis-tls",
 				Namespace: "argocd-operator",
 				Annotations: map[string]string{
-					common.AnnotationName: "argocd",
+					common.ArgoCDArgoprojKeyName: "argocd",
 				},
 			},
 			Type: corev1.SecretTypeTLS,
@@ -559,7 +559,7 @@ func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testNamespace",
 					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: a.Namespace,
+						common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
 					},
 				},
 			},

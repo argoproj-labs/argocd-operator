@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,13 +14,8 @@ import (
 
 // RoleRequest objects contain all the required information to produce a role object in return
 type RoleRequest struct {
-	Name         string
-	InstanceName string
-	Namespace    string
-	Component    string
-	Labels       map[string]string
-	Annotations  map[string]string
-	Rules        []rbacv1.PolicyRule
+	ObjectMeta metav1.ObjectMeta
+	Rules      []rbacv1.PolicyRule
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
@@ -29,20 +23,10 @@ type RoleRequest struct {
 }
 
 // newRole returns a new Role instance.
-func newRole(name, instanceName, namespace, component string, labels, annotations map[string]string,
-	rules []rbacv1.PolicyRule) *rbacv1.Role {
-	roleName := argoutil.GenerateResourceName(instanceName, component)
-	if name != "" {
-		roleName = name
-	}
+func newRole(objMeta metav1.ObjectMeta, rules []rbacv1.PolicyRule) *rbacv1.Role {
 	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        roleName,
-			Namespace:   namespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: annotations,
-		},
-		Rules: rules,
+		ObjectMeta: objMeta,
+		Rules:      rules,
 	}
 }
 
@@ -52,7 +36,7 @@ func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
 	var (
 		mutationErr error
 	)
-	role := newRole(request.Name, request.InstanceName, request.Namespace, request.Component, request.Labels, request.Annotations, request.Rules)
+	role := newRole(request.ObjectMeta, request.Rules)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

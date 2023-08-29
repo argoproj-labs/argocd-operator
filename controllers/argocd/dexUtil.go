@@ -46,7 +46,7 @@ func getDexContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		tag = common.ArgoCDDefaultDexVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDDexImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)

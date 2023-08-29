@@ -29,6 +29,10 @@ var (
 	testKVP = map[string]string{
 		testKey: testVal,
 	}
+
+	testKVPMutated = map[string]string{
+		testKey: testValMutated,
+	}
 )
 
 func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
@@ -51,7 +55,7 @@ type NamespaceOpt func(*corev1.Namespace)
 func getTestNamespace(opts ...NamespaceOpt) *corev1.Namespace {
 	desiredNs := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: testName,
+			Labels: make(map[string]string),
 		},
 	}
 
@@ -68,66 +72,55 @@ func TestRequestNamespace(t *testing.T) {
 		name             string
 		nsReq            NamespaceRequest
 		desiredNamespace *corev1.Namespace
-		mutation         bool
 		wantErr          bool
 	}{
 		{
-			name: "request namespace, no mutation",
-			nsReq: NamespaceRequest{
-				Name: testName,
-			},
-			mutation:         false,
-			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {}),
-			wantErr:          false,
-		},
-		{
 			name: "request namespace, no mutation, custom name, labels, annotations",
 			nsReq: NamespaceRequest{
-				Name:        testName,
-				Labels:      testKVP,
-				Annotations: testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   testName,
+					Labels: testKVP,
+				},
 			},
-			mutation: false,
 			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
 				ns.Name = testName
 				ns.Labels = testKVP
-				ns.Annotations = testKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request namespace, successful mutation",
 			nsReq: NamespaceRequest{
-				Name:   testName,
-				Labels: testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   testName,
+					Labels: testKVP,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation: true,
 			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
-				ns.Labels = testKVP
-				ns.Labels[testKey] = testValMutated
+				ns.Name = testName
+				ns.Labels = testKVPMutated
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request namespace, failed mutation",
 			nsReq: NamespaceRequest{
-				Name:        testName,
-				Labels:      testKVP,
-				Annotations: testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   testName,
+					Labels: testKVP,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation: true,
 			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
 				ns.Name = testName
 				ns.Labels = testKVP
-				ns.Annotations = testKVP
 			}),
 			wantErr: true,
 		},
@@ -156,6 +149,7 @@ func TestCreateNamespace(t *testing.T) {
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		}
+		ns.Labels = testKVP
 	})
 	err := CreateNamespace(desiredNamespace, testClient)
 	assert.NoError(t, err)
@@ -186,14 +180,14 @@ func TestListNamespaces(t *testing.T) {
 	namespace1 := getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-1"
 		ns.Labels = map[string]string{
-			common.ArgoCDKeyComponent: "new-component-1",
+			common.AppK8sKeyComponent: "new-component-1",
 		}
 	})
 	namespace2 := getTestNamespace(func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
 	namespace3 := getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-3"
 		ns.Labels = map[string]string{
-			common.ArgoCDKeyComponent: "new-component-2",
+			common.AppK8sKeyComponent: "new-component-2",
 		}
 	})
 
@@ -201,7 +195,7 @@ func TestListNamespaces(t *testing.T) {
 		namespace1, namespace2, namespace3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

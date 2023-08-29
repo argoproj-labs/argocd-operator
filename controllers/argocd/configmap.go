@@ -49,7 +49,7 @@ func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argopro
 
 // getApplicationInstanceLabelKey will return the application instance label key  for the given ArgoCD.
 func getApplicationInstanceLabelKey(cr *argoprojv1a1.ArgoCD) string {
-	key := common.ArgoCDDefaultApplicationInstanceLabelKey
+	key := common.AppK8sKeyInstance
 	if len(cr.Spec.ApplicationInstanceLabelKey) > 0 {
 		key = cr.Spec.ApplicationInstanceLabelKey
 	}
@@ -286,7 +286,7 @@ func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -297,7 +297,7 @@ func newConfigMapWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.ConfigMa
 	cm.ObjectMeta.Name = name
 
 	lbls := cm.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.AppK8sKeyName] = name
 	cm.ObjectMeta.Labels = lbls
 
 	return cm
@@ -357,7 +357,7 @@ func (r *ArgoCDReconciler) reconcileCAConfigMap(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	cm.Data = map[string]string{
-		common.ArgoCDKeyTLSCert: string(caSecret.Data[common.ArgoCDKeyTLSCert]),
+		corev1.TLSCertKey: string(caSecret.Data[corev1.TLSCertKey]),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

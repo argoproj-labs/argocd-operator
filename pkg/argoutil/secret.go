@@ -38,7 +38,7 @@ func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*co
 func NewSecret(cr *argoprojv1a1.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: LabelsForCluster(cr.Name, ""),
+			Labels: common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
@@ -57,7 +57,7 @@ func NewSecretWithName(cr *argoprojv1a1.ArgoCD, name string) *corev1.Secret {
 
 	secret.ObjectMeta.Name = name
 	secret.ObjectMeta.Namespace = cr.Namespace
-	secret.ObjectMeta.Labels[common.ArgoCDKeyName] = name
+	secret.ObjectMeta.Labels[common.AppK8sKeyName] = name
 
 	return secret
 }

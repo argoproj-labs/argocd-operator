@@ -180,14 +180,14 @@ func TestListConfigMaps(t *testing.T) {
 	configMap1 := getTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-1"
 		cm.Namespace = testNamespace
-		cm.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		cm.Labels[common.AppK8sKeyComponent] = "new-component-1"
 		cm.Data = testKVP
 
 	})
 	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) { cm.Name = "configMap-2" })
 	configMap3 := getTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-3"
-		cm.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		cm.Data = testKVP
 	})
 
@@ -195,7 +195,7 @@ func TestListConfigMaps(t *testing.T) {
 		configMap1, configMap2, configMap3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

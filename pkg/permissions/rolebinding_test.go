@@ -23,17 +23,9 @@ type roleBindingOpt func(*rbacv1.RoleBinding)
 func getTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
 	desiredRoleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
-		RoleRef:  testRoleRef,
-		Subjects: testSubjects,
 	}
 
 	for _, opt := range opts {
@@ -51,31 +43,43 @@ func TestRequestRoleBinding(t *testing.T) {
 		{
 			name: "request rolebinding",
 			rbReq: RoleBindingRequest{
-				Name:         "",
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				RoleRef:      testRoleRef,
-				Subjects:     testSubjects,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				RoleRef:  testRoleRef,
+				Subjects: testSubjects,
 			},
-			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {}),
+			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+				rb.Name = testName
+				rb.Namespace = testNamespace
+				rb.Labels = testKVP
+				rb.Annotations = testKVP
+				rb.RoleRef = testRoleRef
+				rb.Subjects = testSubjects
+			}),
 		},
 		{
 			name: "request rolebinding, custom name, labels, annotations",
 			rbReq: RoleBindingRequest{
-				Name:         testName,
-				InstanceName: testInstance,
-				Namespace:    testNamespace,
-				Component:    testComponent,
-				Labels:       testKVP,
-				Annotations:  testKVP,
-				RoleRef:      testRoleRef,
-				Subjects:     testSubjects,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				RoleRef:  testRoleRef,
+				Subjects: testSubjects,
 			},
 			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 				rb.Name = testName
+				rb.Namespace = testNamespace
 				rb.Labels = argoutil.MergeMaps(rb.Labels, testKVP)
 				rb.Annotations = argoutil.MergeMaps(rb.Annotations, testKVP)
+				rb.RoleRef = testRoleRef
+				rb.Subjects = testSubjects
 			}),
 		},
 	}
@@ -99,6 +103,9 @@ func TestCreateRoleBinding(t *testing.T) {
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
 		rb.Name = testName
+		rb.Namespace = testNamespace
+		rb.Labels = testKVP
+		rb.Annotations = testKVP
 	})
 	err := CreateRoleBinding(desiredRoleBinding, testClient)
 	assert.NoError(t, err)
@@ -116,6 +123,7 @@ func TestCreateRoleBinding(t *testing.T) {
 func TestGetRoleBinding(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = testName
+		rb.Namespace = testNamespace
 	})).Build()
 
 	_, err := GetRoleBinding(testName, testNamespace, testClient)
@@ -131,19 +139,19 @@ func TestGetRoleBinding(t *testing.T) {
 func TestListRoleBindings(t *testing.T) {
 	rb1 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-1"
-		rb.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		rb.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	rb2 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) { rb.Name = "rb-2" })
 	rb3 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-3"
-		rb.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		rb.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		rb1, rb2, rb3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)
@@ -168,6 +176,7 @@ func TestListRoleBindings(t *testing.T) {
 func TestUpdateRoleBinding(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = testName
+		rb.Namespace = testNamespace
 	})).Build()
 
 	desiredRoleBinding := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
@@ -184,6 +193,8 @@ func TestUpdateRoleBinding(t *testing.T) {
 				Namespace: testNamespace,
 			},
 		}
+		rb.Namespace = testNamespace
+
 	})
 
 	err := UpdateRoleBinding(desiredRoleBinding, testClient)

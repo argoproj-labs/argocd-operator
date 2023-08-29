@@ -90,7 +90,7 @@ func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -101,7 +101,7 @@ func newServiceMonitor(cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -112,7 +112,7 @@ func newServiceMonitorWithName(name string, cr *argoprojv1a1.ArgoCD) *monitoring
 	svcmon.ObjectMeta.Name = name
 
 	lbls := svcmon.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.AppK8sKeyName] = name
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
 	svcmon.ObjectMeta.Labels = lbls
 
@@ -126,7 +126,7 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *monito
 
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
-	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
+	sm := newServiceMonitorWithSuffix(common.ArgoCDMetrics, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
@@ -141,12 +141,12 @@ func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoC
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
+			common.AppK8sKeyName: nameWithSuffix(common.ArgoCDMetrics, cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: common.ArgoCDKeyMetrics,
+			Port: common.ArgoCDMetrics,
 		},
 	}
 
@@ -202,12 +202,12 @@ func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.Ar
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
+			common.AppK8sKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: common.ArgoCDKeyMetrics,
+			Port: common.ArgoCDMetrics,
 		},
 	}
 
@@ -234,12 +234,12 @@ func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
+			common.AppK8sKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: common.ArgoCDKeyMetrics,
+			Port: common.ArgoCDMetrics,
 		},
 	}
 

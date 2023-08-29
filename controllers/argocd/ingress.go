@@ -42,7 +42,7 @@ func newIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -53,7 +53,7 @@ func newIngressWithName(name string, cr *argoprojv1a1.ArgoCD) *networkingv1.Ingr
 	ingress.ObjectMeta.Name = name
 
 	lbls := ingress.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
+	lbls[common.AppK8sKeyName] = name
 	ingress.ObjectMeta.Labels = lbls
 
 	return ingress
@@ -106,8 +106,8 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) e
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.Ingress.Annotations) > 0 {
@@ -182,7 +182,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoC
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.GRPC.Ingress.Annotations) > 0 {
@@ -257,8 +257,8 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoprojv1a1.ArgoCD) erro
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Grafana.Ingress.Annotations) > 0 {
@@ -334,8 +334,8 @@ func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoprojv1a1.ArgoCD) e
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
@@ -408,8 +408,8 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj
 
 	// Add annotations
 	atns := make(map[string]string)
-	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
-	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations) > 0 {

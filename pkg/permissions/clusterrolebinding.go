@@ -3,7 +3,6 @@ package permissions
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,37 +10,24 @@ import (
 )
 
 type ClusterRoleBindingRequest struct {
-	Name              string
-	InstanceName      string
-	InstanceNamespace string
-	Component         string
-	Labels            map[string]string
-	Annotations       map[string]string
-	RoleRef           rbacv1.RoleRef
-	Subjects          []rbacv1.Subject
+	ObjectMeta metav1.ObjectMeta
+	RoleRef    rbacv1.RoleRef
+	Subjects   []rbacv1.Subject
 }
 
 // newClusterclusterRoleBinding returns a new clusterclusterRoleBinding instance.
-func newClusterRoleBinding(name, instanceName, instanceNamespace, component string, labels, annotations map[string]string, roleRef rbacv1.RoleRef, subjects []rbacv1.Subject) *rbacv1.ClusterRoleBinding {
-	crbName := argoutil.GenerateUniqueResourceName(instanceName, instanceNamespace, component)
-	if name != "" {
-		crbName = name
-	}
+func newClusterRoleBinding(objMeta metav1.ObjectMeta, roleRef rbacv1.RoleRef, subjects []rbacv1.Subject) *rbacv1.ClusterRoleBinding {
 
 	return &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        crbName,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
-		},
-		RoleRef:  roleRef,
-		Subjects: subjects,
+		ObjectMeta: objMeta,
+		RoleRef:    roleRef,
+		Subjects:   subjects,
 	}
 }
 
 // RequestClusterRoleBinding creates a ClusterRoleBinding object based on the provided ClusterRoleBindingRequest.
 func RequestClusterRoleBinding(request ClusterRoleBindingRequest) *rbacv1.ClusterRoleBinding {
-	return newClusterRoleBinding(request.Name, request.InstanceName, request.InstanceNamespace, request.Component, request.Labels, request.Annotations, request.RoleRef, request.Subjects)
+	return newClusterRoleBinding(request.ObjectMeta, request.RoleRef, request.Subjects)
 }
 
 // CreateClusterRoleBinding creates the specified ClusterRoleBinding using the provided client.
