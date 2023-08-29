@@ -11,16 +11,31 @@
 # Controller packages, resources & testing
 
 - Each package must have its own constants.go if we define any package/controller specific constants
-- Each package must have its own `util.go / helper.go` to contain functions related to the package but not directly to the reconciliation of a particular resource
+- Each package must have its own `helper.go` to contain functions related to the package but not directly to the reconciliation of a particular resource
 - Each managed resource's reconcile function should be in a dedicated file for that resource type
 - Each resource created by the operator should have the correct set of labels with appropriate values:
 	- `app.kubernetes.io/name` - `<resource-name>`
-	- `app.kubernetes.io/instance` - `argocd-<argocd-instance-name>`
+	- `app.kubernetes.io/instance` - `<argocd-instance-name>`
 	- `app.kubernetes.io/part-of` - `argocd`
 	- `app.kubernetes.io/component` - `<component-name>`
 	- `app.kubernetes.io/managed-by` - `argocd-operator`
 - Each package should define common testing variables/functions in the `<package_name>_test.go` file, which should be accessed across the package
+- Each controller package will define a number of helper functions in addition to the main resource reconciliation functions. Such functions must either access common variables through that controller's reconciler (as a receiver) or as function parameters. When deciding whether a given function should use a receiver vs parameters, consider the following:
+	- If a function is using a receiver, it is a function that is internal to that controller package, and defines a behavior of that controller. It cannot be accessed/invoked by any function in a different controller package without an instance of that controller's reconciler. Typically functions like `getControllerResourceRequirements` or `getControllerImage` are specific to a controller and don't need to be accessed from outside, therefore they should use receivers, essentially making them private functions (only accessible within the package).
+	- If a function needs to be accessed from outside the package (i.e by other controllers etc) then it should accept parameters, and not specify a receiver. This allows anyone with the correct parameters to access this function without needing an instance of that controller's reconciler. Functions like `GetClusterSecrets` in the secret controller, are good candidates for such public facing functions and should accept parameters.
 
+
+# Utility functions
+
+- Utility functions are generic go functions that perform low level tasks that are not project specific. These functions likely deal with go data structures or perform generic functions that can be used in any go project.
+- Some common examples are string manipulation, merging 2 maps etc.
+- All utility functions should not be dumped into a single `util.go` file. Each utility function will have a specific domain that it belongs to, and utility functions of the same domain should be grouped together into a single file
+that is representative of this domain, and placed in the existing `argoutil` package. Examples of this are:
+	- `string.go` containing string manipulation functions
+	- `client.go` containing client generation functions
+	- `map.go` containing map manipulation functions
+- When adding a new function to `argoutil` package, check if this function fits into any of the existing files. If not, create a new file that will contain this and similar functions moving forward. The goal is to have a flat file structure that has files that group similar utility functions together by domain
+- Main rule of thumb to keep in mind when deciding if a given function should be considered a 'utility' function or not is - Does this function care about Argo CD or Argo CD Operator in any way or not. If the answer is yes, it should likely not be in the utility package, as it is operator specific.
 
 # Constants
 
@@ -52,6 +67,18 @@ This structure of constants can be applied to a project wide level, as well as i
 - Environment variable constants should end in `EnvVar`. Eg: `DexImageEnvVar`
 
 General rule of thumb is to make constant names as descriptive as possible (without making them too long) so that it easy to understand what it represents without needing to go to its definition
+
+# File naming conventions
+
+Follow general golang conventions when it comes to naming your files. Some of those include:
+- use all lowercase alphabets in filenames
+- use `_` if filename contains multiple words
+- `_test` is reserved for test files
+- avoid using camel case in filenames
+- filenames should be short. Filenames should for the most part either be the name of the resource the file is concerned with (e.g `service.go`) or if it is a higher level file in the package, `<package name>.go`, or something else for unique situations
+- filenames can (and should) repeat for files dealing with similar responsibilities across different packages, so that a predictable and intuitive file structure is maintained.
+
+
 # Error handling
 
 - If a function is reconciling a single resource in a single namespace, return errors immediately, as that resource is critical to the component
