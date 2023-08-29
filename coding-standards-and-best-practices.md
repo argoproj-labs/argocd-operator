@@ -39,7 +39,7 @@ that is representative of this domain, and placed in the existing `argoutil` pac
 
 # Constants
 
-All existing constants can be broken down into the following catagories and sub-catagories:
+All existing constants can be broken down into the following categories and sub-categories:
 - defaults: constants that define fall back values and only get activated if user has not explicitly set a value for a given field 
   - No specific sub categories; defaults can be grouped by function - image/resource constraints etc
 - env var: constants that store environment variable values
@@ -47,15 +47,14 @@ All existing constants can be broken down into the following catagories and sub-
 - keys: constants that are used as keys as part of key-value pairs in various maps across the operator 
   - General ArgoCD Keys: Keys that are used for Argo CD wide settings
   - Component specific Keys: Keys used in constants that are specific to a given Argo CD component
-  - Domain specific keys: Keys that are mostly used in labels/annotations, and typically follow a `group.domain/label-name` format. We can group all such constants
-	together for ease of access
-- names: constants that represent fixed names for resources
+  - Domain specific keys: Keys that are mostly used in labels/annotations, and typically follow a `group.domain/label-name` format. We can group all such constants together for ease of access
+- names: 
   - names: constants that represent fixed names for resources
   - suffixes: constants that represent suffixes used to make unique/ component specific resources
 - values: constants that represent standardized field values in maps and other structs, as well as states
   - no specific sub categories
 
-This structure of constants can be applied to a project wide level, as well as individual component levels. For the project level these constants are defined in separate files in the `common` folder. For individual components they can all be stored in the same `constants.go` file, separeated out into these sections.
+This structure of constants can be applied to a project wide level, as well as individual component levels. For the project level these constants are defined in separate files in the `common` folder. For individual components they can all be stored in the same `constants.go` file, separated out into these sections.
 
 ## Naming convention
 
@@ -82,7 +81,7 @@ Follow general golang conventions when it comes to naming your files. Some of th
 
 # Constants
 
-All existing constants can be broken down into the following catagories and sub-catagories:
+All existing constants can be broken down into the following categories and sub-categories:
 - defaults: constants that define fall back values and only get activated if user has not explicitly set a value for a given field 
   - No specific sub categories; defaults can be grouped by function - image/resource constraints etc
 - env var: constants that store environment variable values
