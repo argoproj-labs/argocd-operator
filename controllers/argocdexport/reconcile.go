@@ -20,11 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 // reconcileArgoCDExportResources will reconcile all ArgoCDExport resources for the give CR.
-func (r *ReconcileArgoCDExport) reconcileArgoCDExportResources(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ReconcileArgoCDExport) reconcileArgoCDExportResources(cr *argoproj.ArgoCDExport) error {
 	if err := r.validateExport(cr); err != nil {
 		return err
 	}
