@@ -31,7 +31,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Ro
 	}
 }
 
-func newRoleForApplicationSourceNamespaces(name, namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
+func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
@@ -83,7 +83,7 @@ func (r *ReconcileArgoCD) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 	log.Info("reconciling roles for source namespaces")
 	policyRuleForApplicationSourceNamespaces := policyRuleForServerApplicationSourceNamespaces()
 	// reconcile roles is source namespaces for ArgoCD Server
-	if _, err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
+	if err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
 		return err
 	}
 
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 	return roles, nil
 }
 
-func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
 	var roles []*v1.Role
 
 	// create policy rules for each source namespace for ArgoCD Server
@@ -194,7 +194,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 
 		namespace := &corev1.Namespace{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
-			return nil, err
+			return err
 		}
 
 		// do not reconcile roles for namespaces already containing managed-by label
@@ -214,16 +214,16 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 
 		log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
 
-		role := newRoleForApplicationSourceNamespaces(name, namespace.Name, policyRules, cr)
+		role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
 		if err := applyReconcilerHook(cr, role, ""); err != nil {
-			return nil, err
+			return err
 		}
 		role.Namespace = namespace.Name
 		existingRole := v1.Role{}
 		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
 		}
 
@@ -234,7 +234,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			if reflect.DeepEqual(existingRole, v1.Role{}) {
 				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
 				if err := r.Client.Create(context.TODO(), role); err != nil {
-					return nil, err
+					return err
 				}
 			}
 			continue
@@ -248,7 +248,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 
 		// Get the latest value of namespace before updating it
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
-			return nil, err
+			return err
 		}
 		// Update namespace with managed-by-cluster-argocd label
 		namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
@@ -259,7 +259,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules
 			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
-				return nil, err
+				return err
 			}
 		}
 		roles = append(roles, &existingRole)
@@ -269,7 +269,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 
 	}
-	return roles, nil
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {

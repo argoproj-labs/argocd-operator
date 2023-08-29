@@ -27,11 +27,10 @@ import (
 )
 
 const (
-	ssoLegalUnknown          string = "Unknown"
-	ssoLegalSuccess          string = "Success"
-	ssoLegalFailed           string = "Failed"
-	illegalSSOConfiguration  string = "illegal SSO configuration: "
-	multipleSSOConfiguration string = "multiple SSO configuration: "
+	ssoLegalUnknown         string = "Unknown"
+	ssoLegalSuccess         string = "Success"
+	ssoLegalFailed          string = "Failed"
+	illegalSSOConfiguration string = "illegal SSO configuration: "
 )
 
 var (
