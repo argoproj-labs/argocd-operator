@@ -126,7 +126,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	defaultConfigMapData := map[string]string{
-		"application.instanceLabelKey":       common.ArgoCDDefaultApplicationInstanceLabelKey,
+		"application.instanceLabelKey":       common.AppK8sKeyInstance,
 		"application.resourceTrackingMethod": argoprojv1alpha1.ResourceTrackingMethodLabel.String(),
 		"admin.enabled":                      "true",
 		"configManagementPlugins":            "",

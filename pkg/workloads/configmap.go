@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	corev1 "k8s.io/api/core/v1"
@@ -40,8 +41,8 @@ func newConfigMap(name, instanceName, instanceNamespace, component string, label
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        configMapName,
 			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(configMapName, instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
 		},
 	}
 }

@@ -42,7 +42,7 @@ func newService(cr *argoprojv1a1.ArgoCD) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
 		},
 	}
 }
@@ -53,8 +53,8 @@ func newServiceWithName(name string, component string, cr *argoprojv1a1.ArgoCD) 
 	svc.ObjectMeta.Name = name
 
 	lbls := svc.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	lbls[common.ArgoCDKeyComponent] = component
+	lbls[common.AppK8sKeyName] = name
+	lbls[common.AppK8sKeyComponent] = component
 	svc.ObjectMeta.Labels = lbls
 
 	return svc
@@ -81,7 +81,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) erro
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("grafana", cr),
+		common.AppK8sKeyName: nameWithSuffix("grafana", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -110,7 +110,7 @@ func (r *ArgoCDReconciler) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) erro
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
+		common.AppK8sKeyName: nameWithSuffix("application-controller", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -144,14 +144,14 @@ func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Arg
 		}
 
 		svc.ObjectMeta.Annotations = map[string]string{
-			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
+			common.ServiceAlphaK8sKeyTolerateUnreadyEndpoints: "true",
 		}
 
 		svc.Spec.PublishNotReadyAddresses = true
 
 		svc.Spec.Selector = map[string]string{
-			common.ArgoCDKeyName:               nameWithSuffix("redis-ha", cr),
-			common.ArgoCDKeyStatefulSetPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+			common.AppK8sKeyName:            nameWithSuffix("redis-ha", cr),
+			common.StatefulSetK8sKeyPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
 		}
 
 		svc.Spec.Ports = []corev1.ServicePort{
@@ -194,7 +194,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+		common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -239,7 +239,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD)
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+		common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -295,7 +295,7 @@ func (r *ArgoCDReconciler) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error 
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
+		common.AppK8sKeyName: nameWithSuffix("redis", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -326,7 +326,7 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 
 	// We currently only support OpenShift for automatic TLS
 	if IsRouteAPIAvailable() {
-		autoTLSAnnotationName = common.AnnotationOpenShiftServiceCA
+		autoTLSAnnotationName = common.ServiceBetaOpenshiftKeyCertSecret
 		if svc.Annotations == nil {
 			svc.Annotations = make(map[string]string)
 		}
@@ -367,7 +367,7 @@ func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
+		common.AppK8sKeyName: nameWithSuffix("repo-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -398,7 +398,7 @@ func (r *ArgoCDReconciler) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("server", cr),
+		common.AppK8sKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -443,7 +443,7 @@ func (r *ArgoCDReconciler) reconcileServerService(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("server", cr),
+		common.AppK8sKeyName: nameWithSuffix("server", cr),
 	}
 
 	svc.Spec.Type = getArgoServerServiceType(cr)

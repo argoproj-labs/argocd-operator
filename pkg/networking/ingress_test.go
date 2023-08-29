@@ -29,14 +29,14 @@ func getTestIngress(opts ...ingressOpt) *networkingv1.Ingress {
 			Name:      testName,
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -84,14 +84,14 @@ func TestRequestIngress(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -122,16 +122,16 @@ func TestRequestIngress(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 						testKey:                   testVal,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
-						testKey:                    testVal,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						testKey:                           testVal,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -166,14 +166,14 @@ func TestRequestIngress(t *testing.T) {
 					Name:      testIngressNameMutated,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -208,14 +208,14 @@ func TestRequestIngress(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -310,13 +310,13 @@ func TestListIngresss(t *testing.T) {
 	ingress1 := getTestIngress(func(i *networkingv1.Ingress) {
 		i.Name = "ingress-1"
 		i.Namespace = testNamespace
-		i.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		i.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	ingress2 := getTestIngress(func(i *networkingv1.Ingress) { i.Name = "ingress-2" })
 	ingress3 := getTestIngress(func(i *networkingv1.Ingress) {
 		i.Name = "ingress-3"
 		i.Namespace = testNamespace
-		i.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		i.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	s := scheme.Scheme
@@ -326,7 +326,7 @@ func TestListIngresss(t *testing.T) {
 		ingress1, ingress2, ingress3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

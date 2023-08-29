@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,8 +41,8 @@ func newDeployment(name, instanceName, instanceNamespace, component string, labe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        deploymentName,
 			Namespace:   instanceNamespace,
-			Labels:      argoutil.MergeMaps(argoutil.LabelsForCluster(instanceName, component), labels),
-			Annotations: argoutil.MergeMaps(argoutil.AnnotationsForCluster(instanceName, instanceNamespace), annotations),
+			Labels:      argoutil.MergeMaps(common.DefaultLabels(deploymentName, instanceName, component), labels),
+			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(instanceName, instanceNamespace), annotations),
 		},
 	}
 }

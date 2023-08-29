@@ -28,14 +28,14 @@ func getTestService(opts ...serviceOpt) *corev1.Service {
 			Name:      testName,
 			Namespace: testNamespace,
 			Labels: map[string]string{
-				common.ArgoCDKeyName:      testInstance,
-				common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-				common.ArgoCDKeyManagedBy: testInstance,
-				common.ArgoCDKeyComponent: testComponent,
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
 			},
 			Annotations: map[string]string{
-				common.AnnotationName:      testInstance,
-				common.AnnotationNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -75,14 +75,14 @@ func TestRequestService(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -108,16 +108,16 @@ func TestRequestService(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 						testKey:                   testVal,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
-						testKey:                    testVal,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						testKey:                           testVal,
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -147,14 +147,14 @@ func TestRequestService(t *testing.T) {
 					Name:      testServiceNameMutated,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -184,14 +184,14 @@ func TestRequestService(t *testing.T) {
 					Name:      testName,
 					Namespace: testNamespace,
 					Labels: map[string]string{
-						common.ArgoCDKeyName:      testInstance,
-						common.ArgoCDKeyPartOf:    common.ArgoCDAppName,
-						common.ArgoCDKeyManagedBy: testInstance,
-						common.ArgoCDKeyComponent: testComponent,
+						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+						common.AppK8sKeyComponent: testComponent,
 					},
 					Annotations: map[string]string{
-						common.AnnotationName:      testInstance,
-						common.AnnotationNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      testInstance,
+						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -276,19 +276,19 @@ func TestListServices(t *testing.T) {
 	service1 := getTestService(func(s *corev1.Service) {
 		s.Name = "service-1"
 		s.Namespace = testNamespace
-		s.Labels[common.ArgoCDKeyComponent] = "new-component-1"
+		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	service2 := getTestService(func(s *corev1.Service) { s.Name = "service-2" })
 	service3 := getTestService(func(s *corev1.Service) {
 		s.Name = "service-3"
-		s.Labels[common.ArgoCDKeyComponent] = "new-component-2"
+		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
 		service1, service2, service3,
 	).Build()
 
-	componentReq, _ := labels.NewRequirement(common.ArgoCDKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
+	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
 	listOpts := make([]ctrlClient.ListOption, 0)

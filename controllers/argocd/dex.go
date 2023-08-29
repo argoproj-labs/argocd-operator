@@ -186,7 +186,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) e
 
 	// Get the current redirect URI
 	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
+	currentURI, found := ann[common.SAOpenshiftKeyOAuthRedirectURI]
 	if found && currentURI == uri {
 		return nil // Redirect URI annotation found and correct, move along...
 	}
@@ -196,7 +196,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) e
 		ann = make(map[string]string)
 	}
 
-	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
+	ann[common.SAOpenshiftKeyOAuthRedirectURI] = uri
 	sa.ObjectMeta.Annotations = ann
 
 	return r.Client.Update(context.TODO(), sa)
@@ -370,7 +370,7 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
+		common.AppK8sKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

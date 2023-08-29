@@ -14,22 +14,18 @@ import (
 
 // NamespaceRequest objects contain all the required information to produce a namespace object in return
 type NamespaceRequest struct {
-	Name        string
-	Labels      map[string]string
-	Annotations map[string]string
+	ObjectMeta metav1.ObjectMeta
+	Spec       corev1.NamespaceSpec
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
 	Client    interface{}
 }
 
-func newNamespace(name string, labels, annotations map[string]string) *corev1.Namespace {
+func newNamespace(objMeta metav1.ObjectMeta, spec corev1.NamespaceSpec) *corev1.Namespace {
 	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Labels:      labels,
-			Annotations: annotations,
-		},
+		ObjectMeta: objMeta,
+		Spec:       spec,
 	}
 }
 
@@ -39,7 +35,7 @@ func RequestNamespace(request NamespaceRequest) (*corev1.Namespace, error) {
 	var (
 		mutationErr error
 	)
-	namespace := newNamespace(request.Name, request.Labels, request.Annotations)
+	namespace := newNamespace(request.ObjectMeta, request.Spec)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {

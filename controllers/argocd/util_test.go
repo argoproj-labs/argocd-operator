@@ -62,7 +62,7 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
+			t.Setenv(common.ArgoCDDexImageEnvVar, dexTestImage)
 		},
 	},
 	{
@@ -83,7 +83,7 @@ var imageTests = []struct {
 		imageFunc: getArgoContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+			t.Setenv(common.ArgoCDImageEnvVar, argoTestImage)
 		},
 	},
 	{
@@ -105,7 +105,7 @@ var imageTests = []struct {
 		imageFunc: getGrafanaContainerImage,
 		want:      grafanaTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
+			t.Setenv(common.ArgoCDGrafanaImageEnvVar, grafanaTestImage)
 		},
 	},
 	{
@@ -127,7 +127,7 @@ var imageTests = []struct {
 		imageFunc: getRedisContainerImage,
 		want:      redisTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
+			t.Setenv(common.ArgoCDRedisImageEnvVar, redisTestImage)
 		},
 	},
 	{
@@ -151,7 +151,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAContainerImage,
 		want:      redisHATestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
+			t.Setenv(common.ArgoCDRedisHAImageEnvVar, redisHATestImage)
 		},
 	},
 	{
@@ -175,7 +175,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
+			t.Setenv(common.ArgoCDRedisHAProxyImageEnvVar, redisHAProxyTestImage)
 		},
 	},
 }
@@ -240,7 +240,7 @@ func TestGetArgoServerURI(t *testing.T) {
 
 func TestRemoveDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
-		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		a := makeTestArgoCD(addFinalizer(common.ArgoprojKeyFinalizer))
 		r := makeTestReconciler(t, a)
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -249,7 +249,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		}
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
-		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+		a := makeTestArgoCD(addFinalizer(common.ArgoprojKeyFinalizer))
 		r := makeTestReconciler(t)
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
@@ -463,7 +463,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	testNameSpace := "testNameSpace"
 
 	secret := argoutil.NewSecretWithSuffix(a, "xyz")
-	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
+	secret.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),
 		"namespaces": []byte(strings.Join([]string{testNameSpace, "testNamespace2"}, ",")),
@@ -495,7 +495,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
 		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: a.Namespace,
+			common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
 		}},
 	}
 
@@ -505,7 +505,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
 		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: a.Namespace,
+			common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
 		}},
 	}
 
@@ -515,7 +515,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
 		Labels: map[string]string{
-			common.ArgoCDManagedByLabel: "newNamespace",
+			common.ArgoCDArgoprojKeyManagedBy: "newNamespace",
 		}},
 	}
 
@@ -530,11 +530,11 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	assert.NoError(t, err)
 	for _, n := range nsList.Items {
 		if n.Name == ns3.Name {
-			_, ok := n.Labels[common.ArgoCDManagedByLabel]
+			_, ok := n.Labels[common.ArgoCDArgoprojKeyManagedBy]
 			assert.Equal(t, ok, true)
 			continue
 		}
-		_, ok := n.Labels[common.ArgoCDManagedByLabel]
+		_, ok := n.Labels[common.ArgoCDArgoprojKeyManagedBy]
 		assert.Equal(t, ok, false)
 	}
 }
@@ -547,7 +547,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-namespace-1",
 					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: testNamespace,
+						common.ArgoCDArgoprojKeyManagedBy: testNamespace,
 					},
 				},
 			},
@@ -555,7 +555,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-namespace-2",
 					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: testNamespace,
+						common.ArgoCDArgoprojKeyManagedBy: testNamespace,
 					},
 				},
 			},
@@ -563,7 +563,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-namespace-3",
 					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: "random-namespace",
+						common.ArgoCDArgoprojKeyManagedBy: "random-namespace",
 					},
 				},
 			},
@@ -583,7 +583,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 	for n, _ := range r.ManagedNamespaces {
 		namespace := &corev1.Namespace{}
 		_ = r.Client.Get(context.TODO(), client.ObjectKey{Name: n}, namespace)
-		if namespace.Labels[common.ArgoCDManagedByLabel] != testNamespace && namespace.Name != testNamespace {
+		if namespace.Labels[common.ArgoCDArgoprojKeyManagedBy] != testNamespace && namespace.Name != testNamespace {
 			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", namespace.Name, testNamespace)
 		}
 	}
@@ -602,7 +602,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-namespace-1",
 					Labels: map[string]string{
-						common.ArgoCDManagedByClusterArgoCDLabel: testNamespace,
+						common.ArgoCDArgoprojKeyManagedByClusterArgoCD: testNamespace,
 					},
 				},
 			},
