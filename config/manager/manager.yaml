@@ -29,7 +29,6 @@ spec:
         - /manager
         args:
         - --leader-elect
-        - --label-selector
         image: controller:latest
         name: manager
         securityContext:
@@ -56,9 +55,5 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
-        - name : ARGOCD_LABEL_SELECTOR
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels[ARGOCD_LABEL_SELECTOR]
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
