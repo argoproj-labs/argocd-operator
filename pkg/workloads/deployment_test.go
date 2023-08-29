@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,18 +23,11 @@ type deploymentOpt func(*appsv1.Deployment)
 func getTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
 	desiredDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{},
 		},
 	}
 
@@ -53,70 +45,88 @@ func TestRequestDeployment(t *testing.T) {
 		name              string
 		deployReq         DeploymentRequest
 		desiredDeployment *appsv1.Deployment
-		mutation          bool
 		wantErr           bool
 	}{
 		{
-			name: "request deployment, no mutation",
-			deployReq: DeploymentRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-			},
-			mutation:          false,
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {}),
-			wantErr:           false,
-		},
-		{
 			name: "request deployment, no mutation, custom name, labels, annotations",
 			deployReq: DeploymentRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: testKVP,
+					},
+				},
 			},
-			mutation: false,
 			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
 				d.Name = testName
-				d.Labels = argoutil.MergeMaps(d.Labels, testKVP)
-				d.Annotations = argoutil.MergeMaps(d.Annotations, testKVP)
+				d.Namespace = testNamespace
+				d.Labels = testKVP
+				d.Annotations = testKVP
+				d.Spec.Selector.MatchLabels = testKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request deployment, successful mutation",
 			deployReq: DeploymentRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: testKVP,
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:          true,
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) { d.Name = testDeploymentNameMutated }),
-			wantErr:           false,
+			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
+				d.Name = testNameMutated
+				d.Namespace = testNamespace
+				d.Labels = testKVP
+				d.Annotations = testKVP
+				d.Spec.Selector.MatchLabels = testKVP
+				d.Spec.Replicas = &testReplicasMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request deployment, failed mutation",
 			deployReq: DeploymentRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: testKVP,
+					},
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:          true,
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {}),
-			wantErr:           true,
+			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
+				d.Name = testNameMutated
+				d.Namespace = testNamespace
+				d.Labels = testKVP
+				d.Annotations = testKVP
+				d.Spec.Selector.MatchLabels = testKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -146,6 +156,8 @@ func TestCreateDeployment(t *testing.T) {
 		}
 		d.Name = testName
 		d.Namespace = testNamespace
+		d.Labels = testKVP
+		d.Annotations = testKVP
 	})
 	err := CreateDeployment(desiredDeployment, testClient)
 	assert.NoError(t, err)
@@ -164,6 +176,8 @@ func TestGetDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = testName
 		d.Namespace = testNamespace
+		d.Labels = testKVP
+		d.Annotations = testKVP
 	})).Build()
 
 	_, err := GetDeployment(testName, testNamespace, testClient)

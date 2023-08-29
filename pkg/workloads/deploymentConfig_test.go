@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
@@ -25,19 +24,10 @@ type deploymentConfigOpt func(*oappsv1.DeploymentConfig)
 func getTestDeploymentConfig(opts ...deploymentConfigOpt) *oappsv1.DeploymentConfig {
 	desiredDeploymentConfig := &oappsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argoutil.GenerateResourceName(testInstance, testComponent),
-			Namespace: testInstanceNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
+			Labels:      make(map[string]string),
+			Annotations: make(map[string]string),
 		},
+		Spec: oappsv1.DeploymentConfigSpec{},
 	}
 
 	for _, opt := range opts {
@@ -56,68 +46,74 @@ func TestRequestDeploymentConfig(t *testing.T) {
 		name                    string
 		deploymentConfigReq     DeploymentConfigRequest
 		desiredDeploymentConfig *oappsv1.DeploymentConfig
-		mutation                bool
 		wantErr                 bool
 	}{
 		{
-			name: "request deploymentConfig, no mutation",
-			deploymentConfigReq: DeploymentConfigRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-			},
-			mutation:                false,
-			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {}),
-			wantErr:                 false,
-		},
-		{
 			name: "request deploymentConfig, no mutation, custom name, labels, annotations",
 			deploymentConfigReq: DeploymentConfigRequest{
-				Name:              testName,
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
-				Labels:            testKVP,
-				Annotations:       testKVP,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: oappsv1.DeploymentConfigSpec{
+					Selector: testKVP,
+				},
 			},
-			mutation: false,
 			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 				dc.Name = testName
-				dc.Labels = argoutil.MergeMaps(dc.Labels, testKVP)
-				dc.Annotations = argoutil.MergeMaps(dc.Annotations, testKVP)
+				dc.Namespace = testNamespace
+				dc.Labels = testKVP
+				dc.Annotations = testKVP
+				dc.Spec.Selector = testKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request deploymentConfig, successful mutation",
 			deploymentConfigReq: DeploymentConfigRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: oappsv1.DeploymentConfigSpec{
+					Selector: testKVP,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:                true,
-			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) { dc.Name = testDeploymentConfigNameMutated }),
-			wantErr:                 false,
+			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+				dc.Name = testNameMutated
+				dc.Namespace = testNamespace
+				dc.Labels = testKVP
+				dc.Annotations = testKVP
+				dc.Spec.Selector = testKVP
+				dc.Spec.Replicas = testReplicasMutated
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request deploymentConfig, failed mutation",
 			deploymentConfigReq: DeploymentConfigRequest{
-				Name:              "",
-				InstanceName:      testInstance,
-				InstanceNamespace: testInstanceNamespace,
-				Component:         testComponent,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        testName,
+					Namespace:   testNamespace,
+					Labels:      testKVP,
+					Annotations: testKVP,
+				},
+				Spec: oappsv1.DeploymentConfigSpec{
+					Selector: testKVP,
+				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:                true,
 			desiredDeploymentConfig: getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {}),
 			wantErr:                 true,
 		},
@@ -151,6 +147,8 @@ func TestCreateDeploymentConfig(t *testing.T) {
 		}
 		dc.Name = testName
 		dc.Namespace = testNamespace
+		dc.Labels = testKVP
+		dc.Annotations = testKVP
 	})
 	err := CreateDeploymentConfig(desiredDeploymentConfig, testClient)
 	assert.NoError(t, err)
