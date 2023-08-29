@@ -186,33 +186,19 @@ func TestGetStatefulSet(t *testing.T) {
 func TestListStatefulSets(t *testing.T) {
 	StatefulSet1 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-1"
-<<<<<<< HEAD
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-1"
-=======
-<<<<<<< HEAD
 		ss.Namespace = testNamespace
-		ss.Labels[common.ArgoCDKeyComponent] = "new-component-1"
-=======
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-1"
->>>>>>> 9f0d665215fbd8e11ab507d4c1ca35956779613a
 	})
 	StatefulSet2 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-2"
 		ss.Namespace = testNamespace
->>>>>>> a8634714b7838fe58592df9aebfcc6716a295e43
 	})
 	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-3"
-<<<<<<< HEAD
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
-=======
-<<<<<<< HEAD
 		ss.Namespace = testNamespace
-		ss.Labels[common.ArgoCDKeyComponent] = "new-component-2"
-=======
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
->>>>>>> 9f0d665215fbd8e11ab507d4c1ca35956779613a
->>>>>>> a8634714b7838fe58592df9aebfcc6716a295e43
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
