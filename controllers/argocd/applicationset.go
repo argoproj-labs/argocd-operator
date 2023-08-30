@@ -46,6 +46,9 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
+	cmd = append(cmd, "--scm-root-ca-path")
+	cmd = append(cmd, cr.Spec.ApplicationSet.ScmRootCaPath)
+
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
 	err := isMergable(extraArgs, cmd)
@@ -144,9 +147,26 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			},
 		},
 	}
+	addSCMGitlabVolumeMount := false
+	if cr.Spec.ApplicationSet.ScmRootCaPath != "" {
+		cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, cm) {
+			addSCMGitlabVolumeMount = true
+			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+				Name: "appset-gitlab-scm-tls-cert",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+						},
+					},
+				},
+			})
+		}
+	}
 
 	podSpec.Containers = []corev1.Container{
-		applicationSetContainer(cr),
+		applicationSetContainer(cr, addSCMGitlabVolumeMount),
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
@@ -185,7 +205,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 
 }
 
-func applicationSetContainer(cr *argoproj.ArgoCD) corev1.Container {
+func applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) corev1.Container {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",
@@ -202,7 +222,7 @@ func applicationSetContainer(cr *argoproj.ArgoCD) corev1.Container {
 	// Environment specified in the CR take precedence over everything else
 	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
 
-	return corev1.Container{
+	container := corev1.Container{
 		Command:         getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
 		Image:           getApplicationSetContainerImage(cr),
@@ -252,6 +272,13 @@ func applicationSetContainer(cr *argoproj.ArgoCD) corev1.Container {
 			RunAsNonRoot:             boolPtr(true),
 		},
 	}
+	if addSCMGitlabVolumeMount {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "appset-gitlab-scm-tls-cert",
+			MountPath: cr.Spec.ApplicationSet.ScmRootCaPath,
+		})
+	}
+	return container
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {

@@ -159,6 +159,8 @@ type ArgoCDApplicationSet struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
+
+	ScmRootCaPath string `json:"scmRootCaPath,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

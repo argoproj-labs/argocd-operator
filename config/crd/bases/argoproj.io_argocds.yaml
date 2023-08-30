@@ -6644,6 +6644,8 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  scmRootCaPath:
+                    type: string
                   version:
                     description: Version is the Argo CD ApplicationSet image tag.
                       (optional)
