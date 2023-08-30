@@ -1158,10 +1158,9 @@ func containsString(arr []string, s string) bool {
 // DeprecationEventEmissionStatus is meant to track which deprecation events have been emitted already. This is temporary and can be removed in v0.0.6 once we have provided enough
 // deprecation notice
 type DeprecationEventEmissionStatus struct {
-	SSOSpecDeprecationWarningEmitted                bool
-	DexSpecDeprecationWarningEmitted                bool
-	DisableDexDeprecationWarningEmitted             bool
-	ResourceCustomizationsDeprecationWarningEmitted bool
+	SSOSpecDeprecationWarningEmitted    bool
+	DexSpecDeprecationWarningEmitted    bool
+	DisableDexDeprecationWarningEmitted bool
 }
 
 // DeprecationEventEmissionTracker map stores the namespace containing ArgoCD instance as key and DeprecationEventEmissionStatus as value,

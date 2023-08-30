@@ -144,16 +144,6 @@ func getRBACScopes(cr *argoproj.ArgoCD) string {
 	return scopes
 }
 
-// getResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap
-func getResourceCustomizations(cr *argoproj.ArgoCD) string {
-	rc := common.ArgoCDDefaultResourceCustomizations
-	if cr.Spec.ResourceCustomizations != "" {
-		rc = cr.Spec.ResourceCustomizations
-	}
-
-	return rc
-}
-
 // getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
 func getResourceHealthChecks(cr *argoproj.ArgoCD) map[string]string {
 	healthCheck := make(map[string]string)
@@ -406,26 +396,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		for k, v := range c {
 			cm.Data[k] = v
 		}
-	}
-
-	// old format of ResourceCustomizations
-	if c := getResourceCustomizations(cr); c != "" {
-
-		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
-		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
-			err := argoutil.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions`.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			if err != nil {
-				return err
-			}
-
-			if !ok {
-				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{ResourceCustomizationsDeprecationWarningEmitted: true}
-			} else {
-				currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted = true
-			}
-			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
-		}
-		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
 	}
 
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)

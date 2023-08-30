@@ -36,7 +36,9 @@ Name | Default | Description
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
-[**ResourceCustomizations**](#resource-customizations) | [Empty] | Customize resource behavior.
+[**ResourceHealthChecks**](#resource-customizations) | [Empty] | Customizes resource health check behavior.
+[**ResourceIgnoreDifferences**](#resource-customizations) | [Empty] | Customizes resource ignore difference behavior.
+[**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
 [**ResourceExclusions**](#resource-exclusions) | [Empty] | The configuration to completely ignore entire classes of resource group/kinds.
 [**ResourceInclusions**](#resource-inclusions) | [Empty] | The configuration to configure which resource group/kinds are applied.
 [**ResourceTrackingMethod**](#resource-tracking-method) | `label` | The resource tracking method Argo CD should use.
@@ -942,10 +944,10 @@ spec:
 
 ## Resource Customizations
 
-There are two ways to customize resource behavior- the first way, only available with release v0.5.0+, is with subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`), the second is without subkeys (`resourceCustomizations`). `resourceCustomizations` maps directly to the `resource.customizations` field in the `argocd-cm` ConfigMap, while each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
+Resource behavior can be customized using subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`). Each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
 
-!!! warning 
-    `resourceCustomizations` is being deprecated, and support will be removed in Argo CD Operator v0.8.0 so is encouraged to use `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead. It is the user's responsibility to not provide conflicting resources if they choose to use both methods of resource customizations. 
+!!! note 
+    `.spec.resourceCustomizations` field is no longer in support from Argo CD Operator v0.8.0 onward. Consider using `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead.
 
 ### Resource Customizations (with subkeys)
 
@@ -1143,44 +1145,6 @@ resource.customizations.ignoreDifferences.all: |
   - kube-controller-manager
   jsonPointers:
   - /spec/replicas
-```
-
-### Resource Customizations Example
-
-!!! warning 
-    `resourceCustomizations` is being deprecated, and support will be removed in Argo CD Operator v0.8.0. Please use the new formats `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`.
-
-The following example defines a custom PVC health check in the `argocd-cm` ConfigMap using the `ResourceCustomizations` property on the `ArgoCD` resource.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: resource-customizations
-spec:
-  resourceCustomizations: |
-    PersistentVolumeClaim:
-      health.lua: |
-        hs = {}
-        if obj.status ~= nil then
-          if obj.status.phase ~= nil then
-            if obj.status.phase == "Pending" then
-              hs.status = "Healthy"
-              hs.message = obj.status.phase
-              return hs
-            end
-            if obj.status.phase == "Bound" then
-              hs.status = "Healthy"
-              hs.message = obj.status.phase
-              return hs
-            end
-          end
-        end
-        hs.status = "Progressing"
-        hs.message = "Waiting for certificate"
-        return hs
 ```
 
 ## Resource Exclusions
