@@ -46,8 +46,10 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
-	cmd = append(cmd, "--scm-root-ca-path")
-	cmd = append(cmd, cr.Spec.ApplicationSet.ScmRootCaPath)
+	if cr.Spec.ApplicationSet.ScmRootCaPath != "" {
+		cmd = append(cmd, "--scm-root-ca-path")
+		cmd = append(cmd, cr.Spec.ApplicationSet.ScmRootCaPath)
+	}
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
