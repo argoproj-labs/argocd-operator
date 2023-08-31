@@ -186,7 +186,6 @@ func TestGetStatefulSet(t *testing.T) {
 func TestListStatefulSets(t *testing.T) {
 	StatefulSet1 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-1"
-		ss.Labels[common.AppK8sKeyComponent] = "new-component-1"
 		ss.Namespace = testNamespace
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
@@ -196,8 +195,6 @@ func TestListStatefulSets(t *testing.T) {
 	})
 	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-3"
-		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		ss.Namespace = testNamespace
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 

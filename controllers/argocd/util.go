@@ -1300,49 +1300,11 @@ func getLogFormat(logField string) string {
 	return common.ArgoCDDefaultLogFormat
 }
 
-func (r *ArgoCDReconciler) setManagedNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDArgoprojKeyManagedBy: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	for _, namespace := range namespaces.Items {
-		r.ManagedNamespaces[namespace.Name] = ""
-	}
-	return nil
-}
-
-func (r *ArgoCDReconciler) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.SourceNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDArgoprojKeyManagedByClusterArgoCD: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	for _, namespace := range namespaces.Items {
-		r.SourceNamespaces[namespace.Name] = ""
-	}
-
-	return nil
-}
-
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
-	for ns, _ := range r.SourceNamespaces {
+	for ns, _ := range r.AppManagedNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
 			for _, namespace := range cr.Spec.SourceNamespaces {
@@ -1358,7 +1320,7 @@ func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.
 				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
 				continue
 			}
-			delete(r.SourceNamespaces, ns)
+			delete(r.AppManagedNamespaces, ns)
 		}
 	}
 	return nil

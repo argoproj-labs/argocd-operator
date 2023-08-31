@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 	"time"
 
@@ -36,9 +37,32 @@ import (
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 )
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
+
+func deletedAt(now time.Time) argoCDOpt {
+	return func(a *argov1alpha1.ArgoCD) {
+		wrapped := metav1.NewTime(now)
+		a.ObjectMeta.DeletionTimestamp = &wrapped
+	}
+}
+
+func addFinalizer(finalizer string) argoCDOpt {
+	return func(a *argov1alpha1.ArgoCD) {
+		a.Finalizers = append(a.Finalizers, finalizer)
+	}
+}
+
+func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
+	return []runtime.Object{
+		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
+		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
+		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),
+		newClusterRoleBindingWithname(common.ArgoCDServerComponent, argocd),
+	}
+}
 
 // When the ArgoCD object has been marked as deleting, we should not reconcile,
 // and trigger the creation of new objects.
@@ -170,13 +194,6 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 	}
 }
 
-func deletedAt(now time.Time) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
-		wrapped := metav1.NewTime(now)
-		a.ObjectMeta.DeletionTimestamp = &wrapped
-	}
-}
-
 func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
@@ -237,17 +254,158 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	}
 }
 
-func addFinalizer(finalizer string) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
-		a.Finalizers = append(a.Finalizers, finalizer)
+func TestSetResourceManagedNamespaces(t *testing.T) {
+	r := makeTestReconciler(t,
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "instance-1"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "instance-2"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-1"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-2"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-2"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-3"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-2"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-4"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-5"
+			n.Labels["something"] = "random"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-6"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-3"
+		}),
+	)
+
+	instanceOne := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+		ac.Namespace = "instance-1"
+	})
+	instanceTwo := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+		ac.Namespace = "instance-2"
+	})
+
+	expectedNsMap := map[string]string{
+		"instance-1": "",
+		"test-ns-1":  "",
+		"test-ns-4":  "",
 	}
+	r.Instance = instanceOne
+	r.setResourceManagedNamespaces()
+	assert.Equal(t, expectedNsMap, r.ResourceManagedNamespaces)
+
+	expectedNsMap = map[string]string{
+		"instance-2": "",
+		"test-ns-2":  "",
+		"test-ns-3":  "",
+	}
+	r.Instance = instanceTwo
+	r.setResourceManagedNamespaces()
+	assert.Equal(t, expectedNsMap, r.ResourceManagedNamespaces)
 }
 
-func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
-	return []runtime.Object{
-		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
-		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
-		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),
-		newClusterRoleBindingWithname(common.ArgoCDServerComponent, argocd),
+func TestSetAppManagedNamespaces(t *testing.T) {
+	r := makeTestReconciler(t,
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "instance-1"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "instance-2"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-1"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-2"
+			n.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD] = "instance-2"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-3"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-4"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-5"
+			n.Labels["something"] = "random"
+		}),
+		makeTestNs(func(n *corev1.Namespace) {
+			n.Name = "test-ns-6"
+			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
+		}),
+	)
+
+	instance := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+		ac.Namespace = "instance-1"
+		ac.Spec.SourceNamespaces = []string{"test-ns-1", "test-ns-2", "test-ns-3"}
+	})
+
+	// test with namespace scoped instance
+	r.Instance = instance
+	r.ClusterScoped = false
+	r.setAppManagedNamespaces()
+	expectedNsMap := map[string]string{}
+	expectedLabelledNsList := []string{}
+	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+
+	listOptions := []client.ListOption{
+		client.MatchingLabels{
+			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: r.Instance.Namespace,
+		},
 	}
+	existingManagedNamespaces, _ := cluster.ListNamespaces(r.Client, listOptions)
+	labelledNs := []string{}
+	for _, n := range existingManagedNamespaces.Items {
+		labelledNs = append(labelledNs, n.Name)
+	}
+	sort.Strings(labelledNs)
+	assert.Equal(t, expectedLabelledNsList, labelledNs)
+
+	// change instance to clusterscoped
+	r.ClusterScoped = true
+	r.setAppManagedNamespaces()
+	expectedNsMap = map[string]string{
+		"test-ns-1": "",
+		"test-ns-3": "",
+	}
+	expectedLabelledNsList = []string{"test-ns-1", "test-ns-3"}
+	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+
+	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)
+	labelledNs = []string{}
+	for _, n := range existingManagedNamespaces.Items {
+		labelledNs = append(labelledNs, n.Name)
+	}
+	sort.Strings(labelledNs)
+	assert.Equal(t, expectedLabelledNsList, labelledNs)
+
+	// update source namespace list
+	r.Instance.Spec.SourceNamespaces = []string{"test-ns-4", "test-ns-5"}
+	r.setAppManagedNamespaces()
+	expectedNsMap = map[string]string{
+		"test-ns-4": "",
+		"test-ns-5": "",
+	}
+	expectedLabelledNsList = []string{"test-ns-4", "test-ns-5"}
+	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+
+	// check that namespace labels are updated
+	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)
+	labelledNs = []string{}
+	for _, n := range existingManagedNamespaces.Items {
+		labelledNs = append(labelledNs, n.Name)
+	}
+	sort.Strings(labelledNs)
+	assert.Equal(t, expectedLabelledNsList, labelledNs)
+
 }

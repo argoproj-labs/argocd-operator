@@ -109,7 +109,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 		return error
 	}
 
-	for ns, _ := range r.ManagedNamespaces {
+	for ns, _ := range r.ResourceManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		namespace := &corev1.Namespace{}

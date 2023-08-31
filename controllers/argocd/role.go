@@ -102,7 +102,7 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 	var roles []*v1.Role
 
 	// create policy rules for each namespace
-	for ns, _ := range r.ManagedNamespaces {
+	for ns, _ := range r.ResourceManagedNamespaces {
 		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
 		// clean-up of roles/rolebindings and removal of namespace from cluster secret
 		namespace := &corev1.Namespace{}
@@ -206,7 +206,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
 			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
 			if val, ok1 := namespace.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD]; ok1 && val == cr.Namespace {
-				delete(r.SourceNamespaces, namespace.Name)
+				delete(r.AppManagedNamespaces, namespace.Name)
 				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
 					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
 				}
@@ -231,7 +231,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 
 		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
 		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
-		if _, ok := r.SourceNamespaces[sourceNamespace]; ok {
+		if _, ok := r.AppManagedNamespaces[sourceNamespace]; ok {
 			// If sourceNamespace includes the name but role is missing in the namespace, create the role
 			if reflect.DeepEqual(existingRole, v1.Role{}) {
 				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
@@ -266,8 +266,8 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 		}
 		roles = append(roles, &existingRole)
 
-		if _, ok := r.SourceNamespaces[sourceNamespace]; !ok {
-			r.SourceNamespaces[sourceNamespace] = ""
+		if _, ok := r.AppManagedNamespaces[sourceNamespace]; !ok {
+			r.AppManagedNamespaces[sourceNamespace] = ""
 		}
 
 	}

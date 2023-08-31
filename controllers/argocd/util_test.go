@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -16,7 +15,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -537,84 +535,6 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 		_, ok := n.Labels[common.ArgoCDArgoprojKeyManagedBy]
 		assert.Equal(t, ok, false)
 	}
-}
-
-func TestSetManagedNamespaces(t *testing.T) {
-	a := makeTestArgoCD()
-	nsList := &v1.NamespaceList{
-		Items: []v1.Namespace{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-1",
-					Labels: map[string]string{
-						common.ArgoCDArgoprojKeyManagedBy: testNamespace,
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-2",
-					Labels: map[string]string{
-						common.ArgoCDArgoprojKeyManagedBy: testNamespace,
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-3",
-					Labels: map[string]string{
-						common.ArgoCDArgoprojKeyManagedBy: "random-namespace",
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-4",
-				},
-			},
-		},
-	}
-	r := makeTestReconciler(t, nsList)
-
-	err := r.setManagedNamespaces(a)
-	assert.NoError(t, err)
-
-	assert.Equal(t, len(r.ManagedNamespaces), 3)
-	for n, _ := range r.ManagedNamespaces {
-		namespace := &corev1.Namespace{}
-		_ = r.Client.Get(context.TODO(), client.ObjectKey{Name: n}, namespace)
-		if namespace.Labels[common.ArgoCDArgoprojKeyManagedBy] != testNamespace && namespace.Name != testNamespace {
-			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", namespace.Name, testNamespace)
-		}
-	}
-}
-
-func TestSetManagedSourceNamespaces(t *testing.T) {
-	a := makeTestArgoCD()
-	a.Spec = v1alpha1.ArgoCDSpec{
-		SourceNamespaces: []string{
-			"test-namespace-1",
-		},
-	}
-	nsList := &v1.NamespaceList{
-		Items: []v1.Namespace{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-1",
-					Labels: map[string]string{
-						common.ArgoCDArgoprojKeyManagedByClusterArgoCD: testNamespace,
-					},
-				},
-			},
-		},
-	}
-	r := makeTestReconciler(t, nsList)
-
-	err := r.setManagedSourceNamespaces(a)
-	assert.NoError(t, err)
-
-	assert.Equal(t, 1, len(r.SourceNamespaces))
-	assert.Contains(t, r.SourceNamespaces, "test-namespace-1")
 }
 
 func TestGenerateRandomString(t *testing.T) {

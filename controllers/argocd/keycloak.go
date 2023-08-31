@@ -963,7 +963,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 	// No Identity Provider is configured by default for non-openshift environments.
 	if IsTemplateAPIAvailable() {
 		baseURL := "https://kubernetes.default.svc.cluster.local"
-		if cluster.IsProxyCluster() {
+		if ok, _ := cluster.IsProxyCluster(); ok {
 			var err error
 			baseURL, err = cluster.GetOpenShiftAPIURL()
 			if err != nil {
