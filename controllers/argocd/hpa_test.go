@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +33,7 @@ func TestReconcileHPA(t *testing.T) {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       nameWithSuffix("server", a),
+			Name:       argoutil.NameWithSuffix(a.Name, "server"),
 		},
 	}
 
@@ -43,7 +44,7 @@ func TestReconcileHPA(t *testing.T) {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       nameWithSuffix("server", a),
+			Name:       argoutil.NameWithSuffix(a.Name, "server"),
 		},
 	}
 

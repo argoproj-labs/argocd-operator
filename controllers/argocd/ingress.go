@@ -130,7 +130,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoprojv1a1.ArgoCD) e
 							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: nameWithSuffix("server", cr),
+									Name: argoutil.NameWithSuffix(cr.Name, "server"),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -205,7 +205,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoprojv1a1.ArgoC
 							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: nameWithSuffix("server", cr),
+									Name: argoutil.NameWithSuffix(cr.Name, "server"),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "https",
 									},

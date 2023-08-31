@@ -540,8 +540,11 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
-	s1 := generateRandomString(20)
-	s2 := generateRandomString(20)
+	s1, err := argoutil.GenerateRandomString(20)
+	assert.NoError(t, err)
+	s2, err := argoutil.GenerateRandomString(20)
+	assert.NoError(t, err)
+
 	assert.NotEqual(t, s1, s2)
 
 	// verify length

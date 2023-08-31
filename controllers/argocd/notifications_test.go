@@ -149,7 +149,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
@@ -199,7 +199,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},

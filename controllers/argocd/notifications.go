@@ -273,7 +273,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
+		RunAsNonRoot: argoutil.BoolPtr(true),
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
@@ -293,7 +293,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -316,7 +316,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
@@ -529,7 +529,7 @@ func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "argocd-notifications")
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Notifications.LogLevel))
 
 	return cmd
 }

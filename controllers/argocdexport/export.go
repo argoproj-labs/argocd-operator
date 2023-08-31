@@ -59,9 +59,18 @@ func (r *ArgoCDExportReconciler) reconcileExport(cr *argoprojv1a1.ArgoCDExport) 
 	return nil
 }
 
+// FetchStorageSecretName will return the name of the Secret to use for the export process.
+func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
+	name := argoutil.NameWithSuffix(export.ObjectMeta.Name, "export")
+	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
+		name = export.Spec.Storage.SecretName
+	}
+	return name
+}
+
 // reconcileExportSecret will ensure that the Secret used for the export process is present.
 func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
-	name := argoutil.FetchStorageSecretName(cr)
+	name := FetchStorageSecretName(cr)
 	// Dummy CR to retrieve secret
 	a := &argoprojv1a1.ArgoCD{}
 	a.ObjectMeta = cr.ObjectMeta

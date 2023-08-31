@@ -82,11 +82,12 @@ const (
 
 var (
 	// client secret for keycloak, argocd and openshift-v4 IdP.
-	oAuthClientSecret       = generateRandomString(8)
-	graceTime         int64 = 75
-	portTLS           int32 = 8443
-	httpPort          int32 = 8080
-	controllerRef     bool  = true
+	oAuthClientSecret string
+
+	graceTime     int64 = 75
+	portTLS       int32 = 8443
+	httpPort      int32 = 8080
+	controllerRef bool  = true
 )
 
 // KeycloakPostData defines the values required to update Keycloak Realm.
@@ -881,6 +882,11 @@ func (r *ArgoCDReconciler) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) 
 
 // creates a keycloak realm configuration which when posted to keycloak using http client creates a keycloak realm.
 func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
+
+	oAuthClientSecret, err := argoutil.GenerateRandomString(8)
+	if err != nil {
+		//TO DO: handle error
+	}
 
 	ks := &CustomKeycloakAPIRealm{
 		Realm:       keycloakRealm,

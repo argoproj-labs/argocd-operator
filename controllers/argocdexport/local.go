@@ -46,9 +46,14 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 		return nil // Nothing to see here, move along...
 	}
 
-	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
+	pvc := NewPersistentVolumeClaim(cr.ObjectMeta)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
 		return nil // PVC exists, move along...
+	}
+
+	pvcResources, err := DefaultPVCResources()
+	if err != nil {
+		// TO DO: decide error handling step here
 	}
 
 	// Allow override of PVC spec
@@ -56,7 +61,7 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 		pvc.Spec = *cr.Spec.Storage.PVC
 	} else {
 		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		pvc.Spec.Resources = argoutil.DefaultPVCResources()
+		pvc.Spec.Resources = pvcResources
 	}
 
 	if err := controllerutil.SetControllerReference(cr, pvc, r.Scheme); err != nil {

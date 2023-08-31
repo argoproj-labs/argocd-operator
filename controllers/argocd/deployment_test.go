@@ -949,13 +949,13 @@ func TestArgoCDReconciler_reconcileServerDeployment(t *testing.T) {
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: argoutil.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1164,13 +1164,13 @@ func TestArgoCDReconciler_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: argoutil.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1250,13 +1250,13 @@ func TestArgoCDReconciler_reconcileServerDeploymentChangedToInsecure(t *testing.
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: argoutil.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1542,7 +1542,7 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1551,7 +1551,7 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1613,7 +1613,7 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1622,7 +1622,7 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},

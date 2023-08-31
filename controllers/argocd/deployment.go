@@ -25,6 +25,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 
@@ -75,7 +76,7 @@ func (r *ArgoCDReconciler) getArgoCDExport(cr *argoprojv1a1.ArgoCD) *argoprojv1a
 }
 
 func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
-	name := argoutil.NameWithSuffix(export.ObjectMeta, "export")
+	name := argoutil.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}
@@ -118,7 +119,7 @@ func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoutil.FetchStorageSecretName(cr),
+						Name: argocdexport.FetchStorageSecretName(cr),
 					},
 					Key: "aws.access.key.id",
 				},
@@ -130,7 +131,7 @@ func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoutil.FetchStorageSecretName(cr),
+						Name: argocdexport.FetchStorageSecretName(cr),
 					},
 					Key: "aws.secret.access.key",
 				},
@@ -245,10 +246,10 @@ func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Repo.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Repo.LogFormat))
 
 	// *** NOTE ***
 	// Do Not add any new default command line arguments below this.
@@ -307,10 +308,10 @@ func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Server.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Server.LogFormat))
 
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
 	err := isMergable(extraArgs, cmd)
@@ -330,7 +331,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 	if len(extraArgs) > 0 {
 		for _, arg := range extraArgs {
 			if len(arg) > 2 && arg[:2] == "--" {
-				if ok := contains(cmd, arg); ok {
+				if ok := argoutil.ContainsString(cmd, arg); ok {
 					err := errors.New("duplicate argument error")
 					log.Error(err, fmt.Sprintf("Arg %s is already part of the default command arguments", arg))
 					return err
@@ -348,7 +349,7 @@ func getDexServerAddress(cr *argoprojv1a1.ArgoCD) string {
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
+	return argoutil.FqdnServiceRef(argoutil.NameWithSuffix(cr.Name, "repo-server"), cr.Namespace, common.ArgoCDDefaultRepoServerPort)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -454,14 +455,14 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 		Env:       proxyEnvVars(),
 		Resources: getGrafanaResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(472),
+			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsUser:    argoutil.Int64Ptr(472),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -487,7 +488,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: nameWithSuffix("grafana-config", cr),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "grafana.ini",
@@ -500,7 +501,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: nameWithSuffix("grafana-config", cr),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "datasource.yaml",
@@ -513,7 +514,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: nameWithSuffix("grafana-config", cr),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "provider.yaml",
@@ -526,7 +527,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: nameWithSuffix("grafana-dashboards", cr),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-dashboards"),
 					},
 				},
 			},
@@ -588,14 +589,14 @@ func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, use
 		Resources: getRedisResources(cr),
 		Env:       proxyEnvVars(),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(999),
+			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsUser:    argoutil.Int64Ptr(999),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -612,7 +613,7 @@ func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, use
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -680,7 +681,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+								common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
 							},
 						},
 						TopologyKey: common.FailureDomainBetaK8sKeyZone,
@@ -692,7 +693,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 				{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+							common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
 						},
 					},
 					TopologyKey: common.K8sKeyHostname,
@@ -724,13 +725,13 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 		},
 		Resources: getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -761,7 +762,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 		Env:             proxyEnvVars(),
 		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
@@ -809,16 +810,16 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
 	}
 
 	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
-		RunAsUser:    int64Ptr(1000),
-		FSGroup:      int64Ptr(1000),
+		RunAsNonRoot: argoutil.BoolPtr(true),
+		RunAsUser:    argoutil.Int64Ptr(1000),
+		FSGroup:      argoutil.Int64Ptr(1000),
 	}
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
@@ -907,13 +908,13 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 		Resources:       getArgoRepoResources(cr),
 		Env:             proxyEnvVars(),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1001,13 +1002,13 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 		},
 		Resources: getArgoRepoResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: repoServerVolumeMounts,
 	}}
@@ -1064,7 +1065,7 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1073,7 +1074,7 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1218,13 +1219,13 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, us
 		},
 		Resources: getArgoServerResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -1271,7 +1272,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, us
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -1280,7 +1281,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, us
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},

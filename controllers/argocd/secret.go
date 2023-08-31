@@ -445,7 +445,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Ar
 		namespaces = append(namespaces, namespace.Name)
 	}
 
-	if !containsString(namespaces, cr.Namespace) {
+	if !argoutil.ContainsString(namespaces, cr.Namespace) {
 		namespaces = append(namespaces, cr.Namespace)
 	}
 	sort.Strings(namespaces)
@@ -477,7 +477,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Ar
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
-					if !containsString(ns, strings.TrimSpace(n)) {
+					if !argoutil.ContainsString(ns, strings.TrimSpace(n)) {
 						ns = append(ns, strings.TrimSpace(n))
 					}
 				}

@@ -384,7 +384,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						VerifyTLS: boolPtr(false),
+						VerifyTLS: argoutil.BoolPtr(false),
 					},
 				}
 			}),
@@ -396,7 +396,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						VerifyTLS: boolPtr(true),
+						VerifyTLS: argoutil.BoolPtr(true),
 					},
 				}
 			}),

@@ -28,7 +28,6 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
@@ -52,7 +51,7 @@ func getArgoExportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoutil.FetchStorageSecretName(cr),
+						Name: FetchStorageSecretName(cr),
 					},
 					Key: "aws.access.key.id",
 				},
@@ -64,7 +63,7 @@ func getArgoExportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: argoutil.FetchStorageSecretName(cr),
+						Name: FetchStorageSecretName(cr),
 					},
 					Key: "aws.secret.access.key",
 				},
@@ -115,7 +114,7 @@ func getArgoSecretVolume(name string, cr *argoprojv1a1.ArgoCDExport) corev1.Volu
 
 	volume.VolumeSource = corev1.VolumeSource{
 		Secret: &corev1.SecretVolumeSource{
-			SecretName: argoutil.FetchStorageSecretName(cr),
+			SecretName: FetchStorageSecretName(cr),
 		},
 	}
 
@@ -168,7 +167,7 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
 func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
-	boolPtr := func(value bool) *bool {
+	argoutil.BoolPtr := func(value bool) *bool {
 		return &value
 	}
 
@@ -179,13 +178,13 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client c
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: getArgoExportVolumeMounts(),
 	}}
@@ -205,7 +204,10 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client c
 		RunAsGroup: &id,
 		FSGroup:    &id,
 	}
-	argocd.AddSeccompProfileForOpenShift(client, &pod)
+
+	// TO DO: move this function to mutation package
+
+	// argocd.AddSeccompProfileForOpenShift(client, &pod)
 
 	return pod
 }

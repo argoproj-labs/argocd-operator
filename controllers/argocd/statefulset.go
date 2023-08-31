@@ -178,13 +178,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
+				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				RunAsNonRoot: argoutil.BoolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -249,13 +249,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
+				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				RunAsNonRoot: argoutil.BoolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -300,13 +300,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 		Name:            "config-init",
 		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -375,7 +375,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -544,13 +544,13 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 		},
 		Resources: getArgoApplicationControllerResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -571,7 +571,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -580,7 +580,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -626,13 +626,13 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: boolPtr(false),
+				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
+				RunAsNonRoot: argoutil.BoolPtr(true),
 			},
 			VolumeMounts: getArgoImportVolumeMounts(),
 		}}

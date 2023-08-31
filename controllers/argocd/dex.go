@@ -240,13 +240,13 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error
 		},
 		Resources: getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -267,13 +267,13 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			RunAsNonRoot: argoutil.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -370,7 +370,7 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("dex-server", cr),
+		common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "dex-server"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

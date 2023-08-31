@@ -61,7 +61,7 @@ func getCAConfigMapName(cr *argoprojv1a1.ArgoCD) string {
 	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
 		return cr.Spec.TLS.CA.ConfigMapName
 	}
-	return nameWithSuffix(common.ArgoCDCASuffix, cr)
+	return argoutil.NameWithSuffix(cr.Name, common.ArgoCDCASuffix)
 }
 
 // getConfigManagementPlugins will return the config management plugins for the given ArgoCD.

@@ -17,63 +17,21 @@ package argoutil
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
-// AppendStringMap will append the map `add` to the given map `src` and return the result.
-func AppendStringMap(src map[string]string, add map[string]string) map[string]string {
-	res := src
-	if len(src) <= 0 {
-		res = make(map[string]string, len(add))
-	}
-	for key, val := range add {
-		res[key] = val
-	}
-	return res
-}
-
-// CombineImageTag will return the combined image and tag in the proper format for tags and digests.
-func CombineImageTag(img string, tag string) string {
-	if strings.Contains(tag, ":") {
-		return fmt.Sprintf("%s@%s", img, tag) // Digest
-	} else if len(tag) > 0 {
-		return fmt.Sprintf("%s:%s", img, tag) // Tag
-	}
-	return img // No tag, use default
-}
-
-// CreateEvent will create a new Kubernetes Event with the given action, message, reason and involved uid.
-func CreateEvent(client client.Client, eventType, action, message, reason string, objectMeta metav1.ObjectMeta, typeMeta metav1.TypeMeta) error {
-	event := newEvent(objectMeta)
-	event.Action = action
-	event.Type = eventType
-	event.InvolvedObject = corev1.ObjectReference{
-		Name:            objectMeta.Name,
-		Namespace:       objectMeta.Namespace,
-		UID:             objectMeta.UID,
-		ResourceVersion: objectMeta.ResourceVersion,
-		Kind:            typeMeta.Kind,
-		APIVersion:      typeMeta.APIVersion,
-	}
-	event.Message = message
-	event.Reason = reason
-	event.CreationTimestamp = metav1.Now()
-	event.FirstTimestamp = event.CreationTimestamp
-	event.LastTimestamp = event.CreationTimestamp
-	return client.Create(context.TODO(), event)
+// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
+func NameWithSuffix(name, suffix string) string {
+	return fmt.Sprintf("%s-%s", name, suffix)
 }
 
 // GenerateResourceName generates names for namespace scoped resources
 func GenerateResourceName(instanceName, component string) string {
-	return fmt.Sprintf("%s-%s", instanceName, component)
+	return NameWithSuffix(instanceName, component)
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
@@ -87,41 +45,12 @@ func FetchObject(client client.Client, namespace string, name string, obj client
 	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
 }
 
-// FetchStorageSecretName will return the name of the Secret to use for the export process.
-func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
-	name := NameWithSuffix(export.ObjectMeta, "export")
-	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
-		name = export.Spec.Storage.SecretName
-	}
-	return name
-}
-
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
 // If an error occurs as part of the check, the function will return false.
 func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
 	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
 }
 
-// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
-// Example: If ObjectMeta.Name is "test" and suffix is "object", the value of "test-object" will be returned.
-func NameWithSuffix(meta metav1.ObjectMeta, suffix string) string {
-	return fmt.Sprintf("%s-%s", meta.Name, suffix)
+func FilterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }
-
-func newEvent(meta metav1.ObjectMeta) *corev1.Event {
-	event := &corev1.Event{}
-	event.ObjectMeta.GenerateName = fmt.Sprintf("%s-", meta.Name)
-	event.ObjectMeta.Labels = meta.Labels
-	event.ObjectMeta.Namespace = meta.Namespace
-	return event
-}
-
-// LabelsForCluster returns the labels for all cluster resources.
-// func LabelsForCluster(instanceName, component string) map[string]string {
-// 	return common.DefaultLabels(instanceName, component)
-// }
-
-// annotationsForCluster returns the annotations for all cluster resources.
-// func AnnotationsForCluster(instanceName, instanceNamespace string) map[string]string {
-// 	return common.DefaultAnnotations(instanceName, instanceNamespace)
-// }

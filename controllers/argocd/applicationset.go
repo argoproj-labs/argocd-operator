@@ -44,7 +44,7 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, getRepoServerAddress(cr))
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
@@ -247,9 +247,9 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 					"ALL",
 				},
 			},
-			AllowPrivilegeEscalation: boolPtr(false),
-			ReadOnlyRootFilesystem:   boolPtr(true),
-			RunAsNonRoot:             boolPtr(true),
+			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+			ReadOnlyRootFilesystem:   argoutil.BoolPtr(true),
+			RunAsNonRoot:             argoutil.BoolPtr(true),
 		},
 	}
 }
@@ -513,7 +513,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+		common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {

@@ -37,7 +37,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -46,7 +46,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   argoutil.BoolPtr(true),
 				},
 			},
 		},
@@ -497,7 +497,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: argoutil.BoolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -509,7 +509,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: argoutil.BoolPtr(true),
 				MinShards:             1,
 				MaxShards:             4,
 				ClustersPerShard:      3,
@@ -521,7 +521,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: boolPtr(true),
+				DynamicScalingEnabled: argoutil.BoolPtr(true),
 				MinShards:             1,
 				MaxShards:             2,
 				ClustersPerShard:      1,
