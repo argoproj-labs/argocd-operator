@@ -363,9 +363,9 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: r.Instance.Namespace,
 		},
 	}
-	existingManagedNamesapces, _ := cluster.ListNamespaces(r.Client, listOptions)
+	existingManagedNamespaces, _ := cluster.ListNamespaces(r.Client, listOptions)
 	labelledNs := []string{}
-	for _, n := range existingManagedNamesapces.Items {
+	for _, n := range existingManagedNamespaces.Items {
 		labelledNs = append(labelledNs, n.Name)
 	}
 	sort.Strings(labelledNs)
@@ -381,9 +381,9 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 	expectedLabelledNsList = []string{"test-ns-1", "test-ns-3"}
 	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
 
-	existingManagedNamesapces, _ = cluster.ListNamespaces(r.Client, listOptions)
+	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)
 	labelledNs = []string{}
-	for _, n := range existingManagedNamesapces.Items {
+	for _, n := range existingManagedNamespaces.Items {
 		labelledNs = append(labelledNs, n.Name)
 	}
 	sort.Strings(labelledNs)
@@ -400,9 +400,9 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
 
 	// check that namespace labels are updated
-	existingManagedNamesapces, _ = cluster.ListNamespaces(r.Client, listOptions)
+	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)
 	labelledNs = []string{}
-	for _, n := range existingManagedNamesapces.Items {
+	for _, n := range existingManagedNamespaces.Items {
 		labelledNs = append(labelledNs, n.Name)
 	}
 	sort.Strings(labelledNs)

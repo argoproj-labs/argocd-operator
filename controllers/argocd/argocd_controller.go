@@ -345,13 +345,13 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 		},
 	}
 
-	existingManagedNamesapces, err := cluster.ListNamespaces(r.Client, listOptions)
+	existingManagedNamespaces, err := cluster.ListNamespaces(r.Client, listOptions)
 	if err != nil {
 		r.Logger.Error(err, "setSourceNamespaces: failed to list namespaces")
 		return err
 	}
 	existingManagedNsMap := make(map[string]string)
-	for _, ns := range existingManagedNamesapces.Items {
+	for _, ns := range existingManagedNamespaces.Items {
 		existingManagedNsMap[ns.Name] = ""
 	}
 

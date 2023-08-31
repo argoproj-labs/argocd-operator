@@ -29,7 +29,7 @@ func newNamespace(objMeta metav1.ObjectMeta, spec corev1.NamespaceSpec) *corev1.
 	}
 }
 
-// RequestNamesapce accepts a NamespaceRequest object and returns a populated namespace resource.
+// RequestNamespace accepts a NamespaceRequest object and returns a populated namespace resource.
 // It also runs any specified mutations to the namespace resource before returning it
 func RequestNamespace(request NamespaceRequest) (*corev1.Namespace, error) {
 	var (
