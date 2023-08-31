@@ -3,6 +3,7 @@ package workloads
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
@@ -100,4 +101,15 @@ func RequestDeployment(request DeploymentRequest) (*appsv1.Deployment, error) {
 	}
 
 	return deployment, nil
+}
+
+func UpdateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
+		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+		*changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
+		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+		*changed = true
+	}
 }

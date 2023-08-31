@@ -15,7 +15,22 @@
 package argoutil
 
 import (
+	"strings"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("argoutil")
+
+func GetLogLevel(logField string) string {
+
+	switch strings.ToLower(logField) {
+	case "debug",
+		"info",
+		"warn",
+		"error":
+		return logField
+	}
+	return common.ArgoCDDefaultLogLevel
+}
