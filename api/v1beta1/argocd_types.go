@@ -160,7 +160,8 @@ type ArgoCDApplicationSet struct {
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
 
-	SCMRootCaPath string `json:"scmRootCaPath,omitempty"`
+	// SCMRootCAPath is the path where the Gitlab SCM Provider's TLS certificate is mounted on the ApplicationSet Controller.
+	SCMRootCAPath string `json:"scmRootCaPath,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

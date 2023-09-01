@@ -46,9 +46,9 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
-	if cr.Spec.ApplicationSet.SCMRootCaPath != "" {
+	if cr.Spec.ApplicationSet.SCMRootCAPath != "" {
 		cmd = append(cmd, "--scm-root-ca-path")
-		cmd = append(cmd, cr.Spec.ApplicationSet.SCMRootCaPath)
+		cmd = append(cmd, cr.Spec.ApplicationSet.SCMRootCAPath)
 	}
 
 	// ApplicationSet command arguments provided by the user
@@ -150,7 +150,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 		},
 	}
 	addSCMGitlabVolumeMount := false
-	if cr.Spec.ApplicationSet.SCMRootCaPath != "" {
+	if cr.Spec.ApplicationSet.SCMRootCAPath != "" {
 		cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, cm) {
 			addSCMGitlabVolumeMount = true
@@ -277,7 +277,7 @@ func applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) 
 	if addSCMGitlabVolumeMount {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      "appset-gitlab-scm-tls-cert",
-			MountPath: cr.Spec.ApplicationSet.SCMRootCaPath,
+			MountPath: cr.Spec.ApplicationSet.SCMRootCAPath,
 		})
 	}
 	return container
