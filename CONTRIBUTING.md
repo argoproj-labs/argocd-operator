@@ -1,6 +1,6 @@
 # Contributing
 
-Anyone interested in contributing to the Argo CD operator is welcomes and 
+Anyone interested in contributing to the Argo CD operator is welcome and 
 should start by reviewing the [development][docs_dev] documentation.
 
-[docs_dev]:./docs/contribute/development.md
+[docs_dev]:./docs/developer-guide/contributing.md
