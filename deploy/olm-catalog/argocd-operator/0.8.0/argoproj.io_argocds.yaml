@@ -26,7 +26,9 @@ spec:
   scope: Namespaced
   versions:
   - deprecated: true
-    deprecationWarning: ArgoCD v1alpha1 is deprecated, please use v1beta1 instead.
+    deprecationWarning: ArgoCD v1alpha1 version is deprecated and will be converted
+      to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API
+      version.
     name: v1alpha1
     schema:
       openAPIV3Schema:
