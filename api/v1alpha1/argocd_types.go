@@ -36,7 +36,7 @@ func init() {
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 // Important: Run "make" to regenerate code after modifying this file
 
-// +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 is deprecated, please use v1beta1 instead."
+// +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 version is deprecated and will be converted to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API version."
 //+kubebuilder:object:root=true
 
 // ArgoCD is the Schema for the argocds API
