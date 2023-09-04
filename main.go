@@ -104,6 +104,7 @@ func main() {
 		setupLog.Info("error parsing the labelSelector '%s'.", labelSelectorFlag)
 		os.Exit(1)
 	}
+	setupLog.Info(fmt.Sprintf("Watching labelselector \"%s\"", labelSelectorFlag))
 
 	// Inspect cluster to verify availability of extra features
 	if err := argocd.InspectCluster(); err != nil {
@@ -194,7 +195,8 @@ func main() {
 			os.Exit(1)
 		}
 	}
-
+	setupLog.Info("AAAAAAAAAAA0")
+	setupLog.Info(labelSelectorFlag)
 	if err = (&argocd.ReconcileArgoCD{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),

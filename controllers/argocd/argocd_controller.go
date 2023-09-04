@@ -107,17 +107,18 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	//debug line
+	fmt.Println(r.LabelSelector)
 
 	// Fetch labelSelector from r.LabelSelector (command-line option)
 	labelSelector, err := labels.Parse(r.LabelSelector)
 	if err != nil {
-		reqLogger.Info("error parsing the labelSelector '%s'.", labelSelector)
+		reqLogger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
 		return reconcile.Result{}, err
 	}
-
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
-		reqLogger.Info("the ArgoCD instance does not match the label selector %s and skipping for reconcillation", r.LabelSelector)
+		reqLogger.Info(fmt.Sprintf("the ArgoCD instance does not match the label selector '%s' and skipping for reconcillation", r.LabelSelector))
 		return reconcile.Result{}, nil
 	}
 
