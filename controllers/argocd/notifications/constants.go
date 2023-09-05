@@ -4,7 +4,7 @@ package notifications
 const (
 	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
 	ArgoCDNotificationsControllerComponent = "notifications-controller"
-	RoleKind                               = "role"
+	RoleKind                               = "Role"
 	TLSCerts                               = "tls-certs"
 	ArgoCDRepoServerTLS                    = "argocd-repo-server-tls"
 	CapabilityDropAll                      = "ALL"

@@ -10,7 +10,7 @@ import (
 )
 
 type NotificationsReconciler struct {
-	Client   *client.Client
+	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *v1alpha1.ArgoCD
 	Logger   logr.Logger
@@ -53,7 +53,7 @@ func (nr *NotificationsReconciler) Reconcile() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) deleteResources() error {
+func (nr *NotificationsReconciler) DeleteResources() error {
 
 	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 	var deletionError error = nil

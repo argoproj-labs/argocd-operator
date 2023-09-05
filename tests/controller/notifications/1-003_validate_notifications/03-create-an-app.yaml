@@ -1,0 +1,30 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    set -e
+
+    cat << EOF | kubectl apply -f -
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: my-app-3
+      namespace: $NAMESPACE
+      annotations:
+        "notifications.argoproj.io/subscribe.on-created.gmail": "jdfake@email.com"
+    spec:
+      destination:
+        namespace: $NAMESPACE
+        server: https://kubernetes.default.svc
+      project: default
+      source:
+        repoURL: https://github.com/redhat-developer/gitops-operator
+        path: test/examples/nginx
+        targetRevision: HEAD
+    EOF
+
+    # Loop to wait for Application to be synced and healthy
+    while [[ "$(kubectl get application my-app-3 -n $NAMESPACE -o jsonpath='{.status.sync.status}')" != "Synced" ]] || [[ "$(kubectl get application my-app-3 -n $NAMESPACE -o jsonpath='{.status.health.status}')" != "Healthy" ]]; do
+      echo "Waiting for Application to be Synced and Healthy..."
+      sleep 5
+    done

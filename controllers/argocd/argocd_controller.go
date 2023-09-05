@@ -163,6 +163,8 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// 	return reconcile.Result{}, err
 	// }
 
+	r.InitializeControllerReconcilers()
+
 	if err = r.reconcileControllers(); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -264,7 +266,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.NotificationsController = &notifications.NotificationsReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}

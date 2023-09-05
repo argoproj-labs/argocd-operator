@@ -37,7 +37,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 		return err
 	}
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileRole: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -49,7 +49,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 		return err
 	}
 
-	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, *nr.Client)
+	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
@@ -60,7 +60,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 			nr.Logger.Error(err, "reconcileRole: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		}
 
-		if err = permissions.CreateRole(desiredRole, *nr.Client); err != nil {
+		if err = permissions.CreateRole(desiredRole, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileRole: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
@@ -70,7 +70,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 
 	if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
 		existingRole.Rules = desiredRole.Rules
-		if err = permissions.UpdateRole(existingRole, *nr.Client); err != nil {
+		if err = permissions.UpdateRole(existingRole, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileRole: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
 			return err
 		}
@@ -80,7 +80,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 }
 
 func (nr *NotificationsReconciler) DeleteRole(name, namespace string) error {
-	if err := permissions.DeleteRole(name, namespace, *nr.Client); err != nil {
+	if err := permissions.DeleteRole(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err
 	}

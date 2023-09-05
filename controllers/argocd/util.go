@@ -773,7 +773,7 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Spec.Notifications.Enabled {
 		log.Info("reconciling Notifications controller")
-		if err := r.reconcileNotificationsController(cr); err != nil {
+		if err := r.NotificationsController.Reconcile(); err != nil {
 			return err
 		}
 	}
@@ -967,7 +967,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 				return false
 			}
 			if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
-				err := r.deleteNotificationsResources(newCR)
+				err := r.NotificationsController.DeleteResources()
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
 						newCR.Name, newCR.Namespace))

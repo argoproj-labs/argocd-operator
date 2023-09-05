@@ -36,7 +36,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return err
 	}
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileConfigMap: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -48,7 +48,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return err
 	}
 
-	existingConfigMap, err := workloads.GetConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace, *nr.Client)
+	existingConfigMap, err := workloads.GetConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to retrieve configMap", "name", existingConfigMap.Name, "namespace", existingConfigMap.Namespace)
@@ -59,7 +59,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to set owner reference for configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 		}
 
-		if err = workloads.CreateConfigMap(desiredConfigMap, *nr.Client); err != nil {
+		if err = workloads.CreateConfigMap(desiredConfigMap, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to create configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 			return err
 		}
@@ -72,7 +72,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 }
 
 func (nr *NotificationsReconciler) DeleteConfigMap(name, namespace string) error {
-	if err := workloads.DeleteConfigMap(name, namespace, *nr.Client); err != nil {
+	if err := workloads.DeleteConfigMap(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", name, "namespace", namespace)
 		return err
 	}

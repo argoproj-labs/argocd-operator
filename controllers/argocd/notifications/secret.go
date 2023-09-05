@@ -38,7 +38,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return err
 	}
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileSecret: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -50,7 +50,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return err
 	}
 
-	existingSecret, err := workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, *nr.Client)
+	existingSecret, err := workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", existingSecret.Name, "namespace", existingSecret.Namespace)
@@ -61,7 +61,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 			nr.Logger.Error(err, "reconcileSecret: failed to set owner reference for secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		}
 
-		if err = workloads.CreateSecret(desiredSecret, *nr.Client); err != nil {
+		if err = workloads.CreateSecret(desiredSecret, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileSecret: failed to create secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 			return err
 		}
@@ -74,7 +74,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 }
 
 func (nr *NotificationsReconciler) DeleteSecret(name, namespace string) error {
-	if err := workloads.DeleteSecret(name, namespace, *nr.Client); err != nil {
+	if err := workloads.DeleteSecret(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", name, "namespace", namespace)
 		return err
 	}

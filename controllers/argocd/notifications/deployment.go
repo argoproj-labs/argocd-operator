@@ -89,7 +89,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		},
 	}
 
-	AddSeccompProfileForOpenShift(nr.Logger, *nr.Client, &podSpec)
+	AddSeccompProfileForOpenShift(nr.Logger, nr.Client, &podSpec)
 
 	deploymentRequest := workloads.DeploymentRequest{
 		ObjectMeta: metav1.ObjectMeta{
@@ -105,6 +105,16 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 			},
 			Template: corev1.PodTemplateSpec{
 				Spec: podSpec,
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						common.AppK8sKeyName: name,
+					},
+				},
+			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common.AppK8sKeyName: name,
+				},
 			},
 		},
 
@@ -123,7 +133,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		return err
 	}
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileDeployment: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -135,7 +145,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		return err
 	}
 
-	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, *nr.Client)
+	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
@@ -146,7 +156,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 			nr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		}
 
-		if err = workloads.CreateDeployment(desiredDeployment, *nr.Client); err != nil {
+		if err = workloads.CreateDeployment(desiredDeployment, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
@@ -182,7 +192,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 
 	if deploymentChanged {
 
-		if err = workloads.UpdateDeployment(existingDeployment, *nr.Client); err != nil {
+		if err = workloads.UpdateDeployment(existingDeployment, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 			return err
 		}
@@ -193,7 +203,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 }
 
 func (nr *NotificationsReconciler) DeleteDeployment(name, namespace string) error {
-	if err := workloads.DeleteDeployment(name, namespace, *nr.Client); err != nil {
+	if err := workloads.DeleteDeployment(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}

@@ -18,7 +18,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 	nr.Logger.Info("reconciling roleBindings")
 
 	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
-	sa, err := permissions.GetServiceAccount(name, nr.Instance.Namespace, *nr.Client)
+	sa, err := permissions.GetServiceAccount(name, nr.Instance.Namespace, nr.Client)
 
 	if err != nil {
 		nr.Logger.Error(err, "reconsileRoleBinding: failed to get serviceaccount", "name", name, "namespace", nr.Instance.Namespace)
@@ -48,7 +48,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
 	desiredRoleBinding := permissions.RequestRoleBinding(roleBindingRequest)
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileRole: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -60,7 +60,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		return err
 	}
 
-	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, *nr.Client)
+	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
@@ -71,7 +71,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 			nr.Logger.Error(err, "reconcileRole: failed to set owner reference for role", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		}
 
-		if err = permissions.CreateRoleBinding(desiredRoleBinding, *nr.Client); err != nil {
+		if err = permissions.CreateRoleBinding(desiredRoleBinding, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
@@ -83,7 +83,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		!reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
 		existingRoleBinding.RoleRef = desiredRoleBinding.RoleRef
 		existingRoleBinding.Subjects = desiredRoleBinding.Subjects
-		if err = permissions.UpdateRoleBinding(existingRoleBinding, *nr.Client); err != nil {
+		if err = permissions.UpdateRoleBinding(existingRoleBinding, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to update roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
 			return err
 		}
@@ -95,7 +95,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 }
 
 func (nr *NotificationsReconciler) DeleteRoleBinding(name, namespace string) error {
-	if err := permissions.DeleteRoleBinding(name, namespace, *nr.Client); err != nil {
+	if err := permissions.DeleteRoleBinding(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}

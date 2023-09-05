@@ -25,7 +25,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 
 	desiredServiceAccount := permissions.RequestServiceAccount(serviceAccountRequest)
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, *nr.Client)
+	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve namespace", "name", nr.Instance.Namespace)
 		return err
@@ -37,7 +37,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 		return err
 	}
 
-	existingServiceAccount, err := permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, *nr.Client)
+	existingServiceAccount, err := permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", existingServiceAccount.Name, "namespace", existingServiceAccount.Namespace)
@@ -48,7 +48,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to set owner reference for serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 		}
 
-		if err = permissions.CreateServiceAccount(desiredServiceAccount, *nr.Client); err != nil {
+		if err = permissions.CreateServiceAccount(desiredServiceAccount, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to create serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
@@ -61,7 +61,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 }
 
 func (nr *NotificationsReconciler) DeleteServiceAccount(name, namespace string) error {
-	if err := permissions.DeleteServiceAccount(name, namespace, *nr.Client); err != nil {
+	if err := permissions.DeleteServiceAccount(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
 	}
