@@ -24,7 +24,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
@@ -47,7 +47,7 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 	}
 
 	pvc := NewPersistentVolumeClaim(cr.ObjectMeta)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
 		return nil // PVC exists, move along...
 	}
 
@@ -76,5 +76,5 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 
 	// Create event
 	log.Info("creating new event")
-	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
+	return util.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
 }

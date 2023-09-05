@@ -28,7 +28,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoExportCommand will return the command for the ArgoCD export process.
@@ -86,7 +86,7 @@ func getArgoExportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
 		tag = common.ArgoCDDefaultExportJobVersion
 	}
 
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getArgoExportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
@@ -167,10 +167,6 @@ func newCronJob(cr *argoprojv1a1.ArgoCDExport) *batchv1.CronJob {
 func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client client.Client) corev1.PodSpec {
 	pod := corev1.PodSpec{}
 
-	argoutil.BoolPtr := func(value bool) *bool {
-		return &value
-	}
-
 	pod.Containers = []corev1.Container{{
 		Command:         getArgoExportCommand(cr),
 		Env:             getArgoExportContainerEnv(cr),
@@ -178,13 +174,13 @@ func newExportPodSpec(cr *argoprojv1a1.ArgoCDExport, argocdName string, client c
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-export",
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsNonRoot: util.BoolPtr(true),
 		},
 		VolumeMounts: getArgoExportVolumeMounts(),
 	}}
@@ -230,7 +226,7 @@ func (r *ArgoCDExportReconciler) reconcileCronJob(cr *argoprojv1a1.ArgoCDExport)
 	}
 
 	cj := newCronJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
+	if util.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
 			return r.Client.Update(context.TODO(), cj)
@@ -265,7 +261,7 @@ func (r *ArgoCDExportReconciler) reconcileJob(cr *argoprojv1a1.ArgoCDExport) err
 	}
 
 	job := newJob(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
+	if util.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted

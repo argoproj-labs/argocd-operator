@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -34,8 +35,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
@@ -227,11 +226,11 @@ func makeTestPolicyRules() []v1.PolicyRule {
 func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
 	return func(a *argoprojv1alpha1.ArgoCD) {
-		key, err := argoutil.NewPrivateKey()
+		key, err := util.NewPrivateKey()
 		assert.NoError(t, err)
-		cert, err := argoutil.NewSelfSignedCACertificate(a.Name, key)
+		cert, err := util.NewSelfSignedCACertificate(a.Name, key)
 		assert.NoError(t, err)
-		encoded := argoutil.EncodeCertificatePEM(cert)
+		encoded := util.EncodeCertificatePEM(cert)
 
 		a.Spec.TLS.InitialCerts = map[string]string{
 			host: string(encoded),

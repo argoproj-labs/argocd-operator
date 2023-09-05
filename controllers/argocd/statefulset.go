@@ -30,7 +30,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func getRedisHAReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
@@ -78,7 +78,7 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 		},
 	}
 	if cr.Spec.NodePlacement != nil {
-		ss.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		ss.Spec.Template.Spec.NodeSelector = util.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	ss.Spec.ServiceName = name
@@ -98,18 +98,18 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
+			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
 		},
 	}
 
-	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
+	ss.Spec.ServiceName = util.NameWithSuffix(cr.Name, "redis-ha")
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
-			common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
+			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
 		},
 	}
 
@@ -118,7 +118,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
+						common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
 					},
 				},
 				TopologyKey: common.K8sKeyHostname,
@@ -178,13 +178,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+				AllowPrivilegeEscalation: util.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: argoutil.BoolPtr(true),
+				RunAsNonRoot: util.BoolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -249,13 +249,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+				AllowPrivilegeEscalation: util.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: argoutil.BoolPtr(true),
+				RunAsNonRoot: util.BoolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -300,13 +300,13 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 		Name:            "config-init",
 		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsNonRoot: util.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -336,7 +336,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 	}
 	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 
-	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
+	ss.Spec.Template.Spec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-redis-ha")
 
 	var terminationGracePeriodSeconds int64 = 60
 	ss.Spec.Template.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
@@ -375,7 +375,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -390,7 +390,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 	}
 
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
 			return r.Client.Delete(context.TODO(), existing)
@@ -517,9 +517,9 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
-	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	controllerEnv = util.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
 	// Let user specify their own environment first
-	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
+	controllerEnv = util.EnvMerge(controllerEnv, util.ProxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
@@ -544,13 +544,13 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 		},
 		Resources: getArgoApplicationControllerResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsNonRoot: util.BoolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -564,14 +564,14 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 		},
 	}}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
-	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
+	podSpec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-application-controller")
 	podSpec.Volumes = []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -580,7 +580,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -592,7 +592,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: nameWithSuffix("argocd-application-controller", cr),
+							common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "argocd-application-controller"),
 						},
 					},
 					TopologyKey: common.K8sKeyHostname,
@@ -620,19 +620,19 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 	} else {
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.Client, cr),
-			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
+			Env:             util.ProxyEnvVars(getArgoImportContainerEnv(export)...),
 			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+				AllowPrivilegeEscalation: util.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: argoutil.BoolPtr(true),
+				RunAsNonRoot: util.BoolPtr(true),
 			},
 			VolumeMounts: getArgoImportVolumeMounts(),
 		}}
@@ -648,7 +648,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 	}
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
@@ -698,7 +698,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
 			return err
 		}
@@ -723,7 +723,7 @@ func (r *ArgoCDReconciler) reconcileStatefulSets(cr *argoprojv1a1.ArgoCD, useTLS
 
 // triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
 func (r *ArgoCDReconciler) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
-	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
+	if !util.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
 		return nil
 	}

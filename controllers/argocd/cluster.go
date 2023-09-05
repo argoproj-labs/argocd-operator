@@ -4,8 +4,9 @@ import (
 	"os"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 // InspectCluster will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
@@ -18,9 +19,9 @@ func InspectCluster() {
 	// 	// TO DO: log error verifying route API (warn)
 	// }
 
-	// if err := workloads.VerifyTemplateAPI(); err != nil {
-	// 	// TO DO: log error verifying template API (warn)
-	// }
+	if err := workloads.VerifyTemplateAPI(); err != nil {
+		// TO DO: log error verifying template API (warn)
+	}
 
 	if err := cluster.VerifyVersionAPI(); err != nil {
 		// TO DO: log error verifying version API (warn)
@@ -32,7 +33,7 @@ func GetClusterConfigNamespaces() string {
 }
 
 func IsClusterConfigNs(current string) bool {
-	clusterConfigNamespaces := argoutil.SplitList(GetClusterConfigNamespaces())
+	clusterConfigNamespaces := util.SplitList(GetClusterConfigNamespaces())
 	if len(clusterConfigNamespaces) > 0 {
 		if clusterConfigNamespaces[0] == "*" {
 			return true

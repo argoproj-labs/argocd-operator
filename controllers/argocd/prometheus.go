@@ -25,14 +25,14 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var prometheusAPIFound = false
 
 // getPrometheusHost will return the hostname value for Prometheus.
 func getPrometheusHost(cr *argoprojv1a1.ArgoCD) string {
-	host := nameWithSuffix("prometheus", cr)
+	host := util.NameWithSuffix(cr.Name, "prometheus")
 	if len(cr.Spec.Prometheus.Host) > 0 {
 		host = cr.Spec.Prometheus.Host
 	}
@@ -76,7 +76,7 @@ func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj
 
 // verifyPrometheusAPI will verify that the Prometheus API is present.
 func verifyPrometheusAPI() error {
-	found, err := argoutil.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
+	found, err := util.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *monito
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
 func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(common.ArgoCDMetrics, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			return r.Client.Delete(context.TODO(), sm)
@@ -141,7 +141,7 @@ func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoC
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: nameWithSuffix(common.ArgoCDMetrics, cr),
+			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, common.ArgoCDMetrics),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -159,7 +159,7 @@ func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoC
 // reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
 func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoprojv1a1.ArgoCD) error {
 	prometheus := newPrometheus(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
+	if util.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
 		if !cr.Spec.Prometheus.Enabled {
 			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
 			return r.Client.Delete(context.TODO(), prometheus)
@@ -188,7 +188,7 @@ func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoprojv1a1.ArgoCD) error {
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
 func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			return r.Client.Delete(context.TODO(), sm)
@@ -202,7 +202,7 @@ func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.Ar
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: nameWithSuffix("repo-server", cr),
+			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "repo-server"),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -220,7 +220,7 @@ func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.Ar
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
 func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
 			return r.Client.Delete(context.TODO(), sm)
@@ -234,7 +234,7 @@ func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: nameWithSuffix("server-metrics", cr),
+			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "server-metrics"),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -254,7 +254,7 @@ func (r *ArgoCDReconciler) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) erro
 
 	promRule := newPrometheusRule(cr.Namespace, "argocd-component-status-alert")
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule) {
+	if util.IsObjectFound(r.Client, cr.Namespace, promRule.Name, promRule) {
 
 		if !cr.Spec.Monitoring.Enabled {
 			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule

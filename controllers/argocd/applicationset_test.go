@@ -31,7 +31,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
@@ -312,7 +312,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name:                   "unspecified fields should use default",
 			appSetField:            &v1alpha1.ArgoCDApplicationSet{},
-			expectedContainerImage: argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+			expectedContainerImage: util.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		},
 		{
 			name: "ensure that sha hashes are formatted correctly",

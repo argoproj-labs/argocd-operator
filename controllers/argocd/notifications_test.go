@@ -17,7 +17,7 @@ import (
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func TestReconcileNotifications_CreateRoles(t *testing.T) {
@@ -145,11 +145,11 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 
 	want := []corev1.Container{{
 		Command:         []string{"argocd-notifications", "--loglevel", "info"},
-		Image:           argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+		Image:           util.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-notifications-controller",
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
@@ -199,7 +199,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "argocd-repo-server-tls",
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},

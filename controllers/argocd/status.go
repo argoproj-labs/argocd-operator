@@ -27,7 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
@@ -76,7 +77,7 @@ func (r *ArgoCDReconciler) reconcileStatusApplicationController(cr *argoprojv1a1
 	status := "Unknown"
 
 	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+	if util.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
 		status = "Pending"
 
 		if ss.Spec.Replicas != nil {
@@ -98,7 +99,7 @@ func (r *ArgoCDReconciler) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -120,7 +121,7 @@ func (r *ArgoCDReconciler) reconcileStatusDex(cr *argoprojv1a1.ArgoCD) error {
 func (r *ArgoCDReconciler) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
-	if IsTemplateAPIAvailable() {
+	if workloads.IsTemplateAPIAvailable() {
 		// keycloak is installed using OpenShift templates.
 		dc := &oappsv1.DeploymentConfig{
 			ObjectMeta: metav1.ObjectMeta{
@@ -128,7 +129,7 @@ func (r *ArgoCDReconciler) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) erro
 				Namespace: cr.Namespace,
 			},
 		}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc) {
+		if util.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc) {
 			status = "Pending"
 
 			if dc.Status.ReadyReplicas == dc.Spec.Replicas {
@@ -138,7 +139,7 @@ func (r *ArgoCDReconciler) reconcileStatusKeycloak(cr *argoprojv1a1.ArgoCD) erro
 
 	} else {
 		d := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, d.Name, d) {
+		if util.IsObjectFound(r.Client, cr.Namespace, d.Name, d) {
 			status = "Pending"
 
 			if d.Spec.Replicas != nil {
@@ -162,7 +163,7 @@ func (r *ArgoCDReconciler) reconcileStatusApplicationSetController(cr *argoprojv
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -226,7 +227,7 @@ func (r *ArgoCDReconciler) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 
 	if !cr.Spec.HA.Enabled {
 		deploy := newDeploymentWithSuffix("redis", "redis", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 			status = "Pending"
 
 			if deploy.Spec.Replicas != nil {
@@ -237,7 +238,7 @@ func (r *ArgoCDReconciler) reconcileStatusRedis(cr *argoprojv1a1.ArgoCD) error {
 		}
 	} else {
 		ss := newStatefulSetWithSuffix("redis-ha-server", "redis-ha-server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+		if util.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
 			status = "Pending"
 
 			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
@@ -259,7 +260,7 @@ func (r *ArgoCDReconciler) reconcileStatusRepo(cr *argoprojv1a1.ArgoCD) error {
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -281,7 +282,7 @@ func (r *ArgoCDReconciler) reconcileStatusServer(cr *argoprojv1a1.ArgoCD) error 
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
 		// TODO: Refactor these checks.
@@ -304,7 +305,7 @@ func (r *ArgoCDReconciler) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD)
 	status := "Unknown"
 
 	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+	if util.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
 		status = "Pending"
 
 		if deploy.Spec.Replicas != nil {
@@ -384,7 +385,7 @@ func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 		}
 	} else if cr.Spec.Server.Ingress.Enabled {
 		ingress := newIngressWithSuffix("server", cr)
-		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 			log.Info("argocd-server ingress requested but not found on cluster")
 			return nil
 		} else {

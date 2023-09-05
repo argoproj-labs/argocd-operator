@@ -1,4 +1,4 @@
-package argoutil
+package util
 
 // combines 2 maps and returns the result. In case of conflicts, values in 2nd input overwrite values in 1st input
 func MergeMaps(a, b map[string]string) map[string]string {

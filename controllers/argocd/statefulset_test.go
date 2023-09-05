@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/google/go-cmp/cmp"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,7 +37,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -46,7 +46,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   argoutil.BoolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -497,7 +497,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: argoutil.BoolPtr(true),
+				DynamicScalingEnabled: util.BoolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -509,7 +509,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: argoutil.BoolPtr(true),
+				DynamicScalingEnabled: util.BoolPtr(true),
 				MinShards:             1,
 				MaxShards:             4,
 				ClustersPerShard:      3,
@@ -521,7 +521,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoprojv1alpha1.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: argoutil.BoolPtr(true),
+				DynamicScalingEnabled: util.BoolPtr(true),
 				MinShards:             1,
 				MaxShards:             2,
 				ClustersPerShard:      1,
@@ -535,13 +535,13 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			a.Spec.Controller.Sharding = st.sharding
 		})
 
-		clusterSecret1 := argoutil.NewSecretWithSuffix(a, "cluster1")
+		clusterSecret1 := util.NewSecretWithSuffix(a, "cluster1")
 		clusterSecret1.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
-		clusterSecret2 := argoutil.NewSecretWithSuffix(a, "cluster2")
+		clusterSecret2 := util.NewSecretWithSuffix(a, "cluster2")
 		clusterSecret2.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
-		clusterSecret3 := argoutil.NewSecretWithSuffix(a, "cluster3")
+		clusterSecret3 := util.NewSecretWithSuffix(a, "cluster3")
 		clusterSecret3.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
 		r := makeTestReconciler(t, a)

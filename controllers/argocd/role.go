@@ -16,7 +16,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newRole returns a new Role instance.
@@ -56,7 +56,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD)
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
 			Labels:      common.DefaultLabels(cr.Name, cr.Name, ""),
-			Annotations: argoutil.MergeMaps(common.DefaultAnnotations(cr.Name, cr.Namespace), cr.Annotations),
+			Annotations: util.MergeMaps(common.DefaultAnnotations(cr.Name, cr.Namespace), cr.Annotations),
 		},
 		Rules: rules,
 	}

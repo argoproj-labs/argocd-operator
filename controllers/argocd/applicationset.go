@@ -30,7 +30,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
@@ -44,7 +44,7 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, getRepoServerAddress(cr))
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.ApplicationSet.LogLevel))
+	cmd = append(cmd, util.GetLogLevel(cr.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
@@ -150,7 +150,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.Ar
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
-	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		existingSpec := existing.Spec.Template.Spec
 
@@ -198,9 +198,9 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 
 	// Merge ApplicationSet env vars provided by the user
 	// User should be able to override the default NAMESPACE environmental variable
-	appSetEnv = argoutil.EnvMerge(cr.Spec.ApplicationSet.Env, appSetEnv, true)
+	appSetEnv = util.EnvMerge(cr.Spec.ApplicationSet.Env, appSetEnv, true)
 	// Environment specified in the CR take precedence over everything else
-	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
+	appSetEnv = util.EnvMerge(appSetEnv, util.ProxyEnvVars(), false)
 
 	return corev1.Container{
 		Command:         getArgoApplicationSetCommand(cr),
@@ -247,9 +247,9 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 					"ALL",
 				},
 			},
-			AllowPrivilegeEscalation: argoutil.BoolPtr(false),
-			ReadOnlyRootFilesystem:   argoutil.BoolPtr(true),
-			RunAsNonRoot:             argoutil.BoolPtr(true),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
+			ReadOnlyRootFilesystem:   util.BoolPtr(true),
+			RunAsNonRoot:             util.BoolPtr(true),
 		},
 	}
 }
@@ -260,7 +260,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a
 	setAppSetLabels(&sa.ObjectMeta)
 
 	exists := true
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
@@ -454,7 +454,7 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
@@ -482,8 +482,8 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
 	if cr.Spec.ApplicationSet == nil {
 
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
+		if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			err := util.FetchObject(r.Client, cr.Namespace, svc.Name, svc)
 			if err != nil {
 				return err
 			}
@@ -494,7 +494,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 			}
 		}
 	} else {
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			return nil // Service found, do nothing
 		}
 	}
@@ -513,7 +513,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoC
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {

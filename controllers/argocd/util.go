@@ -28,8 +28,9 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -115,10 +116,10 @@ func getArgoApplicationControllerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Controller.LogLevel))
+	cmd = append(cmd, util.GetLogLevel(cr.Spec.Controller.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Controller.LogFormat))
+	cmd = append(cmd, util.GetLogFormat(cr.Spec.Controller.LogFormat))
 
 	return cmd
 }
@@ -141,7 +142,7 @@ func getArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getRepoServerContainerImage will return the container image for the Repo server.
@@ -171,7 +172,7 @@ func getRepoServerContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if e := os.Getenv(common.ArgoCDImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
@@ -201,7 +202,7 @@ func isRedisTLSVerificationDisabled(cr *argoprojv1a1.ArgoCD) bool {
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
 func getArgoServerGRPCHost(cr *argoprojv1a1.ArgoCD) string {
-	host := nameWithSuffix("grpc", cr)
+	host := util.NameWithSuffix(cr.Name, "grpc")
 	if len(cr.Spec.Server.GRPC.Host) > 0 {
 		host = cr.Spec.Server.GRPC.Host
 	}
@@ -245,7 +246,7 @@ func getArgoServerResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
 func (r *ArgoCDReconciler) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
-	host := argoutil.NameWithSuffix(cr.Name, "server") // Default to service name
+	host := util.NameWithSuffix(cr.Name, "server") // Default to service name
 
 	// Use the external hostname provided by the user
 	if cr.Spec.Server.Host != "" {
@@ -255,7 +256,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 	// Use Ingress host if enabled
 	if cr.Spec.Server.Ingress.Enabled {
 		ing := newIngressWithSuffix("server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
+		if util.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
 			host = ing.Spec.Rules[0].Host
 		}
 	}
@@ -263,7 +264,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
 	// Use Route host if available, override Ingress if both exist
 	if IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
 		}
 	}
@@ -315,7 +316,7 @@ func getGrafanaContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if e := os.Getenv(common.ArgoCDGrafanaImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getGrafanaResources will return the ResourceRequirements for the Grafana container.
@@ -346,7 +347,7 @@ func getRedisConf(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := argoutil.LoadTemplateFile(path, params)
+	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis configuration")
 		return ""
@@ -370,7 +371,7 @@ func getRedisContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if e := os.Getenv(common.ArgoCDRedisImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getRedisHAContainerImage will return the container image for the Redis server in HA mode.
@@ -389,12 +390,12 @@ func getRedisHAContainerImage(cr *argoprojv1a1.ArgoCD) string {
 	if e := os.Getenv(common.ArgoCDRedisHAImageEnvVar); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
 func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
-	return argoutil.FqdnServiceRef(argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"), cr.Namespace, common.ArgoCDDefaultRedisPort)
+	return util.FqdnServiceRef(util.NameWithSuffix(cr.Name, "redis-ha-haproxy"), cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
 // getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
@@ -416,7 +417,7 @@ func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
@@ -424,11 +425,11 @@ func getRedisHAProxyContainerImage(cr *argoprojv1a1.ArgoCD) string {
 func getRedisInitScript(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
+		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
-	script, err := argoutil.LoadTemplateFile(path, vars)
+	script, err := util.LoadTemplateFile(path, vars)
 	if err != nil {
 		log.Error(err, "unable to load redis init-script")
 		return ""
@@ -441,11 +442,11 @@ func getRedisInitScript(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string {
 func getRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
+		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
-	script, err := argoutil.LoadTemplateFile(path, vars)
+	script, err := util.LoadTemplateFile(path, vars)
 	if err != nil {
 		log.Error(err, "unable to load redis haproxy configuration")
 		return ""
@@ -458,10 +459,10 @@ func getRedisHAProxyConfig(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) string 
 func getRedisHAProxyScript(cr *argoprojv1a1.ArgoCD) string {
 	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
+		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
 	}
 
-	script, err := argoutil.LoadTemplateFile(path, vars)
+	script, err := util.LoadTemplateFile(path, vars)
 	if err != nil {
 		log.Error(err, "unable to load redis haproxy init script")
 		return ""
@@ -500,7 +501,7 @@ func getRedisSentinelConf(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := argoutil.LoadTemplateFile(path, params)
+	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis sentinel configuration")
 		return ""
@@ -515,7 +516,7 @@ func getRedisLivenessScript(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := argoutil.LoadTemplateFile(path, params)
+	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis liveness script")
 		return ""
@@ -530,7 +531,7 @@ func getRedisReadinessScript(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := argoutil.LoadTemplateFile(path, params)
+	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis readiness script")
 		return ""
@@ -545,7 +546,7 @@ func getSentinelLivenessScript(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := argoutil.LoadTemplateFile(path, params)
+	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load sentinel liveness script")
 		return ""
@@ -558,8 +559,8 @@ func getRedisServerAddress(cr *argoprojv1a1.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
-	return argoutil.FqdnServiceRef(
-		argoutil.NameWithSuffix(cr.Name, common.ArgoCDDefaultRedisSuffix), cr.Namespace, common.ArgoCDDefaultRedisPort)
+	return util.FqdnServiceRef(
+		util.NameWithSuffix(cr.Name, common.ArgoCDDefaultRedisSuffix), cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
@@ -763,7 +764,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	clusterRoleList := &v1.ClusterRoleList{}
-	if err := argoutil.FilterObjectsBySelector(r.Client, clusterRoleList, selector); err != nil {
+	if err := util.FilterObjectsBySelector(r.Client, clusterRoleList, selector); err != nil {
 		return fmt.Errorf("failed to filter ClusterRoles for %s: %w", cr.Name, err)
 	}
 
@@ -772,7 +773,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	clusterBindingsList := &v1.ClusterRoleBindingList{}
-	if err := argoutil.FilterObjectsBySelector(r.Client, clusterBindingsList, selector); err != nil {
+	if err := util.FilterObjectsBySelector(r.Client, clusterBindingsList, selector); err != nil {
 		return fmt.Errorf("failed to filter ClusterRoleBindings for %s: %w", cr.Name, err)
 	}
 
@@ -824,7 +825,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 }
 
 func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
-	argocd.Finalizers = argoutil.RemoveString(argocd.GetFinalizers(), common.ArgoprojKeyFinalizer)
+	argocd.Finalizers = util.RemoveString(argocd.GetFinalizers(), common.ArgoprojKeyFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
@@ -990,7 +991,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	if IsTemplateAPIAvailable() {
+	if workloads.IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
 		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
@@ -1021,7 +1022,7 @@ func (r *ArgoCDReconciler) triggerRollout(obj interface{}, key string) error {
 
 func allowedNamespace(current string, namespaces string) bool {
 
-	clusterConfigNamespaces := argoutil.SplitList(namespaces)
+	clusterConfigNamespaces := util.SplitList(namespaces)
 	if len(clusterConfigNamespaces) > 0 {
 		if clusterConfigNamespaces[0] == "*" {
 			return true
@@ -1060,7 +1061,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// Event is then handled by the reconciler, which would create appropriate RBACs.
 			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok {
 				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && valOld != valNew {
-					k8sClient, err := argoutil.GetK8sClient()
+					k8sClient, err := util.GetK8sClient()
 					if err != nil {
 						return false
 					}
@@ -1082,7 +1083,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
 			// which were created when the label was added to the namespace.
 			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && ns != "" {
-				k8sClient, err := argoutil.GetK8sClient()
+				k8sClient, err := util.GetK8sClient()
 				if err != nil {
 					return false
 				}
@@ -1104,7 +1105,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if ns, ok := e.Object.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok && ns != "" {
-				k8sClient, err := argoutil.GetK8sClient()
+				k8sClient, err := util.GetK8sClient()
 
 				if err != nil {
 					return false

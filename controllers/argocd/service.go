@@ -25,7 +25,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoServerServiceType will return the server Service type for the ArgoCD.
@@ -68,7 +68,7 @@ func newServiceWithSuffix(suffix string, component string, cr *argoprojv1a1.Argo
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
 func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if !cr.Spec.Grafana.Enabled {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
@@ -81,7 +81,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) erro
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("grafana", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "grafana"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -104,13 +104,13 @@ func (r *ArgoCDReconciler) reconcileGrafanaService(cr *argoprojv1a1.ArgoCD) erro
 // reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.
 func (r *ArgoCDReconciler) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("metrics", "metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
 		return nil
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("application-controller", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "application-controller"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -132,7 +132,7 @@ func (r *ArgoCDReconciler) reconcileMetricsService(cr *argoprojv1a1.ArgoCD) erro
 func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.ArgoCD) error {
 	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
 		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			if !cr.Spec.HA.Enabled {
 				return r.Client.Delete(context.TODO(), svc)
 			}
@@ -150,8 +150,8 @@ func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Arg
 		svc.Spec.PublishNotReadyAddresses = true
 
 		svc.Spec.Selector = map[string]string{
-			common.AppK8sKeyName:            nameWithSuffix("redis-ha", cr),
-			common.StatefulSetK8sKeyPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+			common.AppK8sKeyName:            util.NameWithSuffix(cr.Name, "redis-ha"),
+			common.StatefulSetK8sKeyPodName: util.NameWithSuffix(cr.Name, fmt.Sprintf("redis-ha-server-%d", i)),
 		}
 
 		svc.Spec.Ports = []corev1.ServicePort{
@@ -182,7 +182,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAAnnounceServices(cr *argoprojv1a1.Arg
 // reconcileRedisHAMasterService will ensure that the "master" Service is present for Redis when running in HA mode.
 func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if !cr.Spec.HA.Enabled {
 			return r.Client.Delete(context.TODO(), svc)
 		}
@@ -194,7 +194,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("redis-ha", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -220,7 +220,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAMasterService(cr *argoprojv1a1.ArgoCD
 // reconcileRedisHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
 func (r *ArgoCDReconciler) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
 		if !cr.Spec.HA.Enabled {
 			return r.Client.Delete(context.TODO(), svc)
@@ -239,7 +239,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyService(cr *argoprojv1a1.ArgoCD)
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -278,7 +278,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAServices(cr *argoprojv1a1.ArgoCD) err
 func (r *ArgoCDReconciler) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("redis", "redis", cr)
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
@@ -295,7 +295,7 @@ func (r *ArgoCDReconciler) reconcileRedisService(cr *argoprojv1a1.ArgoCD) error 
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("redis", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -357,7 +357,7 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
@@ -367,7 +367,7 @@ func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 	ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("repo-server", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "repo-server"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -393,12 +393,12 @@ func (r *ArgoCDReconciler) reconcileRepoService(cr *argoprojv1a1.ArgoCD) error {
 // reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
 func (r *ArgoCDReconciler) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server-metrics", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		return nil // Service found, do nothing
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("server", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "server"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -419,7 +419,7 @@ func (r *ArgoCDReconciler) reconcileServerMetricsService(cr *argoprojv1a1.ArgoCD
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ArgoCDReconciler) reconcileServerService(cr *argoprojv1a1.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
@@ -443,7 +443,7 @@ func (r *ArgoCDReconciler) reconcileServerService(cr *argoprojv1a1.ArgoCD) error
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: nameWithSuffix("server", cr),
+		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "server"),
 	}
 
 	svc.Spec.Type = getArgoServerServiceType(cr)

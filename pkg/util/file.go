@@ -1,4 +1,4 @@
-package argoutil
+package util
 
 import (
 	"bytes"

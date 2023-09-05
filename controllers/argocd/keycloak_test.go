@@ -30,7 +30,8 @@ import (
 	argoappv1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 var (
@@ -151,7 +152,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			templateAPIFound = test.templateAPIFound
+			workloads.SetTemplateAPIFound(test.templateAPIFound)
 
 			if test.setEnvVarFunc != nil {
 				test.setEnvVarFunc(t, test.envVar)
@@ -169,7 +170,8 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
 	// For OpenShift Container Platform.
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
+
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -185,7 +187,7 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 
 func TestNewKeycloakTemplate(t *testing.T) {
 	// For OpenShift Container Platform.
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -201,7 +203,7 @@ func TestNewKeycloakTemplate(t *testing.T) {
 
 func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 	// For OpenShift Container Platform.
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -234,7 +236,7 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	// For OpenShift Container Platform.
 	t.Setenv(common.ArgoCDKeycloakImageEnvVar, "")
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -384,7 +386,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						VerifyTLS: argoutil.BoolPtr(false),
+						VerifyTLS: util.BoolPtr(false),
 					},
 				}
 			}),
@@ -396,7 +398,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
 					Provider: argoappv1.SSOProviderTypeKeycloak,
 					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
-						VerifyTLS: argoutil.BoolPtr(true),
+						VerifyTLS: util.BoolPtr(true),
 					},
 				}
 			}),
@@ -469,11 +471,11 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	dc := getKeycloakDeploymentConfigTemplate(a)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	nSelectors = argoutil.AppendStringMap(nSelectors, common.DefaultNodeSelector())
+	nSelectors = util.AppendStringMap(nSelectors, common.DefaultNodeSelector())
 	assert.Equal(t, dc.Spec.Template.Spec.NodeSelector, nSelectors)
 	assert.Equal(t, dc.Spec.Template.Spec.Tolerations, a.Spec.NodePlacement.Tolerations)
 }
 
 func removeTemplateAPI() {
-	templateAPIFound = false
+	workloads.SetTemplateAPIFound(false)
 }
