@@ -63,6 +63,14 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	return nameWithSuffix(common.ArgoCDCASuffix, cr)
 }
 
+// getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
+func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
+	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" && len(cr.Spec.ApplicationSet.SCMRootCAConfigMap) > 0 {
+		return cr.Spec.ApplicationSet.SCMRootCAConfigMap
+	}
+	return ""
+}
+
 // getConfigManagementPlugins will return the config management plugins for the given ArgoCD.
 func getConfigManagementPlugins(cr *argoproj.ArgoCD) string {
 	plugins := common.ArgoCDDefaultConfigManagementPlugins

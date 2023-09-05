@@ -9,7 +9,7 @@ metadata:
   namespace: test-1-32-appsets-scm-tls-mount
 spec:
   applicationSet:
-    scmRootCaPath: /app/tls/cert
+    scmRootCAConfigMap: test-1-32-appsets-scm-tls-cm
 status:
   phase: Available
 ---
@@ -38,7 +38,7 @@ spec:
           - --loglevel
           - info
           - --scm-root-ca-path
-          - /app/tls/cert
+          - /app/tls/scm/cert
           volumeMounts:
           - mountPath: /app/config/ssh
             name: ssh-known-hosts
@@ -50,7 +50,7 @@ spec:
             name: gpg-keyring
           - mountPath: /tmp
             name: tmp
-          - mountPath: /app/tls/cert
+          - mountPath: /app/tls/scm/cert
             name: appset-gitlab-scm-tls-cert
       volumes:
       - configMap:

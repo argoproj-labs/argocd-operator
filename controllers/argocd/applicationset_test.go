@@ -151,7 +151,7 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 		},
 	}
 
-	if a.Spec.ApplicationSet.SCMRootCAPath != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
+	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
 		volumes = append(volumes, corev1.Volume{
 			Name: "appset-gitlab-scm-tls-cert",
 			VolumeSource: corev1.VolumeSource{
@@ -363,7 +363,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		{
 			name: "ensure scm tls cert mount is present",
 			appSetField: &argoproj.ArgoCDApplicationSet{
-				SCMRootCAPath: "testPath",
+				SCMRootCAConfigMap: "test-scm-tls-mount",
 			},
 			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
 			expectedContainerImage: "custom-env-image",
