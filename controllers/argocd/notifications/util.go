@@ -8,7 +8,6 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"

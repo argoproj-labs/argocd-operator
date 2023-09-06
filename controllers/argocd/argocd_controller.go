@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -98,7 +97,7 @@ var log = ctrl.Log.WithName("controller_argocd")
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
 
-	argocd := &argoproj.ArgoCD{}
+	argocd := &v1alpha1.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {
