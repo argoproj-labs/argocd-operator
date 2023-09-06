@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +41,7 @@ func getTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonit
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+					common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 				},
 			},
 			Endpoints: []monitoringv1.Endpoint{
@@ -90,7 +90,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -125,7 +125,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -137,8 +137,8 @@ func TestRequestServiceMonitor(t *testing.T) {
 			},
 			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 				sm.Name = testName
-				sm.Labels = argoutil.MergeMaps(sm.Labels, testKVP)
-				sm.Annotations = argoutil.MergeMaps(sm.Annotations, testKVP)
+				sm.Labels = util.MergeMaps(sm.Labels, testKVP)
+				sm.Annotations = util.MergeMaps(sm.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},
@@ -162,7 +162,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -199,7 +199,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{

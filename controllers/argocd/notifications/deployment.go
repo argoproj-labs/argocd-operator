@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,10 +21,10 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 
 	nr.Logger.Info("reconciling deployments")
 
-	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
+	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 
 	notificationEnv := nr.Instance.Spec.Notifications.Env
-	notificationEnv = argoutil.EnvMerge(notificationEnv, ProxyEnvVars(), false)
+	notificationEnv = util.EnvMerge(notificationEnv, ProxyEnvVars(), false)
 
 	podSpec := corev1.PodSpec{
 		Volumes: []corev1.Volume{
@@ -43,7 +43,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
 						SecretName: common.ArgoCDRepoServerTLSSecretName,
-						Optional:   argoutil.BoolPtr(true),
+						Optional:   util.BoolPtr(true),
 					},
 				},
 			},
@@ -65,7 +65,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: argoutil.BoolPtr(false),
+				AllowPrivilegeEscalation: util.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						CapabilityDropAll,
@@ -85,7 +85,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 			WorkingDir: WorkingDirApp,
 		}},
 		SecurityContext: &corev1.PodSecurityContext{
-			RunAsNonRoot: argoutil.BoolPtr(true),
+			RunAsNonRoot: util.BoolPtr(true),
 		},
 	}
 

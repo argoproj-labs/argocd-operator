@@ -8,8 +8,9 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -563,7 +564,7 @@ func GetNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "argocd-notifications")
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Notifications.LogLevel))
+	cmd = append(cmd, util.GetLogLevel(cr.Spec.Notifications.LogLevel))
 
 	return cmd
 }
@@ -616,7 +617,7 @@ func GetArgoContainerImage(cr *argoprojv1a1.ArgoCD) string {
 		return e
 	}
 
-	return argoutil.CombineImageTag(img, tag)
+	return util.CombineImageTag(img, tag)
 }
 
 func ProxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {

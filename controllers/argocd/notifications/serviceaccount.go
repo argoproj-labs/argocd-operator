@@ -1,9 +1,9 @@
 package notifications
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +16,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 
 	serviceAccountRequest := permissions.ServiceAccountRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent),
+			Name:        util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent),
 			Namespace:   nr.Instance.Namespace,
 			Labels:      nr.Instance.Labels,
 			Annotations: nr.Instance.Annotations,

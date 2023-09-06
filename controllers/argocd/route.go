@@ -25,7 +25,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var routeAPIFound = false
@@ -37,7 +37,7 @@ func IsRouteAPIAvailable() bool {
 
 // verifyRouteAPI will verify that the Route API is present.
 func verifyRouteAPI() error {
-	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
+	found, err := util.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (r *ArgoCDReconciler) reconcileRoutes(cr *argoprojv1a1.ArgoCD) error {
 // reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
 func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -143,7 +143,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error 
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("grafana", cr)
+	route.Spec.To.Name = util.NameWithSuffix(cr.Name, "grafana")
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
@@ -159,7 +159,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoprojv1a1.ArgoCD) error 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
 func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -217,7 +217,7 @@ func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoprojv1a1.ArgoCD) err
 func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 
 	route := newRouteWithSuffix("server", cr)
-	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found := util.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -274,7 +274,7 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("server", cr)
+	route.Spec.To.Name = util.NameWithSuffix(cr.Name, "server")
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
@@ -294,7 +294,7 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoprojv1a1.ArgoCD) error {
 func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *argoprojv1a1.ArgoCD) error {
 	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "webhook")
 	route := newRouteWithSuffix(name, cr)
-	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found := util.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -351,7 +351,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *arg
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
+	route.Spec.To.Name = util.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {

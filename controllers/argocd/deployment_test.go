@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -773,7 +773,7 @@ func Test_proxyEnvVars(t *testing.T) {
 	}
 
 	for _, tt := range envTests {
-		e := proxyEnvVars(tt.vars...)
+		e := util.ProxyEnvVars(tt.vars...)
 		assert.Equal(t, tt.want, e)
 	}
 }
@@ -797,7 +797,7 @@ func TestArgoCDReconciler_reconcileDeployment_nodePlacement(t *testing.T) {
 	assert.NoError(t, err)
 
 	nSelectors := deploymentDefaultNodeSelector()
-	nSelectors = argoutil.AppendStringMap(nSelectors, common.DefaultNodeSelector())
+	nSelectors = util.AppendStringMap(nSelectors, common.DefaultNodeSelector())
 
 	if diff := cmp.Diff(nSelectors, deployment.Spec.Template.Spec.NodeSelector); diff != "" {
 		t.Fatalf("reconcileDeployment failed:\n%s", diff)
@@ -949,13 +949,13 @@ func TestArgoCDReconciler_reconcileServerDeployment(t *testing.T) {
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1164,13 +1164,13 @@ func TestArgoCDReconciler_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1250,13 +1250,13 @@ func TestArgoCDReconciler_reconcileServerDeploymentChangedToInsecure(t *testing.
 					PeriodSeconds:       30,
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1542,7 +1542,7 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -1551,7 +1551,7 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -1613,7 +1613,7 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -1622,7 +1622,7 @@ func serverDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},

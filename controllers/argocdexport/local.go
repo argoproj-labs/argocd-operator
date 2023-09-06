@@ -24,7 +24,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
@@ -46,9 +46,14 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 		return nil // Nothing to see here, move along...
 	}
 
-	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
+	pvc := NewPersistentVolumeClaim(cr.ObjectMeta)
+	if util.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
 		return nil // PVC exists, move along...
+	}
+
+	pvcResources, err := DefaultPVCResources()
+	if err != nil {
+		// TO DO: decide error handling step here
 	}
 
 	// Allow override of PVC spec
@@ -56,7 +61,7 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 		pvc.Spec = *cr.Spec.Storage.PVC
 	} else {
 		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		pvc.Spec.Resources = argoutil.DefaultPVCResources()
+		pvc.Spec.Resources = pvcResources
 	}
 
 	if err := controllerutil.SetControllerReference(cr, pvc, r.Scheme); err != nil {
@@ -71,5 +76,5 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) err
 
 	// Create event
 	log.Info("creating new event")
-	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
+	return util.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
 }

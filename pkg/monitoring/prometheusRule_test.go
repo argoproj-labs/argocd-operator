@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
@@ -141,8 +141,8 @@ func TestRequestPrometheusRule(t *testing.T) {
 			mutation: false,
 			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
 				pr.Name = testName
-				pr.Labels = argoutil.MergeMaps(pr.Labels, testKVP)
-				pr.Annotations = argoutil.MergeMaps(pr.Annotations, testKVP)
+				pr.Labels = util.MergeMaps(pr.Labels, testKVP)
+				pr.Annotations = util.MergeMaps(pr.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},

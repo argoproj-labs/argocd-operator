@@ -5,7 +5,7 @@
 - Add brief comments explaining what a function does at the top of each function (use chatGPT if required)
 - Coding style should be uniform across the project - if something similar to what you are writing has been done elsewhere, try to stick to the same code format
 - Don't hard code any recurring strings- create a new constant for it in the package's `constants.go`
-- If adding new functionality in the `argoutil` package - check if the function would fit in any existing file, if not create a new one. It's better to have many focused files within the package (`strings.go` , `maps.go` , `resource.go` etc) than 1 big file called `util.go` with a random assortment of functions in it
+- If adding new functionality in the `util` package - check if the function would fit in any existing file, if not create a new one. It's better to have many focused files within the package (`strings.go` , `maps.go` , `resource.go` etc) than 1 big file called `util.go` with a random assortment of functions in it
 
 
 # Controller packages, resources & testing
@@ -30,11 +30,11 @@
 - Utility functions are generic go functions that perform low level tasks that are not project specific. These functions likely deal with go data structures or perform generic functions that can be used in any go project.
 - Some common examples are string manipulation, merging 2 maps etc.
 - All utility functions should not be dumped into a single `util.go` file. Each utility function will have a specific domain that it belongs to, and utility functions of the same domain should be grouped together into a single file
-that is representative of this domain, and placed in the existing `argoutil` package. Examples of this are:
+that is representative of this domain, and placed in the existing `util` package. Examples of this are:
 	- `string.go` containing string manipulation functions
 	- `client.go` containing client generation functions
 	- `map.go` containing map manipulation functions
-- When adding a new function to `argoutil` package, check if this function fits into any of the existing files. If not, create a new file that will contain this and similar functions moving forward. The goal is to have a flat file structure that has files that group similar utility functions together by domain
+- When adding a new function to `util` package, check if this function fits into any of the existing files. If not, create a new file that will contain this and similar functions moving forward. The goal is to have a flat file structure that has files that group similar utility functions together by domain
 - Main rule of thumb to keep in mind when deciding if a given function should be considered a 'utility' function or not is - Does this function care about Argo CD or Argo CD Operator in any way or not. If the answer is yes, it should likely not be in the utility package, as it is operator specific.
 
 # Constants

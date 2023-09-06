@@ -40,6 +40,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -177,7 +178,7 @@ func main() {
 	}
 
 	// Setup Schemes for SSO if template instance is available.
-	if argocd.IsTemplateAPIAvailable() {
+	if workloads.IsTemplateAPIAvailable() {
 		if err := templatev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)

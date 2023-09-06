@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argoutil
+package util
 
 import (
 	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("argoutil")
-
+// GetLogLevel returns the log level for a specified component if it is set or returns the default log level if it is not set
 func GetLogLevel(logField string) string {
 
 	switch strings.ToLower(logField) {
@@ -33,4 +31,14 @@ func GetLogLevel(logField string) string {
 		return logField
 	}
 	return common.ArgoCDDefaultLogLevel
+}
+
+// getLogFormat returns the log format for a specified component if it is set or returns the default log format if it is not set
+func GetLogFormat(logField string) string {
+	switch strings.ToLower(logField) {
+	case "text",
+		"json":
+		return logField
+	}
+	return common.ArgoCDDefaultLogFormat
 }

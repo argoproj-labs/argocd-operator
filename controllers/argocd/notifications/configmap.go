@@ -2,8 +2,8 @@ package notifications
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +15,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	nr.Logger.Info("reconciling configMaps")
 
-	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
+	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 	labels := common.DefaultLabels(name, nr.Instance.Name, ArgoCDNotificationsControllerComponent)
 	labels[common.AppK8sKeyName] = name
 

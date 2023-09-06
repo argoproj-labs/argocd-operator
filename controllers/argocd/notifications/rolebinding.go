@@ -3,9 +3,9 @@ package notifications
 import (
 	"reflect"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,7 +17,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
 	nr.Logger.Info("reconciling roleBindings")
 
-	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
+	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 	sa, err := permissions.GetServiceAccount(name, nr.Instance.Namespace, nr.Client)
 
 	if err != nil {

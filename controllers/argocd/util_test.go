@@ -13,7 +13,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +39,7 @@ var imageTests = []struct {
 	{
 		name:      "dex default configuration",
 		imageFunc: getDexContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultDexImage, common.ArgoCDDefaultDexVersion),
+		want:      util.CombineImageTag(common.ArgoCDDefaultDexImage, common.ArgoCDDefaultDexVersion),
 	},
 	{
 		name:      "dex spec configuration",
@@ -66,7 +66,7 @@ var imageTests = []struct {
 	{
 		name:      "argo default configuration",
 		imageFunc: getArgoContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+		want:      util.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 	},
 	{
 		name:      "argo spec configuration",
@@ -87,7 +87,7 @@ var imageTests = []struct {
 	{
 		name:      "grafana default configuration",
 		imageFunc: getGrafanaContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
+		want:      util.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
 	},
 	{
 		name:      "grafana spec configuration",
@@ -109,7 +109,7 @@ var imageTests = []struct {
 	{
 		name:      "redis default configuration",
 		imageFunc: getRedisContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersion),
+		want:      util.CombineImageTag(common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersion),
 	},
 	{
 		name:      "redis spec configuration",
@@ -131,7 +131,7 @@ var imageTests = []struct {
 	{
 		name:      "redis ha default configuration",
 		imageFunc: getRedisHAContainerImage,
-		want: argoutil.CombineImageTag(
+		want: util.CombineImageTag(
 			common.ArgoCDDefaultRedisImage,
 			common.ArgoCDDefaultRedisVersionHA),
 	},
@@ -155,7 +155,7 @@ var imageTests = []struct {
 	{
 		name:      "redis ha proxy default configuration",
 		imageFunc: getRedisHAProxyContainerImage,
-		want: argoutil.CombineImageTag(
+		want: util.CombineImageTag(
 			common.ArgoCDDefaultRedisHAProxyImage,
 			common.ArgoCDDefaultRedisHAProxyVersion),
 	},
@@ -460,7 +460,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	testClient := testclient.NewSimpleClientset()
 	testNameSpace := "testNameSpace"
 
-	secret := argoutil.NewSecretWithSuffix(a, "xyz")
+	secret := util.NewSecretWithSuffix(a, "xyz")
 	secret.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),
@@ -540,8 +540,11 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
-	s1 := generateRandomString(20)
-	s2 := generateRandomString(20)
+	s1, err := util.GenerateRandomString(20)
+	assert.NoError(t, err)
+	s2, err := util.GenerateRandomString(20)
+	assert.NoError(t, err)
+
 	assert.NotEqual(t, s1, s2)
 
 	// verify length
@@ -553,13 +556,13 @@ func TestGenerateRandomString(t *testing.T) {
 }
 
 func generateEncodedPEM(t *testing.T, host string) []byte {
-	key, err := argoutil.NewPrivateKey()
+	key, err := util.NewPrivateKey()
 	assert.NoError(t, err)
 
-	cert, err := argoutil.NewSelfSignedCACertificate("foo", key)
+	cert, err := util.NewSelfSignedCACertificate("foo", key)
 	assert.NoError(t, err)
 
-	encoded := argoutil.EncodeCertificatePEM(cert)
+	encoded := util.EncodeCertificatePEM(cert)
 	return encoded
 }
 
@@ -581,7 +584,7 @@ func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
 	_, err = r.getDexOAuthClientSecret(a)
 	assert.NoError(t, err)
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
-	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	assert.NoError(t, util.FetchObject(r.Client, a.Namespace, sa.Name, sa))
 	tokenExists := false
 	for _, saSecret := range sa.Secrets {
 		if strings.Contains(saSecret.Name, "dex-server-token") {

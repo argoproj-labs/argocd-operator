@@ -1,6 +1,7 @@
-package argoutil
+package util
 
 import (
+	"encoding/base64"
 	"sort"
 	"strings"
 )
@@ -24,6 +25,16 @@ func RemoveString(slice []string, s string) []string {
 	return result
 }
 
+// ContainsString returns true if a string is part of the given slice.
+func ContainsString(arr []string, s string) bool {
+	for _, val := range arr {
+		if strings.TrimSpace(val) == s {
+			return true
+		}
+	}
+	return false
+}
+
 func Equal(a, b []string) bool {
 	sort.Strings(a)
 	sort.Strings(b)
@@ -36,4 +47,13 @@ func Equal(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// GenerateRandomString returns a securely generated random string.
+func GenerateRandomString(s int) (string, error) {
+	b, err := GenerateRandomBytes(s)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
 }

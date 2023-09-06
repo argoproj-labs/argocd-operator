@@ -2,7 +2,7 @@ package notifications
 
 import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -55,7 +55,7 @@ func (nr *NotificationsReconciler) Reconcile() error {
 
 func (nr *NotificationsReconciler) DeleteResources() error {
 
-	name := argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
+	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 	var deletionError error = nil
 
 	if err := nr.DeleteDeployment(name, nr.Instance.Namespace); err != nil {

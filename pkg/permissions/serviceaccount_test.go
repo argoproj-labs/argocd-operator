@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,8 +54,8 @@ func TestRequestServiceAccount(t *testing.T) {
 			desiredSa: getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 				sa.Name = testName
 				sa.Namespace = testNamespace
-				sa.Labels = argoutil.MergeMaps(sa.Labels, testKVP)
-				sa.Annotations = argoutil.MergeMaps(sa.Annotations, testKVP)
+				sa.Labels = util.MergeMaps(sa.Labels, testKVP)
+				sa.Annotations = util.MergeMaps(sa.Annotations, testKVP)
 			}),
 		},
 	}

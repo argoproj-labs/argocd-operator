@@ -6,6 +6,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -52,7 +53,7 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, oappsv1.AddToScheme(r.Scheme))
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
 	defer removeTemplateAPI()
 
 	dc := getKeycloakDeploymentConfigTemplate(a)
