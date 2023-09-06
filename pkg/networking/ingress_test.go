@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -154,8 +154,8 @@ func TestRequestIngress(t *testing.T) {
 			mutation: false,
 			desiredIngress: getTestIngress(func(i *networkingv1.Ingress) {
 				i.Name = testName
-				i.Labels = argoutil.MergeMaps(i.Labels, testKVP)
-				i.Annotations = argoutil.MergeMaps(i.Annotations, testKVP)
+				i.Labels = util.MergeMaps(i.Labels, testKVP)
+				i.Annotations = util.MergeMaps(i.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},

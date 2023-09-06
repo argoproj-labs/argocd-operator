@@ -16,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func TestArgoCDReconciler_reconcileDexDeployment_with_dex_disabled(t *testing.T) {
@@ -244,13 +245,13 @@ func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 					"/shared/argocd-dex",
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -294,13 +295,13 @@ func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 					},
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},
@@ -335,13 +336,13 @@ func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 					"/shared/argocd-dex",
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -385,13 +386,13 @@ func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 					},
 				},
 				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
+					AllowPrivilegeEscalation: util.BoolPtr(false),
 					Capabilities: &corev1.Capabilities{
 						Drop: []corev1.Capability{
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"}},

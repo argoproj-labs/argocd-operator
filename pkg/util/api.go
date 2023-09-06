@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argoutil
+package util
 
 import (
 	"fmt"
@@ -27,14 +27,12 @@ import (
 func VerifyAPI(group string, version string) (bool, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, "unable to get k8s config")
-		return false, err
+		return false, fmt.Errorf("VerifyAPI: unable to get k8s config: %w", err)
 	}
 
 	k8s, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, "unable to create k8s client")
-		return false, err
+		return false, fmt.Errorf("VerifyAPI: unable to create k8s client: %w", err)
 	}
 
 	gv := schema.GroupVersion{
@@ -47,6 +45,5 @@ func VerifyAPI(group string, version string) (bool, error) {
 		return false, nil
 	}
 
-	log.Info(fmt.Sprintf("%s/%s API verified", group, version))
 	return true, nil
 }

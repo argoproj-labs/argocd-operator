@@ -36,8 +36,8 @@ import (
 
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
@@ -240,7 +240,7 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
-			if argoutil.IsObjectFound(r.Client, "", test.name, test.resource) {
+			if util.IsObjectFound(r.Client, "", test.name, test.resource) {
 				t.Errorf("Expected %s to be deleted", test.name)
 			}
 		})

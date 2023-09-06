@@ -32,7 +32,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -81,23 +81,23 @@ func nowNano() string {
 
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewTLSSecret(cr, "ca")
+	secret := util.NewTLSSecret(cr, "ca")
 
-	key, err := argoutil.NewPrivateKey()
+	key, err := util.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
 
-	cert, err := argoutil.NewSelfSignedCACertificate(cr.Name, key)
+	cert, err := util.NewSelfSignedCACertificate(cr.Name, key)
 	if err != nil {
 		return nil, err
 	}
 
 	// This puts both ca.crt and tls.crt into the secret.
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:              argoutil.EncodeCertificatePEM(cert),
-		corev1.ServiceAccountRootCAKey: argoutil.EncodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey:        argoutil.EncodePrivateKeyPEM(key),
+		corev1.TLSCertKey:              util.EncodeCertificatePEM(cert),
+		corev1.ServiceAccountRootCAKey: util.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey:        util.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -105,9 +105,9 @@ func newCASecret(cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
 
 // newCertificateSecret creates a new secret using the given name suffix for the given TLS certificate.
 func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoprojv1a1.ArgoCD) (*corev1.Secret, error) {
-	secret := argoutil.NewTLSSecret(cr, suffix)
+	secret := util.NewTLSSecret(cr, suffix)
 
-	key, err := argoutil.NewPrivateKey()
+	key, err := util.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 	dnsNames := []string{
 		cr.ObjectMeta.Name,
-		nameWithSuffix("grpc", cr),
+		util.NameWithSuffix(cr.Name, "grpc"),
 		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
 	}
 
@@ -132,14 +132,14 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 		dnsNames = append(dnsNames, getPrometheusHost(cr))
 	}
 
-	cert, err := argoutil.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
+	cert, err := util.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
 	if err != nil {
 		return nil, err
 	}
 
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:       argoutil.EncodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey: argoutil.EncodePrivateKeyPEM(key),
+		corev1.TLSCertKey:       util.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey: util.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -147,21 +147,21 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 // reconcileArgoSecret will ensure that the Argo CD Secret is present.
 func (r *ArgoCDReconciler) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	secret := argoutil.NewSecretWithName(cr, common.ArgoCDSecretName)
+	clusterSecret := util.NewSecretWithSuffix(cr, "cluster")
+	secret := util.NewSecretWithName(cr, common.ArgoCDSecretName)
 
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
+	if !util.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile argo secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
-	tlsSecret := argoutil.NewSecretWithSuffix(cr, "tls")
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, tlsSecret.Name, tlsSecret) {
+	tlsSecret := util.NewSecretWithSuffix(cr, "tls")
+	if !util.IsObjectFound(r.Client, cr.Namespace, tlsSecret.Name, tlsSecret) {
 		log.Info(fmt.Sprintf("tls secret [%s] not found, waiting to reconcile argo secret [%s]", tlsSecret.Name, secret.Name))
 		return nil
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	if util.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return r.reconcileExistingArgoSecret(cr, secret, clusterSecret, tlsSecret)
 	}
 
@@ -200,8 +200,8 @@ func (r *ArgoCDReconciler) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileClusterMainSecret will ensure that the main Secret is present for the Argo CD cluster.
 func (r *ArgoCDReconciler) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secret := util.NewSecretWithSuffix(cr, "cluster")
+	if util.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
@@ -222,23 +222,23 @@ func (r *ArgoCDReconciler) reconcileClusterMainSecret(cr *argoprojv1a1.ArgoCD) e
 
 // reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
 func (r *ArgoCDReconciler) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewTLSSecret(cr, "tls")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secret := util.NewTLSSecret(cr, "tls")
+	if util.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
-	caSecret := argoutil.NewSecretWithSuffix(cr, "ca")
-	caSecret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
+	caSecret := util.NewSecretWithSuffix(cr, "ca")
+	caSecret, err := util.FetchSecret(r.Client, cr.ObjectMeta, caSecret.Name)
 	if err != nil {
 		return err
 	}
 
-	caCert, err := argoutil.ParsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
+	caCert, err := util.ParsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return err
 	}
 
-	caKey, err := argoutil.ParsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
+	caKey, err := util.ParsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
 	if err != nil {
 		return err
 	}
@@ -257,8 +257,8 @@ func (r *ArgoCDReconciler) reconcileClusterTLSSecret(cr *argoprojv1a1.ArgoCD) er
 
 // reconcileClusterCASecret ensures the CA Secret is created for the ArgoCD cluster.
 func (r *ArgoCDReconciler) reconcileClusterCASecret(cr *argoprojv1a1.ArgoCD) error {
-	secret := argoutil.NewSecretWithSuffix(cr, "ca")
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	secret := util.NewSecretWithSuffix(cr, "ca")
+	if util.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		return nil // Secret found, do nothing
 	}
 
@@ -365,15 +365,15 @@ func (r *ArgoCDReconciler) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	secret := argoutil.NewSecretWithSuffix(cr, "grafana")
+	clusterSecret := util.NewSecretWithSuffix(cr, "cluster")
+	secret := util.NewSecretWithSuffix(cr, "grafana")
 
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
+	if !util.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
 		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile grafana secret [%s]", clusterSecret.Name, secret.Name))
 		return nil
 	}
 
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+	if util.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
 		actual := string(secret.Data[common.ArgoCDKeyGrafanaAdminPassword])
 		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
 
@@ -386,7 +386,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error
 
 			// Regenerate the Grafana configuration
 			cm := newConfigMapWithSuffix("grafana-config", cr)
-			if !argoutil.IsObjectFound(r.Client, cm.Namespace, cm.Name, cm) {
+			if !util.IsObjectFound(r.Client, cm.Namespace, cm.Name, cm) {
 				log.Info("unable to locate grafana-config")
 				return nil
 			}
@@ -424,7 +424,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaSecret(cr *argoprojv1a1.ArgoCD) error
 // reconcileClusterPermissionsSecret ensures ArgoCD instance is namespace-scoped
 func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.ArgoCD) error {
 	var clusterConfigInstance bool
-	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
+	secret := util.NewSecretWithSuffix(cr, "default-cluster-config")
 	secret.Labels[common.ArgoCDArgoprojKeySecretType] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
@@ -445,7 +445,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Ar
 		namespaces = append(namespaces, namespace.Name)
 	}
 
-	if !containsString(namespaces, cr.Namespace) {
+	if !util.ContainsString(namespaces, cr.Namespace) {
 		namespaces = append(namespaces, cr.Namespace)
 	}
 	sort.Strings(namespaces)
@@ -477,7 +477,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret(cr *argoprojv1a1.Ar
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
-					if !containsString(ns, strings.TrimSpace(n)) {
+					if !util.ContainsString(ns, strings.TrimSpace(n)) {
 						ns = append(ns, strings.TrimSpace(n))
 					}
 				}
@@ -630,7 +630,7 @@ func (r *ArgoCDReconciler) reconcileRedisTLSSecret(cr *argoprojv1a1.ArgoCD, useT
 			// communicate with the existing pods (which are not using tls) to establish which is the master.
 			// So instead we delete the stateful set, which will delete all the pods.
 			redisSts := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-			if argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
+			if util.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
 				err = r.Client.Delete(context.TODO(), redisSts)
 				if err != nil {
 					return err

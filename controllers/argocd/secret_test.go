@@ -20,7 +20,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func Test_newCASecret(t *testing.T) {
@@ -216,9 +216,9 @@ func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
 		},
 	}
 
-	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret := util.NewSecretWithSuffix(argocd, "cluster")
 	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+	tlsSecret := util.NewSecretWithSuffix(argocd, "tls")
 	r := makeTestReconciler(t, argocd)
 	r.Client.Create(context.TODO(), clusterSecret)
 	r.Client.Create(context.TODO(), tlsSecret)
@@ -425,7 +425,7 @@ func Test_ArgoCDReconciler_ClusterPermissionsSecret(t *testing.T) {
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
-	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
+	testSecret := util.NewSecretWithSuffix(a, "default-cluster-config")
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))

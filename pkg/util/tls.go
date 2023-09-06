@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package argoutil
+package util
 
 import (
 	"crypto/rand"
@@ -31,6 +31,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
+const (
+	rsaPrivateKeyType = "RSA PRIVATE KEY"
+	certificateType   = "CERTIFICATE"
+)
+
 // NewPrivateKey returns randomly generated RSA private key.
 func NewPrivateKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, common.ArgoCDDefaultRSAKeySize)
@@ -39,7 +44,7 @@ func NewPrivateKey() (*rsa.PrivateKey, error) {
 // EncodePrivateKeyPEM encodes the given private key pem and returns bytes (base64).
 func EncodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
 	return pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
+		Type:  rsaPrivateKeyType,
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
 }
@@ -47,7 +52,7 @@ func EncodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
 // EncodeCertificatePEM encodes the given certificate pem and returns bytes (base64).
 func EncodeCertificatePEM(cert *x509.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
+		Type:  certificateType,
 		Bytes: cert.Raw,
 	})
 }

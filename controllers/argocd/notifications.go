@@ -16,7 +16,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func (r *ArgoCDReconciler) reconcileNotificationsController(cr *argoprojv1a1.ArgoCD) error {
@@ -66,12 +66,12 @@ func (r *ArgoCDReconciler) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD)
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), sa); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
 	}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), role); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDNotificationsControllerComponent), role); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -116,7 +116,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsServiceAccount(cr *argoprojv1a1
 
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the serviceAccount associated with %s : %s", sa.Name, err)
 		}
@@ -153,7 +153,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (
 	desiredRole := newRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
 
 	existingRole := &rbacv1.Role{}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, desiredRole.Name, existingRole); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get the role associated with %s : %s", desiredRole.Name, err)
 		}
@@ -269,11 +269,11 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 
 	notificationEnv := cr.Spec.Notifications.Env
 	// Let user specify their own environment first
-	notificationEnv = argoutil.EnvMerge(notificationEnv, proxyEnvVars(), false)
+	notificationEnv = util.EnvMerge(notificationEnv, util.ProxyEnvVars(), false)
 
 	podSpec := &desiredDeployment.Spec.Template.Spec
 	podSpec.SecurityContext = &corev1.PodSecurityContext{
-		RunAsNonRoot: boolPtr(true),
+		RunAsNonRoot: util.BoolPtr(true),
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = sa.ObjectMeta.Name
@@ -293,7 +293,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
+					Optional:   util.BoolPtr(true),
 				},
 			},
 		},
@@ -316,7 +316,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsDeployment(cr *argoprojv1a1.Arg
 			},
 		},
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
+			AllowPrivilegeEscalation: util.BoolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
@@ -441,7 +441,7 @@ func (r *ArgoCDReconciler) reconcileNotificationsConfigMap(cr *argoprojv1a1.Argo
 
 	cmExists := true
 	existingConfigMap := &corev1.ConfigMap{}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, desiredConfigMap.Name, existingConfigMap); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the configmap associated with %s : %s", desiredConfigMap.Name, err)
 		}
@@ -482,11 +482,11 @@ func (r *ArgoCDReconciler) reconcileNotificationsConfigMap(cr *argoprojv1a1.Argo
 // It does not reconcile/overwrite any fields or information in the secret itself
 func (r *ArgoCDReconciler) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) error {
 
-	desiredSecret := argoutil.NewSecretWithName(cr, "argocd-notifications-secret")
+	desiredSecret := util.NewSecretWithName(cr, "argocd-notifications-secret")
 
 	secretExists := true
 	existingSecret := &corev1.Secret{}
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, desiredSecret.Name, existingSecret); err != nil {
+	if err := util.FetchObject(r.Client, cr.Namespace, desiredSecret.Name, existingSecret); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the secret associated with %s : %s", desiredSecret.Name, err)
 		}
@@ -529,7 +529,7 @@ func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 	cmd = append(cmd, "argocd-notifications")
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
+	cmd = append(cmd, util.GetLogLevel(cr.Spec.Notifications.LogLevel))
 
 	return cmd
 }

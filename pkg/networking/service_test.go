@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -135,8 +135,8 @@ func TestRequestService(t *testing.T) {
 			mutation: false,
 			desiredService: getTestService(func(s *corev1.Service) {
 				s.Name = testName
-				s.Labels = argoutil.MergeMaps(s.Labels, testKVP)
-				s.Annotations = argoutil.MergeMaps(s.Annotations, testKVP)
+				s.Labels = util.MergeMaps(s.Labels, testKVP)
+				s.Annotations = util.MergeMaps(s.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,8 +76,8 @@ func TestRequestRoleBinding(t *testing.T) {
 			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 				rb.Name = testName
 				rb.Namespace = testNamespace
-				rb.Labels = argoutil.MergeMaps(rb.Labels, testKVP)
-				rb.Annotations = argoutil.MergeMaps(rb.Annotations, testKVP)
+				rb.Labels = util.MergeMaps(rb.Labels, testKVP)
+				rb.Annotations = util.MergeMaps(rb.Annotations, testKVP)
 				rb.RoleRef = testRoleRef
 				rb.Subjects = testSubjects
 			}),

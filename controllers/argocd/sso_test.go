@@ -35,6 +35,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
@@ -59,7 +60,7 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloak()
 
-	templateAPIFound = true
+	workloads.SetTemplateAPIFound(true)
 	r := makeFakeReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -248,7 +249,7 @@ func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
 	a := makeTestArgoCDForKeycloak()
 
 	// Cluster does not have a template instance
-	templateAPIFound = false
+	workloads.SetTemplateAPIFound(false)
 	r := makeReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -260,7 +261,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	a := makeTestArgoCDForKeycloak()
 
 	// Cluster does not have a template instance
-	templateAPIFound = false
+	workloads.SetTemplateAPIFound(false)
 	r := makeReconciler(t, a)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 

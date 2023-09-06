@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
@@ -129,8 +129,8 @@ func TestRequestRoute(t *testing.T) {
 			mutation: false,
 			desiredRoute: getTestRoute(func(r *routev1.Route) {
 				r.Name = testName
-				r.Labels = argoutil.MergeMaps(r.Labels, testKVP)
-				r.Annotations = argoutil.MergeMaps(r.Annotations, testKVP)
+				r.Labels = util.MergeMaps(r.Labels, testKVP)
+				r.Annotations = util.MergeMaps(r.Annotations, testKVP)
 			}),
 			wantErr: false,
 		},
