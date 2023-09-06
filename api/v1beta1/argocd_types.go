@@ -159,6 +159,9 @@ type ArgoCDApplicationSet struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
+
+	// SCMRootCAConfigMap is the name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller (optional).
+	SCMRootCAConfigMap string `json:"scmRootCAConfigMap,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.

@@ -182,3 +182,31 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(o client.Object) []reconci
 
 	return result
 }
+
+// applicationSetSCMTLSConfigMapMapper maps a watch event on a configmap with name "argocd-appset-gitlab-scm-tls-certs-cm",
+// back to the ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(o client.Object) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
+		argocds := &argoproj.ArgoCDList{}
+		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
+		}
+	}
+
+	return result
+}

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -92,14 +93,14 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the created Deployment has the expected properties
-	checkExpectedDeploymentValues(t, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 }
 
-func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *argoproj.ArgoCD) {
+func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []corev1.Container{applicationSetContainer(a)}
+	want := []corev1.Container{applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -148,6 +149,19 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+	}
+
+	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
+		volumes = append(volumes, corev1.Volume{
+			Name: "appset-gitlab-scm-tls-cert",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+					},
+				},
+			},
+		})
 	}
 
 	if diff := cmp.Diff(volumes, deployment.Spec.Template.Spec.Volumes); diff != "" {
@@ -261,7 +275,7 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the updated Deployment has the expected properties
-	checkExpectedDeploymentValues(t, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 
 }
 
@@ -287,7 +301,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []corev1.Container{applicationSetContainer(a)}
+	containerWant := []corev1.Container{applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
@@ -346,6 +360,14 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
 			expectedContainerImage: "custom-image:custom-version",
 		},
+		{
+			name: "ensure scm tls cert mount is present",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SCMRootCAConfigMap: "test-scm-tls-mount",
+			},
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
+			expectedContainerImage: "custom-env-image",
+		},
 	}
 
 	for _, test := range tests {
@@ -357,6 +379,8 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			a := makeTestArgoCD()
 			r := makeTestReconciler(t, a)
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
 
 			a.Spec.ApplicationSet = test.appSetField
 
@@ -374,7 +398,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			specImage := deployment.Spec.Template.Spec.Containers[0].Image
 			assert.Equal(t, test.expectedContainerImage, specImage)
-
+			checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 		})
 	}
 
