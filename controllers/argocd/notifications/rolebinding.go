@@ -1,11 +1,8 @@
 package notifications
 
 import (
-	"reflect"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,25 +14,24 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
 	nr.Logger.Info("reconciling roleBindings")
 
-	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
-	sa, err := permissions.GetServiceAccount(name, nr.Instance.Namespace, nr.Client)
+	sa, err := permissions.GetServiceAccount(resourceName, nr.Instance.Namespace, nr.Client)
 
 	if err != nil {
-		nr.Logger.Error(err, "reconsileRoleBinding: failed to get serviceaccount", "name", name, "namespace", nr.Instance.Namespace)
+		nr.Logger.Error(err, "reconsileRoleBinding: failed to get serviceaccount", "name", resourceName, "namespace", nr.Instance.Namespace)
 		return err
 	}
 
 	roleBindingRequest := permissions.RoleBindingRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
+			Name:        resourceName,
 			Namespace:   nr.Instance.Namespace,
-			Labels:      nr.Instance.Labels,
+			Labels:      resourceLabels,
 			Annotations: nr.Instance.Annotations,
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     RoleKind,
-			Name:     name,
+			Name:     resourceName,
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -79,10 +75,25 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		return nil
 	}
 
-	if !reflect.DeepEqual(existingRoleBinding.RoleRef, desiredRoleBinding.RoleRef) ||
-		!reflect.DeepEqual(existingRoleBinding.Subjects, desiredRoleBinding.Subjects) {
-		existingRoleBinding.RoleRef = desiredRoleBinding.RoleRef
-		existingRoleBinding.Subjects = desiredRoleBinding.Subjects
+	roleBindingChanged := false
+	fieldsToCompare := []struct {
+		existing, desired interface{}
+	}{
+		{
+			&existingRoleBinding.RoleRef,
+			&desiredRoleBinding.RoleRef,
+		},
+		{
+			&existingRoleBinding.Subjects,
+			&desiredRoleBinding.Subjects,
+		},
+	}
+
+	for _, field := range fieldsToCompare {
+		UpdateIfChanged(field.existing, field.desired, nil, &roleBindingChanged)
+	}
+
+	if roleBindingChanged {
 		if err = permissions.UpdateRoleBinding(existingRoleBinding, nr.Client); err != nil {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to update roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
 			return err

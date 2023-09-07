@@ -1,10 +1,8 @@
 package notifications
 
 import (
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,15 +14,11 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 
 	nr.Logger.Info("reconciling secrets")
 
-	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
-
 	secretRequest := workloads.SecretRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      resourceName,
 			Namespace: nr.Instance.Namespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName: name,
-			},
+			Labels:    resourceLabels,
 		},
 
 		Client:    nr.Client,

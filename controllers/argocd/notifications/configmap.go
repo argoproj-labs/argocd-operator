@@ -1,9 +1,7 @@
 package notifications
 
 import (
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,17 +13,14 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	nr.Logger.Info("reconciling configMaps")
 
-	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
-	labels := common.DefaultLabels(name, nr.Instance.Name, ArgoCDNotificationsControllerComponent)
-	labels[common.AppK8sKeyName] = name
-
 	configMapRequest := workloads.ConfigMapRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
+			Name:        resourceName,
 			Namespace:   nr.Instance.Namespace,
-			Labels:      labels,
+			Labels:      resourceLabels,
 			Annotations: nr.Instance.Annotations,
 		},
+		Data: GetDefaultNotificationsConfig(),
 	}
 
 	desiredConfigMap, err := workloads.RequestConfigMap(configMapRequest)
@@ -67,7 +62,6 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return nil
 	}
 
-	nr.Logger.V(0).Info("reconcileConfigMap: configMap updated", "name", existingConfigMap.Name, "namespace", existingConfigMap.Namespace)
 	return nil
 }
 

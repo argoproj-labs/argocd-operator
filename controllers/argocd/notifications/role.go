@@ -6,7 +6,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,9 +19,9 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 
 	roleRequest := permissions.RoleRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent),
+			Name:        resourceName,
 			Namespace:   nr.Instance.Namespace,
-			Labels:      nr.Instance.Labels,
+			Labels:      resourceLabels,
 			Annotations: nr.Instance.Annotations,
 		},
 		Rules:     getPolicyRules(),

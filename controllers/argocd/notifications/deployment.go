@@ -21,8 +21,6 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 
 	nr.Logger.Info("reconciling deployments")
 
-	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
-
 	notificationEnv := nr.Instance.Spec.Notifications.Env
 	notificationEnv = util.EnvMerge(notificationEnv, ProxyEnvVars(), false)
 
@@ -93,10 +91,10 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 
 	deploymentRequest := workloads.DeploymentRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      resourceName,
 			Namespace: nr.Instance.Namespace,
 			Labels: map[string]string{
-				common.AppK8sKeyName: name,
+				common.AppK8sKeyName: resourceName,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -106,24 +104,17 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 			Template: corev1.PodTemplateSpec{
 				Spec: podSpec,
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						common.AppK8sKeyName: name,
-					},
+					Labels: resourceLabels,
 				},
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					common.AppK8sKeyName: name,
-				},
+				MatchLabels: resourceLabels,
 			},
+			Replicas: GetArgoCDNotificationsControllerReplicas(nr),
 		},
 
 		Client:    nr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
-
-	if replicas := GetArgoCDNotificationsControllerReplicas(nr); replicas != nil {
-		deploymentRequest.Spec.Replicas = replicas
 	}
 
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
@@ -164,7 +155,6 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		return nil
 	}
 	deploymentChanged := false
-	workloads.UpdateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
 
 	fieldsToCompare := []struct {
 		existing, desired interface{}
@@ -179,6 +169,8 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},
 		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},
+		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
+		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
 		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},
 		{&existingDeployment.Spec.Template.Labels, &desiredDeployment.Spec.Template.Labels, nil},
 		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},

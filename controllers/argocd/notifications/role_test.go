@@ -1,53 +1,79 @@
 package notifications
 
 import (
-	"reflect"
+	"context"
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/controllers/controllercommon"
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+var existingRole = &rbacv1.Role{
+	TypeMeta: metav1.TypeMeta{
+		Kind:       RoleKind,
+		APIVersion: "rbac.authorization.k8s.io/v1",
+	},
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      controllercommon.testArgoCDName,
+		Namespace: controllercommon.testNamespace,
+	},
+	Rules: getPolicyRules(),
+}
+
 func TestNotificationsReconciler_reconcileRole(t *testing.T) {
-	testScheme := runtime.NewScheme()
-	testClient := fake.NewClientBuilder().WithScheme(testScheme).Build()
-	type fields struct {
-		Client   client.Client
-		Scheme   *runtime.Scheme
-		Instance *v1alpha1.ArgoCD
-		Logger   logr.Logger
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: controllercommon.testNamespace,
+		},
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		wantErr bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
-		// TODO: Add test cases.
 		{
 			name: "role doesn't exist",
-			fields: fields{
-				Client:   testClient,
-				Scheme:   testScheme,
-				Instance: makeTestArgoCD(),
-				Logger:   makeTestNotificationsLogger(),
+			setupClient: func() *NotificationsReconciler {
+				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
+		{
+			name: "role exists and is correct",
+			setupClient: func() *NotificationsReconciler {
+				return makeTestNotificationsReconciler(t, existingRole, ns)
+			},
+			wantErr: false,
+		},
+		// Add role exists but outdated tests
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := &NotificationsReconciler{
-				Client:   tt.fields.Client,
-				Scheme:   tt.fields.Scheme,
-				Instance: tt.fields.Instance,
-				Logger:   tt.fields.Logger,
-			}
-			if err := nr.reconcileRole(); (err != nil) != tt.wantErr {
+			nr := tt.setupClient()
+			err := nr.reconcileRole()
+			if (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.reconcileRole() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.name == "namespace not found" || tt.name == "DeleteRole returns an error" {
+				assert.Error(t, err)
+			}
+
+			if tt.name == "role exists and is correct" {
+				updatedRole := &rbacv1.Role{}
+				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: controllercommon.testArgoCDName, Namespace: controllercommon.testNamespace}, updatedRole)
+				if err != nil {
+					t.Fatalf("Could not get updated Role: %v", err)
+				}
+				assert.Equal(t, existingRole, updatedRole)
 			}
 		})
 	}
@@ -82,22 +108,6 @@ func TestNotificationsReconciler_DeleteRole(t *testing.T) {
 			}
 			if err := nr.DeleteRole(tt.args.name, tt.args.namespace); (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.DeleteRole() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_getPolicyRules(t *testing.T) {
-	tests := []struct {
-		name string
-		want []rbacv1.PolicyRule
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := getPolicyRules(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getPolicyRules() = %v, want %v", got, tt.want)
 			}
 		})
 	}

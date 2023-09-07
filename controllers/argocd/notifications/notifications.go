@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,9 +17,17 @@ type NotificationsReconciler struct {
 	Logger   logr.Logger
 }
 
+var (
+	resourceName   string
+	resourceLabels map[string]string
+)
+
 func (nr *NotificationsReconciler) Reconcile() error {
 
 	nr.Logger = ctrl.Log.WithName(ArgoCDNotificationsControllerComponent).WithValues("instance", nr.Instance.Name, "instance-namespace", nr.Instance.Namespace)
+
+	resourceName = util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
+	resourceLabels = common.DefaultLabels(resourceName, nr.Instance.Name, ArgoCDNotificationsControllerComponent)
 
 	if err := nr.reconcileServiceAccount(); err != nil {
 		nr.Logger.Info("reconciling notifications serviceaccount")
@@ -55,35 +64,34 @@ func (nr *NotificationsReconciler) Reconcile() error {
 
 func (nr *NotificationsReconciler) DeleteResources() error {
 
-	name := util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, ArgoCDNotificationsControllerComponent)
 	var deletionError error = nil
 
-	if err := nr.DeleteDeployment(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteDeployment(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}
 
-	if err := nr.DeleteSecret(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteSecret(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete secret")
 		deletionError = err
 	}
 
-	if err := nr.DeleteConfigMap(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteConfigMap(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete configmap")
 		deletionError = err
 	}
 
-	if err := nr.DeleteRoleBinding(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteRoleBinding(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete roleBinding")
 		deletionError = err
 	}
 
-	if err := nr.DeleteRole(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteRole(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete role")
 		deletionError = err
 	}
 
-	if err := nr.DeleteServiceAccount(name, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteServiceAccount(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete serviceaccount")
 		deletionError = err
 	}

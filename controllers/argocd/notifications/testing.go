@@ -1,33 +1,28 @@
 package notifications
 
 import (
+	"testing"
+
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/go-logr/logr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/argoproj-labs/argocd-operator/controllers/controllercommon"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const (
-	testNamespace  = "argocd"
-	testArgoCDName = "argocd"
-	// testApplicationController = "argocd-application-controller"
-)
+func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {
+	s := scheme.Scheme
+	assert.NoError(t, v1alpha1.AddToScheme(s))
 
-type argoCDOpt func(*v1alpha1.ArgoCD)
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	logger := ctrl.Log.WithName(ArgoCDNotificationsControllerComponent)
 
-func makeTestArgoCD(opts ...argoCDOpt) *v1alpha1.ArgoCD {
-	a := &v1alpha1.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
+	return &NotificationsReconciler{
+		Client:   cl,
+		Scheme:   s,
+		Instance: controllercommon.MakeTestArgoCD(),
+		Logger:   logger,
 	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
-}
-
-func makeTestNotificationsLogger() logr.Logger {
-	return ctrl.Log.WithName(ArgoCDNotificationsControllerComponent).WithValues("instance", testArgoCDName, "instance-namespace", testNamespace)
 }

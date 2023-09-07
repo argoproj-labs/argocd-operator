@@ -217,8 +217,14 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		r.Logger.Error(err, "failed to reconcile applicationset controller")
 	}
 
-	if err := r.NotificationsController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile notifications controller")
+	if r.Instance.Spec.Notifications.Enabled {
+		if err := r.NotificationsController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile notifications controller")
+		}
+	} else {
+		if err := r.NotificationsController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete notifications resources")
+		}
 	}
 
 	if err := r.SSOController.Reconcile(); err != nil {
