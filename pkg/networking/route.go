@@ -19,7 +19,7 @@ type RouteRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newRoute returns a new Route instance for the given ArgoCD.

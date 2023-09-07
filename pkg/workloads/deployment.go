@@ -19,7 +19,7 @@ type DeploymentRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.

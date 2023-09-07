@@ -19,7 +19,7 @@ type ServiceRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newService returns a new Service instance for the given ArgoCD.

@@ -22,7 +22,7 @@ type SecretRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newSecret returns a new Secret instance for the given ArgoCD.

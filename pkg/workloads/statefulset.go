@@ -18,7 +18,7 @@ type StatefulSetRequest struct {
 	Spec       appsv1.StatefulSetSpec
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newStateful returns a new Stateful instance for the given ArgoCD.

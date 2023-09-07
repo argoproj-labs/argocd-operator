@@ -19,7 +19,7 @@ type HorizontalPodAutoscalerRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newHorizontalPodAutoscaler returns a new HorizontalPodAutoscaler instance for the given ArgoCD.

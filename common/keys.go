@@ -14,6 +14,11 @@
 
 package common
 
+// general keys
+const (
+	ImageUpgradedKey = "image.upgraded"
+)
+
 // ArgoCD keys
 const (
 	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting..

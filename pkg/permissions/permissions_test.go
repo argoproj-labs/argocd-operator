@@ -5,6 +5,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // common test variables used across permissions tests
@@ -60,11 +61,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *rbacv1.Role:
 		if obj.Namespace == testNamespace {

@@ -19,7 +19,7 @@ type ConfigMapRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newConfigMap returns a new ConfigMap instance for the given ArgoCD.

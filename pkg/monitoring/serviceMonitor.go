@@ -19,7 +19,7 @@ type ServiceMonitorRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance for the given ArgoCD.

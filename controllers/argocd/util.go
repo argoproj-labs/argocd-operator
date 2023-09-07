@@ -28,7 +28,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
@@ -36,7 +35,6 @@ import (
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/sethvargo/go-password/password"
-	"golang.org/x/mod/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -741,7 +739,7 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 
 	if cr.Spec.Notifications.Enabled {
 		log.Info("reconciling Notifications controller")
-		if err := r.reconcileNotificationsController(cr); err != nil {
+		if err := r.NotificationsController.Reconcile(); err != nil {
 			return err
 		}
 	}
@@ -920,11 +918,11 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 				return false
 			}
 			if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
-				err := r.deleteNotificationsResources(newCR)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
-						newCR.Name, newCR.Namespace))
-				}
+				// err := r.NotificationsController.DeleteResources(newCR)
+				// if err != nil {
+				// 	log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
+				// 		newCR.Name, newCR.Namespace))
+				// }
 			}
 			return true
 		},
@@ -1271,27 +1269,6 @@ func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj
 		}
 	}
 	return nil
-}
-
-func AddSeccompProfileForOpenShift(client client.Client, podspec *corev1.PodSpec) {
-	if !cluster.IsVersionAPIAvailable() {
-		return
-	}
-	version, err := cluster.GetClusterVersion(client)
-	if err != nil {
-		log.Error(err, "couldn't get OpenShift version")
-	}
-	if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
-		if podspec.SecurityContext == nil {
-			podspec.SecurityContext = &corev1.PodSecurityContext{}
-		}
-		if podspec.SecurityContext.SeccompProfile == nil {
-			podspec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
-		}
-		if len(podspec.SecurityContext.SeccompProfile.Type) == 0 {
-			podspec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
-		}
-	}
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.

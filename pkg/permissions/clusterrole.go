@@ -18,7 +18,7 @@ type ClusterRoleRequest struct {
 
 	// array of functions to mutate clusterRole before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newClusterRole returns a new clusterRole instance.

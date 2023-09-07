@@ -35,11 +35,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *corev1.Namespace:
 		if _, ok := obj.Labels[testKey]; ok {

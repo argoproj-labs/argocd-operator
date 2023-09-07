@@ -27,6 +27,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -442,7 +443,7 @@ func (r *ArgoCDReconciler) reconcileDeployments(cr *argoprojv1a1.ArgoCD, useTLSF
 func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
 	deploy.Spec.Replicas = getGrafanaReplicas(cr)
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Image:           getGrafanaContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
@@ -574,7 +575,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoprojv1a1.ArgoCD) e
 func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Args:            getArgoRedisArgs(useTLS),
@@ -634,7 +635,7 @@ func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoprojv1a1.ArgoCD, use
 		desiredImage := getRedisContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
@@ -821,7 +822,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 		RunAsUser:    util.Int64Ptr(1000),
 		FSGroup:      util.Int64Ptr(1000),
 	}
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
 
@@ -845,7 +846,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoprojv1a1.Argo
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
@@ -898,7 +899,7 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 		repoEnv = util.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
 		Name:            "copyutil",
@@ -1111,10 +1112,10 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoprojv1a1.ArgoCD, useT
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			if existing.Spec.Template.ObjectMeta.Labels == nil {
 				existing.Spec.Template.ObjectMeta.Labels = map[string]string{
-					"image.upgraded": time.Now().UTC().Format("01022006-150406-MST"),
+					common.ImageUpgradedKey: time.Now().UTC().Format(common.TimeFormatMST),
 				}
 			}
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
@@ -1183,7 +1184,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, us
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
 	serverEnv = util.EnvMerge(serverEnv, util.ProxyEnvVars(), false)
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
@@ -1298,7 +1299,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoprojv1a1.ArgoCD, us
 		changed := false
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)

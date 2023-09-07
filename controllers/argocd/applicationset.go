@@ -30,6 +30,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -148,7 +149,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.Ar
 	podSpec.Containers = []corev1.Container{
 		applicationSetContainer(cr),
 	}
-	AddSeccompProfileForOpenShift(r.Client, podSpec)
+	openshift.AddSeccompProfileForOpenShift(cr, podSpec, r.Client)
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 

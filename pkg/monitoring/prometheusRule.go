@@ -19,7 +19,7 @@ type PrometheusRuleRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newPrometheusRule returns a new PrometheusRule instance for the given ArgoCD.

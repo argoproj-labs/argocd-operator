@@ -19,7 +19,7 @@ type IngressRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    ctrlClient.Client
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.

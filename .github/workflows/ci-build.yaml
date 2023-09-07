@@ -5,11 +5,13 @@ on:
       - 'master'
       - 'release-*'
       - 'rhos-*'
+      - 'operator-redesign'
   pull_request:
     branches:
       - 'master'
       - 'release-*'
       - 'rhos-*'
+      - 'operator-redesign'
 
 jobs:
 
