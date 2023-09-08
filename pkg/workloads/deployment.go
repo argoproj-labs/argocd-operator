@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // DeploymentRequest objects contain all the required information to produce a deployment object in return
@@ -19,7 +19,7 @@ type DeploymentRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -31,12 +31,12 @@ func newDeployment(objMeta metav1.ObjectMeta, spec appsv1.DeploymentSpec) *appsv
 	}
 }
 
-func CreateDeployment(deployment *appsv1.Deployment, client ctrlClient.Client) error {
+func CreateDeployment(deployment *appsv1.Deployment, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), deployment)
 }
 
 // UpdateDeployment updates the specified Deployment using the provided client.
-func UpdateDeployment(deployment *appsv1.Deployment, client ctrlClient.Client) error {
+func UpdateDeployment(deployment *appsv1.Deployment, client cntrlClient.Client) error {
 	_, err := GetDeployment(deployment.Name, deployment.Namespace, client)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func UpdateDeployment(deployment *appsv1.Deployment, client ctrlClient.Client) e
 	return nil
 }
 
-func DeleteDeployment(name, namespace string, client ctrlClient.Client) error {
+func DeleteDeployment(name, namespace string, client cntrlClient.Client) error {
 	existingDeployment, err := GetDeployment(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -63,7 +63,7 @@ func DeleteDeployment(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetDeployment(name, namespace string, client ctrlClient.Client) (*appsv1.Deployment, error) {
+func GetDeployment(name, namespace string, client cntrlClient.Client) (*appsv1.Deployment, error) {
 	existingDeployment := &appsv1.Deployment{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingDeployment)
 	if err != nil {
@@ -72,7 +72,7 @@ func GetDeployment(name, namespace string, client ctrlClient.Client) (*appsv1.De
 	return existingDeployment, nil
 }
 
-func ListDeployments(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*appsv1.DeploymentList, error) {
+func ListDeployments(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*appsv1.DeploymentList, error) {
 	existingDeployments := &appsv1.DeploymentList{}
 	err := client.List(context.TODO(), existingDeployments, listOptions...)
 	if err != nil {

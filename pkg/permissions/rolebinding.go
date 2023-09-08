@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type RoleBindingRequest struct {
@@ -32,12 +32,12 @@ func RequestRoleBinding(request RoleBindingRequest) *rbacv1.RoleBinding {
 }
 
 // CreateRoleBinding creates a RoleBinding resource using the provided client.
-func CreateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
+func CreateRoleBinding(rb *rbacv1.RoleBinding, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), rb)
 }
 
 // GetRoleBinding retrieves an existing RoleBinding resource specified by its name and namespace.
-func GetRoleBinding(name, namespace string, client ctrlClient.Client) (*rbacv1.RoleBinding, error) {
+func GetRoleBinding(name, namespace string, client cntrlClient.Client) (*rbacv1.RoleBinding, error) {
 	existingRB := &rbacv1.RoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRB)
 	if err != nil {
@@ -47,7 +47,7 @@ func GetRoleBinding(name, namespace string, client ctrlClient.Client) (*rbacv1.R
 }
 
 // ListRoleBindings lists all RoleBinding resources in a given namespace.
-func ListRoleBindings(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*rbacv1.RoleBindingList, error) {
+func ListRoleBindings(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.RoleBindingList, error) {
 	existingRBs := &rbacv1.RoleBindingList{}
 	err := client.List(context.TODO(), existingRBs, listOptions...)
 	if err != nil {
@@ -57,7 +57,7 @@ func ListRoleBindings(namespace string, client ctrlClient.Client, listOptions []
 }
 
 // UpdateRoleBinding updates an existing RoleBinding resource.
-func UpdateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
+func UpdateRoleBinding(rb *rbacv1.RoleBinding, client cntrlClient.Client) error {
 	_, err := GetRoleBinding(rb.Name, rb.Namespace, client)
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func UpdateRoleBinding(rb *rbacv1.RoleBinding, client ctrlClient.Client) error {
 }
 
 // DeleteRoleBinding deletes an existing RoleBinding resource specified by its name and namespace.
-func DeleteRoleBinding(name, namespace string, client ctrlClient.Client) error {
+func DeleteRoleBinding(name, namespace string, client cntrlClient.Client) error {
 	existingRB, err := GetRoleBinding(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {

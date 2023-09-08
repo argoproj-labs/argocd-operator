@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -35,11 +35,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *corev1.Namespace:
 		if _, ok := obj.Labels[testKey]; ok {
@@ -155,7 +155,7 @@ func TestCreateNamespace(t *testing.T) {
 	assert.NoError(t, err)
 
 	createdNamespace := &corev1.Namespace{}
-	err = testClient.Get(context.TODO(), ctrlClient.ObjectKey{Name: testName}, createdNamespace)
+	err = testClient.Get(context.TODO(), cntrlClient.ObjectKey{Name: testName}, createdNamespace)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredNamespace, createdNamespace)
@@ -198,8 +198,8 @@ func TestListNamespaces(t *testing.T) {
 	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
-	listOpts := make([]ctrlClient.ListOption, 0)
-	listOpts = append(listOpts, ctrlClient.MatchingLabelsSelector{
+	listOpts := make([]cntrlClient.ListOption, 0)
+	listOpts = append(listOpts, cntrlClient.MatchingLabelsSelector{
 		Selector: selector,
 	})
 

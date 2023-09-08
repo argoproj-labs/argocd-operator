@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ServiceRequest objects contain all the required information to produce a service object in return
@@ -19,7 +19,7 @@ type ServiceRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newService returns a new Service instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newService(objectMeta metav1.ObjectMeta, spec corev1.ServiceSpec) *corev1.S
 	}
 }
 
-func CreateService(service *corev1.Service, client ctrlClient.Client) error {
+func CreateService(service *corev1.Service, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), service)
 }
 
 // UpdateService updates the specified Service using the provided client.
-func UpdateService(service *corev1.Service, client ctrlClient.Client) error {
+func UpdateService(service *corev1.Service, client cntrlClient.Client) error {
 	_, err := GetService(service.Name, service.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateService(service *corev1.Service, client ctrlClient.Client) error {
 	return nil
 }
 
-func DeleteService(name, namespace string, client ctrlClient.Client) error {
+func DeleteService(name, namespace string, client cntrlClient.Client) error {
 	existingService, err := GetService(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteService(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetService(name, namespace string, client ctrlClient.Client) (*corev1.Service, error) {
+func GetService(name, namespace string, client cntrlClient.Client) (*corev1.Service, error) {
 	existingService := &corev1.Service{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingService)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetService(name, namespace string, client ctrlClient.Client) (*corev1.Servi
 	return existingService, nil
 }
 
-func ListServices(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.ServiceList, error) {
+func ListServices(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.ServiceList, error) {
 	existingServices := &corev1.ServiceList{}
 	err := client.List(context.TODO(), existingServices, listOptions...)
 	if err != nil {

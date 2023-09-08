@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ServiceAccountRequest struct {
@@ -28,12 +28,12 @@ func RequestServiceAccount(request ServiceAccountRequest) *corev1.ServiceAccount
 }
 
 // CreateServiceAccount creates the given ServiceAccount using the provided client.
-func CreateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) error {
+func CreateServiceAccount(sa *corev1.ServiceAccount, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), sa)
 }
 
 // GetServiceAccount retrieves the ServiceAccount with the specified name and namespace from the client.
-func GetServiceAccount(name, namespace string, client ctrlClient.Client) (*corev1.ServiceAccount, error) {
+func GetServiceAccount(name, namespace string, client cntrlClient.Client) (*corev1.ServiceAccount, error) {
 	existingSA := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingSA)
 	if err != nil {
@@ -43,7 +43,7 @@ func GetServiceAccount(name, namespace string, client ctrlClient.Client) (*corev
 }
 
 // ListServiceAccounts lists all ServiceAccounts in the specified namespace using the provided client and list options.
-func ListServiceAccounts(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.ServiceAccountList, error) {
+func ListServiceAccounts(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.ServiceAccountList, error) {
 	existingSAs := &corev1.ServiceAccountList{}
 	err := client.List(context.TODO(), existingSAs, listOptions...)
 	if err != nil {
@@ -53,7 +53,7 @@ func ListServiceAccounts(namespace string, client ctrlClient.Client, listOptions
 }
 
 // UpdateServiceAccount updates the given ServiceAccount using the provided client.
-func UpdateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) error {
+func UpdateServiceAccount(sa *corev1.ServiceAccount, client cntrlClient.Client) error {
 	_, err := GetServiceAccount(sa.Name, sa.Namespace, client)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func UpdateServiceAccount(sa *corev1.ServiceAccount, client ctrlClient.Client) e
 }
 
 // DeleteServiceAccount deletes the ServiceAccount with the specified name and namespace from the client.
-func DeleteServiceAccount(name, namespace string, client ctrlClient.Client) error {
+func DeleteServiceAccount(name, namespace string, client cntrlClient.Client) error {
 	existingSA, err := GetServiceAccount(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {

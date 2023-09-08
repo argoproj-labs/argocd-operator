@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -12,7 +13,7 @@ var (
 )
 
 // MutateFunc defines the function signature for any mutation functions that need to be executed by this package
-type MutateFunc func(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error
+type MutateFunc func(*v1alpha1.ArgoCD, interface{}, client.Client) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(m ...MutateFunc) {
@@ -21,7 +22,7 @@ func Register(m ...MutateFunc) {
 	mutateFuncs = append(mutateFuncs, m...)
 }
 
-func ApplyReconcilerMutation(cr *v1alpha1.ArgoCD, resource interface{}, client interface{}) error {
+func ApplyReconcilerMutation(cr *v1alpha1.ArgoCD, resource interface{}, client client.Client) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, mutateFunc := range mutateFuncs {

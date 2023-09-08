@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // IngressRequest objects contain all the required information to produce a ingress object in return
@@ -19,7 +19,7 @@ type IngressRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newIngress returns a new Ingress instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newIngress(objectMeta metav1.ObjectMeta, spec networkingv1.IngressSpec) *ne
 	}
 }
 
-func CreateIngress(ingress *networkingv1.Ingress, client ctrlClient.Client) error {
+func CreateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), ingress)
 }
 
 // UpdateIngress updates the specified Ingress using the provided client.
-func UpdateIngress(ingress *networkingv1.Ingress, client ctrlClient.Client) error {
+func UpdateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
 	_, err := GetIngress(ingress.Name, ingress.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateIngress(ingress *networkingv1.Ingress, client ctrlClient.Client) erro
 	return nil
 }
 
-func DeleteIngress(name, namespace string, client ctrlClient.Client) error {
+func DeleteIngress(name, namespace string, client cntrlClient.Client) error {
 	existingIngress, err := GetIngress(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteIngress(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetIngress(name, namespace string, client ctrlClient.Client) (*networkingv1.Ingress, error) {
+func GetIngress(name, namespace string, client cntrlClient.Client) (*networkingv1.Ingress, error) {
 	existingIngress := &networkingv1.Ingress{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingIngress)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetIngress(name, namespace string, client ctrlClient.Client) (*networkingv1
 	return existingIngress, nil
 }
 
-func ListIngresss(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*networkingv1.IngressList, error) {
+func ListIngresss(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*networkingv1.IngressList, error) {
 	existingIngresss := &networkingv1.IngressList{}
 	err := client.List(context.TODO(), existingIngresss, listOptions...)
 	if err != nil {
