@@ -8,7 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // common test variables used across workloads tests
@@ -32,11 +32,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
+func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
+func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *appsv1.Deployment:
 		obj.Name = testNameMutated

@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // SecretRequest objects contain all the required information to produce a secret object in return
@@ -22,7 +22,7 @@ type SecretRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    ctrlClient.Client
+	Client    cntrlClient.Client
 }
 
 // newSecret returns a new Secret instance for the given ArgoCD.
@@ -36,12 +36,12 @@ func newSecret(objMeta metav1.ObjectMeta, data map[string][]byte, stringData map
 	}
 }
 
-func CreateSecret(secret *corev1.Secret, client ctrlClient.Client) error {
+func CreateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), secret)
 }
 
 // UpdateSecret updates the specified Secret using the provided client.
-func UpdateSecret(secret *corev1.Secret, client ctrlClient.Client) error {
+func UpdateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
 	_, err := GetSecret(secret.Name, secret.Namespace, client)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func UpdateSecret(secret *corev1.Secret, client ctrlClient.Client) error {
 	return nil
 }
 
-func DeleteSecret(name, namespace string, client ctrlClient.Client) error {
+func DeleteSecret(name, namespace string, client cntrlClient.Client) error {
 	existingSecret, err := GetSecret(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -68,7 +68,7 @@ func DeleteSecret(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetSecret(name, namespace string, client ctrlClient.Client) (*corev1.Secret, error) {
+func GetSecret(name, namespace string, client cntrlClient.Client) (*corev1.Secret, error) {
 	existingSecret := &corev1.Secret{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingSecret)
 	if err != nil {
@@ -77,7 +77,7 @@ func GetSecret(name, namespace string, client ctrlClient.Client) (*corev1.Secret
 	return existingSecret, nil
 }
 
-func ListSecrets(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.SecretList, error) {
+func ListSecrets(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.SecretList, error) {
 	existingSecrets := &corev1.SecretList{}
 	err := client.List(context.TODO(), existingSecrets, listOptions...)
 	if err != nil {

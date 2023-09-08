@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // PrometheusRuleRequest objects contain all the required information to produce a prometheusRule object in return
@@ -19,7 +19,7 @@ type PrometheusRuleRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    ctrlClient.Client
+	Client    cntrlClient.Client
 }
 
 // newPrometheusRule returns a new PrometheusRule instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newPrometheusRule(objectMeta metav1.ObjectMeta, spec monitoringv1.Prometheu
 	}
 }
 
-func CreatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client ctrlClient.Client) error {
+func CreatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), prometheusRule)
 }
 
 // UpdatePrometheusRule updates the specified PrometheusRule using the provided client.
-func UpdatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client ctrlClient.Client) error {
+func UpdatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client cntrlClient.Client) error {
 	_, err := GetPrometheusRule(prometheusRule.Name, prometheusRule.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client ct
 	return nil
 }
 
-func DeletePrometheusRule(name, namespace string, client ctrlClient.Client) error {
+func DeletePrometheusRule(name, namespace string, client cntrlClient.Client) error {
 	existingPrometheusRule, err := GetPrometheusRule(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeletePrometheusRule(name, namespace string, client ctrlClient.Client) erro
 	return nil
 }
 
-func GetPrometheusRule(name, namespace string, client ctrlClient.Client) (*monitoringv1.PrometheusRule, error) {
+func GetPrometheusRule(name, namespace string, client cntrlClient.Client) (*monitoringv1.PrometheusRule, error) {
 	existingPrometheusRule := &monitoringv1.PrometheusRule{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingPrometheusRule)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetPrometheusRule(name, namespace string, client ctrlClient.Client) (*monit
 	return existingPrometheusRule, nil
 }
 
-func ListPrometheusRules(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*monitoringv1.PrometheusRuleList, error) {
+func ListPrometheusRules(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*monitoringv1.PrometheusRuleList, error) {
 	existingPrometheusRules := &monitoringv1.PrometheusRuleList{}
 	err := client.List(context.TODO(), existingPrometheusRules, listOptions...)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // common test variables used across workloads tests
@@ -25,11 +25,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
+func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client ctrlClient.Client) error {
+func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *monitoringv1.PrometheusRule:
 		obj.Name = testPrometheusRuleNameMutated

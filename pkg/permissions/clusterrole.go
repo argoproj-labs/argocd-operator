@@ -8,7 +8,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ClusterRoleRequest objects contain all the required information to produce a clusterRole object in return
@@ -18,7 +18,7 @@ type ClusterRoleRequest struct {
 
 	// array of functions to mutate clusterRole before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    ctrlClient.Client
+	Client    cntrlClient.Client
 }
 
 // newClusterRole returns a new clusterRole instance.
@@ -53,14 +53,14 @@ func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error)
 }
 
 // CreateClusterRole creates the specified ClusterRole using the provided client.
-func CreateClusterRole(role *rbacv1.ClusterRole, client ctrlClient.Client) error {
+func CreateClusterRole(role *rbacv1.ClusterRole, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), role)
 }
 
 // GetClusterRole retrieves the ClusterRole with the given name using the provided client.
-func GetClusterRole(name string, client ctrlClient.Client) (*rbacv1.ClusterRole, error) {
+func GetClusterRole(name string, client cntrlClient.Client) (*rbacv1.ClusterRole, error) {
 	existingRole := &rbacv1.ClusterRole{}
-	err := client.Get(context.TODO(), ctrlClient.ObjectKey{Name: name}, existingRole)
+	err := client.Get(context.TODO(), cntrlClient.ObjectKey{Name: name}, existingRole)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func GetClusterRole(name string, client ctrlClient.Client) (*rbacv1.ClusterRole,
 }
 
 // ListClusterRoles returns a list of ClusterRole objects using the provided client and list options.
-func ListClusterRoles(client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*rbacv1.ClusterRoleList, error) {
+func ListClusterRoles(client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.ClusterRoleList, error) {
 	existingRoles := &rbacv1.ClusterRoleList{}
 	err := client.List(context.TODO(), existingRoles, listOptions...)
 	if err != nil {
@@ -78,7 +78,7 @@ func ListClusterRoles(client ctrlClient.Client, listOptions []ctrlClient.ListOpt
 }
 
 // UpdateClusterRole updates the specified ClusterRole using the provided client.
-func UpdateClusterRole(role *rbacv1.ClusterRole, client ctrlClient.Client) error {
+func UpdateClusterRole(role *rbacv1.ClusterRole, client cntrlClient.Client) error {
 	_, err := GetClusterRole(role.Name, client)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func UpdateClusterRole(role *rbacv1.ClusterRole, client ctrlClient.Client) error
 
 // DeleteClusterRole deletes the ClusterRole with the given name using the provided client.
 // It ignores the "not found" error if the ClusterRole does not exist.
-func DeleteClusterRole(name string, client ctrlClient.Client) error {
+func DeleteClusterRole(name string, client cntrlClient.Client) error {
 	existingRole, err := GetClusterRole(name, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
