@@ -1,4 +1,4 @@
-package controllerCommon
+package argocdcommon
 
 import (
 	"os"
