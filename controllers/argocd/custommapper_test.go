@@ -96,7 +96,7 @@ func TestArgoCDReconciler_clusterRoleBindingMapper(t *testing.T) {
 				Client: tt.fields.client,
 				Scheme: tt.fields.scheme,
 			}
-			if got := r.clusterResourceMapper(tt.args.o); !reflect.DeepEqual(got, tt.want) {
+			if got := r.clusterResourceMapper(context.TODO(), tt.args.o); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ArgoCDReconciler.clusterRoleBindingMapper() = %v, want %v", got, tt.want)
 			}
 		})
@@ -161,7 +161,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -208,7 +208,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -256,7 +256,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -289,7 +289,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -312,7 +312,7 @@ func TestArgoCDReconciler_tlsSecretMapperRepoServer(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -378,7 +378,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -425,7 +425,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -473,7 +473,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -506,7 +506,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -529,7 +529,7 @@ func TestArgoCDReconciler_tlsSecretMapperRedis(t *testing.T) {
 		}
 		r := makeReconciler(t, argocd, objs...)
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -586,7 +586,7 @@ func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.namespaceResourceMapper(tt.o); !reflect.DeepEqual(got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ArgoCDReconciler.namespaceResourceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})

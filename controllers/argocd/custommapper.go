@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (r *ArgoCDReconciler) clusterResourceMapper(o client.Object) []reconcile.Request {
+func (r *ArgoCDReconciler) clusterResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	crbAnnotations := o.GetAnnotations()
 	namespacedArgoCDObject := client.ObjectKey{}
 
@@ -65,7 +65,7 @@ func isOwnerOfInterest(owner v1.OwnerReference) bool {
 
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
 // ArgoCD object that we want to reconcile.
-func (r *ArgoCDReconciler) tlsSecretMapper(o client.Object) []reconcile.Request {
+func (r *ArgoCDReconciler) tlsSecretMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
 	if !isSecretOfInterest(o) {
@@ -127,7 +127,7 @@ func (r *ArgoCDReconciler) tlsSecretMapper(o client.Object) []reconcile.Request 
 
 // namespaceResourceMapper maps a watch event on a namespace, back to the
 // ArgoCD object that we want to reconcile.
-func (r *ArgoCDReconciler) namespaceResourceMapper(o client.Object) []reconcile.Request {
+func (r *ArgoCDReconciler) namespaceResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
 	labels := o.GetLabels()
@@ -156,7 +156,7 @@ func (r *ArgoCDReconciler) namespaceResourceMapper(o client.Object) []reconcile.
 
 // clusterSecretResourceMapper maps a watch event on a namespace, back to the
 // ArgoCD object that we want to reconcile.
-func (r *ArgoCDReconciler) clusterSecretResourceMapper(o client.Object) []reconcile.Request {
+func (r *ArgoCDReconciler) clusterSecretResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
 	labels := o.GetLabels()

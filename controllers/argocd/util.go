@@ -53,7 +53,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // generateArgoAdminPassword will generate and return the admin password for Argo CD.
@@ -958,18 +957,18 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
 
 	// Watch for cluster secrets added to the argocd instance
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: "cluster",
-		}}}}, clusterSecretResourceHandler)
+		}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})
@@ -993,7 +992,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 
 	if workloads.IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
+		bldr.Watches(&oappsv1.DeploymentConfig{}, handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &argoprojv1a1.ArgoCD{},
 		},
@@ -1002,7 +1001,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	bldr.Watches(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
 }
