@@ -63,7 +63,6 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return nil
 	}
 
-	nr.Logger.V(0).Info("reconcileSecret: secret updated", "name", existingSecret.Name, "namespace", existingSecret.Namespace)
 	return nil
 }
 

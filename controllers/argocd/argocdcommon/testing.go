@@ -18,6 +18,15 @@ func MakeTestNamespace() *corev1.Namespace {
 		},
 	}
 }
+func MakeTestServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      TestArgoCDName,
+			Namespace: TestNamespace,
+		},
+		Secrets: []corev1.ObjectReference{},
+	}
+}
 
 type argoCDOpt func(*v1alpha1.ArgoCD)
 

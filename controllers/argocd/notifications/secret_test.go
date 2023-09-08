@@ -6,23 +6,24 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
-	rbacv1 "k8s.io/api/rbac/v1"
+
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestNotificationsReconciler_reconcileRole(t *testing.T) {
+func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-	existingRole := &rbacv1.Role{
+	existingSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       RoleKind,
-			APIVersion: APIVersionRbacV1,
+			Kind:       SecretKind,
+			APIVersion: APIVersionV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      argocdcommon.TestArgoCDName,
 			Namespace: argocdcommon.TestNamespace,
 		},
-		Rules: getPolicyRules(),
+		StringData: testKVP,
 	}
 
 	tests := []struct {
@@ -32,7 +33,7 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:         "role doesn't exist",
+			name:         "secret doesn't exist",
 			resourceName: argocdcommon.TestArgoCDName,
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
@@ -40,20 +41,10 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:         "role exists and is correct",
+			name:         "secret exists",
 			resourceName: argocdcommon.TestArgoCDName,
 			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, existingRole, ns)
-			},
-			wantErr: false,
-		},
-		{
-			name:         "role exists but outdated",
-			resourceName: argocdcommon.TestArgoCDName,
-			setupClient: func() *NotificationsReconciler {
-				outdatedRole := existingRole
-				outdatedRole.Rules = []rbacv1.PolicyRule{}
-				return makeTestNotificationsReconciler(t, outdatedRole, ns)
+				return makeTestNotificationsReconciler(t, existingSecret, ns)
 			},
 			wantErr: false,
 		},
@@ -63,34 +54,26 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 			nr := tt.setupClient()
 			originalResourceName := resourceName
 			resourceName = argocdcommon.TestArgoCDName
-			err := nr.reconcileRole()
+			err := nr.reconcileSecret()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.reconcileRole() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NotificationsReconciler.reconcileSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.name == "role exists and is correct" {
-				updatedRole := &rbacv1.Role{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRole)
+			if tt.name == "secret exists" {
+				currentSecret := &corev1.Secret{}
+				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentSecret)
 				if err != nil {
-					t.Fatalf("Could not get updated Role: %v", err)
+					t.Fatalf("Could not get current Secret: %v", err)
 				}
-				assert.Equal(t, existingRole, updatedRole)
+				assert.Equal(t, existingSecret, currentSecret)
 			}
 
-			if tt.name == "role exists but outdated" {
-				updatedRole := &rbacv1.Role{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRole)
-				if err != nil {
-					t.Fatalf("Could not get updated Role: %v", err)
-				}
-				assert.Equal(t, getPolicyRules(), updatedRole.Rules)
-			}
 			resourceName = originalResourceName
 		})
 	}
 }
 
-func TestNotificationsReconciler_DeleteRole(t *testing.T) {
+func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	tests := []struct {
 		name         string
@@ -112,8 +95,8 @@ func TestNotificationsReconciler_DeleteRole(t *testing.T) {
 			nr := tt.setupClient()
 			originalResourceName := resourceName
 			resourceName = argocdcommon.TestArgoCDName
-			if err := nr.DeleteRole(tt.resourceName, ns.Name); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteRole() error = %v, wantErr %v", err, tt.wantErr)
+			if err := nr.DeleteSecret(tt.resourceName, ns.Name); (err != nil) != tt.wantErr {
+				t.Errorf("NotificationsReconciler.DeleteSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			resourceName = originalResourceName
 		})

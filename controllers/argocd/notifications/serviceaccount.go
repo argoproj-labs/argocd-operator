@@ -55,7 +55,6 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 		return nil
 	}
 
-	nr.Logger.V(0).Info("reconcileServiceAccount: serviceAccount updated", "name", existingServiceAccount.Name, "namespace", existingServiceAccount.Namespace)
 	return nil
 }
 

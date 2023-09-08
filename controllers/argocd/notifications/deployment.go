@@ -93,9 +93,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resourceName,
 			Namespace: nr.Instance.Namespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName: resourceName,
-			},
+			Labels:    resourceLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Strategy: appsv1.DeploymentStrategy{
