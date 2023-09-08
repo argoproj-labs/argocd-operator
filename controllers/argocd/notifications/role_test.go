@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/controllers/controllercommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -22,16 +22,19 @@ var existingRole = &rbacv1.Role{
 		APIVersion: "rbac.authorization.k8s.io/v1",
 	},
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      controllercommon.testArgoCDName,
-		Namespace: controllercommon.testNamespace,
+		Name:      argocdcommon.TestArgoCDName,
+		Namespace: argocdcommon.TestNamespace,
 	},
 	Rules: getPolicyRules(),
 }
 
 func TestNotificationsReconciler_reconcileRole(t *testing.T) {
+	originalResourceName := resourceName
+	resourceName = argocdcommon.TestArgoCDName
+
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: controllercommon.testNamespace,
+			Name: argocdcommon.TestNamespace,
 		},
 	}
 	tests := []struct {
@@ -63,13 +66,9 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 				t.Errorf("NotificationsReconciler.reconcileRole() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.name == "namespace not found" || tt.name == "DeleteRole returns an error" {
-				assert.Error(t, err)
-			}
-
 			if tt.name == "role exists and is correct" {
 				updatedRole := &rbacv1.Role{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: controllercommon.testArgoCDName, Namespace: controllercommon.testNamespace}, updatedRole)
+				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRole)
 				if err != nil {
 					t.Fatalf("Could not get updated Role: %v", err)
 				}
@@ -77,6 +76,8 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 			}
 		})
 	}
+
+	resourceName = originalResourceName
 }
 
 func TestNotificationsReconciler_DeleteRole(t *testing.T) {

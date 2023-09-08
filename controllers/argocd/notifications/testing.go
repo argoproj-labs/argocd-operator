@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/controllers/controllercommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -22,7 +22,7 @@ func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *Noti
 	return &NotificationsReconciler{
 		Client:   cl,
 		Scheme:   s,
-		Instance: controllercommon.MakeTestArgoCD(),
+		Instance: argocdcommon.MakeTestArgoCD(),
 		Logger:   logger,
 	}
 }
