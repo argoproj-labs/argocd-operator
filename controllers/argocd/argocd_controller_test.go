@@ -33,7 +33,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -171,7 +171,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 }
 
 func deletedAt(now time.Time) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *argoproj.ArgoCD) {
 		wrapped := metav1.NewTime(now)
 		a.ObjectMeta.DeletionTimestamp = &wrapped
 	}
@@ -238,12 +238,12 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 }
 
 func addFinalizer(finalizer string) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *argoproj.ArgoCD) {
 		a.Finalizers = append(a.Finalizers, finalizer)
 	}
 }
 
-func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
+func clusterResources(argocd *argoproj.ArgoCD) []runtime.Object {
 	return []runtime.Object{
 		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),

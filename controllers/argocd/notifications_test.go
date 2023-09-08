@@ -15,14 +15,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileNotifications_CreateRoles(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 
@@ -54,7 +54,7 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 
 func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 
@@ -85,7 +85,7 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 
 func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 	r := makeTestReconciler(t, a)
@@ -121,7 +121,7 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 
 func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 
@@ -232,7 +232,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 
@@ -257,7 +257,7 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 
 func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
 
@@ -290,7 +290,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 			Value: "bar",
 		},
 	}
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 		a.Spec.Notifications.Env = envMap
 	})
@@ -348,7 +348,7 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 func TestReconcileNotifications_testLogLevel(t *testing.T) {
 
 	testLogLevel := "debug"
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 		a.Spec.Notifications.LogLevel = testLogLevel
 	})

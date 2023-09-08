@@ -61,7 +61,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:7daba5f38b23f4f091951b727db6f87dc04ad396fd21044401502438d633836e" // v2.7.6
+	ArgoCDDefaultArgoVersion = "sha256:14e293cd7e35169c45ec51cccdabb80da72c434d7e16d60d3de2ce3a23f08c4b" // v2.8.2
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -183,11 +183,11 @@ const (
 	ArgoCDKeycloakVersion = "sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9"
 
 	// ArgoCDKeycloakImageForOpenShift is the default Keycloak Image used for the OpenShift platform when not specified.
-	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8"
+	ArgoCDKeycloakImageForOpenShift = "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8"
 
 	// ArgoCDKeycloakVersionForOpenShift is the default Keycloak version used for the OpenShift platform when not specified.
-	// Version: 7.5.1
-	ArgoCDKeycloakVersionForOpenShift = "sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3"
+	// Version: 7.6-25
+	ArgoCDKeycloakVersionForOpenShift = "sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d"
 
 	// ArgoCDDefaultOIDCConfig is the default OIDC configuration.
 	ArgoCDDefaultOIDCConfig = ""
@@ -245,9 +245,6 @@ const (
 
 	// ArgoCDDefaultRepositoryCredentials is the default repository credentials
 	ArgoCDDefaultRepositoryCredentials = ""
-
-	// ArgoCDDefaultResourceCustomizations is the default resource customizations.
-	ArgoCDDefaultResourceCustomizations = ""
 
 	// ArgoCDDefaultResourceExclusions is the default resource exclusions.
 	ArgoCDDefaultResourceExclusions = ""

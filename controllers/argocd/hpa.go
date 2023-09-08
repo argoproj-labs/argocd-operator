@@ -21,7 +21,7 @@ import (
 	autoscaling "k8s.io/api/autoscaling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -32,7 +32,7 @@ var (
 	tcup        int32 = 50
 )
 
-func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
 	return &autoscaling.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -42,7 +42,7 @@ func newHorizontalPodAutoscaler(cr *argoprojv1a1.ArgoCD) *autoscaling.Horizontal
 	}
 }
 
-func newHorizontalPodAutoscalerWithName(name string, cr *argoprojv1a1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
 	hpa := newHorizontalPodAutoscaler(cr)
 	hpa.ObjectMeta.Name = name
 
@@ -53,12 +53,12 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoprojv1a1.ArgoCD) *a
 	return hpa
 }
 
-func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
 	return newHorizontalPodAutoscalerWithName(nameWithSuffix(suffix, cr), cr)
 }
 
 // reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component, and reconcile any detected changes.
-func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 
 	defaultHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
 	defaultHPA.Spec = autoscaling.HorizontalPodAutoscalerSpec{
@@ -108,7 +108,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileAutoscalers(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileServerHPA(cr); err != nil {
 		return err
 	}

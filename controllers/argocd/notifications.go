@@ -14,12 +14,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
-func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling notifications serviceaccount")
 	sa, err := r.reconcileNotificationsServiceAccount(cr)
@@ -61,7 +61,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoprojv1a1.Argo
 // RoleBinding and deployment are dependent on these resouces. During deletion the order is reversed.
 // Deployment and RoleBinding must be deleted before the role and sa. deleteNotificationsResources will only be called during
 // delete events, so we don't need to worry about duplicate, recurring reconciliation calls
-func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) error {
 
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
@@ -112,7 +112,7 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoprojv1a1.ArgoCD) 
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName(common.ArgoCDNotificationsControllerComponent, cr)
 
@@ -147,7 +147,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoprojv1a1.
 	return sa, nil
 }
 
-func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*rbacv1.Role, error) {
+func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbacv1.Role, error) {
 
 	policyRules := policyRuleForNotificationsController()
 	desiredRole := newRole(common.ArgoCDNotificationsControllerComponent, policyRules, cr)
@@ -194,7 +194,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoprojv1a1.ArgoCD) (*
 	return desiredRole, nil
 }
 
-func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.ArgoCD, role *rbacv1.Role, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD, role *rbacv1.Role, sa *corev1.ServiceAccount) error {
 
 	desiredRoleBinding := newRoleBindingWithname(common.ArgoCDNotificationsControllerComponent, cr)
 	desiredRoleBinding.RoleRef = rbacv1.RoleRef{
@@ -255,7 +255,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoprojv1a1.Arg
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
 
 	desiredDeployment := newDeploymentWithSuffix("notifications-controller", "controller", cr)
 
@@ -434,7 +434,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoprojv1a1.Argo
 
 // reconcileNotificationsConfigMap only creates/deletes the argocd-notifications-cm based on whether notifications is enabled/disabled in the CR
 // It does not reconcile/overwrite any fields or information in the configmap itself
-func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoproj.ArgoCD) error {
 
 	desiredConfigMap := newConfigMapWithName("argocd-notifications-cm", cr)
 	desiredConfigMap.Data = getDefaultNotificationsConfig()
@@ -480,7 +480,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigMap(cr *argoprojv1a1.ArgoC
 
 // reconcileNotificationsSecret only creates/deletes the argocd-notifications-secret based on whether notifications is enabled/disabled in the CR
 // It does not reconcile/overwrite any fields or information in the secret itself
-func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) error {
 
 	desiredSecret := argoutil.NewSecretWithName(cr, "argocd-notifications-secret")
 
@@ -523,7 +523,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoprojv1a1.ArgoCD) 
 	return nil
 }
 
-func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getNotificationsCommand(cr *argoproj.ArgoCD) []string {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-notifications")
@@ -535,7 +535,7 @@ func getNotificationsCommand(cr *argoprojv1a1.ArgoCD) []string {
 }
 
 // getNotificationsResources will return the ResourceRequirements for the Notifications container.
-func getNotificationsResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+func getNotificationsResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR

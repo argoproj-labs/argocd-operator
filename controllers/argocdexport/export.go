@@ -20,8 +20,8 @@ import (
 	"github.com/sethvargo/go-password/password"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -38,7 +38,7 @@ func generateBackupKey() ([]byte, error) {
 }
 
 // reconcileExport will ensure that the resources for the export process are present for the ArgoCDExport.
-func (r *ReconcileArgoCDExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ReconcileArgoCDExport) reconcileExport(cr *argoprojv1alpha1.ArgoCDExport) error {
 	log.Info("reconciling export secret")
 	if err := r.reconcileExportSecret(cr); err != nil {
 		return err
@@ -60,10 +60,10 @@ func (r *ReconcileArgoCDExport) reconcileExport(cr *argoprojv1a1.ArgoCDExport) e
 }
 
 // reconcileExportSecret will ensure that the Secret used for the export process is present.
-func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoCDExport) error {
 	name := argoutil.FetchStorageSecretName(cr)
 	// Dummy CR to retrieve secret
-	a := &argoprojv1a1.ArgoCD{}
+	a := &argoproj.ArgoCD{}
 	a.ObjectMeta = cr.ObjectMeta
 	secret := argoutil.NewSecretWithName(a, name)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret) {

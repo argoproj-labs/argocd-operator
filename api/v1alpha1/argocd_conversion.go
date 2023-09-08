@@ -79,7 +79,6 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Redis = v1beta1.ArgoCDRedisSpec(src.Spec.Redis)
 	dst.Spec.Repo = v1beta1.ArgoCDRepoSpec(src.Spec.Repo)
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
-	dst.Spec.ResourceCustomizations = src.Spec.ResourceCustomizations
 	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertAlphaToBetaResourceActions(src.Spec.ResourceActions)
@@ -147,7 +146,6 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Redis = ArgoCDRedisSpec(src.Spec.Redis)
 	dst.Spec.Repo = ArgoCDRepoSpec(src.Spec.Repo)
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
-	dst.Spec.ResourceCustomizations = src.Spec.ResourceCustomizations
 	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
 	dst.Spec.ResourceActions = ConvertBetaToAlphaResourceActions(src.Spec.ResourceActions)

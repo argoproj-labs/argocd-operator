@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -140,7 +140,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
-	a.Spec = v1alpha1.ArgoCDSpec{
+	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,
 		},
@@ -151,7 +151,7 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 
 	workloadIdentifier := common.ArgoCDServerComponent
 	expectedRules := policyRuleForServerApplicationSourceNamespaces()
-	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)

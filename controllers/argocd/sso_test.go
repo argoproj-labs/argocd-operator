@@ -33,17 +33,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
-func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
+func makeFakeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
 	t.Helper()
 	s := scheme.Scheme
 	// Register template scheme
 	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
 	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
-	assert.NoError(t, argov1alpha1.AddToScheme(s))
+	assert.NoError(t, argoproj.AddToScheme(s))
 	templatev1.Install(s)
 	oappsv1.Install(s)
 	routev1.Install(s)
@@ -89,23 +88,23 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 	tests := []struct {
 		name                     string
-		argoCD                   *argov1alpha1.ArgoCD
+		argoCD                   *argoproj.ArgoCD
 		wantErr                  bool
 		Err                      error
 		wantSSOConfigLegalStatus string
 	}{
 		{
 			name:                     "no conflicts - no sso configured",
-			argoCD:                   makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {}),
+			argoCD:                   makeTestArgoCD(func(ac *argoproj.ArgoCD) {}),
 			wantErr:                  false,
 			wantSSOConfigLegalStatus: "Unknown",
 		},
 		{
 			name: "no conflict - case insensitive sso provider value",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "DEX",
-					Dex: &v1alpha1.ArgoCDDexSpec{
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config: "test-config",
 					},
 				}
@@ -115,10 +114,10 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "no conflict - valid dex sso configurations",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "dex",
-					Dex: &v1alpha1.ArgoCDDexSpec{
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config:         "test-config",
 						OpenShiftOAuth: false,
 					},
@@ -129,8 +128,8 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "no conflict - valid keycloak sso configurations",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "keycloak",
 				}
 			}),
@@ -139,9 +138,9 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
 				}
 			}),
 			wantErr:                  true,
@@ -150,14 +149,14 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "sso provider dex + `.spec.sso.keycloak`",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						Image:   "test-image",
 						Version: "test-image-version",
 					},
-					Provider: argov1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config: "test",
 					},
 				}
@@ -168,10 +167,10 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "sso provider keycloak + `.spec.sso.dex`",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argov1alpha1.SSOProviderTypeKeycloak,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config:         "test-config",
 						OpenShiftOAuth: true,
 					},
@@ -183,13 +182,13 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "sso provider missing but sso.dex/keycloak supplied",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config:         "test-config",
 						OpenShiftOAuth: true,
 					},
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						Image: "test-image",
 					},
 				}
@@ -200,10 +199,10 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		},
 		{
 			name: "unsupported sso provider but sso.dex/keycloak supplied",
-			argoCD: makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "Unsupported",
-					Dex: &v1alpha1.ArgoCDDexSpec{
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config:         "test-config",
 						OpenShiftOAuth: true,
 					},

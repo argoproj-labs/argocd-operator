@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,7 +132,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(o client.Object) []reconcile.R
 
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-		argocds := &argoprojv1alpha1.ArgoCDList{}
+		argocds := &argoproj.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
@@ -161,7 +161,35 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(o client.Object) []reconci
 
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDSecretTypeLabel]; ok && v == "cluster" {
-		argocds := &argoprojv1alpha1.ArgoCDList{}
+		argocds := &argoproj.ArgoCDList{}
+		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
+		}
+	}
+
+	return result
+}
+
+// applicationSetSCMTLSConfigMapMapper maps a watch event on a configmap with name "argocd-appset-gitlab-scm-tls-certs-cm",
+// back to the ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(o client.Object) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
+		argocds := &argoproj.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}

@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"time"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -197,6 +198,6 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
 	return bldr.Complete(r)
 }

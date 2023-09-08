@@ -26,9 +26,7 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoappv1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -55,6 +53,14 @@ var (
 				},
 			},
 		},
+		{
+			Name: "sso-probe-netrc-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium: "Memory",
+				},
+			},
+		},
 	}
 )
 
@@ -78,8 +84,8 @@ func TestKeycloakContainerImage(t *testing.T) {
 		name               string
 		setEnvVarFunc      func(*testing.T, string)
 		envVar             string
-		argoCD             *argoprojv1alpha1.ArgoCD
-		updateCrFunc       func(cr *argoprojv1alpha1.ArgoCD)
+		argoCD             *argoproj.ArgoCD
+		updateCrFunc       func(cr *argoproj.ArgoCD)
 		templateAPIFound   bool
 		wantContainerImage string
 	}{
@@ -87,9 +93,9 @@ func TestKeycloakContainerImage(t *testing.T) {
 			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set",
 			setEnvVarFunc: nil,
 			envVar:        "",
-			argoCD: makeArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 			updateCrFunc:       nil,
@@ -100,14 +106,14 @@ func TestKeycloakContainerImage(t *testing.T) {
 			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set - for OCP",
 			setEnvVarFunc: nil,
 			envVar:        "",
-			argoCD: makeArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 			updateCrFunc:       nil,
 			templateAPIFound:   true,
-			wantContainerImage: "registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3",
+			wantContainerImage: "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d",
 		},
 		{
 			name: "ArgoCDKeycloakImageEnvName env var set",
@@ -115,9 +121,9 @@ func TestKeycloakContainerImage(t *testing.T) {
 				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
 			},
 			envVar: "envImage:latest",
-			argoCD: makeArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 			updateCrFunc:       nil,
@@ -130,15 +136,15 @@ func TestKeycloakContainerImage(t *testing.T) {
 				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
 			},
 			envVar: "envImage:latest",
-			argoCD: makeArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						Image:   "crImage",
 						Version: "crVersion",
 					},
@@ -173,7 +179,7 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
-	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
 	tmplInstance, err := newKeycloakTemplateInstance(a)
@@ -189,7 +195,7 @@ func TestNewKeycloakTemplate(t *testing.T) {
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
-	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
 	tmpl, err := newKeycloakTemplate(a)
@@ -205,7 +211,7 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
-	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
 	dc := getKeycloakDeploymentConfigTemplate(a)
@@ -238,12 +244,12 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
-	a.Spec.SSO = &argoappv1.ArgoCDSSOSpec{
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
 	kc := getKeycloakContainer(a)
 	assert.Equal(t,
-		"registry.redhat.io/rh-sso-7/sso75-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3", kc.Image)
+		"registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d", kc.Image)
 	assert.Equal(t, corev1.PullAlways, kc.ImagePullPolicy)
 	assert.Equal(t, "${APPLICATION_NAME}", kc.Name)
 }
@@ -254,15 +260,15 @@ func TestKeycloakResources(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		argoCD        *argoprojv1alpha1.ArgoCD
-		updateCrFunc  func(cr *argoprojv1alpha1.ArgoCD)
+		argoCD        *argoproj.ArgoCD
+		updateCrFunc  func(cr *argoproj.ArgoCD)
 		wantResources corev1.ResourceRequirements
 	}{
 		{
 			name: "default",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 			updateCrFunc:  nil,
@@ -270,14 +276,14 @@ func TestKeycloakResources(t *testing.T) {
 		},
 		{
 			name: "override with .spec.sso.keycloak",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						Resources: &fR,
 					},
 				}
@@ -366,24 +372,24 @@ func TestKeycloak_testServerCert(t *testing.T) {
 func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 	tests := []struct {
 		name             string
-		argoCD           *v1alpha1.ArgoCD
+		argoCD           *argoproj.ArgoCD
 		desiredVerifyTLS bool
 	}{
 		{
 			name: ".spec.sso.keycloak.verifyTLS nil",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 			desiredVerifyTLS: true,
 		},
 		{
 			name: ".spec.sso.keycloak.verifyTLS false",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						VerifyTLS: boolPtr(false),
 					},
 				}
@@ -392,10 +398,10 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 		},
 		{
 			name: ".spec.sso.keycloak.verifyTLS true",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoappv1.SSOProviderTypeKeycloak,
-					Keycloak: &v1alpha1.ArgoCDKeycloakSpec{
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
 						VerifyTLS: boolPtr(true),
 					},
 				}
@@ -461,7 +467,7 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 
 func TestKeycloak_NodeLabelSelector(t *testing.T) {
 	a := makeTestArgoCDForKeycloak()
-	a.Spec.NodePlacement = &argoappv1.ArgoCDNodePlacementSpec{
+	a.Spec.NodePlacement = &argoproj.ArgoCDNodePlacementSpec{
 		NodeSelector: deploymentDefaultNodeSelector(),
 		Tolerations:  deploymentDefaultTolerations(),
 	}

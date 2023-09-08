@@ -36,7 +36,7 @@ func init() {
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 // Important: Run "make" to regenerate code after modifying this file
 
-// +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 is deprecated, please use v1beta1 instead."
+// +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 version is deprecated and will be converted to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API version."
 //+kubebuilder:object:root=true
 
 // ArgoCD is the Schema for the argocds API
@@ -761,6 +761,7 @@ type ArgoCDSpec struct {
 	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
 
+	// Deprecated field. Support dropped in v1beta1 version.
 	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`

@@ -25,7 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -79,7 +80,7 @@ func FetchObject(client client.Client, namespace string, name string, obj client
 }
 
 // FetchStorageSecretName will return the name of the Secret to use for the export process.
-func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
+func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	name := NameWithSuffix(export.ObjectMeta, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
@@ -108,13 +109,13 @@ func newEvent(meta metav1.ObjectMeta) *corev1.Event {
 }
 
 // LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
+func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	labels := common.DefaultLabels(cr.Name)
 	return labels
 }
 
 // annotationsForCluster returns the annotations for all cluster resources.
-func AnnotationsForCluster(cr *argoprojv1a1.ArgoCD) map[string]string {
+func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
 	for key, val := range cr.ObjectMeta.Annotations {
 		annotations[key] = val
