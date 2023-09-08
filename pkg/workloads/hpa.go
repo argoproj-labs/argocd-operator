@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HorizontalPodAutoscalerRequest objects contain all the required information to produce a horizontalPodAutoscaler object in return
@@ -19,7 +19,7 @@ type HorizontalPodAutoscalerRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newHorizontalPodAutoscaler returns a new HorizontalPodAutoscaler instance for the given ArgoCD.
@@ -31,12 +31,12 @@ func newHorizontalPodAutoscaler(objMeta metav1.ObjectMeta, spec autoscaling.Hori
 	}
 }
 
-func CreateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client ctrlClient.Client) error {
+func CreateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), horizontalPodAutoscaler)
 }
 
 // UpdateHorizontalPodAutoscaler updates the specified HorizontalPodAutoscaler using the provided client.
-func UpdateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client ctrlClient.Client) error {
+func UpdateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
 	_, err := GetHorizontalPodAutoscaler(horizontalPodAutoscaler.Name, horizontalPodAutoscaler.Namespace, client)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func UpdateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.Horizont
 	return nil
 }
 
-func DeleteHorizontalPodAutoscaler(name, namespace string, client ctrlClient.Client) error {
+func DeleteHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) error {
 	existingHorizontalPodAutoscaler, err := GetHorizontalPodAutoscaler(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -63,7 +63,7 @@ func DeleteHorizontalPodAutoscaler(name, namespace string, client ctrlClient.Cli
 	return nil
 }
 
-func GetHorizontalPodAutoscaler(name, namespace string, client ctrlClient.Client) (*autoscaling.HorizontalPodAutoscaler, error) {
+func GetHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) (*autoscaling.HorizontalPodAutoscaler, error) {
 	existingHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingHorizontalPodAutoscaler)
 	if err != nil {
@@ -72,7 +72,7 @@ func GetHorizontalPodAutoscaler(name, namespace string, client ctrlClient.Client
 	return existingHorizontalPodAutoscaler, nil
 }
 
-func ListHorizontalPodAutoscalers(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*autoscaling.HorizontalPodAutoscalerList, error) {
+func ListHorizontalPodAutoscalers(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*autoscaling.HorizontalPodAutoscalerList, error) {
 	existingHorizontalPodAutoscalers := &autoscaling.HorizontalPodAutoscalerList{}
 	err := client.List(context.TODO(), existingHorizontalPodAutoscalers, listOptions...)
 	if err != nil {

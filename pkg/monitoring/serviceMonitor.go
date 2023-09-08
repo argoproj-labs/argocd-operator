@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ServiceMonitorRequest objects contain all the required information to produce a serviceMonitor object in return
@@ -19,7 +19,7 @@ type ServiceMonitorRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newServiceMonitor(objectMeta metav1.ObjectMeta, spec monitoringv1.ServiceMo
 	}
 }
 
-func CreateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client ctrlClient.Client) error {
+func CreateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), serviceMonitor)
 }
 
 // UpdateServiceMonitor updates the specified ServiceMonitor using the provided client.
-func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client ctrlClient.Client) error {
+func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
 	_, err := GetServiceMonitor(serviceMonitor.Name, serviceMonitor.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client ct
 	return nil
 }
 
-func DeleteServiceMonitor(name, namespace string, client ctrlClient.Client) error {
+func DeleteServiceMonitor(name, namespace string, client cntrlClient.Client) error {
 	existingServiceMonitor, err := GetServiceMonitor(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteServiceMonitor(name, namespace string, client ctrlClient.Client) erro
 	return nil
 }
 
-func GetServiceMonitor(name, namespace string, client ctrlClient.Client) (*monitoringv1.ServiceMonitor, error) {
+func GetServiceMonitor(name, namespace string, client cntrlClient.Client) (*monitoringv1.ServiceMonitor, error) {
 	existingServiceMonitor := &monitoringv1.ServiceMonitor{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingServiceMonitor)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetServiceMonitor(name, namespace string, client ctrlClient.Client) (*monit
 	return existingServiceMonitor, nil
 }
 
-func ListServiceMonitors(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*monitoringv1.ServiceMonitorList, error) {
+func ListServiceMonitors(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*monitoringv1.ServiceMonitorList, error) {
 	existingServiceMonitors := &monitoringv1.ServiceMonitorList{}
 	err := client.List(context.TODO(), existingServiceMonitors, listOptions...)
 	if err != nil {

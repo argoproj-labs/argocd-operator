@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // RouteRequest objects contain all the required information to produce a route object in return
@@ -19,7 +19,7 @@ type RouteRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newRoute returns a new Route instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newRoute(objectMeta metav1.ObjectMeta, spec routev1.RouteSpec) *routev1.Rou
 	}
 }
 
-func CreateRoute(route *routev1.Route, client ctrlClient.Client) error {
+func CreateRoute(route *routev1.Route, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), route)
 }
 
 // UpdateRoute updates the specified Route using the provided client.
-func UpdateRoute(route *routev1.Route, client ctrlClient.Client) error {
+func UpdateRoute(route *routev1.Route, client cntrlClient.Client) error {
 	_, err := GetRoute(route.Name, route.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateRoute(route *routev1.Route, client ctrlClient.Client) error {
 	return nil
 }
 
-func DeleteRoute(name, namespace string, client ctrlClient.Client) error {
+func DeleteRoute(name, namespace string, client cntrlClient.Client) error {
 	existingRoute, err := GetRoute(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteRoute(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetRoute(name, namespace string, client ctrlClient.Client) (*routev1.Route, error) {
+func GetRoute(name, namespace string, client cntrlClient.Client) (*routev1.Route, error) {
 	existingRoute := &routev1.Route{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRoute)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetRoute(name, namespace string, client ctrlClient.Client) (*routev1.Route,
 	return existingRoute, nil
 }
 
-func ListRoutes(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*routev1.RouteList, error) {
+func ListRoutes(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*routev1.RouteList, error) {
 	existingRoutes := &routev1.RouteList{}
 	err := client.List(context.TODO(), existingRoutes, listOptions...)
 	if err != nil {

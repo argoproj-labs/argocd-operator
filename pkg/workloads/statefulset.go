@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // StatefulRequest objects contain all the required information to produce a stateful object in return
@@ -18,7 +18,7 @@ type StatefulSetRequest struct {
 	Spec       appsv1.StatefulSetSpec
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newStateful returns a new Stateful instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newStatefulSet(objMeta metav1.ObjectMeta, spec appsv1.StatefulSetSpec) *app
 	}
 }
 
-func CreateStatefulSet(StatefulSet *appsv1.StatefulSet, client ctrlClient.Client) error {
+func CreateStatefulSet(StatefulSet *appsv1.StatefulSet, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), StatefulSet)
 }
 
 // UpdateStatefulSet updates the specified StatefulSet using the provided client.
-func UpdateStatefulSet(StatefulSet *appsv1.StatefulSet, client ctrlClient.Client) error {
+func UpdateStatefulSet(StatefulSet *appsv1.StatefulSet, client cntrlClient.Client) error {
 	_, err := GetStatefulSet(StatefulSet.Name, StatefulSet.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateStatefulSet(StatefulSet *appsv1.StatefulSet, client ctrlClient.Client
 	return nil
 }
 
-func DeleteStatefulSet(name, namespace string, client ctrlClient.Client) error {
+func DeleteStatefulSet(name, namespace string, client cntrlClient.Client) error {
 	existingStatefulSet, err := GetStatefulSet(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteStatefulSet(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetStatefulSet(name, namespace string, client ctrlClient.Client) (*appsv1.StatefulSet, error) {
+func GetStatefulSet(name, namespace string, client cntrlClient.Client) (*appsv1.StatefulSet, error) {
 	existingStatefulSet := &appsv1.StatefulSet{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingStatefulSet)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetStatefulSet(name, namespace string, client ctrlClient.Client) (*appsv1.S
 	return existingStatefulSet, nil
 }
 
-func ListStatefulSets(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*appsv1.StatefulSetList, error) {
+func ListStatefulSets(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*appsv1.StatefulSetList, error) {
 	existingStatefulSets := &appsv1.StatefulSetList{}
 	err := client.List(context.TODO(), existingStatefulSets, listOptions...)
 	if err != nil {

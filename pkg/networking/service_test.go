@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -291,8 +291,8 @@ func TestListServices(t *testing.T) {
 	componentReq, _ := labels.NewRequirement(common.AppK8sKeyComponent, selection.In, []string{"new-component-1", "new-component-2"})
 	selector := labels.NewSelector().Add(*componentReq)
 
-	listOpts := make([]ctrlClient.ListOption, 0)
-	listOpts = append(listOpts, ctrlClient.MatchingLabelsSelector{
+	listOpts := make([]cntrlClient.ListOption, 0)
+	listOpts = append(listOpts, cntrlClient.MatchingLabelsSelector{
 		Selector: selector,
 	})
 

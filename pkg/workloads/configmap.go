@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ConfigMapRequest objects contain all the required information to produce a configMap object in return
@@ -19,7 +19,7 @@ type ConfigMapRequest struct {
 
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    interface{}
+	Client    cntrlClient.Client
 }
 
 // newConfigMap returns a new ConfigMap instance for the given ArgoCD.
@@ -30,12 +30,12 @@ func newConfigMap(objMeta metav1.ObjectMeta, data map[string]string) *corev1.Con
 	}
 }
 
-func CreateConfigMap(configMap *corev1.ConfigMap, client ctrlClient.Client) error {
+func CreateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
 	return client.Create(context.TODO(), configMap)
 }
 
 // UpdateConfigMap updates the specified ConfigMap using the provided client.
-func UpdateConfigMap(configMap *corev1.ConfigMap, client ctrlClient.Client) error {
+func UpdateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
 	_, err := GetConfigMap(configMap.Name, configMap.Namespace, client)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func UpdateConfigMap(configMap *corev1.ConfigMap, client ctrlClient.Client) erro
 	return nil
 }
 
-func DeleteConfigMap(name, namespace string, client ctrlClient.Client) error {
+func DeleteConfigMap(name, namespace string, client cntrlClient.Client) error {
 	existingConfigMap, err := GetConfigMap(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -62,7 +62,7 @@ func DeleteConfigMap(name, namespace string, client ctrlClient.Client) error {
 	return nil
 }
 
-func GetConfigMap(name, namespace string, client ctrlClient.Client) (*corev1.ConfigMap, error) {
+func GetConfigMap(name, namespace string, client cntrlClient.Client) (*corev1.ConfigMap, error) {
 	existingConfigMap := &corev1.ConfigMap{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingConfigMap)
 	if err != nil {
@@ -71,7 +71,7 @@ func GetConfigMap(name, namespace string, client ctrlClient.Client) (*corev1.Con
 	return existingConfigMap, nil
 }
 
-func ListConfigMaps(namespace string, client ctrlClient.Client, listOptions []ctrlClient.ListOption) (*corev1.ConfigMapList, error) {
+func ListConfigMaps(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.ConfigMapList, error) {
 	existingConfigMaps := &corev1.ConfigMapList{}
 	err := client.List(context.TODO(), existingConfigMaps, listOptions...)
 	if err != nil {

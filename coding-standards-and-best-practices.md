@@ -221,7 +221,7 @@ if err = permissions.CreateRole(desiredRole, *acr.Client); err != nil {
 			}
 
 // permissions package 
-func CreateRole(role *rbacv1.Role, client ctrlClient.Client) error {
+func CreateRole(role *rbacv1.Role, client cntrlClient.Client) error {
 	// no need to log here
     return client.Create(context.TODO(), role)
 }

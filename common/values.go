@@ -44,4 +44,12 @@ const (
 
 	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
 	ArgoCDComponentStatus = "ArgoCDComponentStatus"
+
+	TimeFormatMST = "01022006-150406-MST"
+
+	TLSCerts = "tls-certs"
+
+	VolumeMountPathTLS           = "/app/config/tls"
+	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
+	WorkingDirApp                = "/app"
 )

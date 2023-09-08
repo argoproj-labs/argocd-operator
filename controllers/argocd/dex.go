@@ -20,6 +20,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -126,7 +127,7 @@ func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *a
 			return nil
 		}
 
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format(common.TimeFormatMST)
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
@@ -206,7 +207,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoprojv1a1.ArgoCD) e
 func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
@@ -303,7 +304,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error
 		desiredImage := getDexContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 
@@ -311,7 +312,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoprojv1a1.ArgoCD) error
 		desiredImage = getArgoContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)

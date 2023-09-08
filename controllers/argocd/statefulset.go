@@ -30,6 +30,7 @@ import (
 
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -334,7 +335,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 		RunAsNonRoot: &runAsNonRoot,
 		RunAsUser:    &runAsUser,
 	}
-	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
+	openshift.AddSeccompProfileForOpenShift(cr, &ss.Spec.Template.Spec, r.Client)
 
 	ss.Spec.Template.Spec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-redis-ha")
 
@@ -402,7 +403,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
-				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 				changed = true
 			}
 
@@ -563,7 +564,8 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 			},
 		},
 	}}
-	AddSeccompProfileForOpenShift(r.Client, podSpec)
+	openshift.AddSeccompProfileForOpenShift(cr, podSpec, r.Client)
+
 	podSpec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-application-controller")
 	podSpec.Volumes = []corev1.Volume{
 		{
@@ -654,7 +656,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 		changed := false
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr, useTLSForRedis)
