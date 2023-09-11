@@ -27,9 +27,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -38,12 +38,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
-func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
+func makeFakeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...client.Object) *ArgoCDReconciler {
 	t.Helper()
 	s := scheme.Scheme
 	// Register template scheme
-	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
-	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
+	s.AddKnownTypes(templatev1.SchemeGroupVersion)
+	s.AddKnownTypes(oappsv1.SchemeGroupVersion)
 	assert.NoError(t, argov1alpha1.AddToScheme(s))
 	templatev1.Install(s)
 	oappsv1.Install(s)

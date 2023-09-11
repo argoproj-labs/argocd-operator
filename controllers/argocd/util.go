@@ -25,6 +25,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -992,10 +993,8 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 
 	if workloads.IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		bldr.Watches(&oappsv1.DeploymentConfig{}, handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoprojv1a1.ArgoCD{},
-		},
+		bldr.Watches(&oappsv1.DeploymentConfig{},
+			handler.EnqueueRequestForOwner(r.Scheme, nil, &v1alpha1.ArgoCD{}, handler.OnlyControllerOwner()),
 			builder.WithPredicates(deploymentConfigPred))
 	}
 
