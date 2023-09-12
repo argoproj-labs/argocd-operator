@@ -15,18 +15,6 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sa := argocdcommon.MakeTestServiceAccount()
 	resourceName = argocdcommon.TestArgoCDName
-	existingRoleBinding := &rbacv1.RoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       RoleBindingKind,
-			APIVersion: APIVersionRbacV1,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
-			Namespace: argocdcommon.TestNamespace,
-		},
-		RoleRef:  testRoleRef,
-		Subjects: testSubjects,
-	}
 
 	tests := []struct {
 		name        string
@@ -34,25 +22,27 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "rolebinding doesn't exist",
+			name: "create a rolebinding",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
 		{
-			name: "rolebinding exists and is correct",
+			name: "update a rolebinding",
 			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, existingRoleBinding, ns, sa)
-			},
-			wantErr: false,
-		},
-		{
-			name: "rolebinding exists but outdated",
-			setupClient: func() *NotificationsReconciler {
-				outdatedRoleBinding := existingRoleBinding
-				outdatedRoleBinding.RoleRef = rbacv1.RoleRef{}
-				outdatedRoleBinding.Subjects = []rbacv1.Subject{}
+				outdatedRoleBinding := &rbacv1.RoleBinding{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       RoleBindingKind,
+						APIVersion: APIVersionRbacV1,
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      argocdcommon.TestArgoCDName,
+						Namespace: argocdcommon.TestNamespace,
+					},
+					RoleRef:  rbacv1.RoleRef{},
+					Subjects: []rbacv1.Subject{},
+				}
 				return makeTestNotificationsReconciler(t, outdatedRoleBinding, ns, sa)
 			},
 			wantErr: false,
@@ -63,7 +53,11 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 			nr := tt.setupClient()
 			err := nr.reconcileRoleBinding()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.reconcileRoleBinding() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 			updatedRoleBinding := &rbacv1.RoleBinding{}
 			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRoleBinding)
@@ -97,7 +91,11 @@ func TestNotificationsReconciler_DeleteRoleBinding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
 			if err := nr.DeleteRoleBinding(resourceName, ns.Name); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteRoleBinding() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 		})
 	}

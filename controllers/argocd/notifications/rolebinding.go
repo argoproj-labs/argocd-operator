@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
@@ -90,7 +91,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 	}
 
 	for _, field := range fieldsToCompare {
-		UpdateIfChanged(field.existing, field.desired, nil, &roleBindingChanged)
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, nil, &roleBindingChanged)
 	}
 
 	if roleBindingChanged {

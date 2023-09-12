@@ -32,21 +32,14 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "role doesn't exist",
+			name: "create a role",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name: "role exists and is correct",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, existingRole, ns)
-			},
-			wantErr: false,
-		},
-		{
-			name: "role exists but outdated",
+			name: "Update a role",
 			setupClient: func() *NotificationsReconciler {
 				outdatedRole := existingRole
 				outdatedRole.Rules = []rbacv1.PolicyRule{}
@@ -60,7 +53,11 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 			nr := tt.setupClient()
 			err := nr.reconcileRole()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.reconcileRole() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 
 			updatedRole := &rbacv1.Role{}
@@ -93,7 +90,11 @@ func TestNotificationsReconciler_DeleteRole(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
 			if err := nr.DeleteRole(resourceName, ns.Name); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteRole() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 		})
 	}

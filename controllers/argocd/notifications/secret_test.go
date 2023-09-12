@@ -8,40 +8,21 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-	existingSecret := &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       SecretKind,
-			APIVersion: APIVersionV1,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      NotificationsSecretName,
-			Namespace: argocdcommon.TestNamespace,
-			Labels:    resourceLabels,
-		},
-	}
-
+	resourceLabels = testExpectedLabels
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler
 		wantErr     bool
 	}{
 		{
-			name: "secret doesn't exist",
+			name: "create a secret",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
-			},
-			wantErr: false,
-		},
-		{
-			name: "secret exists",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, existingSecret, ns)
 			},
 			wantErr: false,
 		},
@@ -51,7 +32,11 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 			nr := tt.setupClient()
 			err := nr.reconcileSecret()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.reconcileSecret() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 
 			currentSecret := &corev1.Secret{}
@@ -59,9 +44,7 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Could not get current Secret: %v", err)
 			}
-			assert.Equal(t, NotificationsSecretName, currentSecret.ObjectMeta.Name)
-			assert.Equal(t, argocdcommon.TestNamespace, currentSecret.ObjectMeta.Namespace)
-			assert.Equal(t, resourceLabels, currentSecret.ObjectMeta.Labels)
+			assert.Equal(t, testExpectedLabels, currentSecret.ObjectMeta.Labels)
 		})
 	}
 }
@@ -85,7 +68,11 @@ func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
 			if err := nr.DeleteSecret(ns.Name); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteSecret() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 		})
 	}

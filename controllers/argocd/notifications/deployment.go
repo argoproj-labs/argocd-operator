@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -17,11 +18,123 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
+	desiredDeployment := &appsv1.Deployment{}
+
+	notificationEnv := nr.Instance.Spec.Notifications.Env
+	notificationEnv = util.EnvMerge(notificationEnv, util.ProxyEnvVars(), false)
+
+	objMeta := metav1.ObjectMeta{
+		Name:      resourceName,
+		Namespace: nr.Instance.Namespace,
+		Labels:    resourceLabels,
+	}
+	podSpec := corev1.PodSpec{
+		Volumes: []corev1.Volume{
+			{
+				Name: TLSCerts,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDTLSCertsConfigMapName,
+						},
+					},
+				},
+			},
+			{
+				Name: ArgoCDRepoServerTLS,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: common.ArgoCDRepoServerTLSSecretName,
+						Optional:   util.BoolPtr(true),
+					},
+				},
+			},
+		},
+		Containers: []corev1.Container{{
+			Command:         nr.GetNotificationsCommand(),
+			Image:           argocdcommon.GetArgoContainerImage(nr.Instance),
+			ImagePullPolicy: corev1.PullAlways,
+			Name:            common.ArgoCDNotificationsControllerComponent,
+			Env:             notificationEnv,
+			Resources:       nr.GetNotificationsResources(),
+			LivenessProbe: &corev1.Probe{
+				ProbeHandler: corev1.ProbeHandler{
+					TCPSocket: &corev1.TCPSocketAction{
+						Port: intstr.IntOrString{
+							IntVal: int32(9001),
+						},
+					},
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: util.BoolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						CapabilityDropAll,
+					},
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      TLSCerts,
+					MountPath: VolumeMountPathTLS,
+				},
+				{
+					Name:      ArgoCDRepoServerTLS,
+					MountPath: VolumeMountPathRepoServerTLS,
+				},
+			},
+			WorkingDir: WorkingDirApp,
+		}},
+		SecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: util.BoolPtr(true),
+		},
+	}
+
+	deploymentSpec := appsv1.DeploymentSpec{
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RecreateDeploymentStrategyType,
+		},
+		Template: corev1.PodTemplateSpec{
+			Spec: podSpec,
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.AppK8sKeyName: resourceName,
+				},
+			},
+		},
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				common.AppK8sKeyName: resourceName,
+			},
+		},
+		Replicas: nr.GetArgoCDNotificationsControllerReplicas(),
+	}
+
+	desiredDeployment.ObjectMeta = objMeta
+	desiredDeployment.Spec = deploymentSpec
+	return desiredDeployment
+}
+
+func (nr *NotificationsReconciler) getDeploymentRequest(dep appsv1.Deployment) workloads.DeploymentRequest {
+	deploymentReq := workloads.DeploymentRequest{
+		ObjectMeta: dep.ObjectMeta,
+		Spec:       dep.Spec,
+		Client:     nr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+	}
+
+	return deploymentReq
+}
+
 func (nr *NotificationsReconciler) reconcileDeployment() error {
 
-	nr.Logger.Info("reconciling deployments")
+	nr.Logger.Info("reconciling deployment")
 
-	deploymentRequest := nr.CreateDesiredDeploymentRequest()
+	desiredDeployment := nr.getDesiredDeployment()
+	deploymentRequest := nr.getDeploymentRequest(*desiredDeployment)
+
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
@@ -84,7 +197,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	}
 
 	for _, field := range fieldsToCompare {
-		UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
 	}
 
 	if deploymentChanged {
@@ -106,100 +219,4 @@ func (nr *NotificationsReconciler) DeleteDeployment(name, namespace string) erro
 	}
 	nr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
 	return nil
-}
-
-func (nr *NotificationsReconciler) CreatePodSpec() *corev1.PodSpec {
-	notificationEnv := nr.Instance.Spec.Notifications.Env
-	notificationEnv = util.EnvMerge(notificationEnv, ProxyEnvVars(), false)
-	return &corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: TLSCerts,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
-						},
-					},
-				},
-			},
-			{
-				Name: ArgoCDRepoServerTLS,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: common.ArgoCDRepoServerTLSSecretName,
-						Optional:   util.BoolPtr(true),
-					},
-				},
-			},
-		},
-		Containers: []corev1.Container{{
-			Command:         GetNotificationsCommand(nr.Instance),
-			Image:           GetArgoContainerImage(nr.Instance),
-			ImagePullPolicy: corev1.PullAlways,
-			Name:            common.ArgoCDNotificationsControllerComponent,
-			Env:             notificationEnv,
-			Resources:       GetNotificationsResources(nr.Instance),
-			LivenessProbe: &corev1.Probe{
-				ProbeHandler: corev1.ProbeHandler{
-					TCPSocket: &corev1.TCPSocketAction{
-						Port: intstr.IntOrString{
-							IntVal: int32(9001),
-						},
-					},
-				},
-			},
-			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: util.BoolPtr(false),
-				Capabilities: &corev1.Capabilities{
-					Drop: []corev1.Capability{
-						CapabilityDropAll,
-					},
-				},
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      TLSCerts,
-					MountPath: VolumeMountPathTLS,
-				},
-				{
-					Name:      ArgoCDRepoServerTLS,
-					MountPath: VolumeMountPathRepoServerTLS,
-				},
-			},
-			WorkingDir: WorkingDirApp,
-		}},
-		SecurityContext: &corev1.PodSecurityContext{
-			RunAsNonRoot: util.BoolPtr(true),
-		},
-	}
-}
-
-func (nr *NotificationsReconciler) CreateDesiredDeploymentRequest() workloads.DeploymentRequest {
-	podSpec := nr.CreatePodSpec()
-	return workloads.DeploymentRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
-			Namespace: nr.Instance.Namespace,
-			Labels:    resourceLabels,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RecreateDeploymentStrategyType,
-			},
-			Template: corev1.PodTemplateSpec{
-				Spec: *podSpec,
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: resourceLabels,
-				},
-			},
-			Selector: &metav1.LabelSelector{
-				MatchLabels: resourceLabels,
-			},
-			Replicas: GetArgoCDNotificationsControllerReplicas(nr),
-		},
-
-		Client:    nr.Client,
-		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
 }

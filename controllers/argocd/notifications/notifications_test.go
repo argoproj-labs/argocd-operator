@@ -15,13 +15,12 @@ import (
 )
 
 var (
-	testKey      = "test"
-	testVal      = "test"
-	testReplicas = int32(1)
-	testRoleRef  = rbacv1.RoleRef{
+	testKey     = "test"
+	testVal     = "test"
+	testRoleRef = rbacv1.RoleRef{
 		Kind:     RoleKind,
 		Name:     argocdcommon.TestArgoCDName,
-		APIGroup: "rbac.authorization.k8s.io",
+		APIGroup: APIGroupRbacV1,
 	}
 
 	testSubjects = []rbacv1.Subject{
@@ -32,13 +31,11 @@ var (
 		},
 	}
 
-	testConfigMapData = GetDefaultNotificationsConfig()
-
 	testKVP = map[string]string{
 		testKey: testVal,
 	}
 
-	testLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDNotificationsControllerComponent)
+	testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDNotificationsControllerComponent)
 )
 
 func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {
@@ -58,6 +55,7 @@ func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *Noti
 
 func TestNotificationsReconciler_Reconcile(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name         string
 		resourceName string
@@ -75,18 +73,20 @@ func TestNotificationsReconciler_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		nr := tt.setupClient()
-		originalResourceName := resourceName
-		resourceName = argocdcommon.TestArgoCDName
 		err := nr.Reconcile()
 		assert.NoError(t, err)
 		if (err != nil) != tt.wantErr {
-			t.Errorf("NotificationsReconciler.Reconcile() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				t.Errorf("Expected error but did not get one")
+			} else {
+				t.Errorf("Unexpected error: %v", err)
+			}
 		}
-		resourceName = originalResourceName
 	}
 }
 
 func TestNotificationsReconciler_DeleteResources(t *testing.T) {
+	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name         string
 		resourceName string
@@ -105,12 +105,13 @@ func TestNotificationsReconciler_DeleteResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
 			if err := nr.DeleteResources(); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteResources() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
-			resourceName = originalResourceName
 		})
 	}
 }

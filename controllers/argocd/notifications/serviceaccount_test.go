@@ -14,6 +14,7 @@ import (
 func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
+	resourceLabels = testExpectedLabels
 	existingServiceAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       ServiceAccountKind,
@@ -33,14 +34,14 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "serviceAccount doesn't exist",
+			name: "create a serviceAccount",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name: "serviceAccount exists",
+			name: "update a serviceAccount",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, existingServiceAccount, ns)
 			},
@@ -52,7 +53,11 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 			nr := tt.setupClient()
 			err := nr.reconcileServiceAccount()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.reconcileServiceAccount() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 
 			currentServiceAccount := &corev1.ServiceAccount{}
@@ -60,7 +65,7 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Could not get current ServiceAccount: %v", err)
 			}
-			assert.Equal(t, resourceLabels, currentServiceAccount.Labels)
+			assert.Equal(t, testExpectedLabels, currentServiceAccount.Labels)
 		})
 	}
 }
@@ -85,7 +90,11 @@ func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
 			if err := nr.DeleteServiceAccount(resourceName, ns.Name); (err != nil) != tt.wantErr {
-				t.Errorf("NotificationsReconciler.DeleteServiceAccount() error = %v, wantErr %v", err, tt.wantErr)
+				if tt.wantErr {
+					t.Errorf("Expected error but did not get one")
+				} else {
+					t.Errorf("Unexpected error: %v", err)
+				}
 			}
 		})
 	}

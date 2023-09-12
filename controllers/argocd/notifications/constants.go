@@ -23,4 +23,5 @@ const (
 	APIVersionV1                           = "v1"
 	APIVersionAppsV1                       = "apps/v1"
 	APIVersionRbacV1                       = "rbac.authorization.k8s.io/v1"
+	APIGroupRbacV1                         = "rbac.authorization.k8s.io"
 )
