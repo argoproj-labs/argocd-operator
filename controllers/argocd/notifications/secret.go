@@ -16,7 +16,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 
 	secretRequest := workloads.SecretRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceName,
+			Name:      NotificationsSecretName,
 			Namespace: nr.Instance.Namespace,
 			Labels:    resourceLabels,
 		},
@@ -38,7 +38,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteSecret(desiredSecret.Name, desiredSecret.Namespace); err != nil {
+		if err := nr.DeleteSecret(desiredSecret.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		}
 		return err
@@ -66,11 +66,11 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteSecret(name, namespace string) error {
-	if err := workloads.DeleteSecret(name, namespace, nr.Client); err != nil {
-		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", name, "namespace", namespace)
+func (nr *NotificationsReconciler) DeleteSecret(namespace string) error {
+	if err := workloads.DeleteSecret(NotificationsSecretName, namespace, nr.Client); err != nil {
+		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", NotificationsSecretName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", name, "namespace", namespace)
+	nr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", NotificationsSecretName, "namespace", namespace)
 	return nil
 }

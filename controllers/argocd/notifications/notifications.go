@@ -71,12 +71,12 @@ func (nr *NotificationsReconciler) DeleteResources() error {
 		deletionError = err
 	}
 
-	if err := nr.DeleteSecret(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteSecret(nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete secret")
 		deletionError = err
 	}
 
-	if err := nr.DeleteConfigMap(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.DeleteConfigMap(nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete configmap")
 		deletionError = err
 	}

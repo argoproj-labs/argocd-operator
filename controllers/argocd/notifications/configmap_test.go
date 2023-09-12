@@ -20,29 +20,26 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 			APIVersion: APIVersionV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
+			Name:      NotificationsConfigMapName,
 			Namespace: argocdcommon.TestNamespace,
 		},
 		Data: testConfigMapData,
 	}
 
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "configMap doesn't exist",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "configMap doesn't exist",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name:         "configMap exists",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "configMap exists",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, existingConfigMap, ns)
 			},
@@ -52,23 +49,17 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
 			err := nr.reconcileConfigMap()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.reconcileConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.name == "configMap exists" {
-				currentConfigMap := &corev1.ConfigMap{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentConfigMap)
-				if err != nil {
-					t.Fatalf("Could not get current ConfigMap: %v", err)
-				}
-				assert.Equal(t, existingConfigMap, currentConfigMap)
+			currentConfigMap := &corev1.ConfigMap{}
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: NotificationsConfigMapName, Namespace: argocdcommon.TestNamespace}, currentConfigMap)
+			if err != nil {
+				t.Fatalf("Could not get current ConfigMap: %v", err)
 			}
-
-			resourceName = originalResourceName
+			assert.Equal(t, existingConfigMap.Data, currentConfigMap.Data)
 		})
 	}
 }
@@ -76,14 +67,12 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 func TestNotificationsReconciler_DeleteConfigMap(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "successful delete",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "successful delete",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
@@ -93,12 +82,9 @@ func TestNotificationsReconciler_DeleteConfigMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
-			if err := nr.DeleteConfigMap(tt.resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.DeleteConfigMap(ns.Name); (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.DeleteConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			resourceName = originalResourceName
 		})
 	}
 }

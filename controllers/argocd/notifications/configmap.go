@@ -15,7 +15,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	configMapRequest := workloads.ConfigMapRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        resourceName,
+			Name:        NotificationsConfigMapName,
 			Namespace:   nr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: nr.Instance.Annotations,
@@ -37,7 +37,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace); err != nil {
+		if err := nr.DeleteConfigMap(desiredConfigMap.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to delete configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 		}
 		return err
@@ -65,11 +65,11 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteConfigMap(name, namespace string) error {
-	if err := workloads.DeleteConfigMap(name, namespace, nr.Client); err != nil {
-		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", name, "namespace", namespace)
+func (nr *NotificationsReconciler) DeleteConfigMap(namespace string) error {
+	if err := workloads.DeleteConfigMap(NotificationsConfigMapName, namespace, nr.Client); err != nil {
+		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", NotificationsConfigMapName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", name, "namespace", namespace)
+	nr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", NotificationsConfigMapName, "namespace", namespace)
 	return nil
 }

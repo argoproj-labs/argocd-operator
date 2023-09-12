@@ -20,29 +20,26 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 			APIVersion: APIVersionV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
+			Name:      NotificationsSecretName,
 			Namespace: argocdcommon.TestNamespace,
+			Labels:    resourceLabels,
 		},
-		StringData: testKVP,
 	}
 
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "secret doesn't exist",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "secret doesn't exist",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name:         "secret exists",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "secret exists",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, existingSecret, ns)
 			},
@@ -52,23 +49,19 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
 			err := nr.reconcileSecret()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.reconcileSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.name == "secret exists" {
-				currentSecret := &corev1.Secret{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentSecret)
-				if err != nil {
-					t.Fatalf("Could not get current Secret: %v", err)
-				}
-				assert.Equal(t, existingSecret, currentSecret)
+			currentSecret := &corev1.Secret{}
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: NotificationsSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
+			if err != nil {
+				t.Fatalf("Could not get current Secret: %v", err)
 			}
-
-			resourceName = originalResourceName
+			assert.Equal(t, NotificationsSecretName, currentSecret.ObjectMeta.Name)
+			assert.Equal(t, argocdcommon.TestNamespace, currentSecret.ObjectMeta.Namespace)
+			assert.Equal(t, resourceLabels, currentSecret.ObjectMeta.Labels)
 		})
 	}
 }
@@ -76,14 +69,12 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "successful delete",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "successful delete",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
@@ -93,12 +84,9 @@ func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
-			if err := nr.DeleteSecret(tt.resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.DeleteSecret(ns.Name); (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.DeleteSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			resourceName = originalResourceName
 		})
 	}
 }

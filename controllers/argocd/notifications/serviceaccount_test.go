@@ -13,34 +13,34 @@ import (
 
 func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	resourceName = argocdcommon.TestArgoCDName
 	existingServiceAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       ServiceAccountKind,
 			APIVersion: APIVersionV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
-			Namespace: argocdcommon.TestNamespace,
+			Name:        argocdcommon.TestArgoCDName,
+			Namespace:   argocdcommon.TestNamespace,
+			Labels:      resourceLabels,
+			Annotations: map[string]string{},
 		},
 	}
 
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "serviceAccount doesn't exist",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "serviceAccount doesn't exist",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name:         "serviceAccount exists",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "serviceAccount exists",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, existingServiceAccount, ns)
 			},
@@ -50,38 +50,31 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
 			err := nr.reconcileServiceAccount()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.reconcileServiceAccount() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.name == "serviceAccount exists" {
-				currentServiceAccount := &corev1.ServiceAccount{}
-				err := nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
-				if err != nil {
-					t.Fatalf("Could not get current ServiceAccount: %v", err)
-				}
-				assert.Equal(t, existingServiceAccount, currentServiceAccount)
+			currentServiceAccount := &corev1.ServiceAccount{}
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
+			if err != nil {
+				t.Fatalf("Could not get current ServiceAccount: %v", err)
 			}
-
-			resourceName = originalResourceName
+			assert.Equal(t, resourceLabels, currentServiceAccount.Labels)
 		})
 	}
 }
 
 func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *NotificationsReconciler
-		wantErr      bool
+		name        string
+		setupClient func() *NotificationsReconciler
+		wantErr     bool
 	}{
 		{
-			name:         "successful delete",
-			resourceName: argocdcommon.TestArgoCDName,
+			name: "successful delete",
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
@@ -91,12 +84,9 @@ func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			originalResourceName := resourceName
-			resourceName = argocdcommon.TestArgoCDName
-			if err := nr.DeleteServiceAccount(tt.resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.DeleteServiceAccount(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				t.Errorf("NotificationsReconciler.DeleteServiceAccount() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			resourceName = originalResourceName
 		})
 	}
 }
