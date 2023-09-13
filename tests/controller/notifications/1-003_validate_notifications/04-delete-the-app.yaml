@@ -1,0 +1,13 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: | 
+    set -e 
+  
+    kubectl delete -n $NAMESPACE application.argoproj.io my-app-3
+
+    # Loop to wait for Application to be deleted
+    while kubectl get application my-app-3 -n $NAMESPACE --ignore-not-found; do
+      echo "Waiting for Application to be deleted..."
+      sleep 5
+    done

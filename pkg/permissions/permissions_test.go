@@ -51,7 +51,7 @@ var (
 	}
 	testSubjects = []rbacv1.Subject{
 		{
-			Kind:      "ServiceAccount",
+			Kind:      rbacv1.ServiceAccountKind,
 			Name:      testName,
 			Namespace: testNamespace,
 		},

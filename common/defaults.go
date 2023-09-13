@@ -155,12 +155,6 @@ const (
 	ArgoCDDefaultRepoServerPort = 8081
 )
 
-// notifications-controller
-const (
-	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
-	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
-)
-
 // grafana
 const (
 	// ArgoCDOperatorGrafanaComponent is the name of the Grafana control plane component

@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -98,7 +97,7 @@ var log = ctrl.Log.WithName("controller_argocd")
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
 
-	argocd := &argoproj.ArgoCD{}
+	argocd := &v1alpha1.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -163,6 +162,8 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// 	return reconcile.Result{}, err
 	// }
 
+	r.InitializeControllerReconcilers()
+
 	if err = r.reconcileControllers(); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -216,8 +217,14 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		r.Logger.Error(err, "failed to reconcile applicationset controller")
 	}
 
-	if err := r.NotificationsController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile notifications controller")
+	if r.Instance.Spec.Notifications.Enabled {
+		if err := r.NotificationsController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile notifications controller")
+		}
+	} else {
+		if err := r.NotificationsController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete notifications resources")
+		}
 	}
 
 	if err := r.SSOController.Reconcile(); err != nil {
@@ -264,7 +271,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.NotificationsController = &notifications.NotificationsReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}

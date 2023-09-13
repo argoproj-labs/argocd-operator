@@ -270,7 +270,7 @@ func TestArgoCDReconciler_reconcileStatusNotificationsController(t *testing.T) {
 	assert.Equal(t, "Pending", a.Status.NotificationsController)
 
 	a.Spec.Notifications.Enabled = false
-	assert.NoError(t, r.NotificationsController.Reconcile())
+	assert.NoError(t, r.NotificationsController.DeleteResources())
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
 }
