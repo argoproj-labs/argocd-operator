@@ -180,7 +180,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
-				existingDeployment.Spec.Template.ObjectMeta.Labels[ImageUpgradedLabel] = time.Now().UTC().Format(TimeFormatMST)
+				existingDeployment.Spec.Template.ObjectMeta.Labels[ImageUpgradedKey] = time.Now().UTC().Format(TimeFormatMST)
 			},
 		},
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},

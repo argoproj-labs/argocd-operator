@@ -54,8 +54,6 @@ const (
 
 	CapabilityDropAll = "ALL"
 
-	ImageUpgradedLabel = "image.upgraded"
-
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"
