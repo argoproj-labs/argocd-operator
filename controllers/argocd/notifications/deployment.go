@@ -3,7 +3,7 @@ package notifications
 import (
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/common"
+	. "github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
@@ -36,7 +36,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
+							Name: ArgoCDTLSCertsConfigMapName,
 						},
 					},
 				},
@@ -45,7 +45,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 				Name: ArgoCDRepoServerTLS,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: common.ArgoCDRepoServerTLSSecretName,
+						SecretName: ArgoCDRepoServerTLSSecretName,
 						Optional:   util.BoolPtr(true),
 					},
 				},
@@ -55,7 +55,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Command:         nr.GetNotificationsCommand(),
 			Image:           argocdcommon.GetArgoContainerImage(nr.Instance),
 			ImagePullPolicy: corev1.PullAlways,
-			Name:            common.ArgoCDNotificationsControllerComponent,
+			Name:            ArgoCDNotificationsControllerComponent,
 			Env:             notificationEnv,
 			Resources:       nr.GetNotificationsResources(),
 			LivenessProbe: &corev1.Probe{
@@ -100,13 +100,13 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Spec: podSpec,
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.AppK8sKeyName: resourceName,
+					AppK8sKeyName: resourceName,
 				},
 			},
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.AppK8sKeyName: resourceName,
+				AppK8sKeyName: resourceName,
 			},
 		},
 		Replicas: nr.GetArgoCDNotificationsControllerReplicas(),

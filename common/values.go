@@ -36,6 +36,9 @@ const (
 	// ArgoCDStatusCompleted is the completed status value.
 	ArgoCDStatusCompleted = "Completed"
 
+	// ArgoCDRepoServerTLS is the argocd repo server tls value.
+	ArgoCDRepoServerTLS = "argocd-repo-server-tls"
+
 	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
 	K8sOSLinux = "linux"
 
@@ -49,7 +52,25 @@ const (
 
 	TLSCerts = "tls-certs"
 
+	CapabilityDropAll = "ALL"
+
+	ImageUpgradedLabel = "image.upgraded"
+
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"
+)
+
+// API group versions and resource kinds
+const (
+	APIVersionV1          = "v1"
+	APIGroupVersionAppsV1 = "apps/v1"
+	APIGroupVersionRbacV1 = "rbac.authorization.k8s.io/v1"
+
+	DeploymentKind     = "Deployment"
+	RoleKind           = "Role"
+	RoleBindingKind    = "RoleBinding"
+	ConfigMapKind      = "ConfigMap"
+	SecretKind         = "Secret"
+	ServiceAccountKind = "ServiceAccount"
 )
