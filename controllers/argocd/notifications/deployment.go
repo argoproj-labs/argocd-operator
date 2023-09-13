@@ -3,7 +3,7 @@ package notifications
 import (
 	"time"
 
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
@@ -32,20 +32,20 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 	podSpec := corev1.PodSpec{
 		Volumes: []corev1.Volume{
 			{
-				Name: TLSCerts,
+				Name: common.TLSCerts,
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: ArgoCDTLSCertsConfigMapName,
+							Name: common.ArgoCDTLSCertsConfigMapName,
 						},
 					},
 				},
 			},
 			{
-				Name: ArgoCDRepoServerTLS,
+				Name: common.ArgoCDRepoServerTLS,
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: ArgoCDRepoServerTLSSecretName,
+						SecretName: common.ArgoCDRepoServerTLSSecretName,
 						Optional:   util.BoolPtr(true),
 					},
 				},
@@ -71,21 +71,21 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 				AllowPrivilegeEscalation: util.BoolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
-						CapabilityDropAll,
+						common.CapabilityDropAll,
 					},
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
-					Name:      TLSCerts,
-					MountPath: VolumeMountPathTLS,
+					Name:      common.TLSCerts,
+					MountPath: common.VolumeMountPathTLS,
 				},
 				{
-					Name:      ArgoCDRepoServerTLS,
-					MountPath: VolumeMountPathRepoServerTLS,
+					Name:      common.ArgoCDRepoServerTLS,
+					MountPath: common.VolumeMountPathRepoServerTLS,
 				},
 			},
-			WorkingDir: WorkingDirApp,
+			WorkingDir: common.WorkingDirApp,
 		}},
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: util.BoolPtr(true),
@@ -100,13 +100,13 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Spec: podSpec,
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					AppK8sKeyName: resourceName,
+					common.AppK8sKeyName: resourceName,
 				},
 			},
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				AppK8sKeyName: resourceName,
+				common.AppK8sKeyName: resourceName,
 			},
 		},
 		Replicas: nr.GetArgoCDNotificationsControllerReplicas(),
@@ -180,7 +180,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
-				existingDeployment.Spec.Template.ObjectMeta.Labels[ImageUpgradedKey] = time.Now().UTC().Format(TimeFormatMST)
+				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},

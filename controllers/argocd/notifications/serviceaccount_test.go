@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -18,8 +18,8 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	resourceLabels = testExpectedLabels
 	existingServiceAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       ServiceAccountKind,
-			APIVersion: APIVersionV1,
+			Kind:       common.ServiceAccountKind,
+			APIVersion: common.APIVersionV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        argocdcommon.TestArgoCDName,

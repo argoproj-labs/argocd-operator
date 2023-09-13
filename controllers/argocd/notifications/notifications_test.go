@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -18,7 +18,7 @@ var (
 	testKey     = "test"
 	testVal     = "test"
 	testRoleRef = rbacv1.RoleRef{
-		Kind:     RoleKind,
+		Kind:     common.RoleKind,
 		Name:     argocdcommon.TestArgoCDName,
 		APIGroup: rbacv1.GroupName,
 	}
@@ -35,7 +35,7 @@ var (
 		testKey: testVal,
 	}
 
-	testExpectedLabels = DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDNotificationsControllerComponent)
+	testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDNotificationsControllerComponent)
 )
 
 func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {

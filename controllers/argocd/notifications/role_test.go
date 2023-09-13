@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -17,8 +17,8 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 	resourceName = argocdcommon.TestArgoCDName
 	existingRole := &rbacv1.Role{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       RoleKind,
-			APIVersion: APIGroupVersionRbacV1,
+			Kind:       common.RoleKind,
+			APIVersion: common.APIGroupVersionRbacV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      argocdcommon.TestArgoCDName,
