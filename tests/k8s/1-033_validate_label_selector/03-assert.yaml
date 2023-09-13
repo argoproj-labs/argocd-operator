@@ -1,31 +1,39 @@
-apiVersion: v1
-data:
-  policy.csv: ""
-  policy.default: role:readonly
-  scopes: '[email]'
-kind: ConfigMap
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  labels:
-    app.kubernetes.io/managed-by: test1
-    app.kubernetes.io/name: argocd-rbac-cm
-    app.kubernetes.io/part-of: argocd
-  name: argocd-rbac-cm
-  namespace: test-argocd
-
-
-
-
-# apiVersion: argoproj.io/v1alpha1
-# kind: ArgoCD
-# metadata:
-#   name: test1
-#   namespace: test-argocd
-#   labels:
-#     example: basic
-# spec: 
-#   rbac:
-#     policy: |
-#       g, system:cluster-admins, role:admin
-#       g, cluster-admins, role:admin
-#     scopes: '[email]'
-
+  name: test1-redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test1-repo-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test1-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test1-metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test1-redis
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test1-repo-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test1-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test1-server-metrics
