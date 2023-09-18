@@ -50,9 +50,9 @@ metadata:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
 ```
 
-Enable `../certmanager` directory under the `bases` section in `config/default/kustomization.yaml` file.
+Enable `../certmanager` directory under the `resources` section in `config/default/kustomization.yaml` file.
 ```yaml
-bases:
+resources:
 .....
 - ../webhook
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
