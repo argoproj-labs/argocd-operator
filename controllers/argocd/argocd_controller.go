@@ -286,7 +286,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.AppsetController = &applicationset.ApplicationSetReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}

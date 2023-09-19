@@ -332,7 +332,7 @@ func isMergable(extraArgs []string, cmd []string) error {
 	if len(extraArgs) > 0 {
 		for _, arg := range extraArgs {
 			if len(arg) > 2 && arg[:2] == "--" {
-				if ok := util.ContainsString(cmd, arg); ok {
+				if ok := util.ContainsString(cmd, arg, true); ok {
 					err := errors.New("duplicate argument error")
 					log.Error(err, fmt.Sprintf("Arg %s is already part of the default command arguments", arg))
 					return err

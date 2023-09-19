@@ -57,6 +57,15 @@ const (
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"
+	PortWebhook                  = "webhook"
+	SSHKnownHosts                = "ssh-known-hosts"
+	VolumeMountPathSSH           = "/app/config/ssh"
+	GPGKeys                      = "gpg-keys"
+	VolumeMountPathGPG           = "/app/config/gpg/source"
+	GPGKeyRing                   = "gpg-keyring"
+	VolumeMountPathGPGKeyring    = "/app/config/gpg/keys"
+	VolumeTmp                    = "tmp"
+	VolumeMountPathTmp           = "/tmp"
 )
 
 // API group versions and resource kinds
