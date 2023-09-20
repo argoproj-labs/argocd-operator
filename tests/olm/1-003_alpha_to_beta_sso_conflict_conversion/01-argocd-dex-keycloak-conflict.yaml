@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+  labels:
+    example: dex-keycloak
+spec:
+  # during conversion deprecated dex field has more priority
+  dex:
+    openShiftOAuth: true
+  sso:
+    provider: keycloak
+    keycloak:
+      rootCA: '"---BEGIN---END---"'
+    verifyTLS: false
+  extraConfig:
+    oidc.tls.insecure.skip.verify: 'true' 

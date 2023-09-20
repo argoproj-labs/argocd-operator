@@ -36,6 +36,45 @@ oc login -u kubeadmin
 By default, the operator is installed into the `argocd-operator-system` namespace. To modify this, update the
 value of the `namespace` specified in the `config/default/kustomization.yaml` file. 
 
+### Conversion Webhook Support
+
+ArgoCD `v1alpha1` CRD has been **deprecated** starting from **argocd-operator v0.8.0**. To facilitate automatic migration of existing `v1alpha1` ArgoCD CRs to `v1beta1`, conversion webhook support has been introduced.
+
+By default, the conversion webhook is disabled for the manual(non-OLM) installation of the operator. Users can modify the configurations to enable conversion webhook support using the instructions provided below.
+
+!!! warning
+    Enabling the webhook is optional. However, without conversion webhook support, users are responsible for migrating any existing ArgoCD v1alpha1 CRs to v1beta1.
+
+##### Enable Webhook Support
+
+To enable the operator to utilize the `Openshift Service CA Operator` for automated webhook certificate management, add following annotations.
+
+`config/webhook/service.yaml`
+```yaml
+metadata:
+  name: webhook-service
+  annotations: 
+    service.beta.openshift.io/serving-cert-secret-name: webhook-server-cert
+```
+
+`config/crd/patches/cainjection_in_argocds.yaml`
+```yaml
+metadata:
+  name: argocds.argoproj.io
+  annotations: 
+    service.beta.openshift.io/inject-cabundle: true
+```
+
+Additionally, set the `ENABLE_CONVERSION_WEBHOOK`` environment variable in the operator to enable the conversion webhook.
+
+`config/default/manager_webhook_patch.yaml`
+```yaml
+      - name: manager
+        env:
+        - name: ENABLE_CONVERSION_WEBHOOK
+          value: "true"
+```
+
 ### Deploy Operator
 
 Deploy the operator. This will create all the necessary resources, including the namespace. For running the make command you need to install go-lang package on your system.
