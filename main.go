@@ -195,8 +195,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	setupLog.Info("AAAAAAAAAAA0")
-	setupLog.Info(labelSelectorFlag)
+
 	if err = (&argocd.ReconcileArgoCD{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),

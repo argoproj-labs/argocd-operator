@@ -1,39 +1,9 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test1-redis
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
 metadata:
-  name: test1-repo-server
+  name: test1
+  namespace: test-argocd
+status:
+  phase: Available
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test1-server
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test1-metrics
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test1-redis
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test1-repo-server
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test1-server
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test1-server-metrics

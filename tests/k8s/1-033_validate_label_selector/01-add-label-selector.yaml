@@ -3,5 +3,6 @@ kind: TestStep
 commands:
 # patches the subscription to add label selector in argocd-operator
 - script: |
-    kubectl patch -n $NAMESPACE argocd/argocd --type='json' -p='[{"op": "remove", "path": "/spec/sso"}]'
+    kubectl set env deployment/argocd-operator-controller-manager -n $NAMESPACE ARGOCD_LABEL_SELECTOR=foo=bar
 - script: sleep 10
+

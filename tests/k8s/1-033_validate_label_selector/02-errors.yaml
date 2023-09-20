@@ -2,5 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
   name: test1
+  namespace: test-argocd
 status:
   phase: Available
