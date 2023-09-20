@@ -31,67 +31,18 @@ func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
 	}
 	addSCMGitlabVolumeMount := false
 	if scmRootCAConfigMapName := asr.getSCMRootCAConfigMapName(); scmRootCAConfigMapName != "" {
-		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+		cm, err := workloads.GetConfigMap(scmRootCAConfigMapName, asr.Instance.Namespace, asr.Client)
+		if err != nil {
+			asr.Logger.Error(err, "failed to get SCM Root CA ConfigMap")
+		}
+		if util.IsObjectFound(asr.Client, asr.Instance.Namespace, asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
 			addSCMGitlabVolumeMount = true
-			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
-				Name: ApplicationSetGitlabSCMTlsCert,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-						},
-					},
-				},
-			})
 		}
 	}
 	podSpec := corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: common.SSHKnownHosts,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDKnownHostsConfigMapName,
-						},
-					},
-				},
-			},
-			{
-				Name: common.TLSCerts,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDTLSCertsConfigMapName,
-						},
-					},
-				},
-			},
-			{
-				Name: common.GPGKeys,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDGPGKeysConfigMapName,
-						},
-					},
-				},
-			},
-			{
-				Name: common.GPGKeyRing,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-			{
-				Name: common.VolumeTmp,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-		Containers: []corev1.Container{*asr.getApplicationSetContainer(addSCMGitlabVolumeMount)},
+		ServiceAccountName: resourceName,
+		Volumes:            asr.getApplicationSetPodVolumes(addSCMGitlabVolumeMount),
+		Containers:         []corev1.Container{*asr.getApplicationSetContainer(addSCMGitlabVolumeMount)},
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: util.BoolPtr(true),
 		},
@@ -114,7 +65,6 @@ func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
 				common.AppK8sKeyName: resourceName,
 			},
 		},
-		Replicas: asr.GetArgoCDNotificationsControllerReplicas(),
 	}
 
 	desiredDeployment.ObjectMeta = objMeta
@@ -312,4 +262,64 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 	}
 
 	return container
+}
+
+func (asr *ApplicationSetReconciler) getApplicationSetPodVolumes(addSCMGitlabVolumeMount bool) []corev1.Volume {
+	volumes := []corev1.Volume{
+		{
+			Name: common.SSHKnownHosts,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: common.TLSCerts,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: common.GPGKeys,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: common.GPGKeyRing,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: common.VolumeTmp,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+	if addSCMGitlabVolumeMount {
+		volumes = append(volumes, corev1.Volume{
+			Name: ApplicationSetGitlabSCMTlsCert,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+					},
+				},
+			},
+		})
+	}
+	return volumes
 }

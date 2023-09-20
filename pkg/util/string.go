@@ -25,22 +25,10 @@ func RemoveString(slice []string, s string) []string {
 	return result
 }
 
-// // ContainsString returns true if a string is part of the given slice.
-//
-//	func ContainsString(arr []string, s string) bool {
-//		for _, val := range arr {
-//			if strings.TrimSpace(val) == s {
-//				return true
-//			}
-//		}
-//		return false
-//	}
-func ContainsString(arr []string, s string, ifTrimSpace bool) bool {
+// ContainsString returns true if a string is part of the given slice.
+func ContainsString(arr []string, s string) bool {
 	for _, val := range arr {
-		if ifTrimSpace {
-			val = strings.TrimSpace(val)
-		}
-		if val == s {
+		if strings.TrimSpace(val) == s {
 			return true
 		}
 	}

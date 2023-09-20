@@ -39,6 +39,9 @@ const (
 	// ArgoCDRepoServerTLS is the argocd repo server tls value.
 	ArgoCDRepoServerTLS = "argocd-repo-server-tls"
 
+	// ArgoCDAppSetGitlabSCMTLSCertsConfigMapName is the hard-coded ApplicationSet Gitlab SCM TLS certificate data ConfigMap name.
+	ArgoCDAppSetGitlabSCMTLSCertsConfigMapName = "argocd-appset-gitlab-scm-tls-certs-cm"
+
 	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
 	K8sOSLinux = "linux"
 

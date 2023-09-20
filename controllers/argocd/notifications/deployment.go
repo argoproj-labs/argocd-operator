@@ -30,6 +30,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 		Labels:    resourceLabels,
 	}
 	podSpec := corev1.PodSpec{
+		ServiceAccountName: resourceName,
 		Volumes: []corev1.Volume{
 			{
 				Name: common.TLSCerts,
