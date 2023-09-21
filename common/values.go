@@ -82,5 +82,6 @@ const (
 	RoleBindingKind    = "RoleBinding"
 	ConfigMapKind      = "ConfigMap"
 	SecretKind         = "Secret"
+	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
 )

@@ -1,4 +1,4 @@
-package notifications
+package applicationset
 
 import (
 	"context"
@@ -12,26 +12,26 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
+func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sa := argocdcommon.MakeTestServiceAccount()
 	resourceName = argocdcommon.TestArgoCDName
 
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "create a rolebinding",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns, sa)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
 		{
 			name: "update a rolebinding",
-			setupClient: func() *NotificationsReconciler {
+			setupClient: func() *ApplicationSetReconciler {
 				outdatedRoleBinding := &rbacv1.RoleBinding{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       common.RoleBindingKind,
@@ -44,7 +44,7 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 					RoleRef:  rbacv1.RoleRef{},
 					Subjects: []rbacv1.Subject{},
 				}
-				return makeTestNotificationsReconciler(t, outdatedRoleBinding, ns, sa)
+				return makeTestApplicationSetReconciler(t, outdatedRoleBinding, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -71,19 +71,19 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 	}
 }
 
-func TestNotificationsReconciler_DeleteRoleBinding(t *testing.T) {
+func TestApplicationSetReconciler_DeleteRoleBinding(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sa := argocdcommon.MakeTestServiceAccount()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "successful delete",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns, sa)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},

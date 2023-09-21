@@ -24,7 +24,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 			Labels:      resourceLabels,
 			Annotations: asr.Instance.Annotations,
 		},
-		Spec:      getServiceSpec(),
+		Spec:      GetServiceSpec(),
 		Client:    asr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
@@ -79,7 +79,7 @@ func (asr *ApplicationSetReconciler) DeleteService(name, namespace string) error
 	return nil
 }
 
-func getServiceSpec() corev1.ServiceSpec {
+func GetServiceSpec() corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{

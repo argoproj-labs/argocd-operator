@@ -35,7 +35,7 @@ func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 			name: "update a deployment",
 			setupClient: func() *NotificationsReconciler {
 				outdatedDeployment := existingDeployment
-				outdatedDeployment.ObjectMeta.Labels = testKVP
+				outdatedDeployment.ObjectMeta.Labels = argocdcommon.TestKVP
 				return makeTestNotificationsReconciler(t, outdatedDeployment, ns)
 			},
 			wantErr: false,

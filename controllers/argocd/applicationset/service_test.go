@@ -1,4 +1,4 @@
-package notifications
+package applicationset
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
+func TestApplicationSetReconciler_reconcileService(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	sa := argocdcommon.MakeTestServiceAccount()
 	resourceName = argocdcommon.TestArgoCDName
-	resourceLabels = testExpectedLabels
 
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
-			name: "create a serviceAccount",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			name: "create a Service",
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -31,7 +31,7 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			err := nr.reconcileServiceAccount()
+			err := nr.reconcileService()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
@@ -39,29 +39,29 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 					t.Errorf("Unexpected error: %v", err)
 				}
 			}
-
-			currentServiceAccount := &corev1.ServiceAccount{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
+			currentService := &corev1.Service{}
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentService)
 			if err != nil {
-				t.Fatalf("Could not get current ServiceAccount: %v", err)
+				t.Fatalf("Could not get current Service: %v", err)
 			}
-			assert.Equal(t, testExpectedLabels, currentServiceAccount.Labels)
+			assert.Equal(t, GetServiceSpec().Ports, currentService.Spec.Ports)
 		})
 	}
 }
 
-func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
+func TestApplicationSetReconciler_DeleteService(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	sa := argocdcommon.MakeTestServiceAccount()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "successful delete",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -69,7 +69,7 @@ func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.DeleteServiceAccount(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.DeleteService(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {
