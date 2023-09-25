@@ -302,7 +302,8 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					RunAsNonRoot: boolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
+					{Name: "static-files", MountPath: "/shared"},
+				},
 			},
 		},
 		ServiceAccountName: "argocd-argocd-dex-server",
@@ -313,92 +314,6 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 
 func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-
-	desiredPodSpec := corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: "static-files",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-		InitContainers: []corev1.Container{
-			{
-				Name:  "copyutil",
-				Image: "justatest:latest",
-				Command: []string{
-					"cp",
-					"-n",
-					"/usr/local/bin/argocd",
-					"/shared/argocd-dex",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "static-files",
-						MountPath: "/shared",
-					},
-				},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		Containers: []corev1.Container{
-			{
-				Name:  "dex",
-				Image: "testdex:v0.0.1",
-				Command: []string{
-					"/shared/argocd-dex",
-					"rundex",
-				},
-				LivenessProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/healthz/live",
-							Port: intstr.FromInt(5558),
-						},
-					},
-					InitialDelaySeconds: 60,
-					PeriodSeconds:       30,
-				},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "http",
-						ContainerPort: 5556,
-					},
-					{
-						Name:          "grpc",
-						ContainerPort: 5557,
-					},
-					{
-						Name:          "metrics",
-						ContainerPort: 5558,
-					},
-				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: boolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: boolPtr(true),
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
-			},
-		},
-		ServiceAccountName: "argocd-argocd-dex-server",
-		NodeSelector:       common.DefaultNodeSelector(),
-	}
 
 	tests := []struct {
 		name         string
@@ -429,7 +344,218 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 					},
 				}
 			}),
-			wantPodSpec: desiredPodSpec,
+			wantPodSpec: corev1.PodSpec{
+				Volumes: []corev1.Volume{
+					{
+						Name: "static-files",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "copyutil",
+						Image: "justatest:latest",
+						Command: []string{
+							"cp",
+							"-n",
+							"/usr/local/bin/argocd",
+							"/shared/argocd-dex",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "static-files",
+								MountPath: "/shared",
+							},
+						},
+						ImagePullPolicy: corev1.PullAlways,
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:  "dex",
+						Image: "testdex:v0.0.1",
+						Command: []string{
+							"/shared/argocd-dex",
+							"rundex",
+						},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/healthz/live",
+									Port: intstr.FromInt(5558),
+								},
+							},
+							InitialDelaySeconds: 60,
+							PeriodSeconds:       30,
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 5556,
+							},
+							{
+								Name:          "grpc",
+								ContainerPort: 5557,
+							},
+							{
+								Name:          "metrics",
+								ContainerPort: 5558,
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "static-files", MountPath: "/shared"},
+						},
+					},
+				},
+				ServiceAccountName: "argocd-argocd-dex-server",
+				NodeSelector:       common.DefaultNodeSelector(),
+			},
+		},
+		{
+			name:       "update dex deployment - .spec.sso.dex.env",
+			setEnvFunc: nil,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO.Dex.Env = []corev1.EnvVar{
+					{
+						Name: "ARGO_WORKFLOWS_SSO_CLIENT_SECRET",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "argo-workflows-sso",
+								},
+								Key: "client-secret",
+							},
+						},
+					},
+				}
+			},
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			wantPodSpec: corev1.PodSpec{
+				Volumes: []corev1.Volume{
+					{
+						Name: "static-files",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "copyutil",
+						Image: "quay.io/argoproj/argocd@sha256:d40da8f5747415eb7f9b5c2d9b645aecd423888cad9b36e4f986bff8ecf0a786",
+						Command: []string{
+							"cp",
+							"-n",
+							"/usr/local/bin/argocd",
+							"/shared/argocd-dex",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "static-files",
+								MountPath: "/shared",
+							},
+						},
+						ImagePullPolicy: corev1.PullAlways,
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:  "dex",
+						Image: "ghcr.io/dexidp/dex@sha256:d5f887574312f606c61e7e188cfb11ddb33ff3bf4bd9f06e6b1458efca75f604",
+						Command: []string{
+							"/shared/argocd-dex",
+							"rundex",
+						},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/healthz/live",
+									Port: intstr.FromInt(5558),
+								},
+							},
+							InitialDelaySeconds: 60,
+							PeriodSeconds:       30,
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 5556,
+							},
+							{
+								Name:          "grpc",
+								ContainerPort: 5557,
+							},
+							{
+								Name:          "metrics",
+								ContainerPort: 5558,
+							},
+						},
+						Env: []corev1.EnvVar{
+							{
+								Name: "ARGO_WORKFLOWS_SSO_CLIENT_SECRET",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "argo-workflows-sso",
+										},
+										Key: "client-secret",
+									},
+								},
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "static-files", MountPath: "/shared"},
+						},
+					},
+				},
+				ServiceAccountName: "argocd-argocd-dex-server",
+				NodeSelector:       common.DefaultNodeSelector(),
+			},
 		},
 	}
 
