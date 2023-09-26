@@ -282,7 +282,7 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
-			TimeoutSeconds: 120,
+			TimeoutSeconds: 240,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -292,7 +292,7 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 					},
 				},
 			},
-			InitialDelaySeconds: 60,
+			InitialDelaySeconds: 120,
 		},
 		Name: "${APPLICATION_NAME}",
 		Ports: []corev1.ContainerPort{
@@ -302,7 +302,8 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
 		ReadinessProbe: &corev1.Probe{
-			TimeoutSeconds: 120,
+			TimeoutSeconds:      240,
+			InitialDelaySeconds: 120,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
