@@ -12448,6 +12448,11 @@ spec:
                     description: Pass extra pod annotations to the Argo CD server
                       pod.
                     type: object
+                  podLabels:
+                    additionalProperties:
+                      type: string
+                    description: Pass extra pod labels to the Argo CD server pod.
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.

@@ -563,6 +563,9 @@ type ArgoCDServerSpec struct {
 
 	// Pass extra pod annotations to the Argo CD server pod.
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// Pass extra pod labels to the Argo CD server pod.
+	PodLabels map[string]string `json:"podLabels,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
