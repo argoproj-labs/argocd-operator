@@ -33,7 +33,7 @@ spec:
       name: keycloak
     spec:
       containers:
-      - image: registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:bb6dc12a49370ba6baa40cfa064238cddcfd1edb22c37dcdf53d331c0f7ee15d
+      - image: registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:ec9f60018694dcc5d431ba47d5536b761b71cb3f66684978fe6bb74c157679ac
         resources:
           limits:
             cpu: "1"
