@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-# patches the subscription to remove label selector in argocd-operator
-- script: |
-    kubectl set env deployment/argocd-operator-controller-manager -n $NAMESPACE ARGOCD_LABEL_SELECTOR-
-- script: sleep 10
