@@ -12442,6 +12442,12 @@ spec:
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
                       not set.  Valid options are debug, info, error, and warn.
                     type: string
+                  podAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Pass extra pod annotations to the Argo CD server
+                      pod.
+                    type: object
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.

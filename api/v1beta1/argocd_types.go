@@ -560,6 +560,9 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
+	// Pass extra pod annotations to the Argo CD server pod.
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
