@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -244,13 +244,13 @@ func TestArgoCDReconciler_reconcileApplicationController_withResources(t *testin
 			Name: "testimport",
 		}
 	})
-	ex := v1alpha1.ArgoCDExport{
+	ex := argoprojv1alpha1.ArgoCDExport{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testimport",
 			Namespace: a.Namespace,
 		},
-		Spec: v1alpha1.ArgoCDExportSpec{
-			Storage: &v1alpha1.ArgoCDExportStorageSpec{},
+		Spec: argoprojv1alpha1.ArgoCDExportSpec{
+			Storage: &argoprojv1alpha1.ArgoCDExportStorageSpec{},
 		},
 	}
 	r := makeTestReconciler(t, a, &ex)

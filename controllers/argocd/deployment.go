@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
@@ -60,7 +60,7 @@ func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	return nil
 }
 
-func (r *ArgoCDReconciler) getArgoCDExport(cr *argoproj.ArgoCD) *v1alpha1.ArgoCDExport {
+func (r *ArgoCDReconciler) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1.ArgoCDExport {
 	if cr.Spec.Import == nil {
 		return nil
 	}
@@ -70,14 +70,14 @@ func (r *ArgoCDReconciler) getArgoCDExport(cr *argoproj.ArgoCD) *v1alpha1.ArgoCD
 		namespace = *cr.Spec.Import.Namespace
 	}
 
-	export := &v1alpha1.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	if util.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
 		return export
 	}
 	return nil
 }
 
-func getArgoExportSecretName(export *v1alpha1.ArgoCDExport) string {
+func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	name := util.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
@@ -92,7 +92,7 @@ func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
 		namespace = *cr.Spec.Import.Namespace
 	}
 
-	export := &v1alpha1.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	if util.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
 		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
 			backend = export.Spec.Storage.Backend
@@ -111,7 +111,7 @@ func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) []string {
 	return cmd
 }
 
-func getArgoImportContainerEnv(cr *v1alpha1.ArgoCDExport) []corev1.EnvVar {
+func getArgoImportContainerEnv(cr *argoprojv1alpha1.ArgoCDExport) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	switch cr.Spec.Storage.Backend {
@@ -145,7 +145,7 @@ func getArgoImportContainerEnv(cr *v1alpha1.ArgoCDExport) []corev1.EnvVar {
 }
 
 // getArgoImportContainerImage will return the container image for the Argo CD import process.
-func getArgoImportContainerImage(cr *v1alpha1.ArgoCDExport) string {
+func getArgoImportContainerImage(cr *argoprojv1alpha1.ArgoCDExport) string {
 	img := common.ArgoCDDefaultExportJobImage
 	if len(cr.Spec.Image) > 0 {
 		img = cr.Spec.Image
@@ -177,7 +177,7 @@ func getArgoImportVolumeMounts() []corev1.VolumeMount {
 }
 
 // getArgoImportVolumes will return the Volumes for the given ArgoCDExport.
-func getArgoImportVolumes(cr *v1alpha1.ArgoCDExport) []corev1.Volume {
+func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	volumes := make([]corev1.Volume, 0)
 
 	if cr.Spec.Storage != nil && cr.Spec.Storage.Backend == common.ArgoCDExportStorageBackendLocal {

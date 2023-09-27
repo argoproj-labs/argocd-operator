@@ -19,7 +19,7 @@ package argocdexport
 import (
 	"context"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,7 +55,7 @@ func (r *ArgoCDExportReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	reqLogger.Info("Reconciling ArgoCDExport")
 
 	// Fetch the ArgoCDExport instance
-	export := &v1alpha1.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	err := r.Client.Get(ctx, request.NamespacedName, export)
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -20,7 +20,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -38,7 +38,7 @@ func generateBackupKey() ([]byte, error) {
 }
 
 // reconcileExport will ensure that the resources for the export process are present for the ArgoCDExport.
-func (r *ArgoCDExportReconciler) reconcileExport(cr *v1alpha1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileExport(cr *argoprojv1alpha1.ArgoCDExport) error {
 	log.Info("reconciling export secret")
 	if err := r.reconcileExportSecret(cr); err != nil {
 		return err
@@ -60,7 +60,7 @@ func (r *ArgoCDExportReconciler) reconcileExport(cr *v1alpha1.ArgoCDExport) erro
 }
 
 // FetchStorageSecretName will return the name of the Secret to use for the export process.
-func FetchStorageSecretName(export *v1alpha1.ArgoCDExport) string {
+func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	name := util.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
@@ -69,7 +69,7 @@ func FetchStorageSecretName(export *v1alpha1.ArgoCDExport) string {
 }
 
 // reconcileExportSecret will ensure that the Secret used for the export process is present.
-func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *v1alpha1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *argoprojv1alpha1.ArgoCDExport) error {
 	name := FetchStorageSecretName(cr)
 	// Dummy CR to retrieve secret
 	a := &argoproj.ArgoCD{}
@@ -105,7 +105,7 @@ func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *v1alpha1.ArgoCDExport
 }
 
 // validateExport will ensure that the given ArgoCDExport is valid.
-func (r *ArgoCDExportReconciler) validateExport(cr *v1alpha1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) validateExport(cr *argoprojv1alpha1.ArgoCDExport) error {
 	if len(cr.Status.Phase) <= 0 {
 		cr.Status.Phase = "Pending"
 		return r.Client.Status().Update(context.TODO(), cr)

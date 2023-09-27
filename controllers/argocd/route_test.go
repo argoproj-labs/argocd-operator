@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -204,7 +203,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
 	t.Helper()
 	s := scheme.Scheme
-	s.AddKnownTypes(v1alpha1.GroupVersion, acd)
+	s.AddKnownTypes(argoproj.GroupVersion, acd)
 	routev1.Install(s)
 	configv1.Install(s)
 	cl := fake.NewFakeClient(objs...)
