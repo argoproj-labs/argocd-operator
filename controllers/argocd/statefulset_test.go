@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/google/go-cmp/cmp"
@@ -239,8 +239,8 @@ func TestArgoCDReconciler_reconcileApplicationController_withUpgrade(t *testing.
 
 func TestArgoCDReconciler_reconcileApplicationController_withResources(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCDWithResources(func(a *v1beta1.ArgoCD) {
-		a.Spec.Import = &v1beta1.ArgoCDImportSpec{
+	a := makeTestArgoCDWithResources(func(a *argoproj.ArgoCD) {
+		a.Spec.Import = &argoproj.ArgoCDImportSpec{
 			Name: "testimport",
 		}
 	})
@@ -303,12 +303,12 @@ func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		sharding v1beta1.ArgoCDApplicationControllerShardSpec
+		sharding argoproj.ArgoCDApplicationControllerShardSpec
 		replicas int32
 		vars     []corev1.EnvVar
 	}{
 		{
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:  false,
 				Replicas: 3,
 			},
@@ -318,7 +318,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing
 			},
 		},
 		{
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:  true,
 				Replicas: 1,
 			},
@@ -329,7 +329,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing
 			},
 		},
 		{
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:  true,
 				Replicas: 3,
 			},
@@ -342,7 +342,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing
 	}
 
 	for _, st := range tests {
-		a := makeTestArgoCD(func(a *v1beta1.ArgoCD) {
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 			a.Spec.Controller.Sharding = st.sharding
 		})
 		r := makeTestReconciler(t, a)
@@ -381,7 +381,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withAppSync(t *testing.
 		{Name: "HOME", Value: "/home/argocd"},
 	}
 
-	a := makeTestArgoCD(func(a *v1beta1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Minute * 10}
 	})
 	r := makeTestReconciler(t, a)
@@ -490,12 +490,12 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		sharding         v1beta1.ArgoCDApplicationControllerShardSpec
+		sharding         argoproj.ArgoCDApplicationControllerShardSpec
 		expectedReplicas int32
 		vars             []corev1.EnvVar
 	}{
 		{
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
 				DynamicScalingEnabled: util.BoolPtr(true),
@@ -507,7 +507,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 		},
 		{
 			// Replicas less than minimum shards
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
 				DynamicScalingEnabled: util.BoolPtr(true),
@@ -519,7 +519,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 		},
 		{
 			// Replicas more than maximum shards
-			sharding: v1beta1.ArgoCDApplicationControllerShardSpec{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
 				DynamicScalingEnabled: util.BoolPtr(true),
@@ -532,7 +532,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 	}
 
 	for _, st := range tests {
-		a := makeTestArgoCD(func(a *v1beta1.ArgoCD) {
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 			a.Spec.Controller.Sharding = st.sharding
 		})
 

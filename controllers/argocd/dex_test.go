@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -24,21 +24,21 @@ func TestArgoCDReconciler_reconcileDexDeployment_with_dex_disabled(t *testing.T)
 	tests := []struct {
 		name       string
 		setEnvFunc func(*testing.T, string)
-		argoCD     *v1beta1.ArgoCD
+		argoCD     *argoproj.ArgoCD
 	}{
 		{
 			name:       "dex disabled by not specifying .spec.sso.provider=dex",
 			setEnvFunc: nil,
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			}),
 		},
 		{
 			name:       "dex disabled by specifying different provider",
 			setEnvFunc: nil,
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 		},
@@ -67,21 +67,21 @@ func TestArgoCDReconciler_reconcileDexDeployment_removes_dex_when_disabled(t *te
 	tests := []struct {
 		name                  string
 		setEnvFunc            func(*testing.T, string)
-		updateCrFunc          func(cr *v1beta1.ArgoCD)
+		updateCrFunc          func(cr *argoproj.ArgoCD)
 		updateEnvFunc         func(*testing.T, string)
-		argoCD                *v1beta1.ArgoCD
+		argoCD                *argoproj.ArgoCD
 		wantDeploymentDeleted bool
 	}{
 		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -91,15 +91,15 @@ func TestArgoCDReconciler_reconcileDexDeployment_removes_dex_when_disabled(t *te
 		{
 			name:       "dex disabled by switching provider",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -148,15 +148,15 @@ func TestArgoCDReconciler_reconcileDeployments_Dex_with_resources(t *testing.T) 
 	tests := []struct {
 		name       string
 		setEnvFunc func(*testing.T, string)
-		argoCD     *v1beta1.ArgoCD
+		argoCD     *argoproj.ArgoCD
 	}{
 		{
 			name:       "dex with resources - .spec.sso.provider=dex",
 			setEnvFunc: nil,
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						Resources: &corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
 								corev1.ResourceMemory: resourcev1.MustParse("128Mi"),
@@ -210,8 +210,8 @@ func TestArgoCDReconciler_reconcileDeployments_Dex_with_resources(t *testing.T) 
 func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	a.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-		Provider: v1beta1.SSOProviderTypeDex,
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: argoproj.SSOProviderTypeDex,
 	}
 	r := makeTestReconciler(t, a)
 	assert.NoError(t, r.reconcileDexDeployment(a))
@@ -404,28 +404,28 @@ func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 	tests := []struct {
 		name         string
 		setEnvFunc   func(*testing.T, string)
-		updateCrFunc func(cr *v1beta1.ArgoCD)
-		argoCD       *v1beta1.ArgoCD
+		updateCrFunc func(cr *argoproj.ArgoCD)
+		argoCD       *argoproj.ArgoCD
 		wantPodSpec  corev1.PodSpec
 	}{
 		{
 			name:       "update dex deployment - .spec.sso.provider=dex + .spec.sso.dex",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.Image = "justatest"
 				cr.Spec.Version = "latest"
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						Image:   "testdex",
 						Version: "v0.0.1",
 					},
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -471,21 +471,21 @@ func TestArgoCDReconciler_reconcileDexService_removes_dex_when_disabled(t *testi
 	tests := []struct {
 		name               string
 		setEnvFunc         func(*testing.T, string)
-		updateCrFunc       func(cr *v1beta1.ArgoCD)
+		updateCrFunc       func(cr *argoproj.ArgoCD)
 		updateEnvFunc      func(*testing.T, string)
-		argoCD             *v1beta1.ArgoCD
+		argoCD             *argoproj.ArgoCD
 		wantServiceDeleted bool
 	}{
 		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -495,15 +495,15 @@ func TestArgoCDReconciler_reconcileDexService_removes_dex_when_disabled(t *testi
 		{
 			name:       "dex disabled by switching provider",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -553,21 +553,21 @@ func TestArgoCDReconciler_reconcileDexServiceAccount_removes_dex_when_disabled(t
 	tests := []struct {
 		name                      string
 		setEnvFunc                func(*testing.T, string)
-		updateCrFunc              func(cr *v1beta1.ArgoCD)
+		updateCrFunc              func(cr *argoproj.ArgoCD)
 		updateEnvFunc             func(*testing.T, string)
-		argoCD                    *v1beta1.ArgoCD
+		argoCD                    *argoproj.ArgoCD
 		wantServiceAccountDeleted bool
 	}{
 		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -577,15 +577,15 @@ func TestArgoCDReconciler_reconcileDexServiceAccount_removes_dex_when_disabled(t
 		{
 			name:       "dex disabled by switching provider",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -636,21 +636,21 @@ func TestArgoCDReconciler_reconcileRole_dex_disabled(t *testing.T) {
 	tests := []struct {
 		name            string
 		setEnvFunc      func(*testing.T, string)
-		updateCrFunc    func(cr *v1beta1.ArgoCD)
+		updateCrFunc    func(cr *argoproj.ArgoCD)
 		updateEnvFunc   func(*testing.T, string)
-		argoCD          *v1beta1.ArgoCD
+		argoCD          *argoproj.ArgoCD
 		wantRoleDeleted bool
 	}{
 		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -660,15 +660,15 @@ func TestArgoCDReconciler_reconcileRole_dex_disabled(t *testing.T) {
 		{
 			name:       "dex disabled by switching provider",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -724,21 +724,21 @@ func TestArgoCDReconciler_reconcileRoleBinding_dex_disabled(t *testing.T) {
 	tests := []struct {
 		name                   string
 		setEnvFunc             func(*testing.T, string)
-		updateCrFunc           func(cr *v1beta1.ArgoCD)
+		updateCrFunc           func(cr *argoproj.ArgoCD)
 		updateEnvFunc          func(*testing.T, string)
-		argoCD                 *v1beta1.ArgoCD
+		argoCD                 *argoproj.ArgoCD
 		wantRoleBindingDeleted bool
 	}{
 		{
 			name:       "dex disabled by removing .spec.sso",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -748,15 +748,15 @@ func TestArgoCDReconciler_reconcileRoleBinding_dex_disabled(t *testing.T) {
 		{
 			name:       "dex disabled by switching provider",
 			setEnvFunc: nil,
-			updateCrFunc: func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}

@@ -3,7 +3,7 @@ package argocd
 import (
 	"sync"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 var (
@@ -12,7 +12,7 @@ var (
 )
 
 // Hook changes resources as they are created or updated by the reconciler.
-type Hook func(*v1beta1.ArgoCD, interface{}, string) error
+type Hook func(*argoproj.ArgoCD, interface{}, string) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(h ...Hook) {
@@ -22,7 +22,7 @@ func Register(h ...Hook) {
 }
 
 // nolint:unparam
-func applyReconcilerHook(cr *v1beta1.ArgoCD, i interface{}, hint string) error {
+func applyReconcilerHook(cr *argoproj.ArgoCD, i interface{}, hint string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, v := range hooks {

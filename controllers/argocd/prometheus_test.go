@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,13 +15,13 @@ import (
 func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 	tests := []struct {
 		name              string
-		argocd            *v1beta1.ArgoCD
+		argocd            *argoproj.ArgoCD
 		wantPromRuleFound bool
 		existingPromRule  bool
 	}{
 		{
 			name: "monitoring enabled, no existing prom rule",
-			argocd: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = true
 			}),
 			existingPromRule:  false,
@@ -29,7 +29,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 		},
 		{
 			name: "monitoring disabled, no existing prom rule",
-			argocd: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = false
 			}),
 			existingPromRule:  false,
@@ -37,7 +37,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 		},
 		{
 			name: "monitoring enabled, existing prom rule",
-			argocd: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = true
 			}),
 			existingPromRule:  true,
@@ -45,7 +45,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 		},
 		{
 			name: "monitoring disabled, existing prom rule",
-			argocd: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argocd: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Monitoring.Enabled = false
 			}),
 			existingPromRule:  true,

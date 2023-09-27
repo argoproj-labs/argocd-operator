@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -51,7 +51,7 @@ var _ reconcile.Reconciler = &ArgoCDReconciler{}
 type ArgoCDReconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
-	Instance      *v1beta1.ArgoCD
+	Instance      *argoproj.ArgoCD
 	ClusterScoped bool
 	Logger        logr.Logger
 
@@ -111,7 +111,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
 	}()
 
-	argocd := &v1beta1.ArgoCD{}
+	argocd := &argoproj.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {

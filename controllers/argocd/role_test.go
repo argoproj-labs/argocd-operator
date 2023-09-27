@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -140,7 +140,7 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
-	a.Spec = v1beta1.ArgoCDSpec{
+	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,
 		},

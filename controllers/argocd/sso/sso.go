@@ -1,7 +1,7 @@
 package sso
 
 import (
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -10,7 +10,7 @@ import (
 type SSOReconciler struct {
 	Client   *client.Client
 	Scheme   *runtime.Scheme
-	Instance *v1beta1.ArgoCD
+	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 }
 

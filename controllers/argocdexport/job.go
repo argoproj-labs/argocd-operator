@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -287,7 +287,7 @@ func (r *ArgoCDExportReconciler) reconcileJob(cr *v1alpha1.ArgoCDExport) error {
 }
 
 func (r *ArgoCDExportReconciler) argocdName(namespace string) (string, error) {
-	argocds := &v1beta1.ArgoCDList{}
+	argocds := &argoproj.ArgoCDList{}
 	if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: namespace}); err != nil {
 		return "", err
 	}

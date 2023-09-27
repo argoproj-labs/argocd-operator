@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -81,15 +81,15 @@ func TestArgoCDReconciler_reconcileStatusSSO(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		argoCD        *v1beta1.ArgoCD
+		argoCD        *argoproj.ArgoCD
 		wantSSOStatus string
 	}{
 		{
 			name: "both dex and keycloak configured",
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeKeycloak,
-					Dex: &v1beta1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -98,26 +98,26 @@ func TestArgoCDReconciler_reconcileStatusSSO(t *testing.T) {
 		},
 		{
 			name: "sso provider dex but no .spec.sso.dex provided",
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
-					Provider: v1beta1.SSOProviderTypeDex,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
 				}
 			}),
 			wantSSOStatus: "Failed",
 		},
 		{
 			name: "no sso configured",
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			}),
 			wantSSOStatus: "Unknown",
 		},
 		{
 			name: "unsupported sso configured",
-			argoCD: makeTestArgoCD(func(cr *v1beta1.ArgoCD) {
-				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "Unsupported",
-					Dex: &v1beta1.ArgoCDDexSpec{
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -175,7 +175,7 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 
 			routeAPIFound = test.testRouteAPIFound
 
-			a := makeTestArgoCD(func(a *v1beta1.ArgoCD) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Route.Enabled = test.routeEnabled
 				a.Spec.Server.Ingress.Enabled = test.ingressEnabled
 			})
@@ -278,7 +278,7 @@ func TestArgoCDReconciler_reconcileStatusApplicationSetController(t *testing.T) 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
 
-	a.Spec.ApplicationSet = &v1beta1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 	assert.NoError(t, r.reconcileApplicationSetController(a))
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Pending", a.Status.ApplicationSetController)

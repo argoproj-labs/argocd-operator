@@ -1,7 +1,7 @@
 package notifications
 
 import (
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"
@@ -13,7 +13,7 @@ import (
 type NotificationsReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
-	Instance *v1beta1.ArgoCD
+	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 }
 

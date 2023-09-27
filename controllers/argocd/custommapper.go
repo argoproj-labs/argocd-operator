@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -132,7 +132,7 @@ func (r *ArgoCDReconciler) namespaceResourceMapper(o client.Object) []reconcile.
 
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
-		argocds := &v1beta1.ArgoCDList{}
+		argocds := &argoproj.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
@@ -161,7 +161,7 @@ func (r *ArgoCDReconciler) clusterSecretResourceMapper(o client.Object) []reconc
 
 	labels := o.GetLabels()
 	if v, ok := labels[common.ArgoCDArgoprojKeySecretType]; ok && v == "cluster" {
-		argocds := &v1beta1.ArgoCDList{}
+		argocds := &argoproj.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}
@@ -189,7 +189,7 @@ func (r *ArgoCDReconciler) applicationSetSCMTLSConfigMapMapper(o client.Object) 
 	var result = []reconcile.Request{}
 
 	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
-		argocds := &v1beta1.ArgoCDList{}
+		argocds := &argoproj.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}

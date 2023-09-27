@@ -54,7 +54,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -68,7 +68,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	utilruntime.Must(argoproj.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -155,7 +155,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := v1beta1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := argoproj.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -217,7 +217,7 @@ func main() {
 
 	// Start webhook only if ENABLE_CONVERSION_WEBHOOK is set
 	if strings.EqualFold(os.Getenv("ENABLE_CONVERSION_WEBHOOK"), "true") {
-		if err = (&v1beta1.ArgoCD{}).SetupWebhookWithManager(mgr); err != nil {
+		if err = (&argoproj.ArgoCD{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "ArgoCD")
 			os.Exit(1)
 		}
