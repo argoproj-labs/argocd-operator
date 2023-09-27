@@ -3,12 +3,12 @@ package argocdcommon
 import (
 	"os"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
-func GetArgoContainerImage(cr *v1alpha1.ArgoCD) string {
+func GetArgoContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultTag, defaultImg := false, false
 	img := cr.Spec.Image
 	if img == "" {

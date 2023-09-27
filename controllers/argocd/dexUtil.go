@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -53,7 +54,7 @@ func getDexContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.
-func (r *ArgoCDReconciler) getDexOAuthRedirectURI(cr *argoprojv1a1.ArgoCD) string {
+func (r *ArgoCDReconciler) getDexOAuthRedirectURI(cr *v1beta1.ArgoCD) string {
 	uri := r.getArgoServerURI(cr)
 	return uri + common.ArgoCDDefaultDexOAuthRedirectPath
 }

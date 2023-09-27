@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -83,7 +84,7 @@ func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 }
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
-func (r *ArgoCDReconciler) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoleBindings(cr *v1beta1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -97,7 +98,7 @@ func (r *ArgoCDReconciler) reconcileRoleBindings(cr *argoprojv1a1.ArgoCD) error 
 
 // reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
 // This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
-func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *v1beta1.ArgoCD) error {
 	var sa *corev1.ServiceAccount
 	var error error
 
@@ -336,7 +337,7 @@ func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *
 	return roleBinding
 }
 
-func (r *ArgoCDReconciler) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *v1beta1.ArgoCD) error {
 
 	// get expected name
 	roleBinding := newClusterRoleBindingWithname(name, cr)

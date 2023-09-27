@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
@@ -92,7 +93,7 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.Argo
 	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
-func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *v1beta1.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
@@ -460,7 +461,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 	return env
 }
 
-func (r *ArgoCDReconciler) getApplicationControllerReplicaCount(cr *argoprojv1a1.ArgoCD) int32 {
+func (r *ArgoCDReconciler) getApplicationControllerReplicaCount(cr *v1beta1.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
 	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
@@ -510,7 +511,7 @@ func (r *ArgoCDReconciler) getApplicationControllerReplicaCount(cr *argoprojv1a1
 	return replicas
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *v1beta1.ArgoCD, useTLSForRedis bool) error {
 
 	replicas := r.getApplicationControllerReplicaCount(cr)
 
@@ -713,7 +714,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 }
 
 // reconcileStatefulSets will ensure that all StatefulSets are present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileStatefulSets(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) error {
+func (r *ArgoCDReconciler) reconcileStatefulSets(cr *v1beta1.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileApplicationControllerStatefulSet(cr, useTLSForRedis); err != nil {
 		return err
 	}
@@ -748,7 +749,7 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(cr *argoprojv1a1.ArgoCD, r *ArgoCDReconciler) bool {
+func containsInvalidImage(cr *v1beta1.ArgoCD, r *ArgoCDReconciler) bool {
 
 	brokenPod := false
 

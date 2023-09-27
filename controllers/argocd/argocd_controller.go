@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -36,9 +36,6 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -54,7 +51,7 @@ var _ reconcile.Reconciler = &ArgoCDReconciler{}
 type ArgoCDReconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
-	Instance      *v1alpha1.ArgoCD
+	Instance      *v1beta1.ArgoCD
 	ClusterScoped bool
 	Logger        logr.Logger
 
@@ -114,10 +111,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
 	}()
 
-	reqLogger := logr.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
-	reqLogger.Info("Reconciling ArgoCD")
-
-	argocd := &v1alpha1.ArgoCD{}
+	argocd := &v1beta1.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {

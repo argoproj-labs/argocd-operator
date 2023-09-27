@@ -1,7 +1,7 @@
 package argocdcommon
 
 import (
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,10 +28,10 @@ func MakeTestServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-type argoCDOpt func(*v1alpha1.ArgoCD)
+type argoCDOpt func(*v1beta1.ArgoCD)
 
-func MakeTestArgoCD(opts ...argoCDOpt) *v1alpha1.ArgoCD {
-	a := &v1alpha1.ArgoCD{
+func MakeTestArgoCD(opts ...argoCDOpt) *v1beta1.ArgoCD {
+	a := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      TestArgoCDName,
 			Namespace: TestNamespace,

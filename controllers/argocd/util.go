@@ -25,8 +25,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	"gopkg.in/yaml.v2"
-
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -200,7 +199,7 @@ func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
 }
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
-func getArgoServerGRPCHost(cr *argoprojv1a1.ArgoCD) string {
+func getArgoServerGRPCHost(cr *v1beta1.ArgoCD) string {
 	host := util.NameWithSuffix(cr.Name, "grpc")
 	if len(cr.Spec.Server.GRPC.Host) > 0 {
 		host = cr.Spec.Server.GRPC.Host
@@ -244,7 +243,7 @@ func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
-func (r *ArgoCDReconciler) getArgoServerURI(cr *argoprojv1a1.ArgoCD) string {
+func (r *ArgoCDReconciler) getArgoServerURI(cr *v1beta1.ArgoCD) string {
 	host := util.NameWithSuffix(cr.Name, "server") // Default to service name
 
 	// Use the external hostname provided by the user
@@ -393,7 +392,7 @@ func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
-func getRedisHAProxyAddress(cr *argoprojv1a1.ArgoCD) string {
+func getRedisHAProxyAddress(cr *v1beta1.ArgoCD) string {
 	return util.FqdnServiceRef(util.NameWithSuffix(cr.Name, "redis-ha-haproxy"), cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
@@ -563,7 +562,7 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 }
 
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
-func (r *ArgoCDReconciler) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileCertificateAuthority(cr *v1beta1.ArgoCD) error {
 	log.Info("reconciling CA secret")
 	if err := r.reconcileClusterCASecret(cr); err != nil {
 		return err
@@ -576,7 +575,7 @@ func (r *ArgoCDReconciler) reconcileCertificateAuthority(cr *argoprojv1a1.ArgoCD
 	return nil
 }
 
-func (r *ArgoCDReconciler) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
+func (r *ArgoCDReconciler) redisShouldUseTLS(cr *v1beta1.ArgoCD) bool {
 	var tlsSecretObj corev1.Secret
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
 	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
@@ -626,7 +625,7 @@ func (r *ArgoCDReconciler) redisShouldUseTLS(cr *argoprojv1a1.ArgoCD) bool {
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
-func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileResources(cr *v1beta1.ArgoCD) error {
 
 	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
 	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
@@ -756,7 +755,7 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-func (r *ArgoCDReconciler) deleteClusterResources(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) deleteClusterResources(cr *v1beta1.ArgoCD) error {
 	selector, err := argocdInstanceSelector(cr.Name)
 	if err != nil {
 		return err
@@ -823,7 +822,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 	return selector.Add(*requirement), nil
 }
 
-func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *v1beta1.ArgoCD) error {
 	argocd.Finalizers = util.RemoveString(argocd.GetFinalizers(), common.ArgoprojKeyFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
@@ -831,7 +830,7 @@ func (r *ArgoCDReconciler) removeDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) 
 	return nil
 }
 
-func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *v1beta1.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoprojKeyFinalizer)
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
@@ -876,11 +875,11 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 
 	deleteSSOPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			newCR, ok := e.ObjectNew.(*v1beta1.ArgoCD)
 			if !ok {
 				return false
 			}
-			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			oldCR, ok := e.ObjectOld.(*v1beta1.ArgoCD)
 			if !ok {
 				return false
 			}
@@ -910,11 +909,11 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
 	deleteNotificationsPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			newCR, ok := e.ObjectNew.(*v1beta1.ArgoCD)
 			if !ok {
 				return false
 			}
-			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			oldCR, ok := e.ObjectOld.(*v1beta1.ArgoCD)
 			if !ok {
 				return false
 			}
@@ -930,7 +929,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 	}
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
+	bldr.For(&v1beta1.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1000,7 +999,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 		// Watch for the changes to Deployment Config
 		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
+			OwnerType:    &v1beta1.ArgoCD{},
 		},
 			builder.WithPredicates(deploymentConfigPred))
 	}

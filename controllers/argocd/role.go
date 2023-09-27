@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -63,7 +64,7 @@ func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1
 }
 
 // reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
-func (r *ArgoCDReconciler) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRoles(cr *v1beta1.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -98,7 +99,7 @@ func (r *ArgoCDReconciler) reconcileRoles(cr *argoprojv1a1.ArgoCD) error {
 
 // reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
 // Managed by a single instance of ArgoCD.
-func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRule, cr *v1beta1.ArgoCD) ([]*v1.Role, error) {
 	var roles []*v1.Role
 
 	// create policy rules for each namespace
@@ -188,7 +189,7 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 	return roles, nil
 }
 
-func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) ([]*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *v1beta1.ArgoCD) error {
 	var roles []*v1.Role
 
 	// create policy rules for each source namespace for ArgoCD Server
@@ -274,7 +275,7 @@ func (r *ArgoCDReconciler) reconcileRoleForApplicationSourceNamespaces(name stri
 	return nil
 }
 
-func (r *ArgoCDReconciler) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoprojv1a1.ArgoCD) (*v1.ClusterRole, error) {
+func (r *ArgoCDReconciler) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *v1beta1.ArgoCD) (*v1.ClusterRole, error) {
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 		allowed = true

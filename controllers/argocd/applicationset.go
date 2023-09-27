@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
@@ -39,7 +40,7 @@ const (
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
-func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
+func getArgoApplicationSetCommand(cr *v1beta1.ArgoCD) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "entrypoint.sh")
@@ -68,7 +69,7 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	return cmd
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *v1beta1.ArgoCD) error {
 
 	log.Info("reconciling applicationset serviceaccounts")
 	sa, err := r.reconcileApplicationSetServiceAccount(cr)
@@ -101,7 +102,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoprojv1a1.Ar
 }
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
-func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *v1beta1.ArgoCD, sa *corev1.ServiceAccount) error {
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
 
 	setAppSetLabels(&deploy.ObjectMeta)
@@ -157,7 +158,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.Ar
 	addSCMGitlabVolumeMount := false
 	if scmRootCAConfigMapName := getSCMRootCAConfigMapName(cr); scmRootCAConfigMapName != "" {
 		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+		if util.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
 			addSCMGitlabVolumeMount = true
 			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
 				Name: "appset-gitlab-scm-tls-cert",
@@ -288,7 +289,7 @@ func applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) 
 	return container
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *v1beta1.ArgoCD) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName("applicationset-controller", cr)
 	setAppSetLabels(&sa.ObjectMeta)
@@ -317,7 +318,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a
 	return sa, err
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *v1beta1.ArgoCD) (*v1.Role, error) {
 
 	policyRules := []v1.PolicyRule{
 
@@ -419,7 +420,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) 
 	return role, r.Client.Update(context.TODO(), role)
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *v1beta1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
 
 	name := "applicationset-controller"
 
@@ -510,7 +511,7 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 }
 
 // reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
-func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *v1beta1.ArgoCD) error {
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)

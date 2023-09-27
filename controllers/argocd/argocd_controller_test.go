@@ -34,7 +34,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -43,19 +43,19 @@ import (
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
 func deletedAt(now time.Time) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *v1beta1.ArgoCD) {
 		wrapped := metav1.NewTime(now)
 		a.ObjectMeta.DeletionTimestamp = &wrapped
 	}
 }
 
 func addFinalizer(finalizer string) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *v1beta1.ArgoCD) {
 		a.Finalizers = append(a.Finalizers, finalizer)
 	}
 }
 
-func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
+func clusterResources(argocd *v1beta1.ArgoCD) []runtime.Object {
 	return []runtime.Object{
 		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
@@ -288,10 +288,10 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 		}),
 	)
 
-	instanceOne := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+	instanceOne := makeTestArgoCD(func(ac *v1beta1.ArgoCD) {
 		ac.Namespace = "instance-1"
 	})
-	instanceTwo := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+	instanceTwo := makeTestArgoCD(func(ac *v1beta1.ArgoCD) {
 		ac.Namespace = "instance-2"
 	})
 
@@ -345,7 +345,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 		}),
 	)
 
-	instance := makeTestArgoCD(func(ac *argov1alpha1.ArgoCD) {
+	instance := makeTestArgoCD(func(ac *v1beta1.ArgoCD) {
 		ac.Namespace = "instance-1"
 		ac.Spec.SourceNamespaces = []string{"test-ns-1", "test-ns-2", "test-ns-3"}
 	})

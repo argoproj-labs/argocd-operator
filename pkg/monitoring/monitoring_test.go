@@ -3,7 +3,7 @@ package monitoring
 import (
 	"errors"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -25,11 +25,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncFailed(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncSuccessful(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *monitoringv1.PrometheusRule:
 		obj.Name = testPrometheusRuleNameMutated

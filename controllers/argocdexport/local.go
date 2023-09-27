@@ -22,13 +22,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
-func (r *ArgoCDExportReconciler) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcileLocalStorage(cr *v1alpha1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil || strings.ToLower(cr.Spec.Storage.Backend) != common.ArgoCDExportStorageBackendLocal {
 		return nil // Do nothing if storage or local options not set
 	}
@@ -41,7 +41,7 @@ func (r *ArgoCDExportReconciler) reconcileLocalStorage(cr *argoprojv1a1.ArgoCDEx
 }
 
 // reconcilePVC will ensure that the PVC for the ArgoCDExport is present.
-func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1a1.ArgoCDExport) error {
+func (r *ArgoCDExportReconciler) reconcilePVC(cr *v1alpha1.ArgoCDExport) error {
 	if cr.Status.Phase == common.ArgoCDStatusCompleted {
 		return nil // Nothing to see here, move along...
 	}

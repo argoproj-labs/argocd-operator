@@ -18,10 +18,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 const (
@@ -40,7 +39,7 @@ var (
 // The operator must support `.spec.sso.dex` fields for dex, and `.spec.sso.keycloak` fields for keycloak.
 // The operator must identify edge cases involving partial configurations of specs, spec mismatch with
 // active provider, contradicting configuration etc, and throw the appropriate errors.
-func (r *ArgoCDReconciler) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileSSO(cr *v1beta1.ArgoCD) error {
 
 	// reset ssoConfigLegalStatus at the beginning of each SSO reconciliation round
 	ssoConfigLegalStatus = ssoLegalUnknown
@@ -165,20 +164,16 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *argoprojv1a1.ArgoCD) error {
 	return nil
 }
 
-<<<<<<< HEAD
-func (r *ArgoCDReconciler) deleteSSOConfiguration(newCr *argoprojv1a1.ArgoCD, oldCr *argoprojv1a1.ArgoCD) error {
-=======
-func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *argoproj.ArgoCD) error {
->>>>>>> 75d6cf4d3e7f0c1f5e024a43e669bba4e4dae7a5
+func (r *ArgoCDReconciler) deleteSSOConfiguration(newCr *v1beta1.ArgoCD, oldCr *v1beta1.ArgoCD) error {
 
 	log.Info("uninstalling existing SSO configuration")
 
-	if oldCr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+	if oldCr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeKeycloak {
 		if err := deleteKeycloakConfiguration(newCr); err != nil {
 			log.Error(err, "Unable to delete existing keycloak configuration")
 			return err
 		}
-	} else if oldCr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+	} else if oldCr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeDex {
 		// Trigger reconciliation of Dex resources so they get deleted
 		if err := r.deleteDexResources(newCr); err != nil {
 			log.Error(err, "Unable to reconcile necessary resources for uninstallation of Dex")

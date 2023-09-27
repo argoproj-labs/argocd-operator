@@ -26,6 +26,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -61,7 +62,7 @@ func generateGrafanaSecretKey() ([]byte, error) {
 }
 
 // getGrafanaHost will return the hostname value for Grafana.
-func getGrafanaHost(cr *argoprojv1a1.ArgoCD) string {
+func getGrafanaHost(cr *v1beta1.ArgoCD) string {
 	host := util.NameWithSuffix(cr.Name, "grafana")
 	if len(cr.Spec.Grafana.Host) > 0 {
 		host = cr.Spec.Grafana.Host

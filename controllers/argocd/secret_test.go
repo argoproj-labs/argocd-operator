@@ -17,13 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func Test_newCASecret(t *testing.T) {
-	cr := &argoproj.ArgoCD{
+	cr := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-argocd",
 			Namespace: "argocd",
@@ -54,7 +54,7 @@ func byteMapKeys(m map[string][]byte) []string {
 }
 
 func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
-	argocd := &v1alpha1.ArgoCD{
+	argocd := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
 			Namespace: "argocd-operator",
@@ -208,7 +208,7 @@ func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 }
 
 func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
-	argocd := &v1alpha1.ArgoCD{
+	argocd := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
 			Namespace: "argocd-operator",
@@ -248,7 +248,7 @@ func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
 }
 
 func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
-	argocd := &v1alpha1.ArgoCD{
+	argocd := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
 			Namespace: "argocd-operator",
