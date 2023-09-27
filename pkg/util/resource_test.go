@@ -20,13 +20,13 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestDefaultAnnotations(t *testing.T) {
 	type args struct {
-		cr *argoproj.ArgoCD
+		cr *v1beta1.ArgoCD
 	}
 	tests := []struct {
 		name string
@@ -36,7 +36,7 @@ func TestDefaultAnnotations(t *testing.T) {
 		{
 			name: "simple annotations",
 			args: args{
-				&argoproj.ArgoCD{
+				&v1beta1.ArgoCD{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",

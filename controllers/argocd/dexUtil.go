@@ -8,7 +8,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -24,7 +23,7 @@ import (
 // that if the spec is not configured.
 // 3. the default is configured in common.ArgoCDDefaultDexVersion and
 // common.ArgoCDDefaultDexImage.
-func getDexContainerImage(cr *argoproj.ArgoCD) string {
+func getDexContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 
 	img := ""
@@ -60,12 +59,12 @@ func (r *ArgoCDReconciler) getDexOAuthRedirectURI(cr *v1beta1.ArgoCD) string {
 }
 
 // getDexOAuthClientID will return the OAuth client ID for the given ArgoCD.
-func getDexOAuthClientID(cr *argoproj.ArgoCD) string {
+func getDexOAuthClientID(cr *v1beta1.ArgoCD) string {
 	return fmt.Sprintf("system:serviceaccount:%s:%s", cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName))
 }
 
 // getDexResources will return the ResourceRequirements for the Dex container.
-func getDexResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getDexResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 
 	resources := v1.ResourceRequirements{}
 
@@ -77,7 +76,7 @@ func getDexResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-func getDexConfig(cr *argoproj.ArgoCD) string {
+func getDexConfig(cr *v1beta1.ArgoCD) string {
 	config := common.ArgoCDDefaultDexConfig
 
 	// Allow override of config from CR

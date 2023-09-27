@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -41,7 +40,7 @@ func getPrometheusHost(cr *v1beta1.ArgoCD) string {
 }
 
 // getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
+func getPrometheusReplicas(cr *v1beta1.ArgoCD) *int32 {
 	replicas := common.ArgoCDDefaultPrometheusReplicas
 	if cr.Spec.Prometheus.Size != nil {
 		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
@@ -57,7 +56,7 @@ func IsPrometheusAPIAvailable() bool {
 }
 
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
+func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *v1beta1.ArgoCD) bool {
 	// Replica count
 	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
 		if actual.Spec.Replicas != nil { // Actual replicas value is set
@@ -86,7 +85,7 @@ func verifyPrometheusAPI() error {
 }
 
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.
-func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
+func newPrometheus(cr *v1beta1.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -97,7 +96,7 @@ func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance.
-func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitor(cr *v1beta1.ArgoCD) *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -108,7 +107,7 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 }
 
 // newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
-func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitorWithName(name string, cr *v1beta1.ArgoCD) *monitoringv1.ServiceMonitor {
 	svcmon := newServiceMonitor(cr)
 	svcmon.ObjectMeta.Name = name
 
@@ -121,7 +120,7 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 }
 
 // newServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
-func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitorWithSuffix(suffix string, cr *v1beta1.ArgoCD) *monitoringv1.ServiceMonitor {
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 

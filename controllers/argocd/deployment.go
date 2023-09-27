@@ -25,7 +25,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
@@ -230,7 +229,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 }
 
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+func getArgoRepoCommand(cr *v1beta1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "uid_entrypoint.sh")
@@ -277,7 +276,7 @@ func getArgoCmpServerInitCommand() []string {
 }
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+func getArgoServerCommand(cr *v1beta1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -356,7 +355,7 @@ func getRepoServerAddress(cr *v1beta1.ArgoCD) string {
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeployment(cr *v1beta1.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -367,7 +366,7 @@ func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 }
 
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
-func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithName(name string, component string, cr *v1beta1.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
 
@@ -402,7 +401,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 }
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
-func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithSuffix(suffix string, component string, cr *v1beta1.ArgoCD) *appsv1.Deployment {
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 

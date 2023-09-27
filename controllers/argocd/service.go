@@ -24,13 +24,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoServerServiceType will return the server Service type for the ArgoCD.
-func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
+func getArgoServerServiceType(cr *v1beta1.ArgoCD) corev1.ServiceType {
 	if len(cr.Spec.Server.Service.Type) > 0 {
 		return cr.Spec.Server.Service.Type
 	}
@@ -38,7 +37,7 @@ func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
 }
 
 // newService returns a new Service for the given ArgoCD instance.
-func newService(cr *argoproj.ArgoCD) *corev1.Service {
+func newService(cr *v1beta1.ArgoCD) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -49,7 +48,7 @@ func newService(cr *argoproj.ArgoCD) *corev1.Service {
 }
 
 // newServiceWithName returns a new Service instance for the given ArgoCD using the given name.
-func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
+func newServiceWithName(name string, component string, cr *v1beta1.ArgoCD) *corev1.Service {
 	svc := newService(cr)
 	svc.ObjectMeta.Name = name
 
@@ -62,7 +61,7 @@ func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *cor
 }
 
 // newServiceWithSuffix returns a new Service instance for the given ArgoCD using the given suffix.
-func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *corev1.Service {
+func newServiceWithSuffix(suffix string, component string, cr *v1beta1.ArgoCD) *corev1.Service {
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 

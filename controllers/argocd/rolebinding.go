@@ -15,13 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
-func newClusterRoleBinding(cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
+func newClusterRoleBinding(cr *v1beta1.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
@@ -32,7 +31,7 @@ func newClusterRoleBinding(cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
 }
 
 // newClusterRoleBindingWithname creates a new ClusterRoleBinding with the given name for the given ArgCD.
-func newClusterRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
+func newClusterRoleBindingWithname(name string, cr *v1beta1.ArgoCD) *v1.ClusterRoleBinding {
 	roleBinding := newClusterRoleBinding(cr)
 	roleBinding.Name = GenerateUniqueResourceName(name, cr)
 
@@ -44,7 +43,7 @@ func newClusterRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.Cluster
 }
 
 // newRoleBinding returns a new RoleBinding instance.
-func newRoleBinding(cr *argoproj.ArgoCD) *v1.RoleBinding {
+func newRoleBinding(cr *v1beta1.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
@@ -56,7 +55,7 @@ func newRoleBinding(cr *argoproj.ArgoCD) *v1.RoleBinding {
 }
 
 // newRoleBindingForSupportNamespaces returns a new RoleBinding instance.
-func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *v1.RoleBinding {
+func newRoleBindingForSupportNamespaces(cr *v1beta1.ArgoCD, namespace string) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace),
@@ -72,7 +71,7 @@ func getRoleBindingNameForSourceNamespaces(argocdName, argocdNamespace, targetNa
 }
 
 // newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
-func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
+func newRoleBindingWithname(name string, cr *v1beta1.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBinding(cr)
 	roleBinding.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
 
@@ -123,7 +122,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 			continue
 		}
 
-		list := &argoproj.ArgoCDList{}
+		list := &v1beta1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err = r.Client.List(context.TODO(), list, listOption)
 		if err != nil {
@@ -237,7 +236,7 @@ func (r *ArgoCDReconciler) reconcileRoleBinding(name string, rules []v1.PolicyRu
 				continue
 			}
 
-			list := &argoproj.ArgoCDList{}
+			list := &v1beta1.ArgoCDList{}
 			listOption := &client.ListOptions{Namespace: namespace.Name}
 			err := r.Client.List(context.TODO(), list, listOption)
 			if err != nil {
@@ -322,12 +321,12 @@ func getCustomRoleName(name string) string {
 }
 
 // Returns the name of the role for the source namespaces for ArgoCDServer in the format of "sourceNamespace_targetNamespace_argocd-server"
-func getRoleNameForApplicationSourceNamespaces(targetNamespace string, cr *argoproj.ArgoCD) string {
+func getRoleNameForApplicationSourceNamespaces(targetNamespace string, cr *v1beta1.ArgoCD) string {
 	return fmt.Sprintf("%s_%s", cr.Name, targetNamespace)
 }
 
 // newRoleBindingWithNameForApplicationSourceNamespaces creates a new RoleBinding with the given name for the source namespaces of ArgoCD Server.
-func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *argoproj.ArgoCD) *v1.RoleBinding {
+func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *v1beta1.ArgoCD) *v1.RoleBinding {
 	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
 
 	labels := roleBinding.ObjectMeta.Labels

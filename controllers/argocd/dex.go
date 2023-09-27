@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -33,9 +32,9 @@ type DexConnector struct {
 }
 
 // UseDex determines whether Dex resources should be created and configured or not
-func UseDex(cr *argoproj.ArgoCD) bool {
+func UseDex(cr *v1beta1.ArgoCD) bool {
 	if cr.Spec.SSO != nil {
-		return cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex
+		return cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeDex
 	}
 
 	return false

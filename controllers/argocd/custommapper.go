@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
@@ -190,7 +189,7 @@ func (r *ArgoCDReconciler) applicationSetSCMTLSConfigMapMapper(o client.Object) 
 	var result = []reconcile.Request{}
 
 	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
-		argocds := &argoproj.ArgoCDList{}
+		argocds := &v1beta1.ArgoCDList{}
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
 			return result
 		}

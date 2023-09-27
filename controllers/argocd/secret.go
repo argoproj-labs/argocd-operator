@@ -30,7 +30,6 @@ import (
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -184,7 +183,7 @@ func (r *ArgoCDReconciler) reconcileArgoSecret(cr *v1beta1.ArgoCD) error {
 		corev1.TLSPrivateKeyKey:            tlsSecret.Data[corev1.TLSPrivateKeyKey],
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
 			return nil
@@ -334,7 +333,7 @@ func (r *ArgoCDReconciler) reconcileExistingArgoSecret(cr *v1beta1.ArgoCD, secre
 		changed = true
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
 			return err

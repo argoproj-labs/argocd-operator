@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -33,7 +32,7 @@ var (
 	tcup        int32 = 50
 )
 
-func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+func newHorizontalPodAutoscaler(cr *v1beta1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
 	return &autoscaling.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -43,7 +42,7 @@ func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodA
 	}
 }
 
-func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+func newHorizontalPodAutoscalerWithName(name string, cr *v1beta1.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
 	hpa := newHorizontalPodAutoscaler(cr)
 	hpa.ObjectMeta.Name = name
 

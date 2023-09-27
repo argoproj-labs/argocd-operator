@@ -25,13 +25,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newServiceAccount returns a new ServiceAccount instance.
-func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+func newServiceAccount(cr *v1beta1.ArgoCD) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -42,7 +41,7 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 }
 
 // newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
-func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+func newServiceAccountWithName(name string, cr *v1beta1.ArgoCD) *corev1.ServiceAccount {
 	sa := newServiceAccount(cr)
 	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
 

@@ -15,13 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newRole returns a new Role instance.
-func newRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.Role {
+func newRole(name string, rules []v1.PolicyRule, cr *v1beta1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      generateResourceName(name, cr),
@@ -32,7 +31,7 @@ func newRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.Role {
 	}
 }
 
-func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.Role {
+func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRule, cr *v1beta1.ArgoCD) *v1.Role {
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
@@ -43,16 +42,16 @@ func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRu
 	}
 }
 
-func generateResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
+func generateResourceName(argoComponentName string, cr *v1beta1.ArgoCD) string {
 	return cr.Name + "-" + argoComponentName
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
-func GenerateUniqueResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
+func GenerateUniqueResourceName(argoComponentName string, cr *v1beta1.ArgoCD) string {
 	return cr.Name + "-" + cr.Namespace + "-" + argoComponentName
 }
 
-func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.ClusterRole {
+func newClusterRole(name string, rules []v1.PolicyRule, cr *v1beta1.ArgoCD) *v1.ClusterRole {
 	return &v1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        GenerateUniqueResourceName(name, cr),
@@ -116,7 +115,7 @@ func (r *ArgoCDReconciler) reconcileRole(name string, policyRules []v1.PolicyRul
 			continue
 		}
 
-		list := &argoproj.ArgoCDList{}
+		list := &v1beta1.ArgoCDList{}
 		listOption := &client.ListOptions{Namespace: namespace.Name}
 		err = r.Client.List(context.TODO(), list, listOption)
 		if err != nil {

@@ -26,7 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -77,7 +76,7 @@ func generateArgoServerSessionKey() ([]byte, error) {
 }
 
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
-func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getArgoApplicationControllerResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -89,7 +88,7 @@ func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceR
 }
 
 // getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
-func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
+func getArgoApplicationControllerCommand(cr *v1beta1.ArgoCD, useTLSForRedis bool) []string {
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
@@ -123,7 +122,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 }
 
 // getArgoContainerImage will return the container image for ArgoCD.
-func getArgoContainerImage(cr *argoproj.ArgoCD) string {
+func getArgoContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultTag, defaultImg := false, false
 	img := cr.Spec.Image
 	if img == "" {
@@ -154,7 +153,7 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 // that if the spec is not configured.
 // 3. the default is configured in common.ArgoCDDefaultRepoServerVersion and
 // common.ArgoCDDefaultRepoServerImage.
-func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
+func getRepoServerContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Repo.Image
 	if img == "" {
@@ -174,7 +173,7 @@ func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getArgoRepoResources will return the ResourceRequirements for the Argo CD Repo server container.
-func getArgoRepoResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getArgoRepoResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -186,15 +185,15 @@ func getArgoRepoResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 }
 
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
-func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
+func getArgoServerInsecure(cr *v1beta1.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
 }
 
-func isRepoServerTLSVerificationRequested(cr *argoproj.ArgoCD) bool {
+func isRepoServerTLSVerificationRequested(cr *v1beta1.ArgoCD) bool {
 	return cr.Spec.Repo.VerifyTLS
 }
 
-func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
+func isRedisTLSVerificationDisabled(cr *v1beta1.ArgoCD) bool {
 	return cr.Spec.Redis.DisableTLSVerification
 }
 
@@ -208,7 +207,7 @@ func getArgoServerGRPCHost(cr *v1beta1.ArgoCD) string {
 }
 
 // getArgoServerHost will return the host for the given ArgoCD.
-func getArgoServerHost(cr *argoproj.ArgoCD) string {
+func getArgoServerHost(cr *v1beta1.ArgoCD) string {
 	host := cr.Name
 	if len(cr.Spec.Server.Host) > 0 {
 		host = cr.Spec.Server.Host
@@ -217,7 +216,7 @@ func getArgoServerHost(cr *argoproj.ArgoCD) string {
 }
 
 // getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
-func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getArgoServerResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	if cr.Spec.Server.Autoscale.Enabled {
@@ -271,7 +270,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *v1beta1.ArgoCD) string {
 }
 
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
-func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
+func getArgoServerOperationProcessors(cr *v1beta1.ArgoCD) int32 {
 	op := common.ArgoCDDefaultServerOperationProcessors
 	if cr.Spec.Controller.Processors.Operation > op {
 		op = cr.Spec.Controller.Processors.Operation
@@ -280,7 +279,7 @@ func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 }
 
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
-func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
+func getArgoServerStatusProcessors(cr *v1beta1.ArgoCD) int32 {
 	sp := common.ArgoCDDefaultServerStatusProcessors
 	if cr.Spec.Controller.Processors.Status > sp {
 		sp = cr.Spec.Controller.Processors.Status
@@ -289,7 +288,7 @@ func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 }
 
 // getArgoControllerParellismLimit returns the parallelism limit for the application controller
-func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
+func getArgoControllerParellismLimit(cr *v1beta1.ArgoCD) int32 {
 	pl := common.ArgoCDDefaultControllerParallelismLimit
 	if cr.Spec.Controller.ParallelismLimit > 0 {
 		pl = cr.Spec.Controller.ParallelismLimit
@@ -298,7 +297,7 @@ func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
 }
 
 // getGrafanaContainerImage will return the container image for the Grafana server.
-func getGrafanaContainerImage(cr *argoproj.ArgoCD) string {
+func getGrafanaContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultTag, defaultImg := false, false
 	img := cr.Spec.Grafana.Image
 	if img == "" {
@@ -318,7 +317,7 @@ func getGrafanaContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getGrafanaResources will return the ResourceRequirements for the Grafana container.
-func getGrafanaResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getGrafanaResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -354,7 +353,7 @@ func getRedisConf(useTLSForRedis bool) string {
 }
 
 // getRedisContainerImage will return the container image for the Redis server.
-func getRedisContainerImage(cr *argoproj.ArgoCD) string {
+func getRedisContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Redis.Image
 	if img == "" {
@@ -373,7 +372,7 @@ func getRedisContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getRedisHAContainerImage will return the container image for the Redis server in HA mode.
-func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
+func getRedisHAContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Redis.Image
 	if img == "" {
@@ -397,7 +396,7 @@ func getRedisHAProxyAddress(cr *v1beta1.ArgoCD) string {
 }
 
 // getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
-func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
+func getRedisHAProxyContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.HA.RedisProxyImage
 	if len(img) <= 0 {
@@ -420,7 +419,7 @@ func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
 
 // getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
+func getRedisInitScript(cr *v1beta1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
@@ -437,7 +436,7 @@ func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 
 // getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
+func getRedisHAProxyConfig(cr *v1beta1.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
@@ -454,7 +453,7 @@ func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 
 // getRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func getRedisHAProxyScript(cr *argoproj.ArgoCD) string {
+func getRedisHAProxyScript(cr *v1beta1.ArgoCD) string {
 	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
 		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
@@ -469,7 +468,7 @@ func getRedisHAProxyScript(cr *argoproj.ArgoCD) string {
 }
 
 // getRedisResources will return the ResourceRequirements for the Redis container.
-func getRedisResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getRedisResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -481,7 +480,7 @@ func getRedisResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 }
 
 // getRedisHAResources will return the ResourceRequirements for the Redis HA.
-func getRedisHAResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getRedisHAResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -553,7 +552,7 @@ func getSentinelLivenessScript(useTLSForRedis bool) string {
 }
 
 // getRedisServerAddress will return the Redis service address for the given ArgoCD.
-func getRedisServerAddress(cr *argoproj.ArgoCD) string {
+func getRedisServerAddress(cr *v1beta1.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
@@ -1209,7 +1208,7 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
-func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *v1beta1.ArgoCD) error {
 
 	for ns, _ := range r.AppManagedNamespaces {
 		managedNamespace := false
@@ -1233,7 +1232,7 @@ func (r *ArgoCDReconciler) removeUnmanagedSourceNamespaceResources(cr *argoproj.
 	return nil
 }
 
-func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
+func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *v1beta1.ArgoCD, ns string) error {
 	namespace := corev1.Namespace{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
 		if !errors.IsNotFound(err) {
@@ -1277,7 +1276,7 @@ func (r *ArgoCDReconciler) cleanupUnmanagedSourceNamespaceResources(cr *argoproj
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
-func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
+func getApplicationSetHTTPServerHost(cr *v1beta1.ArgoCD) string {
 	host := cr.Name
 	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
 		host = cr.Spec.ApplicationSet.WebhookServer.Host

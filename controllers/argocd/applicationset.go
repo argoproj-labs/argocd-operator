@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -213,7 +212,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *v1beta1.ArgoCD,
 
 }
 
-func applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) corev1.Container {
+func applicationSetContainer(cr *v1beta1.ArgoCD, addSCMGitlabVolumeMount bool) corev1.Container {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",
@@ -463,7 +462,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *v1beta1.ArgoCD
 	return r.Client.Create(context.TODO(), roleBinding)
 }
 
-func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
+func getApplicationSetContainerImage(cr *v1beta1.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 
 	img := ""
@@ -493,7 +492,7 @@ func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
 }
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
-func getApplicationSetResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
+func getApplicationSetResources(cr *v1beta1.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR

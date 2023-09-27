@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -57,7 +56,7 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *v1beta1.ArgoCD) error {
 		isError := false
 
 		// case 2
-		if cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+		if cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeDex {
 			// Relevant SSO settings at play are `.spec.sso.dex` fields, `.spec.sso.keycloak`
 
 			if cr.Spec.SSO.Dex == nil || (cr.Spec.SSO.Dex != nil && !cr.Spec.SSO.Dex.OpenShiftOAuth && cr.Spec.SSO.Dex.Config == "") {
@@ -81,7 +80,7 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *v1beta1.ArgoCD) error {
 		}
 
 		// case 3
-		if cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+		if cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeKeycloak {
 			// Relevant SSO settings at play are `.spec.sso.keycloak` fields, `.spec.sso.dex`
 
 			if cr.Spec.SSO.Dex != nil {
@@ -117,10 +116,10 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *v1beta1.ArgoCD) error {
 		}
 
 		// case 5
-		if cr.Spec.SSO.Provider.ToLower() != argoproj.SSOProviderTypeDex && cr.Spec.SSO.Provider.ToLower() != argoproj.SSOProviderTypeKeycloak {
+		if cr.Spec.SSO.Provider.ToLower() != v1beta1.SSOProviderTypeDex && cr.Spec.SSO.Provider.ToLower() != v1beta1.SSOProviderTypeKeycloak {
 			// `.spec.sso.provider` contains unsupported value
 
-			errMsg = fmt.Sprintf("Unsupported SSO provider type. Supported providers are %s and %s", argoproj.SSOProviderTypeDex, argoproj.SSOProviderTypeKeycloak)
+			errMsg = fmt.Sprintf("Unsupported SSO provider type. Supported providers are %s and %s", v1beta1.SSOProviderTypeDex, v1beta1.SSOProviderTypeKeycloak)
 			err = errors.New(illegalSSOConfiguration + errMsg)
 			log.Error(err, fmt.Sprintf("Unsupported SSO provider type for Argo CD %s in namespace %s.", cr.Name, cr.Namespace))
 			ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
@@ -135,7 +134,7 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *v1beta1.ArgoCD) error {
 
 	// reconcile resources based on enabled provider
 	// keycloak
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1beta1.SSOProviderTypeKeycloak {
 
 		// Trigger reconciliation of any Dex resources so they get deleted
 		if err := r.reconcileDexResources(cr); err != nil && !apiErrors.IsNotFound(err) {
