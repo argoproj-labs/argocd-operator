@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/stretchr/testify/assert"
@@ -35,11 +35,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *corev1.Namespace:
 		if _, ok := obj.Labels[testKey]; ok {

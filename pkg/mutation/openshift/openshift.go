@@ -3,7 +3,7 @@ package openshift
 import (
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"golang.org/x/mod/semver"
@@ -15,7 +15,7 @@ func init() {
 	mutation.Register(AddSeccompProfileForOpenShift)
 }
 
-func AddSeccompProfileForOpenShift(cr *v1beta1.ArgoCD, resource interface{}, client client.Client) error {
+func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client) error {
 	if !cluster.IsVersionAPIAvailable() {
 		return nil
 	}
