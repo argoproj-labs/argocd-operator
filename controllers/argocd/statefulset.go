@@ -28,20 +28,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
-func getRedisHAReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getRedisHAReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := common.ArgoCDDefaultRedisHAReplicas
 	// TODO: Allow override of this value through CR?
 	return &replicas
 }
 
 // newStatefulSet returns a new StatefulSet instance for the given ArgoCD instance.
-func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
+func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -52,7 +52,7 @@ func newStatefulSet(cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
 }
 
 // newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
-func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
+func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	ss := newStatefulSet(cr)
 	ss.ObjectMeta.Name = name
 
@@ -88,7 +88,7 @@ func newStatefulSetWithName(name string, component string, cr *argoprojv1a1.Argo
 }
 
 // newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
-func newStatefulSetWithSuffix(suffix string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.StatefulSet {
+func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
@@ -435,7 +435,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoprojv1a1.ArgoCD) er
 	return r.Client.Create(context.TODO(), ss)
 }
 
-func getArgoControllerContainerEnv(cr *argoprojv1a1.ArgoCD) []corev1.EnvVar {
+func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	env = append(env, corev1.EnvVar{

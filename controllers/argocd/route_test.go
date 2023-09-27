@@ -20,14 +20,14 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
-	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 		labels := make(map[string]string)
 		labels["my-key"] = "my-value"
@@ -62,7 +62,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
-	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 	})
 	objs := []runtime.Object{
@@ -133,7 +133,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	routeAPIFound = true
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
-	argoCD := makeArgoCD(func(a *argov1alpha1.ArgoCD) {
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 		a.Spec.Server.Insecure = true
 	})
@@ -204,7 +204,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 func makeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
 	t.Helper()
 	s := scheme.Scheme
-	s.AddKnownTypes(argov1alpha1.GroupVersion, acd)
+	s.AddKnownTypes(argoproj.GroupVersion, acd)
 	routev1.Install(s)
 	configv1.Install(s)
 	cl := fake.NewFakeClient(objs...)
@@ -214,13 +214,13 @@ func makeReconciler(t *testing.T, acd *argov1alpha1.ArgoCD, objs ...runtime.Obje
 	}
 }
 
-func makeArgoCD(opts ...func(*argov1alpha1.ArgoCD)) *argov1alpha1.ArgoCD {
-	argoCD := &argov1alpha1.ArgoCD{
+func makeArgoCD(opts ...func(*argoproj.ArgoCD)) *argoproj.ArgoCD {
+	argoCD := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
 		},
-		Spec: argov1alpha1.ArgoCDSpec{},
+		Spec: argoproj.ArgoCDSpec{},
 	}
 	for _, o := range opts {
 		o(argoCD)

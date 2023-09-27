@@ -27,8 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -57,15 +56,23 @@ func getApplicationInstanceLabelKey(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getCAConfigMapName will return the CA ConfigMap name for the given ArgoCD.
-func getCAConfigMapName(cr *argoprojv1a1.ArgoCD) string {
+func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
 		return cr.Spec.TLS.CA.ConfigMapName
 	}
 	return util.NameWithSuffix(cr.Name, common.ArgoCDCASuffix)
 }
 
+// getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
+func getSCMRootCAConfigMapName(cr *argoproj.ArgoCD) string {
+	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" && len(cr.Spec.ApplicationSet.SCMRootCAConfigMap) > 0 {
+		return cr.Spec.ApplicationSet.SCMRootCAConfigMap
+	}
+	return ""
+}
+
 // getConfigManagementPlugins will return the config management plugins for the given ArgoCD.
-func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
+func getConfigManagementPlugins(cr *argoproj.ArgoCD) string {
 	plugins := common.ArgoCDDefaultConfigManagementPlugins
 	if len(cr.Spec.ConfigManagementPlugins) > 0 {
 		plugins = cr.Spec.ConfigManagementPlugins
@@ -74,7 +81,7 @@ func getConfigManagementPlugins(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getGATrackingID will return the google analytics tracking ID for the given Argo CD.
-func getGATrackingID(cr *argoprojv1a1.ArgoCD) string {
+func getGATrackingID(cr *argoproj.ArgoCD) string {
 	id := common.ArgoCDDefaultGATrackingID
 	if len(cr.Spec.GATrackingID) > 0 {
 		id = cr.Spec.GATrackingID
@@ -83,7 +90,7 @@ func getGATrackingID(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getHelpChatURL will return the help chat URL for the given Argo CD.
-func getHelpChatURL(cr *argoprojv1a1.ArgoCD) string {
+func getHelpChatURL(cr *argoproj.ArgoCD) string {
 	url := common.ArgoCDDefaultHelpChatURL
 	if len(cr.Spec.HelpChatURL) > 0 {
 		url = cr.Spec.HelpChatURL
@@ -92,7 +99,7 @@ func getHelpChatURL(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getHelpChatText will return the help chat text for the given Argo CD.
-func getHelpChatText(cr *argoprojv1a1.ArgoCD) string {
+func getHelpChatText(cr *argoproj.ArgoCD) string {
 	text := common.ArgoCDDefaultHelpChatText
 	if len(cr.Spec.HelpChatText) > 0 {
 		text = cr.Spec.HelpChatText
@@ -101,7 +108,7 @@ func getHelpChatText(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getKustomizeBuildOptions will return the kuztomize build options for the given ArgoCD.
-func getKustomizeBuildOptions(cr *argoprojv1a1.ArgoCD) string {
+func getKustomizeBuildOptions(cr *argoproj.ArgoCD) string {
 	kbo := common.ArgoCDDefaultKustomizeBuildOptions
 	if len(cr.Spec.KustomizeBuildOptions) > 0 {
 		kbo = cr.Spec.KustomizeBuildOptions
@@ -110,7 +117,7 @@ func getKustomizeBuildOptions(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getOIDCConfig will return the OIDC configuration for the given ArgoCD.
-func getOIDCConfig(cr *argoprojv1a1.ArgoCD) string {
+func getOIDCConfig(cr *argoproj.ArgoCD) string {
 	config := common.ArgoCDDefaultOIDCConfig
 	if len(cr.Spec.OIDCConfig) > 0 {
 		config = cr.Spec.OIDCConfig
@@ -119,7 +126,7 @@ func getOIDCConfig(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getRBACPolicy will return the RBAC policy for the given ArgoCD.
-func getRBACPolicy(cr *argoprojv1a1.ArgoCD) string {
+func getRBACPolicy(cr *argoproj.ArgoCD) string {
 	policy := common.ArgoCDDefaultRBACPolicy
 	if cr.Spec.RBAC.Policy != nil {
 		policy = *cr.Spec.RBAC.Policy
@@ -128,7 +135,7 @@ func getRBACPolicy(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getRBACDefaultPolicy will retun the RBAC default policy for the given ArgoCD.
-func getRBACDefaultPolicy(cr *argoprojv1a1.ArgoCD) string {
+func getRBACDefaultPolicy(cr *argoproj.ArgoCD) string {
 	dp := common.ArgoCDDefaultRBACDefaultPolicy
 	if cr.Spec.RBAC.DefaultPolicy != nil {
 		dp = *cr.Spec.RBAC.DefaultPolicy
@@ -137,7 +144,7 @@ func getRBACDefaultPolicy(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getRBACScopes will return the RBAC scopes for the given ArgoCD.
-func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
+func getRBACScopes(cr *argoproj.ArgoCD) string {
 	scopes := common.ArgoCDDefaultRBACScopes
 	if cr.Spec.RBAC.Scopes != nil {
 		scopes = *cr.Spec.RBAC.Scopes
@@ -145,18 +152,8 @@ func getRBACScopes(cr *argoprojv1a1.ArgoCD) string {
 	return scopes
 }
 
-// getResourceCustomizations loads Resource Customizations from argocd-cm ConfigMap
-func getResourceCustomizations(cr *argoprojv1a1.ArgoCD) string {
-	rc := common.ArgoCDDefaultResourceCustomizations
-	if cr.Spec.ResourceCustomizations != "" {
-		rc = cr.Spec.ResourceCustomizations
-	}
-
-	return rc
-}
-
 // getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
-func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
+func getResourceHealthChecks(cr *argoproj.ArgoCD) map[string]string {
 	healthCheck := make(map[string]string)
 	if cr.Spec.ResourceHealthChecks != nil {
 		resourceHealthChecks := cr.Spec.ResourceHealthChecks
@@ -170,11 +167,11 @@ func getResourceHealthChecks(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // getResourceIgnoreDifferences loads ignore differences customizations to `resource.customizations.ignoreDifferences` from argocd-cm ConfigMap
-func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) (map[string]string, error) {
+func getResourceIgnoreDifferences(cr *argoproj.ArgoCD) (map[string]string, error) {
 	ignoreDiff := make(map[string]string)
 	if cr.Spec.ResourceIgnoreDifferences != nil {
 		resourceIgnoreDiff := cr.Spec.ResourceIgnoreDifferences
-		if !reflect.DeepEqual(resourceIgnoreDiff.All, &v1alpha1.IgnoreDifferenceCustomization{}) {
+		if !reflect.DeepEqual(resourceIgnoreDiff.All, &argoproj.IgnoreDifferenceCustomization{}) {
 			subkey := "resource.customizations.ignoreDifferences.all"
 			bytes, err := yaml.Marshal(resourceIgnoreDiff.All)
 			if err != nil {
@@ -197,7 +194,7 @@ func getResourceIgnoreDifferences(cr *argoprojv1a1.ArgoCD) (map[string]string, e
 }
 
 // getResourceActions loads custom actions to `resource.customizations.actions` from argocd-cm ConfigMap
-func getResourceActions(cr *argoprojv1a1.ArgoCD) map[string]string {
+func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 	action := make(map[string]string)
 	if cr.Spec.ResourceActions != nil {
 		resourceAction := cr.Spec.ResourceActions
@@ -211,7 +208,7 @@ func getResourceActions(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // getResourceExclusions will return the resource exclusions for the given ArgoCD.
-func getResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
+func getResourceExclusions(cr *argoproj.ArgoCD) string {
 	re := common.ArgoCDDefaultResourceExclusions
 	if cr.Spec.ResourceExclusions != "" {
 		re = cr.Spec.ResourceExclusions
@@ -220,7 +217,7 @@ func getResourceExclusions(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getResourceInclusions will return the resource inclusions for the given ArgoCD.
-func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
+func getResourceInclusions(cr *argoproj.ArgoCD) string {
 	re := common.ArgoCDDefaultResourceInclusions
 	if cr.Spec.ResourceInclusions != "" {
 		re = cr.Spec.ResourceInclusions
@@ -229,9 +226,9 @@ func getResourceInclusions(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getResourceTrackingMethod will return the resource tracking method for the given ArgoCD.
-func getResourceTrackingMethod(cr *argoprojv1a1.ArgoCD) string {
-	rtm := argoprojv1a1.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
-	if rtm == argoprojv1a1.ResourceTrackingMethodInvalid {
+func getResourceTrackingMethod(cr *argoproj.ArgoCD) string {
+	rtm := argoproj.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
+	if rtm == argoproj.ResourceTrackingMethodInvalid {
 		log.Info(fmt.Sprintf("Found '%s' as resource tracking method, which is invalid. Using default 'label' method.", cr.Spec.ResourceTrackingMethod))
 	} else if cr.Spec.ResourceTrackingMethod != "" {
 		log.Info(fmt.Sprintf("Found '%s' as tracking method", cr.Spec.ResourceTrackingMethod))
@@ -242,7 +239,7 @@ func getResourceTrackingMethod(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getInitialRepositories will return the initial repositories for the given ArgoCD.
-func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
+func getInitialRepositories(cr *argoproj.ArgoCD) string {
 	repos := common.ArgoCDDefaultRepositories
 	if len(cr.Spec.InitialRepositories) > 0 {
 		repos = cr.Spec.InitialRepositories
@@ -251,7 +248,7 @@ func getInitialRepositories(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getRepositoryCredentials will return the repository credentials for the given ArgoCD.
-func getRepositoryCredentials(cr *argoprojv1a1.ArgoCD) string {
+func getRepositoryCredentials(cr *argoproj.ArgoCD) string {
 	repos := common.ArgoCDDefaultRepositoryCredentials
 	if len(cr.Spec.RepositoryCredentials) > 0 {
 		repos = cr.Spec.RepositoryCredentials
@@ -260,7 +257,7 @@ func getRepositoryCredentials(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
-func getInitialSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
+func getInitialSSHKnownHosts(cr *argoproj.ArgoCD) string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
 	if cr.Spec.InitialSSHKnownHosts.ExcludeDefaultHosts {
 		skh = ""
@@ -272,7 +269,7 @@ func getInitialSSHKnownHosts(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getTLSCerts will return the TLS certs for the given ArgoCD.
-func getInitialTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
+func getInitialTLSCerts(cr *argoproj.ArgoCD) map[string]string {
 	certs := make(map[string]string)
 	if len(cr.Spec.TLS.InitialCerts) > 0 {
 		certs = cr.Spec.TLS.InitialCerts
@@ -281,7 +278,7 @@ func getInitialTLSCerts(cr *argoprojv1a1.ArgoCD) map[string]string {
 }
 
 // newConfigMap returns a new ConfigMap instance for the given ArgoCD.
-func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
+func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -292,7 +289,7 @@ func newConfigMap(cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
 }
 
 // newConfigMapWithName creates a new ConfigMap with the given name for the given ArgCD.
-func newConfigMapWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
+func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	cm := newConfigMap(cr)
 	cm.ObjectMeta.Name = name
 
@@ -305,7 +302,7 @@ func newConfigMapWithName(name string, cr *argoprojv1a1.ArgoCD) *corev1.ConfigMa
 
 // newConfigMapWithName creates a new ConfigMap with the given suffix appended to the name.
 // The name for the CongifMap is based on the name of the given ArgCD.
-func newConfigMapWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *corev1.ConfigMap {
+func newConfigMapWithSuffix(suffix string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return newConfigMapWithName(fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix), cr)
 }
 
@@ -409,26 +406,6 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error
 		}
 	}
 
-	// old format of ResourceCustomizations
-	if c := getResourceCustomizations(cr); c != "" {
-
-		// Emit event providing users with deprecation notice for ResourceCustomization if not emitted already
-		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted {
-			err := util.CreateEvent(r.Client, "Warning", "Deprecated", "ResourceCustomizations is deprecated, and support will be removed in Argo CD Operator v0.8.0/OpenShift GitOps v1.10.0. Please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions`.", "DeprecationNotice", cr.ObjectMeta, cr.TypeMeta)
-			if err != nil {
-				return err
-			}
-
-			if !ok {
-				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{ResourceCustomizationsDeprecationWarningEmitted: true}
-			} else {
-				currentInstanceEventEmissionStatus.ResourceCustomizationsDeprecationWarningEmitted = true
-			}
-			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
-		}
-		cm.Data[common.ArgoCDKeyResourceCustomizations] = c
-	}
-
 	cm.Data[common.ArgoCDKeyResourceExclusions] = getResourceExclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceInclusions] = getResourceInclusions(cr)
 	cm.Data[common.ArgoCDKeyResourceTrackingMethod] = getResourceTrackingMethod(cr)
@@ -482,7 +459,7 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoprojv1a1.ArgoCD) error
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeKeycloak {
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 			// retain oidc.config during reconcilliation when keycloak is configured
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}

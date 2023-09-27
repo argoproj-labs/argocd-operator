@@ -26,7 +26,7 @@ import (
 	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -70,7 +70,7 @@ func getGrafanaHost(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getGrafanaReplicas will return the size value for the Grafana replica count.
-func getGrafanaReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getGrafanaReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := common.ArgoCDDefaultGrafanaReplicas
 	if cr.Spec.Grafana.Size != nil {
 		if *cr.Spec.Grafana.Size >= 0 && *cr.Spec.Grafana.Size != replicas {
@@ -90,7 +90,7 @@ func getGrafanaConfigPath() string {
 }
 
 // hasGrafanaSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoprojv1a1.ArgoCD) bool {
+func hasGrafanaSpecChanged(actual *appsv1.Deployment, desired *argoproj.ArgoCD) bool {
 	// Replica count
 	if desired.Spec.Grafana.Size != nil { // Replica count specified in desired state
 		if *desired.Spec.Grafana.Size >= 0 && *actual.Spec.Replicas != *desired.Spec.Grafana.Size {

@@ -23,7 +23,8 @@ import (
 	"strings"
 	"time"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
@@ -41,7 +42,7 @@ import (
 // getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0.
-func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getArgoCDRepoServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
 		return cr.Spec.Repo.Replicas
 	}
@@ -52,7 +53,7 @@ func getArgoCDRepoServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
-func getArgoCDServerReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
 	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
 		return cr.Spec.Server.Replicas
 	}
@@ -84,7 +85,7 @@ func getArgoExportSecretName(export *argoprojv1a1.ArgoCDExport) string {
 	return name
 }
 
-func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string {
+func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
 	backend := common.ArgoCDExportStorageBackendLocal
 	namespace := cr.ObjectMeta.Namespace
 	if cr.Spec.Import != nil && cr.Spec.Import.Namespace != nil && len(*cr.Spec.Import.Namespace) > 0 {
@@ -101,7 +102,7 @@ func getArgoImportBackend(client client.Client, cr *argoprojv1a1.ArgoCD) string 
 }
 
 // getArgoImportCommand will return the command for the ArgoCD import process.
-func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []string {
+func getArgoImportCommand(client client.Client, cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-operator-util")
@@ -110,7 +111,7 @@ func getArgoImportCommand(client client.Client, cr *argoprojv1a1.ArgoCD) []strin
 	return cmd
 }
 
-func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
+func getArgoImportContainerEnv(cr *argoprojv1alpha1.ArgoCDExport) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	switch cr.Spec.Storage.Backend {
@@ -144,7 +145,7 @@ func getArgoImportContainerEnv(cr *argoprojv1a1.ArgoCDExport) []corev1.EnvVar {
 }
 
 // getArgoImportContainerImage will return the container image for the Argo CD import process.
-func getArgoImportContainerImage(cr *argoprojv1a1.ArgoCDExport) string {
+func getArgoImportContainerImage(cr *argoprojv1alpha1.ArgoCDExport) string {
 	img := common.ArgoCDDefaultExportJobImage
 	if len(cr.Spec.Image) > 0 {
 		img = cr.Spec.Image
@@ -176,7 +177,7 @@ func getArgoImportVolumeMounts() []corev1.VolumeMount {
 }
 
 // getArgoImportVolumes will return the Volumes for the given ArgoCDExport.
-func getArgoImportVolumes(cr *argoprojv1a1.ArgoCDExport) []corev1.Volume {
+func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	volumes := make([]corev1.Volume, 0)
 
 	if cr.Spec.Storage != nil && cr.Spec.Storage.Backend == common.ArgoCDExportStorageBackendLocal {
@@ -228,7 +229,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 }
 
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
+func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "uid_entrypoint.sh")
@@ -275,7 +276,7 @@ func getArgoCmpServerInitCommand() []string {
 }
 
 // getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoprojv1a1.ArgoCD, useTLSForRedis bool) []string {
+func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 	cmd = append(cmd, "argocd-server")
 
@@ -354,7 +355,7 @@ func getRepoServerAddress(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
-func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -365,7 +366,7 @@ func newDeployment(cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
 }
 
 // newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
-func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	deploy := newDeployment(cr)
 	deploy.ObjectMeta.Name = name
 
@@ -400,7 +401,7 @@ func newDeploymentWithName(name string, component string, cr *argoprojv1a1.ArgoC
 }
 
 // newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
-func newDeploymentWithSuffix(suffix string, component string, cr *argoprojv1a1.ArgoCD) *appsv1.Deployment {
+func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
 	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 

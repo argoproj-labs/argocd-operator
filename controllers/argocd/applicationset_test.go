@@ -27,9 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -74,7 +75,7 @@ func applicationSetDefaultVolumes() []corev1.Volume {
 func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 
 	r := makeTestReconciler(t, a)
 
@@ -92,14 +93,14 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the created Deployment has the expected properties
-	checkExpectedDeploymentValues(t, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 }
 
-func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *v1alpha1.ArgoCD) {
+func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []corev1.Container{applicationSetContainer(a)}
+	want := []corev1.Container{applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -150,6 +151,19 @@ func checkExpectedDeploymentValues(t *testing.T, deployment *appsv1.Deployment, 
 		},
 	}
 
+	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
+		volumes = append(volumes, corev1.Volume{
+			Name: "appset-gitlab-scm-tls-cert",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+					},
+				},
+			},
+		})
+	}
+
 	if diff := cmp.Diff(volumes, deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment volumes:\n%s", diff)
 	}
@@ -172,7 +186,7 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 	setProxyEnvVars(t)
 
 	a := makeTestArgoCD()
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 
 	r := makeTestReconciler(t, a)
 
@@ -224,7 +238,7 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 
 	existingDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -261,7 +275,7 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the updated Deployment has the expected properties
-	checkExpectedDeploymentValues(t, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 
 }
 
@@ -287,7 +301,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []corev1.Container{applicationSetContainer(a)}
+	containerWant := []corev1.Container{applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
@@ -305,7 +319,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 	tests := []struct {
 		name                   string
-		appSetField            *v1alpha1.ArgoCDApplicationSet
+		appSetField            *argoproj.ArgoCDApplicationSet
 		envVars                map[string]string
 		expectedContainerImage string
 	}{
@@ -316,7 +330,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		},
 		{
 			name: "ensure that sha hashes are formatted correctly",
-			appSetField: &v1alpha1.ArgoCDApplicationSet{
+			appSetField: &argoproj.ArgoCDApplicationSet{
 				Image:   "custom-image",
 				Version: "sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
 			},
@@ -324,7 +338,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 		},
 		{
 			name: "custom image should properly substitute",
-			appSetField: &v1alpha1.ArgoCDApplicationSet{
+			appSetField: &argoproj.ArgoCDApplicationSet{
 				Image:   "custom-image",
 				Version: "custom-version",
 			},
@@ -339,12 +353,20 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 		{
 			name: "env var should not override spec fields",
-			appSetField: &v1alpha1.ArgoCDApplicationSet{
+			appSetField: &argoproj.ArgoCDApplicationSet{
 				Image:   "custom-image",
 				Version: "custom-version",
 			},
 			envVars:                map[string]string{common.ArgoCDImageEnvVar: "custom-env-image"},
 			expectedContainerImage: "custom-image:custom-version",
+		},
+		{
+			name: "ensure scm tls cert mount is present",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SCMRootCAConfigMap: "test-scm-tls-mount",
+			},
+			envVars:                map[string]string{common.ArgoCDImageEnvName: "custom-env-image"},
+			expectedContainerImage: "custom-env-image",
 		},
 	}
 
@@ -357,6 +379,8 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			a := makeTestArgoCD()
 			r := makeTestReconciler(t, a)
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
 
 			a.Spec.ApplicationSet = test.appSetField
 
@@ -374,7 +398,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			specImage := deployment.Spec.Template.Spec.Containers[0].Image
 			assert.Equal(t, test.expectedContainerImage, specImage)
-
+			checkExpectedDeploymentValues(t, r, deployment, &sa, a)
 		})
 	}
 
@@ -500,7 +524,7 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 
 func TestArgoCDApplicationSetCommand(t *testing.T) {
 	a := makeTestArgoCD()
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
 
 	baseCommand := []string{
@@ -587,7 +611,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 
 func TestArgoCDApplicationSetEnv(t *testing.T) {
 	a := makeTestArgoCD()
-	a.Spec.ApplicationSet = &v1alpha1.ArgoCDApplicationSet{}
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 	r := makeTestReconciler(t, a)
 
 	defaultEnv := []corev1.EnvVar{

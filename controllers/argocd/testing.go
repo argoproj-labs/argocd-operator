@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 const (
@@ -66,6 +67,7 @@ func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
 
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler {
 	s := scheme.Scheme
+	assert.NoError(t, argoproj.AddToScheme(s))
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
@@ -78,10 +80,10 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler 
 	}
 }
 
-type argoCDOpt func(*argoprojv1alpha1.ArgoCD)
+type argoCDOpt func(*argoproj.ArgoCD)
 
-func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
@@ -93,72 +95,46 @@ func makeTestArgoCD(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
 	return a
 }
 
-func makeTestArgoCDForKeycloak() *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
 		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+		Spec: argoproj.ArgoCDSpec{
+			SSO: &argoproj.ArgoCDSSOSpec{
 				Provider: "keycloak",
 			},
-			Server: argoprojv1alpha1.ArgoCDServerSpec{
-				Route: argoprojv1alpha1.ArgoCDRouteSpec{
+			Server: argoproj.ArgoCDServerSpec{
+				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
 				},
 			},
 		},
-	}
-	return a
-}
-func makeTestArgoCDForKeycloakWithDex(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
-				Provider: "keycloak",
-				Dex: &argoprojv1alpha1.ArgoCDDexSpec{
-					OpenShiftOAuth: true,
-					Resources:      makeTestDexResources(),
-				},
-			},
-			Server: argoprojv1alpha1.ArgoCDServerSpec{
-				Route: argoprojv1alpha1.ArgoCDRouteSpec{
-					Enabled: true,
-				},
-			},
-		},
-	}
-	for _, o := range opts {
-		o(a)
 	}
 	return a
 }
 
-func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoprojv1alpha1.ArgoCD {
-	a := &argoprojv1alpha1.ArgoCD{
+func makeTestArgoCDWithResources(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testArgoCDName,
 			Namespace: testNamespace,
 		},
-		Spec: argoprojv1alpha1.ArgoCDSpec{
-			ApplicationSet: &argoprojv1alpha1.ArgoCDApplicationSet{
+		Spec: argoproj.ArgoCDSpec{
+			ApplicationSet: &argoproj.ArgoCDApplicationSet{
 				Resources: makeTestApplicationSetResources(),
 			},
-			HA: argoprojv1alpha1.ArgoCDHASpec{
+			HA: argoproj.ArgoCDHASpec{
 				Resources: makeTestHAResources(),
 			},
-			SSO: &argoprojv1alpha1.ArgoCDSSOSpec{
+			SSO: &argoproj.ArgoCDSSOSpec{
 				Provider: "dex",
-				Dex: &argoprojv1alpha1.ArgoCDDexSpec{
+				Dex: &argoproj.ArgoCDDexSpec{
 					Resources: makeTestDexResources(),
 				},
 			},
-			Controller: argoprojv1alpha1.ArgoCDApplicationControllerSpec{
+			Controller: argoproj.ArgoCDApplicationControllerSpec{
 				Resources: makeTestControllerResources(),
 			},
 		},

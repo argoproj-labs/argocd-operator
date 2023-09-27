@@ -29,8 +29,7 @@ import (
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -184,7 +183,7 @@ func (r *ArgoCDReconciler) reconcileArgoSecret(cr *argoprojv1a1.ArgoCD) error {
 		corev1.TLSPrivateKeyKey:            tlsSecret.Data[corev1.TLSPrivateKeyKey],
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
 			return nil
@@ -334,7 +333,7 @@ func (r *ArgoCDReconciler) reconcileExistingArgoSecret(cr *argoprojv1a1.ArgoCD, 
 		changed = true
 	}
 
-	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == v1alpha1.SSOProviderTypeDex {
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 		dexOIDCClientSecret, err := r.getDexOAuthClientSecret(cr)
 		if err != nil {
 			return err

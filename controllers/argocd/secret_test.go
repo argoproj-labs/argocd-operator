@@ -17,14 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func Test_newCASecret(t *testing.T) {
-	cr := &argoprojv1alpha1.ArgoCD{
+	cr := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-argocd",
 			Namespace: "argocd",

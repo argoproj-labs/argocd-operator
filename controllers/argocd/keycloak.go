@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -166,7 +166,7 @@ type CustomKeycloakAPIRealm struct {
 // that if the spec is not configured.
 // 3. the default is configured in common.ArgoCDKeycloakVersion and
 // common.ArgoCDKeycloakImageName.
-func getKeycloakContainerImage(cr *argoprojv1a1.ArgoCD) string {
+func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 
 	img := ""
@@ -250,7 +250,7 @@ func defaultKeycloakResources() corev1.ResourceRequirements {
 }
 
 // getKeycloakResources will return the ResourceRequirements for the Keycloak container.
-func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+func getKeycloakResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 
 	// Default values for Keycloak resources requirements.
 	resources := defaultKeycloakResources()
@@ -263,7 +263,7 @@ func getKeycloakResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 	envVars := []corev1.EnvVar{
 		{Name: "SSO_HOSTNAME", Value: "${SSO_HOSTNAME}"},
 		{Name: "DB_MIN_POOL_SIZE", Value: "${DB_MIN_POOL_SIZE}"},
@@ -284,7 +284,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
-			FailureThreshold: 3,
+			TimeoutSeconds: 240,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -294,7 +294,7 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 					},
 				},
 			},
-			InitialDelaySeconds: 60,
+			InitialDelaySeconds: 120,
 		},
 		Name: "${APPLICATION_NAME}",
 		Ports: []corev1.ContainerPort{
@@ -304,7 +304,8 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
 		ReadinessProbe: &corev1.Probe{
-			FailureThreshold: 20,
+			TimeoutSeconds:      240,
+			InitialDelaySeconds: 120,
 			ProbeHandler: corev1.ProbeHandler{
 				Exec: &corev1.ExecAction{
 					Command: []string{
@@ -314,7 +315,6 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 					},
 				},
 			},
-			InitialDelaySeconds: 60,
 		},
 		Resources: getKeycloakResources(cr),
 		VolumeMounts: []corev1.VolumeMount{
@@ -328,12 +328,18 @@ func getKeycloakContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 				Name:      "service-ca",
 				ReadOnly:  true,
 			},
+			{
+				Name:      "sso-probe-netrc-volume",
+				MountPath: "/mnt/rh-sso",
+				ReadOnly:  false,
+			},
 		},
 	}
 }
 
-func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.DeploymentConfig {
+func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.DeploymentConfig {
 	ns := cr.Namespace
+	var medium corev1.StorageMedium = "Memory"
 	keycloakContainer := getKeycloakContainer(cr)
 
 	dc := &appsv1.DeploymentConfig{
@@ -403,6 +409,14 @@ func getKeycloakDeploymentConfigTemplate(cr *argoprojv1a1.ArgoCD) *appsv1.Deploy
 								},
 							},
 						},
+						{
+							Name: "sso-probe-netrc-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{
+									Medium: medium,
+								},
+							},
+						},
 					},
 					NodeSelector: common.DefaultNodeSelector(),
 				},
@@ -467,7 +481,7 @@ func getKeycloakRouteTemplate(ns string) *routev1.Route {
 	}
 }
 
-func newKeycloakTemplateInstance(cr *argoprojv1a1.ArgoCD) (*template.TemplateInstance, error) {
+func newKeycloakTemplateInstance(cr *argoproj.ArgoCD) (*template.TemplateInstance, error) {
 	tpl, err := newKeycloakTemplate(cr)
 	if err != nil {
 		return nil, err
@@ -483,7 +497,7 @@ func newKeycloakTemplateInstance(cr *argoprojv1a1.ArgoCD) (*template.TemplateIns
 	}, nil
 }
 
-func newKeycloakTemplate(cr *argoprojv1a1.ArgoCD) (template.Template, error) {
+func newKeycloakTemplate(cr *argoproj.ArgoCD) (template.Template, error) {
 	ns := cr.Namespace
 	tmpl := template.Template{}
 	configMapTemplate := getKeycloakConfigMapTemplate(ns)
@@ -564,7 +578,7 @@ func newKeycloakTemplate(cr *argoprojv1a1.ArgoCD) (template.Template, error) {
 	return tmpl, err
 }
 
-func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
+func newKeycloakIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 
 	pathType := networkingv1.PathTypeImplementationSpecific
 
@@ -612,7 +626,7 @@ func newKeycloakIngress(cr *argoprojv1a1.ArgoCD) *networkingv1.Ingress {
 	}
 }
 
-func newKeycloakService(cr *argoprojv1a1.ArgoCD) *corev1.Service {
+func newKeycloakService(cr *argoproj.ArgoCD) *corev1.Service {
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -642,7 +656,7 @@ func getKeycloakContainerEnv() []corev1.EnvVar {
 	}
 }
 
-func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
+func newKeycloakDeployment(cr *argoproj.ArgoCD) *k8sappsv1.Deployment {
 
 	var replicas int32 = 1
 	return &k8sappsv1.Deployment{
@@ -695,7 +709,7 @@ func newKeycloakDeployment(cr *argoprojv1a1.ArgoCD) *k8sappsv1.Deployment {
 	}
 }
 
-func (r *ArgoCDReconciler) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 
 	// Create Keycloak Ingress
 	ing := newKeycloakIngress(cr)
@@ -758,7 +772,7 @@ func (r *ArgoCDReconciler) newKeycloakInstance(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // prepares a keycloak config which is used in creating keycloak realm configuration.
-func (r *ArgoCDReconciler) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
+func (r *ReconcileArgoCD) prepareKeycloakConfig(cr *argoproj.ArgoCD) (*keycloakConfig, error) {
 
 	var tlsVerification bool
 	// Get keycloak hostname from route.
@@ -836,7 +850,7 @@ func (r *ArgoCDReconciler) prepareKeycloakConfig(cr *argoprojv1a1.ArgoCD) (*keyc
 }
 
 // prepares a keycloak config which is used in creating keycloak realm configuration for kubernetes.
-func (r *ArgoCDReconciler) prepareKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) (*keycloakConfig, error) {
+func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoproj.ArgoCD) (*keycloakConfig, error) {
 
 	// Get keycloak hostname from ingress.
 	// keycloak hostname is required to post realm configuration to keycloak when keycloak cannot be accessed using service name
@@ -1015,7 +1029,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 }
 
 // Gets Keycloak Server cert. This cert is used to authenticate the api calls to the Keycloak service.
-func (r *ArgoCDReconciler) getKCServerCert(cr *argoprojv1a1.ArgoCD) ([]byte, error) {
+func (r *ReconcileArgoCD) getKCServerCert(cr *argoproj.ArgoCD) ([]byte, error) {
 
 	sslCertsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1041,7 +1055,7 @@ func getOAuthClient(ns string) string {
 }
 
 // Updates OIDC configuration for ArgoCD.
-func (r *ArgoCDReconciler) updateArgoCDConfiguration(cr *argoprojv1a1.ArgoCD, kRouteURL string) error {
+func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteURL string) error {
 
 	// Update the ArgoCD client secret for OIDC in argocd-secret.
 	argoCDSecret := &corev1.Secret{
@@ -1175,7 +1189,7 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 	return nil
 }
 
-func (r *ArgoCDReconciler) reconcileKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// TemplateAPI is available, Install keycloak using openshift templates.
 	if workloads.IsTemplateAPIAvailable() {
@@ -1193,7 +1207,7 @@ func (r *ArgoCDReconciler) reconcileKeycloakConfiguration(cr *argoprojv1a1.ArgoC
 	return nil
 }
 
-func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
+func deleteKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// If SSO is installed using OpenShift templates.
 	if workloads.IsTemplateAPIAvailable() {
@@ -1212,7 +1226,7 @@ func deleteKeycloakConfiguration(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // Delete Keycloak configuration for OpenShift
-func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
+func deleteKeycloakConfigForOpenShift(cr *argoproj.ArgoCD) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
@@ -1250,7 +1264,7 @@ func deleteKeycloakConfigForOpenShift(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // Delete OpenShift OAuthClient
-func deleteOAuthClient(cr *argoprojv1a1.ArgoCD) error {
+func deleteOAuthClient(cr *argoproj.ArgoCD) error {
 
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -1293,7 +1307,7 @@ func deleteOAuthClient(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // Delete Keycloak configuration for Kubernetes
-func deleteKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) error {
+func deleteKeycloakConfigForK8s(cr *argoproj.ArgoCD) error {
 
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -1340,7 +1354,7 @@ func deleteKeycloakConfigForK8s(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // Installs and configures Keycloak for OpenShift
-func (r *ArgoCDReconciler) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) error {
 
 	templateInstanceRef, err := newKeycloakTemplateInstance(cr)
 	if err != nil {
@@ -1459,7 +1473,7 @@ func (r *ArgoCDReconciler) reconcileKeycloakForOpenShift(cr *argoprojv1a1.ArgoCD
 }
 
 // Installs and configures Keycloak for Kubernetes
-func (r *ArgoCDReconciler) reconcileKeycloak(cr *argoprojv1a1.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 
 	err := r.newKeycloakInstance(cr)
 	if err != nil {

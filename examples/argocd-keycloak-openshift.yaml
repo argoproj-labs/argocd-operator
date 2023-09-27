@@ -3,10 +3,14 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 spec:
+  extraConfig:
+    oidc.tls.insecure.skip.verify: 'true' 
   sso:
     provider: keycloak
-    # uncomment the below line when running operator locally.
-    # verifyTLS: false 
+    keycloak:
+      rootCA: "---BEGIN---END---"
+      # Uncomment the below line when running operator locally.
+      # verifyTLS: false 
   server:
     route:
       enabled: true

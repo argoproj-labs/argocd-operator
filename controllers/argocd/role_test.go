@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -25,7 +25,7 @@ func TestArgoCDReconciler_reconcileRole(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
-	workloadIdentifier := "x"
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
@@ -74,6 +74,20 @@ func TestArgoCDReconciler_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisHaRoles))
 	assert.Equal(t, expectedRoleNamespace, redisHaRoles[0].ObjectMeta.Namespace)
+	// check no redis role is created for the new namespace with managed-by label
+	workloadIdentifier = common.ArgoCDRedisComponent
+	expectedRedisRules := policyRuleForRedis(r.Client)
+	redisRoles, err := r.reconcileRole(workloadIdentifier, expectedRedisRules, a)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedNumberOfRoles, len(redisRoles))
+	assert.Equal(t, expectedRoleNamespace, redisRoles[0].ObjectMeta.Namespace)
+	// check no grafana role is created for the new namespace with managed-by label
+	workloadIdentifier = common.ArgoCDOperatorGrafanaComponent
+	expectedGrafanaRules := policyRuleForGrafana(r.Client)
+	grafanaRoles, err := r.reconcileRole(workloadIdentifier, expectedGrafanaRules, a)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedNumberOfRoles, len(grafanaRoles))
+	assert.Equal(t, expectedRoleNamespace, grafanaRoles[0].ObjectMeta.Namespace)
 }
 
 func TestArgoCDReconciler_reconcileClusterRole(t *testing.T) {
@@ -126,7 +140,7 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
-	a.Spec = v1alpha1.ArgoCDSpec{
+	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{
 			sourceNamespace,
 		},
@@ -137,7 +151,7 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 
 	workloadIdentifier := common.ArgoCDServerComponent
 	expectedRules := policyRuleForServerApplicationSourceNamespaces()
-	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)
@@ -217,7 +231,7 @@ func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 	// Create a managed namespace
 	assert.NoError(t, createNamespace(r, "managedNS", a.Namespace))
 
-	workloadIdentifier := "x"
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedRules := policyRuleForApplicationController()
 	_, err := r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)

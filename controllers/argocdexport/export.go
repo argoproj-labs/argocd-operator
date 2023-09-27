@@ -20,8 +20,8 @@ import (
 	"github.com/sethvargo/go-password/password"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -72,7 +72,7 @@ func FetchStorageSecretName(export *argoprojv1a1.ArgoCDExport) string {
 func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *argoprojv1a1.ArgoCDExport) error {
 	name := FetchStorageSecretName(cr)
 	// Dummy CR to retrieve secret
-	a := &argoprojv1a1.ArgoCD{}
+	a := &argoproj.ArgoCD{}
 	a.ObjectMeta = cr.ObjectMeta
 	secret := util.NewSecretWithName(a, name)
 	if util.IsObjectFound(r.Client, cr.Namespace, name, secret) {

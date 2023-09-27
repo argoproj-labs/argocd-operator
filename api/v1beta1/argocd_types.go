@@ -159,6 +159,9 @@ type ArgoCDApplicationSet struct {
 	LogLevel string `json:"logLevel,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
+
+	// SCMRootCAConfigMap is the name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller (optional).
+	SCMRootCAConfigMap string `json:"scmRootCAConfigMap,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -747,10 +750,6 @@ type ArgoCDSpec struct {
 
 	// RepositoryCredentials are the Git pull credentials to configure Argo CD with upon creation of the cluster.
 	RepositoryCredentials string `json:"repositoryCredentials,omitempty"`
-
-	// ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
-	ResourceCustomizations string `json:"resourceCustomizations,omitempty"`
 
 	// ResourceHealthChecks customizes resource health check behavior.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resource Health Check Customizations'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}

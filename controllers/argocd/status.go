@@ -188,9 +188,9 @@ func (r *ArgoCDReconciler) reconcileStatusSSO(cr *argoprojv1a1.ArgoCD) error {
 
 	// perform dex/keycloak status reconciliation only if sso configurations are legal
 	if status == ssoLegalSuccess {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeDex {
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
 			return r.reconcileStatusDex(cr)
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoprojv1a1.SSOProviderTypeKeycloak {
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 			return r.reconcileStatusKeycloak(cr)
 		}
 	} else {
@@ -329,7 +329,6 @@ func (r *ArgoCDReconciler) reconcileStatusNotifications(cr *argoprojv1a1.ArgoCD)
 // reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
 func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 	cr.Status.Host = ""
-	cr.Status.Phase = "Available"
 
 	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
@@ -366,7 +365,6 @@ func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
 					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
 						cr.Status.Host = route.Status.Ingress[0].Host
-						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = ""
 						cr.Status.Phase = "Pending"
@@ -375,7 +373,6 @@ func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 					// no conditions are available
 					if route.Status.Ingress[0].Host != "" {
 						cr.Status.Host = route.Status.Ingress[0].Host
-						cr.Status.Phase = "Available"
 					} else {
 						cr.Status.Host = "Unavailable"
 						cr.Status.Phase = "Pending"
@@ -387,6 +384,7 @@ func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 		ingress := newIngressWithSuffix("server", cr)
 		if !util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 			log.Info("argocd-server ingress requested but not found on cluster")
+			cr.Status.Phase = "Pending"
 			return nil
 		} else {
 			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
@@ -403,7 +401,6 @@ func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoprojv1a1.ArgoCD) error {
 				}
 				hosts = strings.Join(s, ", ")
 				cr.Status.Host = hosts
-				cr.Status.Phase = "Available"
 			}
 		}
 	}
