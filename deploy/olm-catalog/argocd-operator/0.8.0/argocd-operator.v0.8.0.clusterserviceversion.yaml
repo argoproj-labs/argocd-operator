@@ -1733,7 +1733,6 @@ spec:
               containers:
               - args:
                 - --leader-elect
-                - --label-selector
                 command:
                 - /manager
                 env:

@@ -230,5 +230,5 @@ const (
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
 
 	// Label Selector is an env variable for ArgoCD instance reconcilliation.
-	ArgoCDLabelSelector = "ARGOCD_LABEL_SELECTOR"
+	ArgoCDLabelSelectorKey = "ARGOCD_LABEL_SELECTOR"
 )

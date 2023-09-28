@@ -178,7 +178,7 @@ const (
 	// ArgoCDKeycloakImage is the default Keycloak Image used for the non-openshift platforms when not specified.
 	ArgoCDKeycloakImage = "quay.io/keycloak/keycloak"
 
-	// Default Label Selector is used when the Label Selector is not mentioned/empty.
+	// ArgoCDDefaultLabelSelector is the default Label Selector which will reconcile all ArgoCD instances.
 	ArgoCDDefaultLabelSelector = ""
 
 	// ArgoCDKeycloakVersion is the default Keycloak version used for the non-openshift platform when not specified.

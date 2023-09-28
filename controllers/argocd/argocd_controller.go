@@ -118,8 +118,8 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	}
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
-		reqLogger.Info(fmt.Sprintf("the ArgoCD instance does not match the label selector '%s' and skipping for reconcillation", r.LabelSelector))
-		return reconcile.Result{}, nil
+		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconcillation", request.NamespacedName, r.LabelSelector))
+		return reconcile.Result{}, fmt.Errorf("Error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
 	newPhase := argocd.Status.Phase
