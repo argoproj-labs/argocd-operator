@@ -3,7 +3,7 @@ package networking
 import (
 	"errors"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -29,11 +29,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1alpha1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *corev1.Service:
 		obj.Name = testServiceNameMutated

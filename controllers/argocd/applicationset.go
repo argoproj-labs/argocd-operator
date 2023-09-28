@@ -28,14 +28,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
+const (
+	ApplicationSetGitlabSCMTlsCertPath = "/app/tls/scm/cert"
+)
+
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
-func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
+func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, "entrypoint.sh")
@@ -46,6 +50,11 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, util.GetLogLevel(cr.Spec.ApplicationSet.LogLevel))
+
+	if cr.Spec.ApplicationSet.SCMRootCAConfigMap != "" {
+		cmd = append(cmd, "--scm-root-ca-path")
+		cmd = append(cmd, ApplicationSetGitlabSCMTlsCertPath)
+	}
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
@@ -59,7 +68,7 @@ func getArgoApplicationSetCommand(cr *argoprojv1a1.ArgoCD) []string {
 	return cmd
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling applicationset serviceaccounts")
 	sa, err := r.reconcileApplicationSetServiceAccount(cr)
@@ -92,7 +101,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetController(cr *argoprojv1a1.Ar
 }
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
-func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.ArgoCD, sa *corev1.ServiceAccount) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
 
 	setAppSetLabels(&deploy.ObjectMeta)
@@ -145,9 +154,26 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.Ar
 			},
 		},
 	}
+	addSCMGitlabVolumeMount := false
+	if scmRootCAConfigMapName := getSCMRootCAConfigMapName(cr); scmRootCAConfigMapName != "" {
+		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
+		if util.IsObjectFound(r.Client, cr.Namespace, cr.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+			addSCMGitlabVolumeMount = true
+			podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+				Name: "appset-gitlab-scm-tls-cert",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+						},
+					},
+				},
+			})
+		}
+	}
 
 	podSpec.Containers = []corev1.Container{
-		applicationSetContainer(cr),
+		applicationSetContainer(cr, addSCMGitlabVolumeMount),
 	}
 	openshift.AddSeccompProfileForOpenShift(cr, podSpec, r.Client)
 
@@ -186,7 +212,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetDeployment(cr *argoprojv1a1.Ar
 
 }
 
-func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
+func applicationSetContainer(cr *argoproj.ArgoCD, addSCMGitlabVolumeMount bool) corev1.Container {
 	// Global proxy env vars go first
 	appSetEnv := []corev1.EnvVar{{
 		Name: "NAMESPACE",
@@ -203,7 +229,7 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 	// Environment specified in the CR take precedence over everything else
 	appSetEnv = util.EnvMerge(appSetEnv, util.ProxyEnvVars(), false)
 
-	return corev1.Container{
+	container := corev1.Container{
 		Command:         getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
 		Image:           getApplicationSetContainerImage(cr),
@@ -253,9 +279,16 @@ func applicationSetContainer(cr *argoprojv1a1.ArgoCD) corev1.Container {
 			RunAsNonRoot:             util.BoolPtr(true),
 		},
 	}
+	if addSCMGitlabVolumeMount {
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name:      "appset-gitlab-scm-tls-cert",
+			MountPath: ApplicationSetGitlabSCMTlsCertPath,
+		})
+	}
+	return container
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a1.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 
 	sa := newServiceAccountWithName("applicationset-controller", cr)
 	setAppSetLabels(&sa.ObjectMeta)
@@ -284,7 +317,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetServiceAccount(cr *argoprojv1a
 	return sa, err
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) (*v1.Role, error) {
+func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.Role, error) {
 
 	policyRules := []v1.PolicyRule{
 
@@ -386,7 +419,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetRole(cr *argoprojv1a1.ArgoCD) 
 	return role, r.Client.Update(context.TODO(), role)
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
 
 	name := "applicationset-controller"
 
@@ -429,7 +462,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetRoleBinding(cr *argoprojv1a1.A
 	return r.Client.Create(context.TODO(), roleBinding)
 }
 
-func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
+func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 
 	img := ""
@@ -459,7 +492,7 @@ func getApplicationSetContainerImage(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
-func getApplicationSetResources(cr *argoprojv1a1.ArgoCD) corev1.ResourceRequirements {
+func getApplicationSetResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -477,7 +510,7 @@ func setAppSetLabels(obj *metav1.ObjectMeta) {
 }
 
 // reconcileApplicationSetService will ensure that the Service is present for the ApplicationSet webhook and metrics component.
-func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileApplicationSetService(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)

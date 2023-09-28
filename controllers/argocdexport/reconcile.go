@@ -19,12 +19,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
-// ArgoCDExportReconcilerResources will reconcile all ArgoCDExport resources for the give CR.
-func (r *ArgoCDExportReconciler) ArgoCDExportReconcilerResources(cr *argoprojv1a1.ArgoCDExport) error {
+// ArgoCDReconcilerExportResources will reconcile all ArgoCDExport resources for the give CR.
+func (r *ArgoCDExportReconciler) reconcileArgoCDExportResources(cr *argoprojv1alpha1.ArgoCDExport) error {
 	if err := r.validateExport(cr); err != nil {
 		return err
 	}
@@ -42,7 +41,7 @@ func (r *ArgoCDExportReconciler) ArgoCDExportReconcilerResources(cr *argoprojv1a
 // setResourceWatches will register Watches for each of the supported Resources.
 func setResourceWatches(bld *builder.Builder) *builder.Builder {
 	// Watch for changes to primary resource ArgoCDExport
-	bld.For(&argoproj.ArgoCDExport{})
+	bld.For(&argoprojv1alpha1.ArgoCDExport{})
 
 	// Watch for changes to CronJob sub-resources owned by ArgoCDExport instances.
 	bld.Owns(&batchv1.CronJob{})

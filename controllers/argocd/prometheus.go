@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	argoprojv1a1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -31,7 +31,7 @@ import (
 var prometheusAPIFound = false
 
 // getPrometheusHost will return the hostname value for Prometheus.
-func getPrometheusHost(cr *argoprojv1a1.ArgoCD) string {
+func getPrometheusHost(cr *argoproj.ArgoCD) string {
 	host := util.NameWithSuffix(cr.Name, "prometheus")
 	if len(cr.Spec.Prometheus.Host) > 0 {
 		host = cr.Spec.Prometheus.Host
@@ -40,7 +40,7 @@ func getPrometheusHost(cr *argoprojv1a1.ArgoCD) string {
 }
 
 // getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoprojv1a1.ArgoCD) *int32 {
+func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	replicas := common.ArgoCDDefaultPrometheusReplicas
 	if cr.Spec.Prometheus.Size != nil {
 		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
@@ -56,7 +56,7 @@ func IsPrometheusAPIAvailable() bool {
 }
 
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
-func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoprojv1a1.ArgoCD) bool {
+func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
 	// Replica count
 	if desired.Spec.Prometheus.Size != nil && *desired.Spec.Prometheus.Size >= 0 { // Valid replica count specified in desired state
 		if actual.Spec.Replicas != nil { // Actual replicas value is set
@@ -85,7 +85,7 @@ func verifyPrometheusAPI() error {
 }
 
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.
-func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
+func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 	return &monitoringv1.Prometheus{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -96,7 +96,7 @@ func newPrometheus(cr *argoprojv1a1.ArgoCD) *monitoringv1.Prometheus {
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance.
-func newServiceMonitor(cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -107,7 +107,7 @@ func newServiceMonitor(cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
 }
 
 // newServiceMonitorWithName returns a new ServiceMonitor instance for the given ArgoCD using the given name.
-func newServiceMonitorWithName(name string, cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	svcmon := newServiceMonitor(cr)
 	svcmon.ObjectMeta.Name = name
 
@@ -120,12 +120,12 @@ func newServiceMonitorWithName(name string, cr *argoprojv1a1.ArgoCD) *monitoring
 }
 
 // newServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
-func newServiceMonitorWithSuffix(suffix string, cr *argoprojv1a1.ArgoCD) *monitoringv1.ServiceMonitor {
+func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
 // reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
-func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix(common.ArgoCDMetrics, cr)
 	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
@@ -157,7 +157,7 @@ func (r *ArgoCDReconciler) reconcileMetricsServiceMonitor(cr *argoprojv1a1.ArgoC
 }
 
 // reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
-func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
 	if util.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
 		if !cr.Spec.Prometheus.Enabled {
@@ -186,7 +186,7 @@ func (r *ArgoCDReconciler) reconcilePrometheus(cr *argoprojv1a1.ArgoCD) error {
 }
 
 // reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
-func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
 	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
@@ -218,7 +218,7 @@ func (r *ArgoCDReconciler) reconcileRepoServerServiceMonitor(cr *argoprojv1a1.Ar
 }
 
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
-func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)
 	if util.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
@@ -250,7 +250,7 @@ func (r *ArgoCDReconciler) reconcileServerMetricsServiceMonitor(cr *argoprojv1a1
 }
 
 // reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses
-func (r *ArgoCDReconciler) reconcilePrometheusRule(cr *argoprojv1a1.ArgoCD) error {
+func (r *ArgoCDReconciler) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 
 	promRule := newPrometheusRule(cr.Namespace, "argocd-component-status-alert")
 
