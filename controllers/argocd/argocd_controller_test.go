@@ -158,6 +158,7 @@ func TestReconcileArgoCD_ReconcileLabel(t *testing.T) {
 	if resTest2.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
+
 }
 
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
