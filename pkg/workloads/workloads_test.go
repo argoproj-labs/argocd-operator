@@ -3,7 +3,7 @@ package workloads
 import (
 	"errors"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -32,11 +32,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *v1beta1.ArgoCD, resource interface{}, client cntrlClient.Client) error {
+func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client) error {
 	switch obj := resource.(type) {
 	case *appsv1.Deployment:
 		obj.Name = testNameMutated
