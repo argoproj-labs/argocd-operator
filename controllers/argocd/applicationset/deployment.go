@@ -21,9 +21,6 @@ import (
 func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
 	desiredDeployment := &appsv1.Deployment{}
 
-	appSetEnv := asr.Instance.Spec.ApplicationSet.Env
-	appSetEnv = util.EnvMerge(appSetEnv, util.ProxyEnvVars(), false)
-
 	objMeta := metav1.ObjectMeta{
 		Name:      resourceName,
 		Namespace: asr.Instance.Namespace,

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
@@ -23,9 +24,11 @@ func makeTestApplicationSetReconciler(t *testing.T, objs ...runtime.Object) *App
 	logger := ctrl.Log.WithName(ArgoCDApplicationSetControllerComponent)
 
 	return &ApplicationSetReconciler{
-		Client:   cl,
-		Scheme:   s,
-		Instance: argocdcommon.MakeTestArgoCD(),
-		Logger:   logger,
+		Client: cl,
+		Scheme: s,
+		Instance: argocdcommon.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+		}),
+		Logger: logger,
 	}
 }

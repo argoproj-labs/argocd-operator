@@ -11,7 +11,7 @@ import (
 func isMergable(extraArgs []string, cmd []string) error {
 	for _, arg := range extraArgs {
 		if len(arg) > 2 && arg[:2] == "--" && util.ContainsString(cmd, arg) {
-			return fmt.Errorf("Arg %s is already part of the default command arguments", arg)
+			return fmt.Errorf("arg %s is already part of the default command arguments", arg)
 		}
 	}
 	return nil
