@@ -52,11 +52,18 @@ const (
 
 	TLSCerts = "tls-certs"
 
+	Server = "server"
+
 	CapabilityDropAll = "ALL"
 
-	VolumeMountPathTLS           = "/app/config/tls"
-	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
-	WorkingDirApp                = "/app"
+	VolumeMountPathTLS                = "/app/config/tls"
+	VolumeMountPathRepoServerTLS      = "/app/config/reposerver/tls"
+	WorkingDirApp                     = "/app"
+	VolumeMountPathRepoServerTLSRedis = "/app/config/reposerver/tls/redis"
+	VolumeMountPlugins                = "plugins"
+	VolumeMountPathPlugins            = "/home/argocd/cmp-server/plugins"
+	VolumeVarFiles                    = "var-files"
+	VolumeMountPathVarRunArgocd       = "/var/run/argocd"
 )
 
 // API group versions and resource kinds

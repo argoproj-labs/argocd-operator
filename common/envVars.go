@@ -43,4 +43,6 @@ const (
 	// ArgoCDClusterConfigNamespacesEnvVar is the environment variable that contains the list of namespaces allowed to host cluster config
 	// instances
 	ArgoCDClusterConfigNamespacesEnvVar = "ARGOCD_CLUSTER_CONFIG_NAMESPACES"
+
+	ArgoCDExecTimeoutEnvVar = "ARGOCD_EXEC_TIMEOUT"
 )

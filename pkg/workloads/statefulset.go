@@ -100,3 +100,17 @@ func RequestStatefulSet(request StatefulSetRequest) (*appsv1.StatefulSet, error)
 
 	return StatefulSet, nil
 }
+
+// TriggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
+func TriggerStatefulSetRollout(client cntrlClient.Client, sts *appsv1.StatefulSet, key string) error {
+	currentStatefulSet, err := GetStatefulSet(sts.Name, sts.Namespace, client)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+
+	currentStatefulSet.Spec.Template.ObjectMeta.Labels[key] = NowNano()
+	return UpdateStatefulSet(currentStatefulSet, client)
+}
