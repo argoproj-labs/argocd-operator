@@ -29,7 +29,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	argoprojiov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -61,10 +62,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = argoprojiov1alpha1.AddToScheme(scheme.Scheme)
+	err = argoprojv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = argoprojiov1alpha1.AddToScheme(scheme.Scheme)
+	err = argoproj.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme

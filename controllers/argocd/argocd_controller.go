@@ -19,8 +19,9 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -33,6 +34,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/go-logr/logr"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -48,7 +51,7 @@ var _ reconcile.Reconciler = &ArgoCDReconciler{}
 type ArgoCDReconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
-	Instance      *v1alpha1.ArgoCD
+	Instance      *argoproj.ArgoCD
 	ClusterScoped bool
 	Logger        logr.Logger
 
@@ -67,6 +70,12 @@ type ArgoCDReconciler struct {
 }
 
 var log = ctrl.Log.WithName("controller_argocd")
+
+// Map to keep track of running Argo CD instances using their namespaces as key and phase as value
+// This map will be used for the performance metrics purposes
+// Important note: This assumes that each instance only contains one Argo CD instance
+// as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
+var ActiveInstanceMap = make(map[string]string)
 
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
 //+kubebuilder:rbac:groups="",resources=configmaps;endpoints;events;persistentvolumeclaims;pods;namespaces;secrets;serviceaccounts;services;services/finalizers,verbs=*
@@ -97,7 +106,12 @@ var log = ctrl.Log.WithName("controller_argocd")
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
 
-	argocd := &v1alpha1.ArgoCD{}
+	reconcileStartTS := time.Now()
+	defer func() {
+		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
+	}()
+
+	argocd := &argoproj.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -110,11 +124,44 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 
+	newPhase := argocd.Status.Phase
+	// If we discover a new Argo CD instance in a previously un-seen namespace
+	// we add it to the map and increment active instance count by phase
+	// as well as total active instance count
+	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
+		if newPhase != "" {
+			ActiveInstanceMap[request.Namespace] = newPhase
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
+			ActiveInstancesTotal.Inc()
+		}
+	} else {
+		// If we discover an existing instance's phase has changed since we last saw it
+		// increment instance count with new phase and decrement instance count with old phase
+		// update the phase in corresponding map entry
+		// total instance count remains the same
+		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
+			ActiveInstanceMap[argocd.Namespace] = newPhase
+			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
+			ActiveInstancesByPhase.WithLabelValues(oldPhase).Dec()
+		}
+	}
+
+	ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
+
 	r.Instance = argocd
 	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
 	r.Logger = argocdControllerLog.WithValues("instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
 
 	if r.Instance.GetDeletionTimestamp() != nil {
+
+		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
+		// by phase as well as total
+		delete(ActiveInstanceMap, r.Instance.Namespace)
+		ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
+		ActiveInstancesTotal.Dec()
+		ActiveInstanceReconciliationCount.DeleteLabelValues(r.Instance.Namespace)
+		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": r.Instance.Namespace})
+
 		if r.Instance.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(r.Instance); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
@@ -175,7 +222,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper)
+	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
 	return bldr.Complete(r)
 }
 

@@ -10,8 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -34,7 +33,7 @@ var imageTests = []struct {
 	pre       func(t *testing.T)
 	opts      []argoCDOpt
 	want      string
-	imageFunc func(a *argoprojv1alpha1.ArgoCD) string
+	imageFunc func(a *argoproj.ArgoCD) string
 }{
 	{
 		name:      "dex default configuration",
@@ -45,10 +44,10 @@ var imageTests = []struct {
 		name:      "dex spec configuration",
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-			a.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-				Provider: v1alpha1.SSOProviderTypeDex,
-				Dex: &v1alpha1.ArgoCDDexSpec{
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+				Provider: argoproj.SSOProviderTypeDex,
+				Dex: &argoproj.ArgoCDDexSpec{
 					Image:   "testing/dex",
 					Version: "latest",
 				},
@@ -71,7 +70,7 @@ var imageTests = []struct {
 	{
 		name:      "argo spec configuration",
 		imageFunc: getArgoContainerImage,
-		want:      argoTestImage, opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		want:      argoTestImage, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Image = "testing/argocd"
 			a.Spec.Version = "latest"
 		}},
@@ -93,7 +92,7 @@ var imageTests = []struct {
 		name:      "grafana spec configuration",
 		imageFunc: getGrafanaContainerImage,
 		want:      grafanaTestImage,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Grafana.Image = "testing/grafana"
 			a.Spec.Grafana.Version = "latest"
 		}},
@@ -115,7 +114,7 @@ var imageTests = []struct {
 		name:      "redis spec configuration",
 		imageFunc: getRedisContainerImage,
 		want:      redisTestImage,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Redis.Image = "testing/redis"
 			a.Spec.Redis.Version = "latest"
 		}},
@@ -139,7 +138,7 @@ var imageTests = []struct {
 		name:      "redis ha spec configuration",
 		imageFunc: getRedisHAContainerImage,
 		want:      redisHATestImage,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Redis.Image = "testing/redis"
 			a.Spec.Redis.Version = "latest-ha"
 		}},
@@ -163,7 +162,7 @@ var imageTests = []struct {
 		name:      "redis ha proxy spec configuration",
 		imageFunc: getRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.HA.RedisProxyImage = "testing/redis-ha-haproxy"
 			a.Spec.HA.RedisProxyVersion = "latest-ha"
 		}},
@@ -207,7 +206,7 @@ var argoServerURITests = []struct {
 	{
 		name:         "test with external host name",
 		routeEnabled: false,
-		opts: []argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
+		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
 			a.Spec.Server.Host = "test-host-name"
 		}},
 		want: "https://test-host-name",
@@ -569,10 +568,10 @@ func generateEncodedPEM(t *testing.T, host string) []byte {
 // TestArgoCDReconciler_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
 func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-		ac.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-			Provider: v1alpha1.SSOProviderTypeDex,
-			Dex: &v1alpha1.ArgoCDDexSpec{
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
+			Dex: &argoproj.ArgoCDDexSpec{
 				OpenShiftOAuth: true,
 			},
 		}

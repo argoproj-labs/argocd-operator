@@ -196,6 +196,21 @@ metadata:
               "route": {
                 "enabled": true
               }
+            },
+            "sso": {
+              "dex": {
+                "resources": {
+                  "limits": {
+                    "cpu": "500m",
+                    "memory": "256Mi"
+                  },
+                  "requests": {
+                    "cpu": "250m",
+                    "memory": "128Mi"
+                  }
+                }
+              },
+              "provider": "dex"
             }
           }
         }
@@ -670,9 +685,10 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: 'ResourceCustomizations customizes resource behavior. Keys are
-          in the form: group/Kind. Please note that this is being deprecated in favor
-          of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.'
+      - description: 'Deprecated field. Support dropped in v1beta1 version. ResourceCustomizations
+          customizes resource behavior. Keys are in the form: group/Kind. Please note
+          that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
+          and ResourceActions.'
         displayName: Resource Customizations'
         path: resourceCustomizations
         x-descriptors:
@@ -1247,14 +1263,6 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: 'ResourceCustomizations customizes resource behavior. Keys are
-          in the form: group/Kind. Please note that this is being deprecated in favor
-          of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.'
-        displayName: Resource Customizations'
-        path: resourceCustomizations
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ResourceExclusions is used to completely ignore entire classes
           of resource group/kinds.
         displayName: Resource Exclusions'
@@ -1762,17 +1770,6 @@ spec:
                     - ALL
                   readOnlyRootFilesystem: true
                   runAsNonRoot: true
-              - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy@sha256:db06cc4c084dd0253134f156dddaaf53ef1c3fb3cc809e5d81711baa4029ea4c
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                resources: {}
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: argocd-operator-controller-manager
