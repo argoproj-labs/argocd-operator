@@ -260,8 +260,10 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 	}
 
 	// non-core components, don't return reconciliation errors
-	if err := r.AppsetController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile applicationset controller")
+	if r.Instance.Spec.ApplicationSet != nil {
+		if err := r.AppsetController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile applicationset controller")
+		}
 	}
 
 	if r.Instance.Spec.Notifications.Enabled {

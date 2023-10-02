@@ -176,13 +176,13 @@ func (asr *ApplicationSetReconciler) DeleteDeployment(name, namespace string) er
 func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, common.EntryPointSh)
-	cmd = append(cmd, ArgoCDApplicationSetController)
+	cmd = append(cmd, EntryPointSh)
+	cmd = append(cmd, AppSetController)
 
-	cmd = append(cmd, common.ArgoCDRepoServer)
+	cmd = append(cmd, ArgoCDRepoServer)
 	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
 
-	cmd = append(cmd, common.LogLevel)
+	cmd = append(cmd, LogLevel)
 	cmd = append(cmd, util.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user
@@ -204,7 +204,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 		Command:         asr.getArgoApplicationSetCommand(),
 		Image:           argocdcommon.GetArgoContainerImage(asr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            ArgoCDApplicationSetController,
+		Name:            AppSetController,
 		Env:             appSetEnv,
 		Resources:       asr.getApplicationSetResources(),
 		SecurityContext: &corev1.SecurityContext{
@@ -253,8 +253,8 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 
 	if addSCMGitlabVolumeMount {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      ApplicationSetGitlabSCMTlsCert,
-			MountPath: ApplicationSetGitlabSCMTlsCertPath,
+			Name:      AppSetGitlabSCMTlsCert,
+			MountPath: AppSetGitlabSCMTlsCertPath,
 		})
 	}
 
@@ -308,7 +308,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetPodVolumes(addSCMGitlabVol
 	}
 	if addSCMGitlabVolumeMount {
 		volumes = append(volumes, corev1.Volume{
-			Name: ApplicationSetGitlabSCMTlsCert,
+			Name: AppSetGitlabSCMTlsCert,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{

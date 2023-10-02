@@ -14,14 +14,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDApplicationSetControllerComponent)
+var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, v1beta1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(ArgoCDApplicationSetControllerComponent)
+	logger := ctrl.Log.WithName(AppSetControllerComponent)
 
 	return &ApplicationSetReconciler{
 		Client: cl,

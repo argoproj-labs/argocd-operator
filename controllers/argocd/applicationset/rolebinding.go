@@ -14,12 +14,12 @@ import (
 
 func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 
-	asr.Logger.Info("reconciling roleBindings")
+	asr.Logger.Info("reconciling roleBinding")
 
 	sa, err := permissions.GetServiceAccount(resourceName, asr.Instance.Namespace, asr.Client)
 
 	if err != nil {
-		asr.Logger.Error(err, "reconsileRoleBinding: failed to get serviceaccount", "name", resourceName, "namespace", asr.Instance.Namespace)
+		asr.Logger.Error(err, "reconcileRoleBinding: failed to get serviceaccount", "name", resourceName, "namespace", asr.Instance.Namespace)
 		return err
 	}
 

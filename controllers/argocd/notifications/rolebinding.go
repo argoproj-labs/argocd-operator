@@ -14,12 +14,12 @@ import (
 
 func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
-	nr.Logger.Info("reconciling roleBindings")
+	nr.Logger.Info("reconciling roleBinding")
 
 	sa, err := permissions.GetServiceAccount(resourceName, nr.Instance.Namespace, nr.Client)
 
 	if err != nil {
-		nr.Logger.Error(err, "reconsileRoleBinding: failed to get serviceaccount", "name", resourceName, "namespace", nr.Instance.Namespace)
+		nr.Logger.Error(err, "reconcileRoleBinding: failed to get serviceaccount", "name", resourceName, "namespace", nr.Instance.Namespace)
 		return err
 	}
 

@@ -1,9 +1,14 @@
 package applicationset
 
-// Values
 const (
-	ArgoCDApplicationSetControllerComponent = "applicationset-controller"
-	ArgoCDApplicationSetController          = "argocd-applicationset-controller"
-	ApplicationSetGitlabSCMTlsCert          = "appset-gitlab-scm-tls-cert"
-	ApplicationSetGitlabSCMTlsCertPath      = "/app/tls/scm/cert"
+	// Values
+	AppSetControllerComponent  = "applicationset-controller"
+	AppSetController           = "argocd-applicationset-controller"
+	AppSetGitlabSCMTlsCert     = "appset-gitlab-scm-tls-cert"
+	AppSetGitlabSCMTlsCertPath = "/app/tls/scm/cert"
+
+	// Commands
+	EntryPointSh     = "entrypoint.sh"
+	LogLevel         = "--loglevel"
+	ArgoCDRepoServer = "--argocd-repo-server"
 )

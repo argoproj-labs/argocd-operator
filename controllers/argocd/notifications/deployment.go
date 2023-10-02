@@ -56,7 +56,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Command:         nr.GetNotificationsCommand(),
 			Image:           argocdcommon.GetArgoContainerImage(nr.Instance),
 			ImagePullPolicy: corev1.PullAlways,
-			Name:            ArgoCDNotificationsControllerComponent,
+			Name:            NotificationsControllerComponent,
 			Env:             notificationEnv,
 			Resources:       nr.GetNotificationsResources(),
 			LivenessProbe: &corev1.Probe{

@@ -24,10 +24,10 @@ var (
 
 func (asr *ApplicationSetReconciler) Reconcile() error {
 
-	asr.Logger = ctrl.Log.WithName(ArgoCDApplicationSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
+	asr.Logger = ctrl.Log.WithName(AppSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
 
-	resourceName = util.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, ArgoCDApplicationSetControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, asr.Instance.Name, ArgoCDApplicationSetControllerComponent)
+	resourceName = util.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, AppSetControllerComponent)
+	resourceLabels = common.DefaultLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
 
 	if err := asr.reconcileServiceAccount(); err != nil {
 		asr.Logger.Info("reconciling applicationSet serviceaccount")

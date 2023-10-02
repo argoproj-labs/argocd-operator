@@ -95,7 +95,6 @@ func getPolicyRules() []rbacv1.PolicyRule {
 			Resources: []string{
 				"applications",
 				"applicationsets",
-				"appprojects",
 				"applicationsets/finalizers",
 			},
 			Verbs: []string{
@@ -106,6 +105,16 @@ func getPolicyRules() []rbacv1.PolicyRule {
 				"patch",
 				"update",
 				"watch",
+			},
+		},
+		// Appprojects
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
 			},
 		},
 		// ApplicationSet Status
@@ -120,7 +129,6 @@ func getPolicyRules() []rbacv1.PolicyRule {
 				"update",
 			},
 		},
-
 		// Events
 		{
 			APIGroups: []string{""},
@@ -129,11 +137,9 @@ func getPolicyRules() []rbacv1.PolicyRule {
 			},
 			Verbs: []string{
 				"create",
-				"delete",
 				"get",
 				"list",
 				"patch",
-				"update",
 				"watch",
 			},
 		},
