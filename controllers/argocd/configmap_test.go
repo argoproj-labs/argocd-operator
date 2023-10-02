@@ -705,6 +705,11 @@ managedfieldsmanagers:
 			Kind:  "healthBar",
 			Check: "healthBar",
 		},
+		{
+			Group: "",
+			Kind:  "healthFooBar",
+			Check: "healthFooBar",
+		},
 	}
 	actions := []argoproj.ResourceAction{
 		{
@@ -717,6 +722,11 @@ managedfieldsmanagers:
 			Kind:   "actionsBar",
 			Action: "actionsBar",
 		},
+		{
+			Group:  "",
+			Kind:   "actionsFooBar",
+			Action: "actionsFooBar",
+		},
 	}
 	ignoreDifferences := argoproj.ResourceIgnoreDifference{
 		All: &argoproj.IgnoreDifferenceCustomization{
@@ -728,6 +738,15 @@ managedfieldsmanagers:
 			{
 				Group: "ignoreDiffBar",
 				Kind:  "ignoreDiffBar",
+				Customization: argoproj.IgnoreDifferenceCustomization{
+					JqPathExpressions:     []string{"a", "b"},
+					JsonPointers:          []string{"a", "b"},
+					ManagedFieldsManagers: []string{"a", "b"},
+				},
+			},
+			{
+				Group: "",
+				Kind:  "ignoreDiffFoo",
 				Customization: argoproj.IgnoreDifferenceCustomization{
 					JqPathExpressions:     []string{"a", "b"},
 					JsonPointers:          []string{"a", "b"},
@@ -757,10 +776,13 @@ managedfieldsmanagers:
 	desiredCM := make(map[string]string)
 	desiredCM["resource.customizations.health.healthFoo_healthFoo"] = "healthFoo"
 	desiredCM["resource.customizations.health.healthBar_healthBar"] = "healthBar"
+	desiredCM["resource.customizations.health.healthFooBar"] = "healthFooBar"
 	desiredCM["resource.customizations.actions.actionsFoo_actionsFoo"] = "actionsFoo"
 	desiredCM["resource.customizations.actions.actionsBar_actionsBar"] = "actionsBar"
+	desiredCM["resource.customizations.actions.actionsFooBar"] = "actionsFooBar"
 	desiredCM["resource.customizations.ignoreDifferences.all"] = desiredIgnoreDifferenceCustomization
 	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffBar_ignoreDiffBar"] = desiredIgnoreDifferenceCustomization
+	desiredCM["resource.customizations.ignoreDifferences.ignoreDiffFoo"] = desiredIgnoreDifferenceCustomization
 
 	for k, v := range desiredCM {
 		if value, ok := cm.Data[k]; !ok || value != v {
