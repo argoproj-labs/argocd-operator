@@ -3,7 +3,6 @@ package applicationset
 import (
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
@@ -18,7 +17,7 @@ var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argoc
 
 func makeTestApplicationSetReconciler(t *testing.T, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
-	assert.NoError(t, v1beta1.AddToScheme(s))
+	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	logger := ctrl.Log.WithName(AppSetControllerComponent)

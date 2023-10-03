@@ -66,7 +66,7 @@ func (nr *NotificationsReconciler) DeleteResources() error {
 
 	var deletionError error = nil
 
-	if err := nr.DeleteDeployment(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.deleteDeployment(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}

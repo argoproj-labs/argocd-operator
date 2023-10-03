@@ -66,7 +66,7 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 		deletionError = err
 	}
 
-	if err := asr.DeleteDeployment(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteDeployment(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}

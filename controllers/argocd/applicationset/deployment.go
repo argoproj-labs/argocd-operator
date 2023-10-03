@@ -18,68 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
-	desiredDeployment := &appsv1.Deployment{}
-
-	objMeta := metav1.ObjectMeta{
-		Name:      resourceName,
-		Namespace: asr.Instance.Namespace,
-		Labels:    resourceLabels,
-	}
-	addSCMGitlabVolumeMount := false
-	if scmRootCAConfigMapName := asr.getSCMRootCAConfigMapName(); scmRootCAConfigMapName != "" {
-		cm, err := workloads.GetConfigMap(scmRootCAConfigMapName, asr.Instance.Namespace, asr.Client)
-		if err != nil {
-			asr.Logger.Error(err, "failed to get SCM Root CA ConfigMap")
-		}
-		if util.IsObjectFound(asr.Client, asr.Instance.Namespace, asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
-			addSCMGitlabVolumeMount = true
-		}
-	}
-	podSpec := corev1.PodSpec{
-		ServiceAccountName: resourceName,
-		Volumes:            asr.getApplicationSetPodVolumes(addSCMGitlabVolumeMount),
-		Containers:         []corev1.Container{*asr.getApplicationSetContainer(addSCMGitlabVolumeMount)},
-		SecurityContext: &corev1.PodSecurityContext{
-			RunAsNonRoot: util.BoolPtr(true),
-		},
-	}
-
-	deploymentSpec := appsv1.DeploymentSpec{
-		Strategy: appsv1.DeploymentStrategy{
-			Type: appsv1.RecreateDeploymentStrategyType,
-		},
-		Template: corev1.PodTemplateSpec{
-			Spec: podSpec,
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					common.AppK8sKeyName: resourceName,
-				},
-			},
-		},
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				common.AppK8sKeyName: resourceName,
-			},
-		},
-	}
-
-	desiredDeployment.ObjectMeta = objMeta
-	desiredDeployment.Spec = deploymentSpec
-	return desiredDeployment
-}
-
-func (asr *ApplicationSetReconciler) getDeploymentRequest(dep appsv1.Deployment) workloads.DeploymentRequest {
-	deploymentReq := workloads.DeploymentRequest{
-		ObjectMeta: dep.ObjectMeta,
-		Spec:       dep.Spec,
-		Client:     asr.Client,
-		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
-
-	return deploymentReq
-}
-
 func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 
 	asr.Logger.Info("reconciling deployment")
@@ -100,7 +38,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.DeleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
+		if err := asr.deleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
 			asr.Logger.Error(err, "reconcileDeployment: failed to delete deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		}
 		return err
@@ -164,13 +102,75 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	return nil
 }
 
-func (asr *ApplicationSetReconciler) DeleteDeployment(name, namespace string) error {
+func (asr *ApplicationSetReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}
 	asr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
+	desiredDeployment := &appsv1.Deployment{}
+
+	objMeta := metav1.ObjectMeta{
+		Name:      resourceName,
+		Namespace: asr.Instance.Namespace,
+		Labels:    resourceLabels,
+	}
+	addSCMGitlabVolumeMount := false
+	if scmRootCAConfigMapName := asr.getSCMRootCAConfigMapName(); scmRootCAConfigMapName != "" {
+		cm, err := workloads.GetConfigMap(scmRootCAConfigMapName, asr.Instance.Namespace, asr.Client)
+		if err != nil {
+			asr.Logger.Error(err, "failed to get SCM Root CA ConfigMap")
+		}
+		if util.IsObjectFound(asr.Client, asr.Instance.Namespace, asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+			addSCMGitlabVolumeMount = true
+		}
+	}
+	podSpec := corev1.PodSpec{
+		ServiceAccountName: resourceName,
+		Volumes:            asr.getApplicationSetPodVolumes(addSCMGitlabVolumeMount),
+		Containers:         []corev1.Container{*asr.getApplicationSetContainer(addSCMGitlabVolumeMount)},
+		SecurityContext: &corev1.PodSecurityContext{
+			RunAsNonRoot: util.BoolPtr(true),
+		},
+	}
+
+	deploymentSpec := appsv1.DeploymentSpec{
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RecreateDeploymentStrategyType,
+		},
+		Template: corev1.PodTemplateSpec{
+			Spec: podSpec,
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.AppK8sKeyName: resourceName,
+				},
+			},
+		},
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				common.AppK8sKeyName: resourceName,
+			},
+		},
+	}
+
+	desiredDeployment.ObjectMeta = objMeta
+	desiredDeployment.Spec = deploymentSpec
+	return desiredDeployment
+}
+
+func (asr *ApplicationSetReconciler) getDeploymentRequest(dep appsv1.Deployment) workloads.DeploymentRequest {
+	deploymentReq := workloads.DeploymentRequest{
+		ObjectMeta: dep.ObjectMeta,
+		Spec:       dep.Spec,
+		Client:     asr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+	}
+
+	return deploymentReq
 }
 
 func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {

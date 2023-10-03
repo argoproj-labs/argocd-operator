@@ -1,7 +1,7 @@
 package applicationset
 
 import (
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
@@ -32,7 +32,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
-			Kind:     RoleKind,
+			Kind:     common.RoleKind,
 			Name:     resourceName,
 		},
 		Subjects: []rbacv1.Subject{
