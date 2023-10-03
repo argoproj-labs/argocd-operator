@@ -29,8 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -127,7 +126,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 
 	defaultConfigMapData := map[string]string{
 		"application.instanceLabelKey":       common.AppK8sKeyInstance,
-		"application.resourceTrackingMethod": argoprojv1alpha1.ResourceTrackingMethodLabel.String(),
+		"application.resourceTrackingMethod": argoproj.ResourceTrackingMethodLabel.String(),
 		"admin.enabled":                      "true",
 		"configManagementPlugins":            "",
 		"dex.config":                         "",
@@ -158,8 +157,8 @@ func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 		},
 		{
 			"with-banner",
-			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-				a.Spec.Banner = &argoprojv1alpha1.Banner{
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.Banner = &argoproj.Banner{
 					Content: "Custom Styles - Banners",
 				}
 			}},
@@ -170,8 +169,8 @@ func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 		},
 		{
 			"with-banner-and-url",
-			[]argoCDOpt{func(a *argoprojv1alpha1.ArgoCD) {
-				a.Spec.Banner = &argoprojv1alpha1.Banner{
+			[]argoCDOpt{func(a *argoproj.ArgoCD) {
+				a.Spec.Banner = &argoproj.Banner{
 					Content: "Custom Styles - Banners",
 					URL:     "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners",
 				}
@@ -185,8 +184,8 @@ func TestArgoCDReconciler_reconcileArgoConfigMap(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		a := makeTestArgoCD(tt.opts...)
-		a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
-			Provider: argoprojv1alpha1.SSOProviderTypeDex,
+		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderTypeDex,
 		}
 		r := makeTestReconciler(t, a)
 
@@ -275,7 +274,7 @@ func TestArgoCDReconcilerCM_withRepoCredentials(t *testing.T) {
 
 func TestArgoCDReconciler_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.DisableAdmin = true
 	})
 	r := makeTestReconciler(t, a)
@@ -300,14 +299,14 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withDexConnector(t *testing.T) 
 
 	tests := []struct {
 		name             string
-		updateCrSpecFunc func(cr *argoprojv1alpha1.ArgoCD)
+		updateCrSpecFunc func(cr *argoproj.ArgoCD)
 	}{
 		{
 			name: "dex config using .spec.sso.provider=dex + .spec.sso.dex",
-			updateCrSpecFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			updateCrSpecFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -325,10 +324,10 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withDexConnector(t *testing.T) 
 				}},
 			}
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-				a.Spec.SSO = &argoprojv1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: false,
 					},
 				}
@@ -376,19 +375,19 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		argoCD *argoprojv1alpha1.ArgoCD
+		argoCD *argoproj.ArgoCD
 	}{
 		{
 			name: "dex disabled by removing .spec.sso",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			}),
 		},
 		{
 			name: "dex disabled by switching provider",
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: v1alpha1.SSOProviderTypeKeycloak,
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
 		},
@@ -421,19 +420,19 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled
 
 	tests := []struct {
 		name              string
-		updateCrFunc      func(cr *argoprojv1alpha1.ArgoCD)
-		argoCD            *argoprojv1alpha1.ArgoCD
+		updateCrFunc      func(cr *argoproj.ArgoCD)
+		argoCD            *argoproj.ArgoCD
 		wantConfigRemoved bool
 	}{
 		{
 			name: "dex disabled by removing .spec.sso.provider",
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = nil
 			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoprojv1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						Config: "test-dex-config",
 					},
 				}
@@ -442,15 +441,15 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled
 		},
 		{
 			name: "dex disabled by switching provider",
-			updateCrFunc: func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoprojv1alpha1.SSOProviderTypeKeycloak,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			},
-			argoCD: makeTestArgoCD(func(cr *argoprojv1alpha1.ArgoCD) {
-				cr.Spec.SSO = &v1alpha1.ArgoCDSSOSpec{
-					Provider: argoprojv1alpha1.SSOProviderTypeDex,
-					Dex: &v1alpha1.ArgoCDDexSpec{
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -510,12 +509,12 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled
 
 func TestArgoCDReconciler_reconcileArgoConfigMap_withKustomizeVersions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		kv := argoprojv1alpha1.KustomizeVersionSpec{
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		kv := argoproj.KustomizeVersionSpec{
 			Version: "v4.1.0",
 			Path:    "/path/to/kustomize-4.1",
 		}
-		var kvs []argoprojv1alpha1.KustomizeVersionSpec
+		var kvs []argoproj.KustomizeVersionSpec
 		kvs = append(kvs, kv)
 		a.Spec.KustomizeVersions = kvs
 	})
@@ -538,7 +537,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withKustomizeVersions(t *testin
 
 func TestArgoCDReconciler_reconcileGPGKeysConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.DisableAdmin = true
 	})
 	r := makeTestReconciler(t, a)
@@ -573,7 +572,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *t
 		assert.NoError(t, err)
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
-		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
 		assert.True(t, ok)
 	})
 
@@ -585,12 +584,12 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *t
 		assert.NoError(t, err)
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
-		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
 		assert.True(t, ok)
 	})
 
 	t.Run("Set tracking method to annotation+label", func(t *testing.T) {
-		a.Spec.ResourceTrackingMethod = argoprojv1alpha1.ResourceTrackingMethodAnnotationAndLabel.String()
+		a.Spec.ResourceTrackingMethod = argoproj.ResourceTrackingMethodAnnotationAndLabel.String()
 		err = r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
 
@@ -602,11 +601,11 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *t
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
 		assert.True(t, ok)
-		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodAnnotationAndLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodAnnotationAndLabel.String(), rtm)
 	})
 
 	t.Run("Set tracking method to annotation", func(t *testing.T) {
-		a.Spec.ResourceTrackingMethod = argoprojv1alpha1.ResourceTrackingMethodAnnotation.String()
+		a.Spec.ResourceTrackingMethod = argoproj.ResourceTrackingMethodAnnotation.String()
 		err = r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
 
@@ -618,7 +617,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *t
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
 		assert.True(t, ok)
-		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodAnnotation.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodAnnotation.String(), rtm)
 	})
 
 	// Invalid value sets the default "label"
@@ -635,7 +634,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceTrackingMethod(t *t
 
 		rtm, ok := cm.Data[common.ArgoCDKeyResourceTrackingMethod]
 		assert.True(t, ok)
-		assert.Equal(t, argoprojv1alpha1.ResourceTrackingMethodLabel.String(), rtm)
+		assert.Equal(t, argoproj.ResourceTrackingMethodLabel.String(), rtm)
 	})
 
 }
@@ -645,7 +644,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceInclusions(t *testi
 	customizations := "testing: testing"
 	updatedCustomizations := "updated-testing: updated-testing"
 
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.ResourceInclusions = customizations
 	})
 	r := makeTestReconciler(t, a)
@@ -680,29 +679,6 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceInclusions(t *testi
 
 }
 
-func TestArgoCDReconciler_reconcileArgoConfigMap_withResourceCustomizations(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	customizations := "testing: testing"
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
-		a.Spec.ResourceCustomizations = customizations
-	})
-	r := makeTestReconciler(t, a)
-
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      common.ArgoCDConfigMapName,
-		Namespace: testNamespace,
-	}, cm)
-	assert.NoError(t, err)
-
-	if c := cm.Data["resource.customizations"]; c != customizations {
-		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, customizations)
-	}
-}
-
 func TestArgoCDReconciler_reconcileArgoConfigMap_withNewResourceCustomizations(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -718,7 +694,7 @@ managedfieldsmanagers:
 - b
 `
 
-	health := []argoprojv1alpha1.ResourceHealthCheck{
+	health := []argoproj.ResourceHealthCheck{
 		{
 			Group: "healthFoo",
 			Kind:  "healthFoo",
@@ -730,7 +706,7 @@ managedfieldsmanagers:
 			Check: "healthBar",
 		},
 	}
-	actions := []argoprojv1alpha1.ResourceAction{
+	actions := []argoproj.ResourceAction{
 		{
 			Group:  "actionsFoo",
 			Kind:   "actionsFoo",
@@ -742,17 +718,17 @@ managedfieldsmanagers:
 			Action: "actionsBar",
 		},
 	}
-	ignoreDifferences := argoprojv1alpha1.ResourceIgnoreDifference{
-		All: &v1alpha1.IgnoreDifferenceCustomization{
+	ignoreDifferences := argoproj.ResourceIgnoreDifference{
+		All: &argoproj.IgnoreDifferenceCustomization{
 			JqPathExpressions:     []string{"a", "b"},
 			JsonPointers:          []string{"a", "b"},
 			ManagedFieldsManagers: []string{"a", "b"},
 		},
-		ResourceIdentifiers: []argoprojv1alpha1.ResourceIdentifiers{
+		ResourceIdentifiers: []argoproj.ResourceIdentifiers{
 			{
 				Group: "ignoreDiffBar",
 				Kind:  "ignoreDiffBar",
-				Customization: v1alpha1.IgnoreDifferenceCustomization{
+				Customization: argoproj.IgnoreDifferenceCustomization{
 					JqPathExpressions:     []string{"a", "b"},
 					JsonPointers:          []string{"a", "b"},
 					ManagedFieldsManagers: []string{"a", "b"},
@@ -761,7 +737,7 @@ managedfieldsmanagers:
 		},
 	}
 
-	a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.ResourceHealthChecks = health
 		a.Spec.ResourceActions = actions
 		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
@@ -793,42 +769,6 @@ managedfieldsmanagers:
 	}
 }
 
-func TestReconcile_emitEventOnDeprecatedResourceCustomizations(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
-
-	resourceCustomizationsEvent := &corev1.Event{
-		Reason:  "DeprecationNotice",
-		Message: "ResourceCustomizations is deprecated, please use the new formats `ResourceHealthChecks`, `ResourceIgnoreDifferences`, and `ResourceActions` instead.",
-		Action:  "Deprecated",
-	}
-
-	tests := []struct {
-		name       string
-		argoCD     *argoprojv1alpha1.ArgoCD
-		wantEvents []*corev1.Event
-	}{
-		{
-			name: "ResourceCustomizations used",
-			argoCD: makeTestArgoCD(func(ac *argoprojv1alpha1.ArgoCD) {
-				ac.Spec.ResourceCustomizations = "testing: testing"
-			}),
-			wantEvents: []*corev1.Event{resourceCustomizationsEvent},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			r := makeFakeReconciler(t, test.argoCD)
-			err := r.reconcileArgoConfigMap(test.argoCD)
-			assert.NoError(t, err)
-			gotEventList := &corev1.EventList{}
-			err = r.Client.List(context.TODO(), gotEventList)
-			assert.NoError(t, err)
-			assert.Equal(t, len(test.wantEvents), len(gotEventList.Items))
-		})
-	}
-}
 func TestArgoCDReconciler_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
 	r := makeTestReconciler(t, a)

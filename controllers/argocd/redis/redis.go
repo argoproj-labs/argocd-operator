@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -11,7 +11,7 @@ import (
 type RedisReconciler struct {
 	Client   *client.Client
 	Scheme   *runtime.Scheme
-	Instance *v1alpha1.ArgoCD
+	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 }
 

@@ -9,8 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
@@ -36,7 +35,7 @@ func TestArgoCDReconciler_reconcile_ServerIngress_ingressClassName(t *testing.T)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Ingress.Enabled = true
 				a.Spec.Server.Ingress.IngressClassName = test.ingressClassName
 			})
@@ -78,7 +77,7 @@ func TestArgoCDReconciler_reconcile_ServerGRPCIngress_ingressClassName(t *testin
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.GRPC.Ingress.Enabled = true
 				a.Spec.Server.GRPC.Ingress.IngressClassName = test.ingressClassName
 			})
@@ -120,7 +119,7 @@ func TestArgoCDReconciler_reconcile_GrafanaIngress_ingressClassName(t *testing.T
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Grafana.Enabled = true
 				a.Spec.Grafana.Ingress.Enabled = true
 				a.Spec.Grafana.Ingress.IngressClassName = test.ingressClassName
@@ -163,7 +162,7 @@ func TestArgoCDReconciler_reconcile_PrometheusIngress_ingressClassName(t *testin
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			a := makeTestArgoCD(func(a *argoprojv1alpha1.ArgoCD) {
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Prometheus.Enabled = true
 				a.Spec.Prometheus.Ingress.Enabled = true
 				a.Spec.Prometheus.Ingress.IngressClassName = test.ingressClassName
@@ -187,9 +186,9 @@ func TestArgoCDReconciler_reconcile_PrometheusIngress_ingressClassName(t *testin
 func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	obj := v1alpha1.ArgoCDApplicationSet{
-		WebhookServer: v1alpha1.WebhookServerSpec{
-			Ingress: v1alpha1.ArgoCDIngressSpec{
+	obj := argoproj.ArgoCDApplicationSet{
+		WebhookServer: argoproj.WebhookServerSpec{
+			Ingress: argoproj.ArgoCDIngressSpec{
 				Enabled: true,
 			},
 		},

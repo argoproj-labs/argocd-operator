@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -14,7 +14,7 @@ import (
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func GetArgoContainerImage(cr *v1alpha1.ArgoCD) string {
+func GetArgoContainerImage(cr *argoproj.ArgoCD) string {
 	defaultTag, defaultImg := false, false
 	img := cr.Spec.Image
 	if img == "" {
