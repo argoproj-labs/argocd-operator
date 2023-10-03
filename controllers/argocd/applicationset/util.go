@@ -1,21 +1,8 @@
 package applicationset
 
 import (
-	"fmt"
-
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 )
-
-// isMergable returns error if any of the extraArgs is already part of the default command Arguments.
-func isMergable(extraArgs []string, cmd []string) error {
-	for _, arg := range extraArgs {
-		if len(arg) > 2 && arg[:2] == "--" && util.ContainsString(cmd, arg) {
-			return fmt.Errorf("arg %s is already part of the default command arguments", arg)
-		}
-	}
-	return nil
-}
 
 // getApplicationSetResources will return the ResourceRequirements for the Application Sets container.
 func (asr *ApplicationSetReconciler) getApplicationSetResources() corev1.ResourceRequirements {

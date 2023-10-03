@@ -187,7 +187,7 @@ func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := asr.Instance.Spec.ApplicationSet.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
+	err := util.IsMergable(extraArgs, cmd)
 	if err != nil {
 		return cmd
 	}
