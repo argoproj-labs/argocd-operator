@@ -61,7 +61,7 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 
 	var deletionError error = nil
 
-	if err := asr.DeleteService(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteService(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete service")
 		deletionError = err
 	}
@@ -71,17 +71,17 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 		deletionError = err
 	}
 
-	if err := asr.DeleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete roleBinding")
 		deletionError = err
 	}
 
-	if err := asr.DeleteRole(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteRole(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete role")
 		deletionError = err
 	}
 
-	if err := asr.DeleteServiceAccount(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteServiceAccount(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete serviceaccount")
 		deletionError = err
 	}

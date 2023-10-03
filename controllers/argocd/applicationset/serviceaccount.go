@@ -30,7 +30,7 @@ func (nr *ApplicationSetReconciler) reconcileServiceAccount() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace); err != nil {
+		if err := nr.deleteServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to delete serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 		}
 		return err
@@ -58,7 +58,7 @@ func (nr *ApplicationSetReconciler) reconcileServiceAccount() error {
 	return nil
 }
 
-func (nr *ApplicationSetReconciler) DeleteServiceAccount(name, namespace string) error {
+func (nr *ApplicationSetReconciler) deleteServiceAccount(name, namespace string) error {
 	if err := permissions.DeleteServiceAccount(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
