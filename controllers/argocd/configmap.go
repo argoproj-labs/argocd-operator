@@ -158,7 +158,10 @@ func getResourceHealthChecks(cr *argoproj.ArgoCD) map[string]string {
 	if cr.Spec.ResourceHealthChecks != nil {
 		resourceHealthChecks := cr.Spec.ResourceHealthChecks
 		for _, healthCustomization := range resourceHealthChecks {
-			subkey := "resource.customizations.health." + healthCustomization.Group + "_" + healthCustomization.Kind
+			if healthCustomization.Group != "" {
+				healthCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.health." + healthCustomization.Group + healthCustomization.Kind
 			subvalue := healthCustomization.Check
 			healthCheck[subkey] = subvalue
 		}
@@ -181,7 +184,10 @@ func getResourceIgnoreDifferences(cr *argoproj.ArgoCD) (map[string]string, error
 			ignoreDiff[subkey] = subvalue
 		}
 		for _, ignoreDiffCustomization := range resourceIgnoreDiff.ResourceIdentifiers {
-			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + "_" + ignoreDiffCustomization.Kind
+			if ignoreDiffCustomization.Group != "" {
+				ignoreDiffCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + ignoreDiffCustomization.Kind
 			bytes, err := yaml.Marshal(ignoreDiffCustomization.Customization)
 			if err != nil {
 				return ignoreDiff, err
@@ -199,7 +205,10 @@ func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 	if cr.Spec.ResourceActions != nil {
 		resourceAction := cr.Spec.ResourceActions
 		for _, actionCustomization := range resourceAction {
-			subkey := "resource.customizations.actions." + actionCustomization.Group + "_" + actionCustomization.Kind
+			if actionCustomization.Group != "" {
+				actionCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.actions." + actionCustomization.Group + actionCustomization.Kind
 			subvalue := actionCustomization.Action
 			action[subkey] = subvalue
 		}
