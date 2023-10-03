@@ -264,6 +264,10 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		if err := r.AppsetController.Reconcile(); err != nil {
 			r.Logger.Error(err, "failed to reconcile applicationset controller")
 		}
+	} else {
+		if err := r.AppsetController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete applicationset resources")
+		}
 	}
 
 	if r.Instance.Spec.Notifications.Enabled {
