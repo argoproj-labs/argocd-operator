@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -56,4 +57,14 @@ func GenerateRandomString(s int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// isMergable returns error if any of the extraArgs is already part of the default command Arguments.
+func IsMergable(extraArgs []string, cmd []string) error {
+	for _, arg := range extraArgs {
+		if len(arg) > 2 && arg[:2] == "--" && ContainsString(cmd, arg) {
+			return fmt.Errorf("arg %s is already part of the default command arguments", arg)
+		}
+	}
+	return nil
 }

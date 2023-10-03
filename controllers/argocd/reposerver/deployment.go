@@ -184,11 +184,11 @@ func (rsr *RepoServerReconciler) DeleteDeployment(name, namespace string) error 
 
 func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container {
 	initContainers := []corev1.Container{{
-		Name:            "copyutil",
+		Name:            CopyUtil,
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		Command:         argocdcommon.GetArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
-		Resources:       rsr.getArgoRepoResources(),
+		Resources:       rsr.GetRepoServerResources(),
 		Env:             util.ProxyEnvVars(),
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: util.BoolPtr(false),
@@ -220,7 +220,7 @@ func (rsr *RepoServerReconciler) getRepoServerContainers(useTLSForRedis bool) []
 		Command:         rsr.GetArgoRepoServerCommand(useTLSForRedis),
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            ArgoCDRepoServerController,
+		Name:            RepoServerController,
 		Env:             repoServerEnv,
 		Resources:       rsr.GetRepoServerResources(),
 		LivenessProbe: &corev1.Probe{

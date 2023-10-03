@@ -303,7 +303,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.ReposerverController = &reposerver.RepoServerReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}

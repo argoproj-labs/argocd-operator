@@ -16,7 +16,7 @@ type RedisReconciler struct {
 }
 
 func (rr *RedisReconciler) Reconcile() error {
-	rr.Logger = ctrl.Log.WithName(ArgoCDRedisControllerComponent).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
+	rr.Logger = ctrl.Log.WithName(RedisControllerComponent).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
 
 	// controller logic goes here
 	return nil

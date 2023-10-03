@@ -22,7 +22,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 
 	secretRequest := workloads.SecretRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ArgoCDRepoServerTLSSecretName,
+			Name:      RepoServerTLSSecretName,
 			Namespace: rsr.Instance.Namespace,
 			Labels:    resourceLabels,
 		},
@@ -78,7 +78,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		}
 
 		// Trigger rollout of API components
-		components := []string{common.Server, ArgoCDRepoServerControllerComponent, appcontroller.ArgoCDApplicationControllerComponent}
+		components := []string{common.Server, RepoServerControllerComponent, appcontroller.ArgoCDApplicationControllerComponent}
 		for _, component := range components {
 			depl, err := workloads.CreateDeploymentWithSuffix(component, component, rsr.Instance)
 			if err != nil {
@@ -90,7 +90,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 			}
 		}
 
-		rsr.Logger.V(0).Info("reconcileSecret: TLS secret updated", "name", ArgoCDRepoServerTLSSecretName, "namespace", desiredSecret.Namespace)
+		rsr.Logger.V(0).Info("reconcileSecret: TLS secret updated", "name", RepoServerTLSSecretName, "namespace", desiredSecret.Namespace)
 		return nil
 	}
 
@@ -98,10 +98,10 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 }
 
 func (rsr *RepoServerReconciler) DeleteTLSSecret(namespace string) error {
-	if err := workloads.DeleteSecret(ArgoCDRepoServerTLSSecretName, namespace, rsr.Client); err != nil {
-		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", ArgoCDRepoServerTLSSecretName, "namespace", namespace)
+	if err := workloads.DeleteSecret(RepoServerTLSSecretName, namespace, rsr.Client); err != nil {
+		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", RepoServerTLSSecretName, "namespace", namespace)
 		return err
 	}
-	rsr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", ArgoCDRepoServerTLSSecretName, "namespace", namespace)
+	rsr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", RepoServerTLSSecretName, "namespace", namespace)
 	return nil
 }

@@ -23,9 +23,9 @@ var (
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
-	rsr.Logger = ctrl.Log.WithName(ArgoCDRepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
-	resourceName = util.GenerateResourceName(rsr.Instance.Name, ArgoCDRepoServerControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, rsr.Instance.Name, ArgoCDRepoServerControllerComponent)
+	rsr.Logger = ctrl.Log.WithName(RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
+	resourceName = util.GenerateResourceName(rsr.Instance.Name, RepoServerControllerComponent)
+	resourceLabels = common.DefaultLabels(resourceName, rsr.Instance.Name, RepoServerControllerComponent)
 
 	if err := rsr.reconcileService(); err != nil {
 		rsr.Logger.Info("reconciling repo server service")
