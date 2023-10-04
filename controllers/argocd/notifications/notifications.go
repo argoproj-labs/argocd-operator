@@ -66,32 +66,32 @@ func (nr *NotificationsReconciler) DeleteResources() error {
 
 	var deletionError error = nil
 
-	if err := nr.DeleteDeployment(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.deleteDeployment(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}
 
-	if err := nr.DeleteSecret(nr.Instance.Namespace); err != nil {
+	if err := nr.deleteSecret(nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete secret")
 		deletionError = err
 	}
 
-	if err := nr.DeleteConfigMap(nr.Instance.Namespace); err != nil {
+	if err := nr.deleteConfigMap(nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete configmap")
 		deletionError = err
 	}
 
-	if err := nr.DeleteRoleBinding(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.deleteRoleBinding(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete roleBinding")
 		deletionError = err
 	}
 
-	if err := nr.DeleteRole(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.deleteRole(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete role")
 		deletionError = err
 	}
 
-	if err := nr.DeleteServiceAccount(resourceName, nr.Instance.Namespace); err != nil {
+	if err := nr.deleteServiceAccount(resourceName, nr.Instance.Namespace); err != nil {
 		nr.Logger.Error(err, "DeleteResources: failed to delete serviceaccount")
 		deletionError = err
 	}

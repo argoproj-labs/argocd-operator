@@ -37,7 +37,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteConfigMap(desiredConfigMap.Namespace); err != nil {
+		if err := nr.deleteConfigMap(desiredConfigMap.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to delete configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 		}
 		return err
@@ -65,7 +65,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteConfigMap(namespace string) error {
+func (nr *NotificationsReconciler) deleteConfigMap(namespace string) error {
 	if err := workloads.DeleteConfigMap(NotificationsConfigMapName, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", NotificationsConfigMapName, "namespace", namespace)
 		return err
