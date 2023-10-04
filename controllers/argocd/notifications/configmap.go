@@ -27,7 +27,6 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	if err != nil {
 		nr.Logger.Error(err, "reconcileConfigMap: failed to request configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
-		nr.Logger.V(1).Info("reconcileConfigMap: one or more mutations could not be applied")
 		return err
 	}
 

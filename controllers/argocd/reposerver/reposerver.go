@@ -32,8 +32,13 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 		return err
 	}
 
+	if err := rsr.reconcileServiceMonitor(); err != nil {
+		rsr.Logger.Info("reconciling repo server serviceMonitor")
+		return err
+	}
+
 	if err := rsr.reconcileTLSSecret(); err != nil {
-		rsr.Logger.Info("reconciling repo server secret")
+		rsr.Logger.Info("reconciling repo server tls secret")
 		return err
 	}
 
@@ -49,17 +54,22 @@ func (rsr *RepoServerReconciler) DeleteResources() error {
 
 	var deletionError error = nil
 
-	if err := rsr.DeleteDeployment(resourceName, rsr.Instance.Namespace); err != nil {
+	if err := rsr.deleteDeployment(resourceName, rsr.Instance.Namespace); err != nil {
 		rsr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}
 
-	if err := rsr.DeleteTLSSecret(rsr.Instance.Namespace); err != nil {
+	if err := rsr.deleteTLSSecret(rsr.Instance.Namespace); err != nil {
 		rsr.Logger.Error(err, "DeleteResources: failed to delete secret")
 		deletionError = err
 	}
 
-	if err := rsr.DeleteService(resourceName, rsr.Instance.Namespace); err != nil {
+	if err := rsr.deleteService(resourceName, rsr.Instance.Namespace); err != nil {
+		rsr.Logger.Error(err, "DeleteResources: failed to delete service")
+		deletionError = err
+	}
+
+	if err := rsr.deleteService(resourceName, rsr.Instance.Namespace); err != nil {
 		rsr.Logger.Error(err, "DeleteResources: failed to delete service")
 		deletionError = err
 	}

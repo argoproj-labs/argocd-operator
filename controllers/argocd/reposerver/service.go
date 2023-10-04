@@ -30,6 +30,10 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 	}
 
 	desiredService, err := networking.RequestService(serviceRequest)
+	if err != nil {
+		rsr.Logger.Error(err, "reconcileService: failed to request service", "name", desiredService.Name, "namespace", desiredService.Namespace)
+		return err
+	}
 
 	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
@@ -37,7 +41,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := rsr.DeleteService(desiredService.Name, desiredService.Namespace); err != nil {
+		if err := rsr.deleteService(desiredService.Name, desiredService.Namespace); err != nil {
 			rsr.Logger.Error(err, "reconcileService: failed to delete service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		}
 		return err
@@ -75,7 +79,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 	return nil
 }
 
-func (rsr *RepoServerReconciler) DeleteService(name, namespace string) error {
+func (rsr *RepoServerReconciler) deleteService(name, namespace string) error {
 	if err := networking.DeleteService(name, namespace, rsr.Client); err != nil {
 		rsr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err

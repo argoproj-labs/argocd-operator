@@ -2,6 +2,7 @@ package reposerver
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -20,15 +21,112 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+func (rsr *RepoServerReconciler) reconcileDeployment() error {
+
+	rsr.Logger.Info("reconciling deployment")
+
+	useTLSForRedis, err := redis.ShouldUseTLS(rsr.Client, rsr.Instance.Namespace)
+	if err != nil {
+		rsr.Logger.Error(err, "reconcileDeployment: failed to determine if TLS should be used for Redis")
+		return err
+	}
+
+	desiredDeployment := rsr.getDesiredDeployment(useTLSForRedis)
+	deploymentRequest := rsr.getDeploymentRequest(*desiredDeployment)
+
+	desiredDeployment, err = workloads.RequestDeployment(deploymentRequest)
+	if err != nil {
+		rsr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		return err
+	}
+
+	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
+	if err != nil {
+		rsr.Logger.Error(err, "reconcileDeployment: failed to retrieve namespace", "name", rsr.Instance.Namespace)
+		return err
+	}
+	if namespace.DeletionTimestamp != nil {
+		if err := rsr.deleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
+			rsr.Logger.Error(err, "reconcileDeployment: failed to delete deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		}
+		return err
+	}
+
+	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, rsr.Client)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			rsr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+			return err
+		}
+
+		if err = controllerutil.SetControllerReference(rsr.Instance, desiredDeployment, rsr.Scheme); err != nil {
+			rsr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		}
+
+		if err = workloads.CreateDeployment(desiredDeployment, rsr.Client); err != nil {
+			rsr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+			return err
+		}
+		rsr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		return nil
+	}
+	deploymentChanged := false
+
+	fieldsToCompare := []struct {
+		existing, desired interface{}
+		extraAction       func()
+	}{
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
+			func() {
+				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			},
+		},
+		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
+		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
+		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},                                           //
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},               //
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},                       //
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},           //
+		{&existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, nil},     //
+		{&existingDeployment.Spec.Template.Spec.InitContainers, &desiredDeployment.Spec.Template.Spec.InitContainers, nil},                             //
+		{&existingDeployment.Spec.Template.Spec.AutomountServiceAccountToken, &desiredDeployment.Spec.Template.Spec.AutomountServiceAccountToken, nil}, //
+		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},                     //
+		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},                                                                     //
+	}
+
+	for _, field := range fieldsToCompare {
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
+	}
+
+	if !reflect.DeepEqual(desiredDeployment.Spec.Template.Spec.Containers[1:], existingDeployment.Spec.Template.Spec.Containers[1:]) {
+		existingDeployment.Spec.Template.Spec.Containers = append(existingDeployment.Spec.Template.Spec.Containers[0:1],
+			desiredDeployment.Spec.Template.Spec.Containers[1:]...)
+		deploymentChanged = true
+	}
+
+	if deploymentChanged {
+
+		if err = workloads.UpdateDeployment(existingDeployment, rsr.Client); err != nil {
+			rsr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+			return err
+		}
+	}
+
+	rsr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	return nil
+}
+
+func (rsr *RepoServerReconciler) deleteDeployment(name, namespace string) error {
+	if err := workloads.DeleteDeployment(name, namespace, rsr.Client); err != nil {
+		rsr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
+		return err
+	}
+	rsr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	return nil
+}
+
 func (rsr *RepoServerReconciler) getDesiredDeployment(useTLSForRedis bool) *appsv1.Deployment {
 	desiredDeployment := &appsv1.Deployment{}
-
-	repoServerEnv := rsr.Instance.Spec.Repo.Env
-	repoServerEnv = util.EnvMerge(repoServerEnv, util.ProxyEnvVars(), false)
-
-	if rsr.Instance.Spec.Repo.ExecTimeout != nil {
-		repoServerEnv = util.EnvMerge(repoServerEnv, []corev1.EnvVar{{Name: common.ArgoCDExecTimeoutEnvVar, Value: fmt.Sprintf("%ds", *rsr.Instance.Spec.Repo.ExecTimeout)}}, true)
-	}
 
 	automountToken := false
 	if rsr.Instance.Spec.Repo.MountSAToken {
@@ -83,105 +181,6 @@ func (rsr *RepoServerReconciler) getDeploymentRequest(dep appsv1.Deployment) wor
 	return deploymentReq
 }
 
-func (rsr *RepoServerReconciler) reconcileDeployment() error {
-
-	rsr.Logger.Info("reconciling deployment")
-
-	useTLSForRedis, err := redis.ShouldUseTLS(rsr.Client, rsr.Instance.Namespace)
-	if err != nil {
-		rsr.Logger.Error(err, "reconcileDeployment: failed to determine if TLS should be used for Redis")
-		return err
-	}
-
-	desiredDeployment := rsr.getDesiredDeployment(useTLSForRedis)
-	deploymentRequest := rsr.getDeploymentRequest(*desiredDeployment)
-
-	desiredDeployment, err = workloads.RequestDeployment(deploymentRequest)
-	if err != nil {
-		rsr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		rsr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
-		return err
-	}
-
-	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
-	if err != nil {
-		rsr.Logger.Error(err, "reconcileDeployment: failed to retrieve namespace", "name", rsr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := rsr.DeleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
-			rsr.Logger.Error(err, "reconcileDeployment: failed to delete deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		}
-		return err
-	}
-
-	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, rsr.Client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
-			return err
-		}
-
-		if err = controllerutil.SetControllerReference(rsr.Instance, desiredDeployment, rsr.Scheme); err != nil {
-			rsr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		}
-
-		if err = workloads.CreateDeployment(desiredDeployment, rsr.Client); err != nil {
-			rsr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-			return err
-		}
-		rsr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		return nil
-	}
-	deploymentChanged := false
-
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
-			func() {
-				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-			},
-		},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},
-		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},
-		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
-		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
-		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},
-		{&existingDeployment.Spec.Template.Labels, &desiredDeployment.Spec.Template.Labels, nil},
-		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},
-		{&existingDeployment.Spec.Selector, &desiredDeployment.Spec.Selector, nil},
-		{&existingDeployment.Labels, &desiredDeployment.Labels, nil},
-	}
-
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
-	}
-
-	if deploymentChanged {
-
-		if err = workloads.UpdateDeployment(existingDeployment, rsr.Client); err != nil {
-			rsr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
-			return err
-		}
-	}
-
-	rsr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
-	return nil
-}
-
-func (rsr *RepoServerReconciler) DeleteDeployment(name, namespace string) error {
-	if err := workloads.DeleteDeployment(name, namespace, rsr.Client); err != nil {
-		rsr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
-		return err
-	}
-	rsr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
-	return nil
-}
-
 func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container {
 	initContainers := []corev1.Container{{
 		Name:            CopyUtil,
@@ -215,6 +214,10 @@ func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container
 func (rsr *RepoServerReconciler) getRepoServerContainers(useTLSForRedis bool) []corev1.Container {
 	repoServerEnv := rsr.Instance.Spec.Repo.Env
 	repoServerEnv = util.EnvMerge(repoServerEnv, util.ProxyEnvVars(), false)
+
+	if rsr.Instance.Spec.Repo.ExecTimeout != nil {
+		repoServerEnv = util.EnvMerge(repoServerEnv, []corev1.EnvVar{{Name: common.ArgoCDExecTimeoutEnvVar, Value: fmt.Sprintf("%ds", *rsr.Instance.Spec.Repo.ExecTimeout)}}, true)
+	}
 
 	containers := []corev1.Container{{
 		Command:         rsr.GetArgoRepoServerCommand(useTLSForRedis),

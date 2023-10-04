@@ -28,7 +28,6 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 	desiredSecret, err := workloads.RequestSecret(secretRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileSecret: failed to request secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
-		nr.Logger.V(1).Info("reconcileSecret: one or more mutations could not be applied")
 		return err
 	}
 

@@ -8,8 +8,6 @@ const (
 	RepoServerTLSSecretName       = "argocd-repo-server-tls"
 	RedisHAProxyServiceName       = "redis-ha-haproxy"
 	CopyUtil                      = "copyutil"
-	// RepoServerSecretName                = "argocd-repo-server-secret"
-	// RepoServerConfigMapName             = "argocd-repo-server-cm"
 
 	// Commands
 	UidEntryPointSh            = "uid_entrypoint.sh"

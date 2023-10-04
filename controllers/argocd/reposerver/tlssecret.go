@@ -34,7 +34,6 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	desiredSecret, err := workloads.RequestSecret(secretRequest)
 	if err != nil {
 		rsr.Logger.Error(err, "reconcileSecret: failed to request secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
-		rsr.Logger.V(1).Info("reconcileSecret: one or more mutations could not be applied")
 		return err
 	}
 
@@ -44,7 +43,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := rsr.DeleteTLSSecret(desiredSecret.Namespace); err != nil {
+		if err := rsr.deleteTLSSecret(desiredSecret.Namespace); err != nil {
 			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		}
 		return err
@@ -97,7 +96,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	return nil
 }
 
-func (rsr *RepoServerReconciler) DeleteTLSSecret(namespace string) error {
+func (rsr *RepoServerReconciler) deleteTLSSecret(namespace string) error {
 	if err := workloads.DeleteSecret(RepoServerTLSSecretName, namespace, rsr.Client); err != nil {
 		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", RepoServerTLSSecretName, "namespace", namespace)
 		return err

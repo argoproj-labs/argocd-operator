@@ -138,7 +138,6 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		nr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
 		return err
 	}
 

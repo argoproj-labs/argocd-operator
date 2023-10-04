@@ -24,6 +24,10 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 	}
 
 	desiredServiceMonitor, err := monitoring.RequestServiceMonitor(serviceMonitorRequest)
+	if err != nil {
+		rsr.Logger.Error(err, "reconcileServiceMonitor: failed to request serviceMonitor", "name", desiredServiceMonitor.Name, "namespace", desiredServiceMonitor.Namespace)
+		return err
+	}
 
 	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
@@ -31,7 +35,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := rsr.DeleteServiceMonitor(desiredServiceMonitor.Name, desiredServiceMonitor.Namespace); err != nil {
+		if err := rsr.deleteServiceMonitor(desiredServiceMonitor.Name, desiredServiceMonitor.Namespace); err != nil {
 			rsr.Logger.Error(err, "reconcileServiceMonitor: failed to delete serviceMonitor", "name", desiredServiceMonitor.Name, "namespace", desiredServiceMonitor.Namespace)
 		}
 		return err
@@ -59,7 +63,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 	return nil
 }
 
-func (rsr *RepoServerReconciler) DeleteServiceMonitor(name, namespace string) error {
+func (rsr *RepoServerReconciler) deleteServiceMonitor(name, namespace string) error {
 	if err := monitoring.DeleteServiceMonitor(name, namespace, rsr.Client); err != nil {
 		rsr.Logger.Error(err, "DeleteServiceMonitor: failed to delete serviceMonitor", "name", name, "namespace", namespace)
 		return err
