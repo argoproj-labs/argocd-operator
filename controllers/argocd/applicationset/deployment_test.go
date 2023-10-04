@@ -4,28 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
-	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestApplicationSetReconciler_reconcileRole(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+func TestApplicationSetReconciler_reconcileDeployment(t *testing.T) {
 	resourceName = argocdcommon.TestArgoCDName
-	existingRole := &rbacv1.Role{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       common.RoleKind,
-			APIVersion: common.APIGroupVersionRbacV1,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
-			Namespace: argocdcommon.TestNamespace,
-		},
-		Rules: getPolicyRules(),
-	}
+	resourceLabels = testExpectedLabels
+	ns := argocdcommon.MakeTestNamespace()
+	asr := makeTestApplicationSetReconciler(t, false, ns)
+
+	existingDeployment := asr.getDesiredDeployment()
 
 	tests := []struct {
 		name        string
@@ -33,26 +25,26 @@ func TestApplicationSetReconciler_reconcileRole(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "create a role",
+			name: "create a deployment",
 			setupClient: func() *ApplicationSetReconciler {
 				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
 		{
-			name: "Update a role",
+			name: "update a deployment",
 			setupClient: func() *ApplicationSetReconciler {
-				outdatedRole := existingRole
-				outdatedRole.Rules = []rbacv1.PolicyRule{}
-				return makeTestApplicationSetReconciler(t, false, outdatedRole, ns)
+				outdatedDeployment := existingDeployment
+				outdatedDeployment.ObjectMeta.Labels = argocdcommon.TestKVP
+				return makeTestApplicationSetReconciler(t, false, outdatedDeployment, ns)
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			err := nr.reconcileRole()
+			asr := tt.setupClient()
+			err := asr.reconcileDeployment()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
@@ -61,17 +53,17 @@ func TestApplicationSetReconciler_reconcileRole(t *testing.T) {
 				}
 			}
 
-			updatedRole := &rbacv1.Role{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRole)
+			updatedDeployment := &appsv1.Deployment{}
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: resourceName, Namespace: argocdcommon.TestNamespace}, updatedDeployment)
 			if err != nil {
-				t.Fatalf("Could not get updated Role: %v", err)
+				t.Fatalf("Could not get updated Deployment: %v", err)
 			}
-			assert.Equal(t, getPolicyRules(), updatedRole.Rules)
+			assert.Equal(t, testExpectedLabels, updatedDeployment.ObjectMeta.Labels)
 		})
 	}
 }
 
-func TestApplicationSetReconciler_DeleteRole(t *testing.T) {
+func TestApplicationSetReconciler_DeleteDeployment(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
@@ -89,8 +81,8 @@ func TestApplicationSetReconciler_DeleteRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			if err := nr.deleteRole(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			asr := tt.setupClient()
+			if err := asr.deleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

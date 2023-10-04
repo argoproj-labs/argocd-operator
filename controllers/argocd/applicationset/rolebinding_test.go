@@ -25,7 +25,7 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 		{
 			name: "create a rolebinding",
 			setupClient: func() *ApplicationSetReconciler {
-				return makeTestApplicationSetReconciler(t, ns, sa)
+				return makeTestApplicationSetReconciler(t, false, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -44,7 +44,7 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 					RoleRef:  rbacv1.RoleRef{},
 					Subjects: []rbacv1.Subject{},
 				}
-				return makeTestApplicationSetReconciler(t, outdatedRoleBinding, ns, sa)
+				return makeTestApplicationSetReconciler(t, false, outdatedRoleBinding, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -83,7 +83,7 @@ func TestApplicationSetReconciler_DeleteRoleBinding(t *testing.T) {
 		{
 			name: "successful delete",
 			setupClient: func() *ApplicationSetReconciler {
-				return makeTestApplicationSetReconciler(t, ns, sa)
+				return makeTestApplicationSetReconciler(t, false, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -91,7 +91,7 @@ func TestApplicationSetReconciler_DeleteRoleBinding(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.DeleteRoleBinding(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.deleteRoleBinding(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

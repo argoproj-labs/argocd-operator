@@ -63,7 +63,7 @@ const (
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"
-	PortWebhook                  = "webhook"
+	Webhook                      = "webhook"
 	SSHKnownHosts                = "ssh-known-hosts"
 	VolumeMountPathSSH           = "/app/config/ssh"
 	GPGKeys                      = "gpg-keys"
@@ -87,4 +87,9 @@ const (
 	SecretKind         = "Secret"
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
+)
+
+// Commnds
+const (
+	LogLevel = "--loglevel"
 )

@@ -42,7 +42,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.DeleteRole(desiredRole.Name, desiredRole.Namespace); err != nil {
+		if err := asr.deleteRole(desiredRole.Name, desiredRole.Namespace); err != nil {
 			asr.Logger.Error(err, "reconcileRole: failed to delete role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		}
 		return err
@@ -78,7 +78,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 	return nil
 }
 
-func (asr *ApplicationSetReconciler) DeleteRole(name, namespace string) error {
+func (asr *ApplicationSetReconciler) deleteRole(name, namespace string) error {
 	if err := permissions.DeleteRole(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err

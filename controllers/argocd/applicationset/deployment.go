@@ -100,7 +100,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.DeleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
+		if err := asr.deleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
 			asr.Logger.Error(err, "reconcileDeployment: failed to delete deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		}
 		return err
@@ -164,7 +164,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	return nil
 }
 
-func (asr *ApplicationSetReconciler) DeleteDeployment(name, namespace string) error {
+func (asr *ApplicationSetReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
@@ -182,7 +182,7 @@ func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 	cmd = append(cmd, ArgoCDRepoServer)
 	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
 
-	cmd = append(cmd, LogLevel)
+	cmd = append(cmd, common.LogLevel)
 	cmd = append(cmd, util.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user
@@ -242,7 +242,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 7000,
-				Name:          common.PortWebhook,
+				Name:          common.Webhook,
 			},
 			{
 				ContainerPort: 8080,

@@ -44,12 +44,17 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 		return err
 	}
 
-	if err := asr.reconcileDeployment(); err != nil {
-		asr.Logger.Info("reconciling applicationSet deployment")
+	if err := asr.reconcileWebhookRoute(); err != nil {
+		asr.Logger.Info("reconciling applicationSet webhook route")
 		return err
 	}
 
 	if err := asr.reconcileService(); err != nil {
+		asr.Logger.Info("reconciling applicationSet service")
+		return err
+	}
+
+	if err := asr.reconcileDeployment(); err != nil {
 		asr.Logger.Info("reconciling applicationSet deployment")
 		return err
 	}
@@ -61,27 +66,32 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 
 	var deletionError error = nil
 
-	if err := asr.DeleteService(resourceName, asr.Instance.Namespace); err != nil {
-		asr.Logger.Error(err, "DeleteResources: failed to delete service")
-		deletionError = err
-	}
-
-	if err := asr.DeleteDeployment(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteDeployment(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete deployment")
 		deletionError = err
 	}
 
-	if err := asr.DeleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteService(resourceName, asr.Instance.Namespace); err != nil {
+		asr.Logger.Error(err, "DeleteResources: failed to delete service")
+		deletionError = err
+	}
+
+	if err := asr.deleteWebhookRoute(resourceName, asr.Instance.Namespace); err != nil {
+		asr.Logger.Error(err, "DeleteResources: failed to delete webhook service")
+		deletionError = err
+	}
+
+	if err := asr.deleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete roleBinding")
 		deletionError = err
 	}
 
-	if err := asr.DeleteRole(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteRole(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete role")
 		deletionError = err
 	}
 
-	if err := asr.DeleteServiceAccount(resourceName, asr.Instance.Namespace); err != nil {
+	if err := asr.deleteServiceAccount(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete serviceaccount")
 		deletionError = err
 	}

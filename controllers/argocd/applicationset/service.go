@@ -42,7 +42,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.DeleteService(desiredService.Name, desiredService.Namespace); err != nil {
+		if err := asr.deleteService(desiredService.Name, desiredService.Namespace); err != nil {
 			asr.Logger.Error(err, "reconcileService: failed to delete service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		}
 		return err
@@ -70,7 +70,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 	return nil
 }
 
-func (asr *ApplicationSetReconciler) DeleteService(name, namespace string) error {
+func (asr *ApplicationSetReconciler) deleteService(name, namespace string) error {
 	if err := networking.DeleteService(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err
@@ -83,7 +83,7 @@ func GetServiceSpec() corev1.ServiceSpec {
 	return corev1.ServiceSpec{
 		Ports: []corev1.ServicePort{
 			{
-				Name:       common.PortWebhook,
+				Name:       common.Webhook,
 				Port:       7000,
 				Protocol:   corev1.ProtocolTCP,
 				TargetPort: intstr.FromInt(7000),

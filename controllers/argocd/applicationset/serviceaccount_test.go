@@ -23,7 +23,7 @@ func TestApplicationSetReconciler_reconcileServiceAccount(t *testing.T) {
 		{
 			name: "create a serviceAccount",
 			setupClient: func() *ApplicationSetReconciler {
-				return makeTestApplicationSetReconciler(t, ns)
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
@@ -61,7 +61,7 @@ func TestApplicationSetReconciler_DeleteServiceAccount(t *testing.T) {
 		{
 			name: "successful delete",
 			setupClient: func() *ApplicationSetReconciler {
-				return makeTestApplicationSetReconciler(t, ns)
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
@@ -69,7 +69,7 @@ func TestApplicationSetReconciler_DeleteServiceAccount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.DeleteServiceAccount(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.deleteServiceAccount(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

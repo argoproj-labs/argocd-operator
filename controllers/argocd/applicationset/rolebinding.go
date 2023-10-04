@@ -1,7 +1,7 @@
 package applicationset
 
 import (
-	. "github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
@@ -32,7 +32,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
-			Kind:     RoleKind,
+			Kind:     common.RoleKind,
 			Name:     resourceName,
 		},
 		Subjects: []rbacv1.Subject{
@@ -52,7 +52,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.DeleteRole(desiredRoleBinding.Name, desiredRoleBinding.Namespace); err != nil {
+		if err := asr.deleteRole(desiredRoleBinding.Name, desiredRoleBinding.Namespace); err != nil {
 			asr.Logger.Error(err, "reconcileRoleBinding: failed to delete roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		}
 		return err
@@ -107,7 +107,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 	return nil
 }
 
-func (asr *ApplicationSetReconciler) DeleteRoleBinding(name, namespace string) error {
+func (asr *ApplicationSetReconciler) deleteRoleBinding(name, namespace string) error {
 	if err := permissions.DeleteRoleBinding(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
