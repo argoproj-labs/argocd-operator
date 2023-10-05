@@ -260,8 +260,14 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 	}
 
 	// non-core components, don't return reconciliation errors
-	if err := r.AppsetController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile applicationset controller")
+	if r.Instance.Spec.ApplicationSet != nil {
+		if err := r.AppsetController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile applicationset controller")
+		}
+	} else {
+		if err := r.AppsetController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete applicationset resources")
+		}
 	}
 
 	if r.Instance.Spec.Notifications.Enabled {
@@ -283,7 +289,7 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.SecretController = &secret.SecretReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
@@ -333,7 +339,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.AppsetController = &applicationset.ApplicationSetReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}

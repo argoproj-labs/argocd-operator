@@ -35,7 +35,7 @@ func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 			name: "update a deployment",
 			setupClient: func() *NotificationsReconciler {
 				outdatedDeployment := existingDeployment
-				outdatedDeployment.ObjectMeta.Labels = testKVP
+				outdatedDeployment.ObjectMeta.Labels = argocdcommon.TestKVP
 				return makeTestNotificationsReconciler(t, outdatedDeployment, ns)
 			},
 			wantErr: false,
@@ -82,7 +82,7 @@ func TestNotificationsReconciler_DeleteDeployment(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.DeleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.deleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

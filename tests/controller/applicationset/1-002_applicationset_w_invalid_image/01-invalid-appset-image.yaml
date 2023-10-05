@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  applicationSet:
+    image: quay.io/argoproj/argocd@sha256:8283a9f06033c2377dc61b03daf49

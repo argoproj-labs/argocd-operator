@@ -27,6 +27,8 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
@@ -259,7 +261,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	}
 
 	// Use Route host if available, override Ingress if both exist
-	if IsRouteAPIAvailable() {
+	if networking.IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
 		if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
@@ -698,14 +700,14 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	if IsRouteAPIAvailable() {
+	if networking.IsRouteAPIAvailable() {
 		log.Info("reconciling routes")
 		if err := r.reconcileRoutes(cr); err != nil {
 			return err
 		}
 	}
 
-	if IsPrometheusAPIAvailable() {
+	if monitoring.IsPrometheusAPIAvailable() {
 		log.Info("reconciling prometheus")
 		if err := r.reconcilePrometheus(cr); err != nil {
 			return err
@@ -731,7 +733,7 @@ func (r *ArgoCDReconciler) reconcileResources(cr *argoproj.ArgoCD) error {
 
 	if cr.Spec.ApplicationSet != nil {
 		log.Info("reconciling ApplicationSet controller")
-		if err := r.reconcileApplicationSetController(cr); err != nil {
+		if err := r.AppsetController.Reconcile(); err != nil {
 			return err
 		}
 	}
@@ -981,12 +983,12 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, clusterReso
 	// This sets the flags that are used in subsequent checks
 	InspectCluster()
 
-	if IsRouteAPIAvailable() {
+	if networking.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		bldr.Owns(&routev1.Route{})
 	}
 
-	if IsPrometheusAPIAvailable() {
+	if monitoring.IsPrometheusAPIAvailable() {
 		// Watch Prometheus sub-resources owned by ArgoCD instances.
 		bldr.Owns(&monitoringv1.Prometheus{})
 

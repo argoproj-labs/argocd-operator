@@ -65,8 +65,8 @@ func TestNotificationsReconciler_reconcileRoleBinding(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Could not get updated RoleBinding: %v", err)
 			}
-			assert.Equal(t, testRoleRef, updatedRoleBinding.RoleRef)
-			assert.Equal(t, testSubjects, updatedRoleBinding.Subjects)
+			assert.Equal(t, argocdcommon.TestRoleRef, updatedRoleBinding.RoleRef)
+			assert.Equal(t, argocdcommon.TestSubjects, updatedRoleBinding.Subjects)
 		})
 	}
 }
@@ -91,7 +91,7 @@ func TestNotificationsReconciler_DeleteRoleBinding(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.DeleteRoleBinding(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.deleteRoleBinding(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

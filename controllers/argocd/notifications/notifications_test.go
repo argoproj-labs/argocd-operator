@@ -7,43 +7,20 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var (
-	testKey     = "test"
-	testVal     = "test"
-	testRoleRef = rbacv1.RoleRef{
-		Kind:     common.RoleKind,
-		Name:     argocdcommon.TestArgoCDName,
-		APIGroup: rbacv1.GroupName,
-	}
-
-	testSubjects = []rbacv1.Subject{
-		{
-			Kind:      rbacv1.ServiceAccountKind,
-			Name:      argocdcommon.TestArgoCDName,
-			Namespace: argocdcommon.TestNamespace,
-		},
-	}
-
-	testKVP = map[string]string{
-		testKey: testVal,
-	}
-
-	testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, ArgoCDNotificationsControllerComponent)
-)
+var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, NotificationsControllerComponent)
 
 func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(ArgoCDNotificationsControllerComponent)
+	logger := ctrl.Log.WithName(NotificationsControllerComponent)
 
 	return &NotificationsReconciler{
 		Client:   cl,

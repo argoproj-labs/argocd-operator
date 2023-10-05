@@ -52,7 +52,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteRole(desiredRoleBinding.Name, desiredRoleBinding.Namespace); err != nil {
+		if err := nr.deleteRole(desiredRoleBinding.Name, desiredRoleBinding.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to delete roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		}
 		return err
@@ -107,7 +107,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteRoleBinding(name, namespace string) error {
+func (nr *NotificationsReconciler) deleteRoleBinding(name, namespace string) error {
 	if err := permissions.DeleteRoleBinding(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err

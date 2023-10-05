@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -173,7 +174,10 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			routeAPIFound = test.testRouteAPIFound
+			networking.SetRouteAPIFound(test.testRouteAPIFound)
+			defer func() {
+				networking.SetRouteAPIFound(false)
+			}()
 
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Route.Enabled = test.routeEnabled
@@ -279,7 +283,7 @@ func TestArgoCDReconciler_reconcileStatusApplicationSetController(t *testing.T) 
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.AppsetController.Reconcile())
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
 }
