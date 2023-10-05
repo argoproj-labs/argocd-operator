@@ -1742,8 +1742,6 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                - name: ARGOCD_LABEL_SELECTOR
-                  value: ""
                 image: quay.io/argoprojlabs/argocd-operator:v0.8.0
                 livenessProbe:
                   httpGet:
