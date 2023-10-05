@@ -40,6 +40,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -113,7 +115,10 @@ func main() {
 	printVersion()
 
 	// Inspect cluster to verify availability of extra features
-	argocd.InspectCluster()
+	err = argocd.InspectCluster()
+	if err != nil {
+		setupLog.Error(err, "error verifying one or more APIs on the cluster")
+	}
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
@@ -161,7 +166,7 @@ func main() {
 	}
 
 	// Setup Scheme for Prometheus if available.
-	if argocd.IsPrometheusAPIAvailable() {
+	if monitoring.IsPrometheusAPIAvailable() {
 		if err := monitoringv1.AddToScheme(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
@@ -169,7 +174,7 @@ func main() {
 	}
 
 	// Setup Scheme for OpenShift Routes if available.
-	if argocd.IsRouteAPIAvailable() {
+	if networking.IsRouteAPIAvailable() {
 		if err := routev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)

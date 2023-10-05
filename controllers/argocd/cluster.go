@@ -5,27 +5,33 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 // InspectCluster will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
-func InspectCluster() {
-	// if err := monitoring.VerifyPrometheusAPI(); err != nil {
-	// 	// TO DO: log error verifying prometheus API (warn)
-	// }
+func InspectCluster() error {
+	var inspectError error
 
-	// if err := networking.VerifyRouteAPI(); err != nil {
-	// 	// TO DO: log error verifying route API (warn)
-	// }
+	if err := monitoring.VerifyPrometheusAPI(); err != nil {
+		inspectError = err
+	}
+
+	if err := networking.VerifyRouteAPI(); err != nil {
+		inspectError = err
+	}
 
 	if err := workloads.VerifyTemplateAPI(); err != nil {
-		// TO DO: log error verifying template API (warn)
+		inspectError = err
 	}
 
 	if err := cluster.VerifyVersionAPI(); err != nil {
-		// TO DO: log error verifying version API (warn)
+		inspectError = err
 	}
+
+	return inspectError
 }
 
 func GetClusterConfigNamespaces() string {

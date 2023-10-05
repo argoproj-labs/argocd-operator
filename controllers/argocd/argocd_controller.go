@@ -283,7 +283,7 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.SecretController = &secret.SecretReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,

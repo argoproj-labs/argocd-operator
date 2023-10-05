@@ -12,6 +12,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
@@ -213,20 +214,16 @@ var argoServerURITests = []struct {
 	},
 }
 
-func setRouteAPIFound(t *testing.T, routeEnabled bool) {
-	routeAPIEnabledTemp := routeAPIFound
-	t.Cleanup(func() {
-		routeAPIFound = routeAPIEnabledTemp
-	})
-	routeAPIFound = routeEnabled
-}
-
 func TestGetArgoServerURI(t *testing.T) {
 	for _, tt := range argoServerURITests {
 		t.Run(tt.name, func(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
 			r := &ArgoCDReconciler{}
-			setRouteAPIFound(t, tt.routeEnabled)
+			networking.SetRouteAPIFound(tt.routeEnabled)
+			defer func() {
+				networking.SetRouteAPIFound(false)
+			}()
+
 			result := r.getArgoServerURI(cr)
 			if result != tt.want {
 				t.Errorf("%s test failed, got=%q want=%q", tt.name, result, tt.want)
