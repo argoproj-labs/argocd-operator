@@ -18,7 +18,8 @@ var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argoc
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
-	assert.NoError(t, routev1.AddToScheme(s))
+
+	assert.NoError(t, routev1.Install(s))
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()

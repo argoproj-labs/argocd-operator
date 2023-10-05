@@ -143,7 +143,7 @@ func (asr *ApplicationSetReconciler) getWebhookRouteRequest(route routev1.Route)
 func (asr *ApplicationSetReconciler) getDesiredWebhookRoute() *routev1.Route {
 	desiredWebhook := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        util.NameWithSuffix(AppSetControllerComponent, common.Webhook),
+			Name:        AppSetWebhookRouteName,
 			Namespace:   asr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: asr.Instance.Annotations,

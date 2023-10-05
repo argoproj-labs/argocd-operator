@@ -50,7 +50,7 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 			return err
 		}
 	} else {
-		if err := asr.deleteWebhookRoute(resourceName, asr.Instance.Namespace); err != nil {
+		if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
 			asr.Logger.Error(err, "deleting applicationSet webhook route: failed to delete webhook route")
 			return err
 		}
