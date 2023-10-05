@@ -162,7 +162,7 @@ func (rsr *RepoServerReconciler) getDesiredDeployment(useTLSForRedis bool) *apps
 				common.AppK8sKeyName: resourceName,
 			},
 		},
-		Replicas: rsr.GetArgoCDRepoServerReplicas(),
+		Replicas: rsr.GetRepoServerReplicas(),
 	}
 
 	desiredDeployment.ObjectMeta = objMeta
@@ -220,7 +220,7 @@ func (rsr *RepoServerReconciler) getRepoServerContainers(useTLSForRedis bool) []
 	}
 
 	containers := []corev1.Container{{
-		Command:         rsr.GetArgoRepoServerCommand(useTLSForRedis),
+		Command:         rsr.GetRepoServerCommand(useTLSForRedis),
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            RepoServerController,

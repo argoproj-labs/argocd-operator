@@ -3,13 +3,28 @@ package redis
 import (
 	"context"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// getRedisServerAddress will return the Redis service address for the given ArgoCD.
+func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
+	if cr.Spec.HA.Enabled {
+		return GetRedisHAProxyAddress(cr.Namespace)
+	}
+	return util.FqdnServiceRef(common.ArgoCDDefaultRedisSuffix, cr.Namespace, common.ArgoCDDefaultRedisPort)
+}
+
+// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
+func GetRedisHAProxyAddress(namespace string) string {
+	return util.FqdnServiceRef(RedisHAProxyServiceName, namespace, common.ArgoCDDefaultRedisPort)
+}
 
 func ShouldUseTLS(client cntrlClient.Client, instanceNamespace string) (bool, error) {
 	var tlsSecretObj corev1.Secret

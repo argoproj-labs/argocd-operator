@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,23 +20,6 @@ type RouteRequest struct {
 	// array of functions to mutate role before returning to requester
 	Mutations []mutation.MutateFunc
 	Client    cntrlClient.Client
-}
-
-var routeAPIFound = false
-
-// IsRouteAPIAvailable returns true if the Route API is present.
-func IsRouteAPIAvailable() bool {
-	return routeAPIFound
-}
-
-// verifyRouteAPI will verify that the Route API is present.
-func VerifyRouteAPI() error {
-	found, err := util.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	routeAPIFound = found
-	return nil
 }
 
 // newRoute returns a new Route instance for the given ArgoCD.

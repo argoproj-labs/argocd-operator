@@ -173,7 +173,7 @@ func (asr *ApplicationSetReconciler) getDeploymentRequest(dep appsv1.Deployment)
 	return deploymentReq
 }
 
-func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
+func (asr *ApplicationSetReconciler) getApplicationSetCommand() []string {
 	cmd := make([]string, 0)
 
 	cmd = append(cmd, EntryPointSh)
@@ -201,7 +201,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 	appSetEnv := asr.Instance.Spec.ApplicationSet.Env
 	appSetEnv = util.EnvMerge(appSetEnv, util.ProxyEnvVars(), false)
 	container := &corev1.Container{
-		Command:         asr.getArgoApplicationSetCommand(),
+		Command:         asr.getApplicationSetCommand(),
 		Image:           argocdcommon.GetArgoContainerImage(asr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            AppSetController,
