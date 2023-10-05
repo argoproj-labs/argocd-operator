@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -27,8 +28,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
-
-var prometheusAPIFound = false
 
 // getPrometheusHost will return the hostname value for Prometheus.
 func getPrometheusHost(cr *argoproj.ArgoCD) string {
@@ -50,11 +49,6 @@ func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	return &replicas
 }
 
-// IsPrometheusAPIAvailable returns true if the Prometheus API is present.
-func IsPrometheusAPIAvailable() bool {
-	return prometheusAPIFound
-}
-
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
 func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
 	// Replica count
@@ -72,16 +66,6 @@ func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj
 		}
 	}
 	return false
-}
-
-// verifyPrometheusAPI will verify that the Prometheus API is present.
-func verifyPrometheusAPI() error {
-	found, err := util.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	prometheusAPIFound = found
-	return nil
 }
 
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.
