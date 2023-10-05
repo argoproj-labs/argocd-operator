@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,7 +24,11 @@ import (
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
-	routeAPIFound = true
+	networking.SetRouteAPIFound(true)
+	defer func() {
+		networking.SetRouteAPIFound(false)
+	}()
+
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -58,7 +63,11 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 
 }
 func TestReconcileRouteSetsInsecure(t *testing.T) {
-	routeAPIFound = true
+	networking.SetRouteAPIFound(true)
+	defer func() {
+		networking.SetRouteAPIFound(false)
+	}()
+
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
@@ -129,7 +138,10 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 }
 
 func TestReconcileRouteUnsetsInsecure(t *testing.T) {
-	routeAPIFound = true
+	networking.SetRouteAPIFound(true)
+	defer func() {
+		networking.SetRouteAPIFound(false)
+	}()
 	ctx := context.Background()
 	logf.SetLogger(ZapLogger(true))
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {

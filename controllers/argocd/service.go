@@ -25,6 +25,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -325,7 +326,7 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 	var autoTLSAnnotationName, autoTLSAnnotationValue string
 
 	// We currently only support OpenShift for automatic TLS
-	if IsRouteAPIAvailable() {
+	if networking.IsRouteAPIAvailable() {
 		autoTLSAnnotationName = common.ServiceBetaOpenshiftKeyCertSecret
 		if svc.Annotations == nil {
 			svc.Annotations = make(map[string]string)
