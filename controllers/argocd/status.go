@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
@@ -330,7 +331,7 @@ func (r *ArgoCDReconciler) reconcileStatusNotifications(cr *argoproj.ArgoCD) err
 func (r *ArgoCDReconciler) reconcileStatusHost(cr *argoproj.ArgoCD) error {
 	cr.Status.Host = ""
 
-	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
+	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && networking.IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
 
 		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
