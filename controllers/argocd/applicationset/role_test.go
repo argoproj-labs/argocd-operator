@@ -1,4 +1,4 @@
-package notifications
+package applicationset
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestNotificationsReconciler_reconcileRole(t *testing.T) {
+func TestApplicationSetReconciler_reconcileRole(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	existingRole := &rbacv1.Role{
@@ -29,22 +29,22 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "create a role",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
 		{
 			name: "Update a role",
-			setupClient: func() *NotificationsReconciler {
+			setupClient: func() *ApplicationSetReconciler {
 				outdatedRole := existingRole
 				outdatedRole.Rules = []rbacv1.PolicyRule{}
-				return makeTestNotificationsReconciler(t, outdatedRole, ns)
+				return makeTestApplicationSetReconciler(t, false, outdatedRole, ns)
 			},
 			wantErr: false,
 		},
@@ -71,18 +71,18 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 	}
 }
 
-func TestNotificationsReconciler_DeleteRole(t *testing.T) {
+func TestApplicationSetReconciler_DeleteRole(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "successful delete",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},

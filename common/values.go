@@ -39,10 +39,11 @@ const (
 	// ArgoCDRepoServerTLS is the argocd repo server tls value.
 	ArgoCDRepoServerTLS = "argocd-repo-server-tls"
 
-	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
-	K8sOSLinux = "linux"
 	// ArgoCDAppSetGitlabSCMTLSCertsConfigMapName is the hard-coded ApplicationSet Gitlab SCM TLS certificate data ConfigMap name.
 	ArgoCDAppSetGitlabSCMTLSCertsConfigMapName = "argocd-appset-gitlab-scm-tls-certs-cm"
+
+	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
+	K8sOSLinux = "linux"
 
 	// ArgoCDRedisServerTLSSecretName is the name of the TLS secret for the redis-server
 	ArgoCDRedisServerTLSSecretName = "argocd-operator-redis-tls"
@@ -62,6 +63,15 @@ const (
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"
+	Webhook                      = "webhook"
+	SSHKnownHosts                = "ssh-known-hosts"
+	VolumeMountPathSSH           = "/app/config/ssh"
+	GPGKeys                      = "gpg-keys"
+	VolumeMountPathGPG           = "/app/config/gpg/source"
+	GPGKeyRing                   = "gpg-keyring"
+	VolumeMountPathGPGKeyring    = "/app/config/gpg/keys"
+	VolumeTmp                    = "tmp"
+	VolumeMountPathTmp           = "/tmp"
 )
 
 // API group versions and resource kinds
@@ -75,5 +85,11 @@ const (
 	RoleBindingKind    = "RoleBinding"
 	ConfigMapKind      = "ConfigMap"
 	SecretKind         = "Secret"
+	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
+)
+
+// Commnds
+const (
+	LogLevel = "--loglevel"
 )

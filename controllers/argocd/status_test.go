@@ -283,7 +283,7 @@ func TestArgoCDReconciler_reconcileStatusApplicationSetController(t *testing.T) 
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.AppsetController.Reconcile())
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
 }

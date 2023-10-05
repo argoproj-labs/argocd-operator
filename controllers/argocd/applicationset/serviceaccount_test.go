@@ -1,4 +1,4 @@
-package notifications
+package applicationset
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
+func TestApplicationSetReconciler_reconcileServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	resourceLabels = testExpectedLabels
 
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "create a serviceAccount",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
@@ -50,18 +50,18 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 	}
 }
 
-func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
+func TestApplicationSetReconciler_DeleteServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
-		setupClient func() *NotificationsReconciler
+		setupClient func() *ApplicationSetReconciler
 		wantErr     bool
 	}{
 		{
 			name: "successful delete",
-			setupClient: func() *NotificationsReconciler {
-				return makeTestNotificationsReconciler(t, ns)
+			setupClient: func() *ApplicationSetReconciler {
+				return makeTestApplicationSetReconciler(t, false, ns)
 			},
 			wantErr: false,
 		},
