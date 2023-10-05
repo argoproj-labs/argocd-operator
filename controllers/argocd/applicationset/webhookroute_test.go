@@ -109,7 +109,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabl
 	}
 }
 
-func TestApplicationSetReconciler_DeleteWebhookRoute(t *testing.T) {
+func TestApplicationSetReconciler_deleteWebhookRoute(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {

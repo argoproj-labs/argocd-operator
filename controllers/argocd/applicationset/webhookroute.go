@@ -16,12 +16,7 @@ import (
 )
 
 func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
-
 	asr.Logger.Info("reconciling webhookroutes")
-
-	if !asr.Instance.Spec.ApplicationSet.WebhookServer.Route.Enabled {
-		return asr.deleteWebhookRoute(asr.Instance.Name, asr.Instance.Namespace)
-	}
 
 	desiredWebhookRoute := asr.getDesiredWebhookRoute()
 	webhookRouteRequest := asr.getWebhookRouteRequest(*desiredWebhookRoute)
@@ -48,7 +43,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 	existingRoute, err := networking.GetRoute(desiredWebhookRoute.Name, desiredWebhookRoute.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileRoute: failed to retrieve route", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
+			asr.Logger.Error(err, "reconcileRoute: failed to retrieve route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 			return err
 		}
 
