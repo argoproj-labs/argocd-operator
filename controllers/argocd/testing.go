@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
@@ -67,7 +68,7 @@ func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
 func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoproj.AddToScheme(s))
-	assert.NoError(t, argoproj.AddToScheme(s))
+	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	logger := ctrl.Log.WithName("test-logger")

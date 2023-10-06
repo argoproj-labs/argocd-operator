@@ -61,7 +61,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
+			asr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
 
