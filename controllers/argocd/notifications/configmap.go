@@ -43,10 +43,10 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 		return err
 	}
 
-	existingConfigMap, err := workloads.GetConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace, nr.Client)
+	_, err = workloads.GetConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileConfigMap: failed to retrieve configMap", "name", existingConfigMap.Name, "namespace", existingConfigMap.Namespace)
+			nr.Logger.Error(err, "reconcileConfigMap: failed to retrieve configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 			return err
 		}
 

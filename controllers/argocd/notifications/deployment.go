@@ -47,7 +47,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+			nr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
 

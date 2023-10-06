@@ -61,7 +61,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
+			nr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
 
