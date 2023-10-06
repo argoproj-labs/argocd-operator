@@ -1,9 +1,11 @@
 package reposerver
 
 import (
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +22,18 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 			Namespace:   rsr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: rsr.Instance.Annotations,
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					common.AppK8sKeyName: util.GenerateResourceName(rsr.Instance.Name, RepoServerControllerComponent),
+				},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port: common.ArgoCDMetrics,
+				},
+			},
 		},
 	}
 

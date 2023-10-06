@@ -4,34 +4,36 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
-
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestRepoServerReconciler_reconcileSecret(t *testing.T) {
-	// TODO: Add test cases for updating status from secret change
+func TestRepoServerReconciler_reconcileServiceMonitor(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-	resourceLabels = testExpectedLabels
+	sa := argocdcommon.MakeTestServiceAccount()
+	resourceName = argocdcommon.TestArgoCDName
+
 	tests := []struct {
 		name        string
 		setupClient func() *RepoServerReconciler
 		wantErr     bool
 	}{
 		{
-			name: "create a secret",
+			name: "create a ServiceMonitor",
 			setupClient: func() *RepoServerReconciler {
-				return makeTestRepoServerReconciler(t, ns)
+				return makeTestRepoServerReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			err := nr.reconcileTLSSecret()
+			rsr := tt.setupClient()
+			err := rsr.reconcileServiceMonitor()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
@@ -39,19 +41,20 @@ func TestRepoServerReconciler_reconcileSecret(t *testing.T) {
 					t.Errorf("Unexpected error: %v", err)
 				}
 			}
-
-			currentSecret := &corev1.Secret{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: RepoServerTLSSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
+			currentService := &monitoringv1.ServiceMonitor{}
+			err = rsr.Client.Get(context.TODO(), types.NamespacedName{Name: util.GenerateResourceName(rsr.Instance.Name, RepoServerMetrics), Namespace: argocdcommon.TestNamespace}, currentService)
 			if err != nil {
-				t.Fatalf("Could not get current Secret: %v", err)
+				t.Fatalf("Could not get current Service: %v", err)
 			}
-			assert.Equal(t, testExpectedLabels, currentSecret.ObjectMeta.Labels)
+			assert.Equal(t, common.ArgoCDMetrics, currentService.Spec.Endpoints[0].Port)
 		})
 	}
 }
 
-func TestRepoServerReconciler_DeleteSecret(t *testing.T) {
+func TestRepoServerReconciler_DeleteServiceMonitor(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	sa := argocdcommon.MakeTestServiceAccount()
+	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *RepoServerReconciler
@@ -60,7 +63,7 @@ func TestRepoServerReconciler_DeleteSecret(t *testing.T) {
 		{
 			name: "successful delete",
 			setupClient: func() *RepoServerReconciler {
-				return makeTestRepoServerReconciler(t, ns)
+				return makeTestRepoServerReconciler(t, ns, sa)
 			},
 			wantErr: false,
 		},
@@ -68,7 +71,7 @@ func TestRepoServerReconciler_DeleteSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			if err := nr.deleteTLSSecret(ns.Name); (err != nil) != tt.wantErr {
+			if err := nr.deleteServiceMonitor(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

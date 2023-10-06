@@ -32,9 +32,16 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if err := rsr.reconcileServiceMonitor(); err != nil {
-		rsr.Logger.Info("reconciling repo server serviceMonitor")
-		return err
+	if rsr.Instance.Spec.Prometheus.Enabled {
+		if err := rsr.reconcileServiceMonitor(); err != nil {
+			rsr.Logger.Info("reconciling repo server serviceMonitor")
+			return err
+		}
+	} else {
+		if err := rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace); err != nil {
+			rsr.Logger.Error(err, "DeleteResources: failed to delete serviceMonitor")
+			return err
+		}
 	}
 
 	if err := rsr.reconcileTLSSecret(); err != nil {
@@ -64,8 +71,8 @@ func (rsr *RepoServerReconciler) DeleteResources() error {
 		deletionError = err
 	}
 
-	if err := rsr.deleteService(resourceName, rsr.Instance.Namespace); err != nil {
-		rsr.Logger.Error(err, "DeleteResources: failed to delete service")
+	if err := rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace); err != nil {
+		rsr.Logger.Error(err, "DeleteResources: failed to delete serviceMonitor")
 		deletionError = err
 	}
 

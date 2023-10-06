@@ -16,6 +16,8 @@ import (
 
 var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, RepoServerControllerComponent)
 
+const testServiceAccount = "test-service-account"
+
 func makeTestRepoServerReconciler(t *testing.T, objs ...runtime.Object) *RepoServerReconciler {
 	s := scheme.Scheme
 
@@ -29,7 +31,9 @@ func makeTestRepoServerReconciler(t *testing.T, objs ...runtime.Object) *RepoSer
 		Client: cl,
 		Scheme: s,
 		Instance: argocdcommon.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
-			a.Spec.Repo = argoproj.ArgoCDRepoSpec{}
+			a.Spec.Repo = argoproj.ArgoCDRepoSpec{
+				ServiceAccount: testServiceAccount,
+			}
 		}),
 		Logger: logger,
 	}

@@ -78,20 +78,23 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
+				if existingDeployment.Spec.Template.ObjectMeta.Labels == nil {
+					existingDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{}
+				}
 				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
 		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
 		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
-		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},                                           //
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},               //
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},                       //
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},           //
-		{&existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, nil},     //
-		{&existingDeployment.Spec.Template.Spec.InitContainers, &desiredDeployment.Spec.Template.Spec.InitContainers, nil},                             //
-		{&existingDeployment.Spec.Template.Spec.AutomountServiceAccountToken, &desiredDeployment.Spec.Template.Spec.AutomountServiceAccountToken, nil}, //
-		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},                     //
-		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},                                                                     //
+		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},
+		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},
+		{&existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, nil},
+		{&existingDeployment.Spec.Template.Spec.InitContainers, &desiredDeployment.Spec.Template.Spec.InitContainers, nil},
+		{&existingDeployment.Spec.Template.Spec.AutomountServiceAccountToken, &desiredDeployment.Spec.Template.Spec.AutomountServiceAccountToken, nil},
+		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},
+		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -146,6 +149,16 @@ func (rsr *RepoServerReconciler) getDesiredDeployment(useTLSForRedis bool) *apps
 			RunAsNonRoot: util.BoolPtr(true),
 		},
 		AutomountServiceAccountToken: &automountToken,
+		NodeSelector:                 common.DefaultNodeSelector(),
+	}
+
+	if rsr.Instance.Spec.NodePlacement != nil {
+		podSpec.NodeSelector = util.AppendStringMap(podSpec.NodeSelector, rsr.Instance.Spec.NodePlacement.NodeSelector)
+		podSpec.Tolerations = rsr.Instance.Spec.NodePlacement.Tolerations
+	}
+
+	if rsr.Instance.Spec.Repo.ServiceAccount != "" {
+		podSpec.ServiceAccountName = rsr.Instance.Spec.Repo.ServiceAccount
 	}
 
 	deploymentSpec := appsv1.DeploymentSpec{

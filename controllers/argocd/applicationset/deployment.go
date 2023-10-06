@@ -70,6 +70,9 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
+				if existingDeployment.Spec.Template.ObjectMeta.Labels == nil {
+					existingDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{}
+				}
 				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},

@@ -7,31 +7,44 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 
-	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestRepoServerReconciler_reconcileSecret(t *testing.T) {
-	// TODO: Add test cases for updating status from secret change
-	ns := argocdcommon.MakeTestNamespace()
+func TestRepoServerReconciler_reconcileDeployment(t *testing.T) {
+	resourceName = argocdcommon.TestArgoCDName
 	resourceLabels = testExpectedLabels
+	ns := argocdcommon.MakeTestNamespace()
+	asr := makeTestRepoServerReconciler(t, ns)
+
+	existingDeployment := asr.getDesiredDeployment(false) // todo
+
 	tests := []struct {
 		name        string
 		setupClient func() *RepoServerReconciler
 		wantErr     bool
 	}{
 		{
-			name: "create a secret",
+			name: "create a deployment",
 			setupClient: func() *RepoServerReconciler {
 				return makeTestRepoServerReconciler(t, ns)
+			},
+			wantErr: false,
+		},
+		{
+			name: "update a deployment",
+			setupClient: func() *RepoServerReconciler {
+				outdatedDeployment := existingDeployment
+				outdatedDeployment.Spec.Template.Spec.ServiceAccountName = "new-service-account"
+				return makeTestRepoServerReconciler(t, outdatedDeployment, ns)
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			err := nr.reconcileTLSSecret()
+			asr := tt.setupClient()
+			err := asr.reconcileDeployment()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
@@ -40,18 +53,19 @@ func TestRepoServerReconciler_reconcileSecret(t *testing.T) {
 				}
 			}
 
-			currentSecret := &corev1.Secret{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: RepoServerTLSSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
+			updatedDeployment := &appsv1.Deployment{}
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: resourceName, Namespace: argocdcommon.TestNamespace}, updatedDeployment)
 			if err != nil {
-				t.Fatalf("Could not get current Secret: %v", err)
+				t.Fatalf("Could not get updated Deployment: %v", err)
 			}
-			assert.Equal(t, testExpectedLabels, currentSecret.ObjectMeta.Labels)
+			assert.Equal(t, testServiceAccount, updatedDeployment.Spec.Template.Spec.ServiceAccountName)
 		})
 	}
 }
 
-func TestRepoServerReconciler_DeleteSecret(t *testing.T) {
+func TestRepoServerReconciler_DeleteDeployment(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
+	resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *RepoServerReconciler
@@ -67,8 +81,8 @@ func TestRepoServerReconciler_DeleteSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			if err := nr.deleteTLSSecret(ns.Name); (err != nil) != tt.wantErr {
+			asr := tt.setupClient()
+			if err := asr.deleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {
