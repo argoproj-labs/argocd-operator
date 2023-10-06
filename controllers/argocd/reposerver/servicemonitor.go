@@ -41,10 +41,10 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 		return err
 	}
 
-	existingServiceMonitor, err := monitoring.GetServiceMonitor(desiredServiceMonitor.Name, desiredServiceMonitor.Namespace, rsr.Client)
+	_, err = monitoring.GetServiceMonitor(desiredServiceMonitor.Name, desiredServiceMonitor.Namespace, rsr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileServiceMonitor: failed to retrieve serviceMonitor", "name", existingServiceMonitor.Name, "namespace", existingServiceMonitor.Namespace)
+			rsr.Logger.Error(err, "reconcileServiceMonitor: failed to retrieve serviceMonitor", "name", desiredServiceMonitor.Name, "namespace", desiredServiceMonitor.Namespace)
 			return err
 		}
 

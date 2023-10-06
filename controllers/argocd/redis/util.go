@@ -27,12 +27,10 @@ func GetRedisHAProxyAddress(namespace string) string {
 }
 
 func ShouldUseTLS(client cntrlClient.Client, instanceNamespace string) (bool, error) {
-	var tlsSecretObj corev1.Secret
 	tlsSecretName := types.NamespacedName{Namespace: instanceNamespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
-	if err != nil {
+	var tlsSecretObj corev1.Secret
+	if err := client.Get(context.TODO(), tlsSecretName, &tlsSecretObj); err != nil {
 		if !errors.IsNotFound(err) {
-			// Error reading the secret
 			return false, err
 		}
 		return false, nil
@@ -47,11 +45,8 @@ func ShouldUseTLS(client cntrlClient.Client, instanceNamespace string) (bool, er
 			if argocdcommon.IsOwnerOfInterest(secretOwner) {
 				key := cntrlClient.ObjectKey{Name: secretOwner.Name, Namespace: tlsSecretObj.GetNamespace()}
 				svc := &corev1.Service{}
-
 				// Get the owning object of the secret
-				err := client.Get(context.TODO(), key, svc)
-				if err != nil {
-					// log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
+				if err := client.Get(context.TODO(), key, svc); err != nil {
 					return false, err
 				}
 

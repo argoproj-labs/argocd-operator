@@ -50,7 +50,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 	existingService, err := networking.GetService(desiredService.Name, desiredService.Namespace, rsr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileService: failed to retrieve service", "name", existingService.Name, "namespace", existingService.Namespace)
+			rsr.Logger.Error(err, "reconcileService: failed to retrieve service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 			return err
 		}
 

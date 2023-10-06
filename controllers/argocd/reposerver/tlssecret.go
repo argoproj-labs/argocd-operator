@@ -1,6 +1,7 @@
 package reposerver
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -8,34 +9,15 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	var sha256sum string
 	rsr.Logger.Info("reconciling TLS secrets")
-
-	secretRequest := workloads.SecretRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      RepoServerTLSSecretName,
-			Namespace: rsr.Instance.Namespace,
-			Labels:    resourceLabels,
-		},
-
-		Client:    rsr.Client,
-		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
-
-	desiredSecret, err := workloads.RequestSecret(secretRequest)
-	if err != nil {
-		rsr.Logger.Error(err, "reconcileSecret: failed to request secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
-		return err
-	}
 
 	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
@@ -43,16 +25,16 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := rsr.deleteTLSSecret(desiredSecret.Namespace); err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
+		if err := rsr.deleteTLSSecret(rsr.Instance.Namespace); err != nil {
+			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 		}
 		return err
 	}
 
-	existingSecret, err := workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, rsr.Client)
+	existingSecret, err := workloads.GetSecret(RepoServerTLSSecretName, rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", existingSecret.Name, "namespace", existingSecret.Namespace)
+			rsr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 			return err
 		}
 	} else if existingSecret.Type != corev1.SecretTypeTLS {
@@ -70,9 +52,10 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 
 	if rsr.Instance.Status.RepoTLSChecksum != sha256sum {
 		rsr.Instance.Status.RepoTLSChecksum = sha256sum
-		err = workloads.UpdateSecret(desiredSecret, rsr.Client)
+		err = rsr.Client.Status().Update(context.TODO(), rsr.Instance)
+		// err = workloads.UpdateSecret(desiredSecret, rsr.Client)
 		if err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to update secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
+			rsr.Logger.Error(err, "reconcileSecret: failed to update status", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 			return err
 		}
 
@@ -89,7 +72,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 			}
 		}
 
-		rsr.Logger.V(0).Info("reconcileSecret: TLS secret updated", "name", RepoServerTLSSecretName, "namespace", desiredSecret.Namespace)
+		rsr.Logger.V(0).Info("reconcileSecret: argocd client status updated", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 		return nil
 	}
 
