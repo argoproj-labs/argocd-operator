@@ -36,10 +36,10 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 		return err
 	}
 
-	existingServiceAccount, err := permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
+	_, err = permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", existingServiceAccount.Name, "namespace", existingServiceAccount.Namespace)
+			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
 

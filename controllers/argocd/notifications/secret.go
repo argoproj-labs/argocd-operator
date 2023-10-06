@@ -44,10 +44,10 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return err
 	}
 
-	existingSecret, err := workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
+	_, err = workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", existingSecret.Name, "namespace", existingSecret.Namespace)
+			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 			return err
 		}
 

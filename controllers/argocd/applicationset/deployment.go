@@ -47,7 +47,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+			asr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
 

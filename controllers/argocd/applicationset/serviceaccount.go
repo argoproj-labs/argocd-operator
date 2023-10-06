@@ -36,10 +36,10 @@ func (asr *ApplicationSetReconciler) reconcileServiceAccount() error {
 		return err
 	}
 
-	existingServiceAccount, err := permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, asr.Client)
+	_, err = permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", existingServiceAccount.Name, "namespace", existingServiceAccount.Namespace)
+			asr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
 

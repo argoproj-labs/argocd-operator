@@ -48,10 +48,10 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 		return err
 	}
 
-	existingService, err := networking.GetService(desiredService.Name, desiredService.Namespace, asr.Client)
+	_, err = networking.GetService(desiredService.Name, desiredService.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileService: failed to retrieve service", "name", existingService.Name, "namespace", existingService.Namespace)
+			asr.Logger.Error(err, "reconcileService: failed to retrieve service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 			return err
 		}
 

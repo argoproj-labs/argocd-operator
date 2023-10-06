@@ -51,7 +51,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
+			asr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
 
