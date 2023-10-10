@@ -4,54 +4,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"reflect"
-	"sort"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
-
-func Test_newCASecret(t *testing.T) {
-	cr := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-argocd",
-			Namespace: "argocd",
-		},
-	}
-
-	s, err := newCASecret(cr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{
-		corev1.ServiceAccountRootCAKey,
-		corev1.TLSCertKey,
-		corev1.TLSPrivateKeyKey,
-	}
-	if k := byteMapKeys(s.Data); !reflect.DeepEqual(want, k) {
-		t.Fatalf("got %#v, want %#v", k, want)
-	}
-}
-
-func byteMapKeys(m map[string][]byte) []string {
-	r := []string{}
-	for k := range m {
-		r = append(r, k)
-	}
-	sort.Strings(r)
-	return r
-}
 
 func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
@@ -204,46 +166,6 @@ func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 		}
 
 	})
-
-}
-
-func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
-	argocd := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "argocd",
-			Namespace: "argocd-operator",
-		},
-	}
-
-	clusterSecret := util.NewSecretWithSuffix(argocd, "cluster")
-	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := util.NewSecretWithSuffix(argocd, "tls")
-	r := makeTestReconciler(t, argocd)
-	r.Client.Create(context.TODO(), clusterSecret)
-	r.Client.Create(context.TODO(), tlsSecret)
-
-	err := r.reconcileArgoSecret(argocd)
-
-	assert.NoError(t, err)
-
-	testSecret := &corev1.Secret{}
-	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
-	assert.NoError(t, secretErr)
-
-	// if you remove the secret.Data it should come back, including the secretKey
-	testSecret.Data = nil
-	r.Client.Update(context.TODO(), testSecret)
-
-	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
-	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
-
-	if testSecret.Data == nil {
-		t.Errorf("Expected data for data.server but got nothing")
-	}
-
-	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
-		t.Errorf("Expected data for data.server.secretKey but got nothing")
-	}
 
 }
 
@@ -416,45 +338,4 @@ func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
 			t.Errorf("Expected rollout of argocd-application-controller, but it didn't happen: %v", ctrlSts.Spec.Template.ObjectMeta.Labels)
 		}
 	})
-}
-
-func Test_ArgoCDReconciler_ClusterPermissionsSecret(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
-	assert.NoError(t, createNamespace(r, a.Namespace, ""))
-
-	testSecret := util.NewSecretWithSuffix(a, "default-cluster-config")
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret).Error(), "not found")
-
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), a.Namespace)
-
-	want := "argocd,someRandomNamespace"
-	testSecret.Data["namespaces"] = []byte("someRandomNamespace")
-	r.Client.Update(context.TODO(), testSecret)
-
-	// reconcile to check namespace with the label gets added
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
-
-	assert.NoError(t, createNamespace(r, "xyz", a.Namespace))
-	want = "argocd,someRandomNamespace,xyz"
-	// reconcile to check namespace with the label gets added
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Equal(t, string(testSecret.Data["namespaces"]), want)
-
-	t.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-
-	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
-	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
-	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
-	assert.Nil(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 }

@@ -422,3 +422,41 @@ func (r *ArgoCDReconciler) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secr
 
 	return nil
 }
+
+// reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
+func (r *ArgoCDReconciler) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileClusterMainSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterCASecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterTLSSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileGrafanaSecret(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileSecrets will reconcile all ArgoCD Secret resources.
+func (r *ArgoCDReconciler) reconcileSecrets(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileClusterSecrets(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoSecret(cr); err != nil {
+		return err
+	}
+
+	return nil
+}

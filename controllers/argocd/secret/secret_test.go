@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	"github.com/stretchr/testify/assert"
@@ -90,8 +92,19 @@ func Test_reconcileCASecret(t *testing.T) {
 	err = testSR.reconcileCASecret()
 	assert.NoError(t, err)
 
-	_, err = workloads.GetSecret("test-name-ca", "test-ns", testSR.Client)
+	existingCAsecret, err := workloads.GetSecret("test-name-ca", "test-ns", testSR.Client)
 	assert.NoError(t, err)
+
+	expectedDataKeys := []string{
+		corev1.ServiceAccountRootCAKey,
+		corev1.TLSCertKey,
+		corev1.TLSPrivateKeyKey,
+	}
+
+	if actualDataKeys := util.ByteMapKeys(existingCAsecret.Data); !reflect.DeepEqual(expectedDataKeys, actualDataKeys) {
+		assert.Equal(t, expectedDataKeys, actualDataKeys)
+	}
+
 }
 
 func Test_reconcileTLSSecret(t *testing.T) {
@@ -228,6 +241,7 @@ func Test_reconcileArgoCDSecret(t *testing.T) {
 		common.ArgoCDKeyAdminPassword: []byte("new-pw"),
 	}
 	delete(existingArgoCDSecret.Data, common.ArgoCDKeyServerSecretKey)
+
 	err = workloads.UpdateSecret(existingCredsSecret, testSR.Client)
 	assert.NoError(t, err)
 	err = workloads.UpdateSecret(existingArgoCDSecret, testSR.Client)
@@ -242,6 +256,7 @@ func Test_reconcileArgoCDSecret(t *testing.T) {
 	pwdUnchanged, _ := argopass.VerifyPassword("new-pw", string(existingArgoCDSecret.Data["admin.password"]))
 	assert.True(t, pwdUnchanged)
 
+	assert.NotNil(t, existingArgoCDSecret.Data[common.ArgoCDKeyServerSecretKey])
 }
 
 func Test_getClusterSecrets(t *testing.T) {

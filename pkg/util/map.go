@@ -1,5 +1,7 @@
 package util
 
+import "sort"
+
 // combines 2 maps and returns the result. In case of conflicts, values in 2nd input overwrite values in 1st input
 func MergeMaps(a, b map[string]string) map[string]string {
 	mergedMap := make(map[string]string, 0)
@@ -38,4 +40,14 @@ func ConvertMapToSlices(src map[string]string) ([]string, []string) {
 		values = append(values, value)
 	}
 	return keys, values
+}
+
+// ByteMapKeys accepts a map containg string keys and []byte values, and returns a slice of the keys
+func ByteMapKeys(m map[string][]byte) []string {
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
+	}
+	sort.Strings(r)
+	return r
 }
