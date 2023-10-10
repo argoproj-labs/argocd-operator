@@ -11,3 +11,15 @@ func UpdateIfChanged(existingVal, desiredVal interface{}, extraAction func(), ch
 		*changed = true
 	}
 }
+
+func UpdateIfChangedSlice(existingVal, desiredVal interface{}, extraAction func(), changed *bool) (interface{}, interface{}) {
+	if !reflect.DeepEqual(existingVal, desiredVal) {
+		existingVal = desiredVal
+		if extraAction != nil {
+			extraAction()
+		}
+		*changed = true
+	}
+
+	return existingVal, desiredVal
+}

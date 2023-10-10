@@ -24,6 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -150,7 +151,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 			Hosts: []string{
 				getArgoServerHost(cr),
 			},
-			SecretName: common.ArgoCDSecretName,
+			SecretName: secret.ArgoCDSecretName,
 		},
 	}
 
@@ -225,7 +226,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 			Hosts: []string{
 				getArgoServerGRPCHost(cr),
 			},
-			SecretName: common.ArgoCDSecretName,
+			SecretName: secret.ArgoCDSecretName,
 		},
 	}
 
@@ -302,7 +303,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 				cr.Name,
 				getGrafanaHost(cr),
 			},
-			SecretName: common.ArgoCDSecretName,
+			SecretName: secret.ArgoCDSecretName,
 		},
 	}
 
@@ -376,7 +377,7 @@ func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error
 	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts:      []string{cr.Name},
-			SecretName: common.ArgoCDSecretName,
+			SecretName: secret.ArgoCDSecretName,
 		},
 	}
 

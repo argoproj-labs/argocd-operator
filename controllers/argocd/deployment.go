@@ -1353,7 +1353,7 @@ func (r *ArgoCDReconciler) triggerDeploymentRollout(deployment *appsv1.Deploymen
 		return nil
 	}
 
-	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	deployment.Spec.Template.ObjectMeta.Labels[key] = util.NowNano()
 	return r.Client.Update(context.TODO(), deployment)
 }
 

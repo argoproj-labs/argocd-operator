@@ -24,6 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -1060,7 +1061,7 @@ func (r *ArgoCDReconciler) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRoute
 	// Update the ArgoCD client secret for OIDC in argocd-secret.
 	argoCDSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      common.ArgoCDSecretName,
+			Name:      secret.ArgoCDSecretName,
 			Namespace: cr.Namespace,
 		},
 	}

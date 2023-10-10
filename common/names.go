@@ -29,9 +29,6 @@ const (
 	// ArgoCDRBACConfigMapName is the upstream hard-coded RBAC ConfigMap name.
 	ArgoCDRBACConfigMapName = "argocd-rbac-cm"
 
-	// ArgoCDSecretName is the upstream hard-coded ArgoCD Secret name.
-	ArgoCDSecretName = "argocd-secret"
-
 	// ArgoCDTLSCertsConfigMapName is the upstream hard-coded TLS certificate data ConfigMap name.
 	ArgoCDTLSCertsConfigMapName = "argocd-tls-certs-cm"
 
@@ -49,6 +46,12 @@ const (
 const (
 	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
 	ArgoCDCASuffix = "ca"
+
+	// ArgoCDGRPCSuffix is the name suffix for ArgoCD GRPC resources.
+	ArgoCDGRPCSuffix = "grpc"
+
+	// ArgoCDTLSSuffix is the name suffix for ArgoCD TLS resources.
+	ArgoCDTLSSuffix = "tls"
 
 	// ArgoCDGrafanaConfigMapSuffix is the default suffix for the Grafana configuration ConfigMap.
 	ArgoCDGrafanaConfigMapSuffix = "grafana-config"

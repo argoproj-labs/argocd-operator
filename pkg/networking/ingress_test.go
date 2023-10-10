@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
@@ -51,7 +52,7 @@ func getTestIngress(opts ...ingressOpt) *networkingv1.Ingress {
 					Hosts: []string{
 						"test.host.com",
 					},
-					SecretName: common.ArgoCDSecretName,
+					SecretName: secret.ArgoCDSecretName,
 				},
 			},
 		},
@@ -106,7 +107,7 @@ func TestRequestIngress(t *testing.T) {
 							Hosts: []string{
 								"test.host.com",
 							},
-							SecretName: common.ArgoCDSecretName,
+							SecretName: secret.ArgoCDSecretName,
 						},
 					},
 				},
@@ -146,7 +147,7 @@ func TestRequestIngress(t *testing.T) {
 							Hosts: []string{
 								"test.host.com",
 							},
-							SecretName: common.ArgoCDSecretName,
+							SecretName: secret.ArgoCDSecretName,
 						},
 					},
 				},
@@ -188,7 +189,7 @@ func TestRequestIngress(t *testing.T) {
 							Hosts: []string{
 								"test.host.com",
 							},
-							SecretName: common.ArgoCDSecretName,
+							SecretName: secret.ArgoCDSecretName,
 						},
 					},
 				},
@@ -230,7 +231,7 @@ func TestRequestIngress(t *testing.T) {
 							Hosts: []string{
 								"test.host.com",
 							},
-							SecretName: common.ArgoCDSecretName,
+							SecretName: secret.ArgoCDSecretName,
 						},
 					},
 				},

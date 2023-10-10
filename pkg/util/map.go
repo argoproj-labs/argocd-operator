@@ -26,3 +26,16 @@ func AppendStringMap(src map[string]string, add map[string]string) map[string]st
 	}
 	return res
 }
+
+// ConvertMapToSlices takes a map of string type as input and returns 2 separate slices
+// containing keys and values
+func ConvertMapToSlices(src map[string]string) ([]string, []string) {
+	keys := []string{}
+	values := []string{}
+
+	for key, value := range src {
+		keys = append(keys, key)
+		values = append(values, value)
+	}
+	return keys, values
+}

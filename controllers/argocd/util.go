@@ -35,7 +35,6 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	"github.com/sethvargo/go-password/password"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -54,28 +53,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-// generateArgoAdminPassword will generate and return the admin password for Argo CD.
-func generateArgoAdminPassword() ([]byte, error) {
-	pass, err := password.Generate(
-		common.ArgoCDDefaultAdminPasswordLength,
-		common.ArgoCDDefaultAdminPasswordNumDigits,
-		common.ArgoCDDefaultAdminPasswordNumSymbols,
-		false, false)
-
-	return []byte(pass), err
-}
-
-// generateArgoServerKey will generate and return the server signature key for session validation.
-func generateArgoServerSessionKey() ([]byte, error) {
-	pass, err := password.Generate(
-		common.ArgoCDDefaultServerSessionKeyLength,
-		common.ArgoCDDefaultServerSessionKeyNumDigits,
-		common.ArgoCDDefaultServerSessionKeyNumSymbols,
-		false, false)
-
-	return []byte(pass), err
-}
 
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
 func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
