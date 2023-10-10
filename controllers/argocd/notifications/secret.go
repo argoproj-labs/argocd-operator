@@ -38,16 +38,16 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteSecret(desiredSecret.Namespace); err != nil {
+		if err := nr.deleteSecret(desiredSecret.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		}
 		return err
 	}
 
-	existingSecret, err := workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
+	_, err = workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", existingSecret.Name, "namespace", existingSecret.Namespace)
+			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 			return err
 		}
 
@@ -66,7 +66,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteSecret(namespace string) error {
+func (nr *NotificationsReconciler) deleteSecret(namespace string) error {
 	if err := workloads.DeleteSecret(NotificationsSecretName, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", NotificationsSecretName, "namespace", namespace)
 		return err

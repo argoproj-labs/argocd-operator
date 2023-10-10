@@ -70,7 +70,7 @@ func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 				Namespace: "argocd-operator",
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						APIVersion: "argoproj.io/v1alpha1",
+						APIVersion: "argoproj.io/v1beta1",
 						Kind:       "ArgoCD",
 						Name:       "argocd",
 						UID:        argocd.GetUID(),
@@ -264,7 +264,7 @@ func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
 				Namespace: "argocd-operator",
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						APIVersion: "argoproj.io/v1alpha1",
+						APIVersion: "argoproj.io/v1beta1",
 						Kind:       "ArgoCD",
 						Name:       "argocd",
 						UID:        argocd.GetUID(),

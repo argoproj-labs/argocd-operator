@@ -42,7 +42,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteRole(desiredRole.Name, desiredRole.Namespace); err != nil {
+		if err := nr.deleteRole(desiredRole.Name, desiredRole.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileRole: failed to delete role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		}
 		return err
@@ -51,7 +51,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
+			nr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
 
@@ -78,7 +78,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteRole(name, namespace string) error {
+func (nr *NotificationsReconciler) deleteRole(name, namespace string) error {
 	if err := permissions.DeleteRole(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err

@@ -353,7 +353,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.Deployment
 			Namespace: ns,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion: "argoproj.io/v1alpha1",
+					APIVersion: "argoproj.io/v1beta1",
 					UID:        cr.UID,
 					Name:       cr.Name,
 					Controller: &controllerRef,

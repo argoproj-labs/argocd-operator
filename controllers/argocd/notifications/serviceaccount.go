@@ -30,16 +30,16 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := nr.DeleteServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace); err != nil {
+		if err := nr.deleteServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace); err != nil {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to delete serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 		}
 		return err
 	}
 
-	existingServiceAccount, err := permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
+	_, err = permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", existingServiceAccount.Name, "namespace", existingServiceAccount.Namespace)
+			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
 
@@ -58,7 +58,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 	return nil
 }
 
-func (nr *NotificationsReconciler) DeleteServiceAccount(name, namespace string) error {
+func (nr *NotificationsReconciler) deleteServiceAccount(name, namespace string) error {
 	if err := permissions.DeleteServiceAccount(name, namespace, nr.Client); err != nil {
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
