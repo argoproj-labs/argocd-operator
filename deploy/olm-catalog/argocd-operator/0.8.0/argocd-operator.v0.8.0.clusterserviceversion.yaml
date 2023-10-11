@@ -1733,6 +1733,7 @@ spec:
               containers:
               - args:
                 - --leader-elect
+                - --label-selector
                 command:
                 - /manager
                 env:
@@ -1740,6 +1741,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: ARGOCD_LABEL_SELECTOR
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
                 image: quay.io/argoprojlabs/argocd-operator:v0.8.0
