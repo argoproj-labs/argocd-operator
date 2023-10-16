@@ -95,6 +95,7 @@ const (
 	SecretKind         = "Secret"
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
+	StatefulSetKind    = "StatefulSet"
 )
 
 // Commnds

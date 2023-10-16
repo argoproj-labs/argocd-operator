@@ -9,7 +9,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
-	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -62,13 +61,13 @@ func IsOwnerOfInterest(owner metav1.OwnerReference) bool {
 
 // TriggerRollout will trigger a rollout of a Kubernetes resource specified as
 // obj. It currently supports Deployment and StatefulSet resources.
-func TriggerRollout(client cntrlClient.Client, obj interface{}, key string) error {
-	switch res := obj.(type) {
-	case *appsv1.Deployment:
-		return workloads.TriggerDeploymentRollout(client, res, key)
-	case *appsv1.StatefulSet:
-		return workloads.TriggerStatefulSetRollout(client, res, key)
+func TriggerRollout(client cntrlClient.Client, name, namespace, resType string, opt func(name string, namespace string)) error {
+	switch resType {
+	case common.DeploymentKind:
+		return workloads.TriggerDeploymentRollout(client, name, namespace, opt)
+	case common.StatefulSetKind:
+		return workloads.TriggerStatefulSetRollout(client, name, namespace, opt)
 	default:
-		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
+		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", resType)
 	}
 }

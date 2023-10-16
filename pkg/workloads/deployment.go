@@ -3,12 +3,8 @@ package workloads
 import (
 	"context"
 	"fmt"
-	"time"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,28 +102,9 @@ func RequestDeployment(request DeploymentRequest) (*appsv1.Deployment, error) {
 	return deployment, nil
 }
 
-func CreateDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) (*appsv1.Deployment, error) {
-	lbls := cr.Labels
-	lbls[common.AppK8sKeyComponent] = component
-	deploymentRequest := DeploymentRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      util.NameWithSuffix(cr.Name, suffix),
-			Namespace: cr.Namespace,
-			Labels:    lbls,
-		},
-	}
-
-	deployment, err := RequestDeployment(deploymentRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	return deployment, nil
-}
-
 // TriggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
-func TriggerDeploymentRollout(client cntrlClient.Client, deployment *appsv1.Deployment, key string) error {
-	currentDeployment, err := GetDeployment(deployment.Name, deployment.Namespace, client)
+func TriggerDeploymentRollout(client cntrlClient.Client, name, namespace string, updateChangedTime func(name, namespace string)) error {
+	currentDeployment, err := GetDeployment(name, namespace, client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -135,11 +112,6 @@ func TriggerDeploymentRollout(client cntrlClient.Client, deployment *appsv1.Depl
 		return nil
 	}
 
-	currentDeployment.Spec.Template.ObjectMeta.Labels[key] = NowNano()
+	updateChangedTime(currentDeployment.Name, currentDeployment.Namespace)
 	return UpdateDeployment(currentDeployment, client)
-}
-
-// nowNano returns a string with the current UTC time as epoch in nanoseconds
-func NowNano() string {
-	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
 }

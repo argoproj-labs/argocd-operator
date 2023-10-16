@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	corev1 "k8s.io/api/core/v1"
@@ -62,11 +63,14 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		// Trigger rollout of API components
 		components := []string{common.Server, RepoServerControllerComponent, appcontroller.ArgoCDApplicationControllerComponent}
 		for _, component := range components {
-			depl, err := workloads.CreateDeploymentWithSuffix(component, component, rsr.Instance)
-			if err != nil {
-				return err
-			}
-			err = argocdcommon.TriggerRollout(rsr.Client, depl, common.ArgoCDRepoTLSCertChangedKey)
+			name := util.NameWithSuffix(rsr.Instance.Name, component)
+			err = argocdcommon.TriggerRollout(rsr.Client, name, rsr.Instance.Namespace, common.DeploymentKind, func(name string, namespace string) {
+				deployment, err := workloads.GetDeployment(name, namespace, rsr.Client)
+				if err != nil {
+					rsr.Logger.Error(err, "reconcileSecret: failed to retrieve deployment", "name", name, "namespace", namespace)
+				}
+				deployment.Spec.Template.ObjectMeta.Labels[common.ArgoCDRepoTLSCertChangedKey] = util.NowNano()
+			})
 			if err != nil {
 				return err
 			}
