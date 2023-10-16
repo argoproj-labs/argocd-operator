@@ -111,12 +111,8 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	b.Name = "argo-test-2"
 	c := makeTestArgoCD()
 	c.Name = "argo-test-3"
-	rt1 := makeTestReconciler(t, a)
-	rt2 := makeTestReconciler(t, b)
-	rt3 := makeTestReconciler(t, c)
-	assert.NoError(t, createNamespace(rt1, a.Namespace, ""))
-	assert.NoError(t, createNamespace(rt2, b.Namespace, ""))
-	assert.NoError(t, createNamespace(rt3, c.Namespace, ""))
+	rt := makeTestReconciler(t, a, b, c)
+	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
 
 	// All ArgoCD instance should be reconciled if no label-selctor is applied to the operator.
 	// No label selector provided and all argocd instances are reconciled
@@ -128,7 +124,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: a.Namespace,
 		},
 	}
-	res1, err := rt1.Reconcile(context.TODO(), req1)
+	res1, err := rt.Reconcile(context.TODO(), req1)
 	assert.NoError(t, err)
 	if res1.Requeue {
 		t.Fatal("reconcile requeued request")
@@ -141,7 +137,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: b.Namespace,
 		},
 	}
-	res2, err := rt2.Reconcile(context.TODO(), req2)
+	res2, err := rt.Reconcile(context.TODO(), req2)
 	assert.NoError(t, err)
 	if res2.Requeue {
 		t.Fatal("reconcile requeued request")
@@ -154,49 +150,49 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 			Namespace: c.Namespace,
 		},
 	}
-	res3, err := rt3.Reconcile(context.TODO(), req3)
+	res3, err := rt.Reconcile(context.TODO(), req3)
 	assert.NoError(t, err)
 	if res3.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
 
 	// Apply label-selector foo=bar to the operator but not to the argocd instances. No reconciliation will happen and an error is expected.
-	rt1.LabelSelector = "foo=bar"
+	rt.LabelSelector = "foo=bar"
 	reqTest := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      a.Name,
 			Namespace: a.Namespace,
 		},
 	}
-	resTest, err := rt1.Reconcile(context.TODO(), reqTest)
+	resTest, err := rt.Reconcile(context.TODO(), reqTest)
 	assert.Error(t, err)
 	if resTest.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
 
 	//not reconciled should return error
-	rt2.LabelSelector = "foo=bar"
+	rt.LabelSelector = "foo=bar"
 	reqTest2 := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      b.Name,
 			Namespace: b.Namespace,
 		},
 	}
-	resTest2, err := rt2.Reconcile(context.TODO(), reqTest2)
+	resTest2, err := rt.Reconcile(context.TODO(), reqTest2)
 	assert.Error(t, err)
 	if resTest2.Requeue {
 		t.Fatal("reconcile requeued request")
 	}
 
 	//not reconciled should return error
-	rt3.LabelSelector = "foo=bar"
+	rt.LabelSelector = "foo=bar"
 	reqTest3 := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      c.Name,
 			Namespace: c.Namespace,
 		},
 	}
-	resTest3, err := rt3.Reconcile(context.TODO(), reqTest3)
+	resTest3, err := rt.Reconcile(context.TODO(), reqTest3)
 	assert.Error(t, err)
 	if resTest3.Requeue {
 		t.Fatal("reconcile requeued request")
