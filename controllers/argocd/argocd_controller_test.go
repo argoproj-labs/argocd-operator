@@ -171,7 +171,6 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	}
 
 	//not reconciled should return error
-	rt.LabelSelector = "foo=bar"
 	reqTest2 := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      b.Name,
@@ -185,7 +184,6 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	}
 
 	//not reconciled should return error
-	rt.LabelSelector = "foo=bar"
 	reqTest3 := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      c.Name,
