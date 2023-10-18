@@ -200,9 +200,6 @@ type ArgoCDDexSpec struct {
 	// Version is the Dex container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
-
-	// Env lets you specify environment variables for Dex.
-	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana component.
