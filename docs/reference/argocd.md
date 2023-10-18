@@ -1474,12 +1474,6 @@ spec:
       openShiftOAuth: false
       resources: {}
       version: v2.21.0
-      env:
-        - name: ARGO_WORKFLOWS_SSO_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: argo-workflows-sso
-              key: client-secret
 ```
 
 Please refer to the [dex user guide](../usage/dex.md) to learn more about configuring dex as a Single sign-on provider.
