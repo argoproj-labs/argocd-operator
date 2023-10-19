@@ -1494,6 +1494,10 @@ spec:
                     description: DisableTLSVerification defines whether redis server
                       API should be accessed using strict TLS validation
                     type: boolean
+                  enabled:
+                    description: Enabled is the flag to enable Redis during ArgoCD
+                      installation. (optional, default `true`)
+                    type: boolean
                   image:
                     description: Image is the Redis container image.
                     type: string
@@ -1560,6 +1564,10 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
+                  enabled:
+                    description: Enabled is the flag to enable Repo Server during
+                      ArgoCD installation. (optional, default `true`)
+                    type: boolean
                   env:
                     description: Env lets you specify environment for repo server
                       pods
@@ -6990,6 +6998,10 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  enabled:
+                    description: Enabled is the flag to enable the Application Set
+                      Controller during ArgoCD installation. (optional, default `true`)
+                    type: boolean
                   env:
                     description: Env lets you specify environment for applicationSet
                       controller pods
@@ -7342,6 +7354,10 @@ spec:
                       to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency."
                     type: string
+                  enabled:
+                    description: Enabled is the flag to enable the Application Controller
+                      during ArgoCD installation. (optional, default `true`)
+                    type: boolean
                   env:
                     description: Env lets you specify environment for application
                       controller pods
@@ -8358,6 +8374,10 @@ spec:
                     description: DisableTLSVerification defines whether redis server
                       API should be accessed using strict TLS validation
                     type: boolean
+                  enabled:
+                    description: Enabled is the flag to enable Redis during ArgoCD
+                      installation. (optional, default `true`)
+                    type: boolean
                   image:
                     description: Image is the Redis container image.
                     type: string
@@ -8424,6 +8444,10 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
+                  enabled:
+                    description: Enabled is the flag to enable Repo Server during
+                      ArgoCD installation. (optional, default `true`)
+                    type: boolean
                   env:
                     description: Env lets you specify environment for repo server
                       pods
@@ -13067,6 +13091,10 @@ spec:
                     required:
                     - enabled
                     type: object
+                  enabled:
+                    description: Enabled is the flag to enable ArgoCD Server during
+                      ArgoCD installation. (optional, default `true`)
+                    type: boolean
                   env:
                     description: Env lets you specify environment for API server pods
                     items:

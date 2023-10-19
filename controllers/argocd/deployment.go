@@ -624,6 +624,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !IsComponentEnabled(cr.Spec.Redis.Enabled) {
+			// Deployment exists but component enabled flag has been set to false, delete the Deployment
+			log.Info("Redis exists but should be disabled. Deleting existing redis.")
+			return r.Client.Delete(context.TODO(), deploy)
+		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			return r.Client.Delete(context.TODO(), deploy)
@@ -658,6 +663,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !IsComponentEnabled(cr.Spec.Redis.Enabled) {
+		log.Info("Redis disabled. Skipping starting redis.")
+		return nil
 	}
 
 	if cr.Spec.HA.Enabled {
@@ -1103,6 +1113,13 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+
+		if !IsComponentEnabled(cr.Spec.Repo.Enabled) {
+			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
+			// Delete existing deployment for ArgoCD Repo Server, if any ..
+			return nil
+		}
+
 		changed := false
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
@@ -1169,6 +1186,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !IsComponentEnabled(cr.Spec.Repo.Enabled) {
+		log.Info("ArgoCD Repo disabled. Skipping starting ArgoCD Repo.")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
@@ -1292,6 +1314,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !IsComponentEnabled(cr.Spec.Server.Enabled) {
+			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
+			// Delete existing deployment for ArgoCD Server, if any ..
+			return nil
+		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
@@ -1335,6 +1362,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !IsComponentEnabled(cr.Spec.Controller.Enabled) {
+		log.Info("ArgoCD Repo Server disabled. Skipping starting repo server.")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {

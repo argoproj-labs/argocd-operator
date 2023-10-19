@@ -108,6 +108,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Enabled is the flag to enable the Application Controller during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -162,6 +165,9 @@ type ArgoCDApplicationSet struct {
 
 	// SCMRootCAConfigMap is the name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller (optional).
 	SCMRootCAConfigMap string `json:"scmRootCAConfigMap,omitempty"`
+
+	// Enabled is the flag to enable the Application Set Controller during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -413,6 +419,10 @@ type ArgoCDRedisSpec struct {
 	// The value specified here can currently be:
 	// - openshift - Use the OpenShift service CA to request TLS config
 	AutoTLS string `json:"autotls,omitempty"`
+
+	// Enabled is the flag to enable Redis during ArgoCD installation. (optional, default `true`)
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -473,6 +483,9 @@ type ArgoCDRepoSpec struct {
 
 	// SidecarContainers defines the list of sidecar containers for the repo server deployment
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
+
+	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -563,6 +576,9 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
+	// Enabled is the flag to enable ArgoCD Server during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
