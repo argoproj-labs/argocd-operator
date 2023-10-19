@@ -228,4 +228,7 @@ const (
 
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
+
+	// Label Selector is an env variable for ArgoCD instance reconcilliation.
+	ArgoCDLabelSelectorKey = "ARGOCD_LABEL_SELECTOR"
 )
