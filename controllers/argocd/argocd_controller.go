@@ -27,6 +27,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -46,6 +47,8 @@ type ReconcileArgoCD struct {
 	ManagedNamespaces *corev1.NamespaceList
 	// Stores a list of SourceNamespaces as values
 	ManagedSourceNamespaces map[string]string
+	// Stores label selector used to reconcile a subset of ArgoCD
+	LabelSelector string
 }
 
 var log = logr.Log.WithName("controller_argocd")
@@ -103,6 +106,18 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	// Fetch labelSelector from r.LabelSelector (command-line option)
+	labelSelector, err := labels.Parse(r.LabelSelector)
+	if err != nil {
+		reqLogger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
+		return reconcile.Result{}, err
+	}
+	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
+	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
+		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
+		return reconcile.Result{}, fmt.Errorf("Error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
 	newPhase := argocd.Status.Phase

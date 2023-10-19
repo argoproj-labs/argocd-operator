@@ -102,6 +102,107 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_LabelSelector(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	//ctx := context.Background()
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-1"
+		ac.Labels = map[string]string{"foo": "bar"}
+	})
+	b := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-2"
+		ac.Labels = map[string]string{"testfoo": "testbar"}
+	})
+	c := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-3"
+	})
+	rt := makeTestReconciler(t, a, b, c)
+	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
+
+	// All ArgoCD instances should be reconciled if no label-selctor is applied to the operator.
+
+	// Instance 'a'
+	req1 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	res1, err := rt.Reconcile(context.TODO(), req1)
+	assert.NoError(t, err)
+	if res1.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'b'
+	req2 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      b.Name,
+			Namespace: b.Namespace,
+		},
+	}
+	res2, err := rt.Reconcile(context.TODO(), req2)
+	assert.NoError(t, err)
+	if res2.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'c'
+	req3 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+		},
+	}
+	res3, err := rt.Reconcile(context.TODO(), req3)
+	assert.NoError(t, err)
+	if res3.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Apply label-selector foo=bar to the operator.
+	// Only Instance a should reconcile with matching label "foo=bar"
+	// No reconciliation is expected for instance b and c and an error is expected.
+	rt.LabelSelector = "foo=bar"
+	reqTest := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	resTest, err := rt.Reconcile(context.TODO(), reqTest)
+	assert.NoError(t, err)
+	if resTest.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Instance 'b' is not reconciled as the label does not match, error expected
+	reqTest2 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      b.Name,
+			Namespace: b.Namespace,
+		},
+	}
+	resTest2, err := rt.Reconcile(context.TODO(), reqTest2)
+	assert.Error(t, err)
+	if resTest2.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'c' is not reconciled as there is no label, error expected
+	reqTest3 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+		},
+	}
+	resTest3, err := rt.Reconcile(context.TODO(), reqTest3)
+	assert.Error(t, err)
+	if resTest3.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+}
+
 func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
