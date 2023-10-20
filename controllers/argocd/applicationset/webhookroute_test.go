@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 
@@ -57,7 +58,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 			}
 
 			updatedWebhookRoute := &routev1.Route{}
-			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, updatedWebhookRoute)
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: common.AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, updatedWebhookRoute)
 			if err != nil {
 				t.Fatalf("Could not get updated WebhookRoute: %v", err)
 			}
@@ -97,7 +98,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabl
 			}
 
 			webhookRoute := &routev1.Route{}
-			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, webhookRoute)
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: common.AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, webhookRoute)
 			if err != nil {
 				assert.Equal(t, errors.IsNotFound(err), true)
 			}
@@ -125,7 +126,7 @@ func TestApplicationSetReconciler_deleteWebhookRoute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			asr := tt.setupClient(tt.webhookServerRouteEnabled)
-			if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, ns.Name); (err != nil) != tt.wantErr {
+			if err := asr.deleteWebhookRoute(common.AppSetWebhookRouteName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

@@ -229,30 +229,30 @@ func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
 	// core components, return reconciliation errors
-	// if err := r.SecretController.Reconcile(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile secret controller")
-	// 	return err
-	// }
+	if err := r.SecretController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile secret controller")
+		return err
+	}
 
-	// if err := r.ConfigMapController.Reconcile(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile configmap controller")
-	// 	return err
-	// }
+	if err := r.ConfigMapController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile configmap controller")
+		return err
+	}
 
-	// if err := r.AppController.Reconcile(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile application controller")
-	// 	return err
-	// }
+	if err := r.AppController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile application controller")
+		return err
+	}
 
-	// if err := r.ServerController.Reconcile(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile server")
-	// 	return err
-	// }
+	if err := r.ServerController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile server")
+		return err
+	}
 
-	// if err := r.RedisController.Reconcile(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile redis controller")
-	// 	return err
-	// }
+	if err := r.RedisController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile redis controller")
+		return err
+	}
 
 	if err := r.ReposerverController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile reposerver controller")
@@ -260,25 +260,25 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 	}
 
 	// non-core components, don't return reconciliation errors
-	// if r.Instance.Spec.ApplicationSet != nil {
-	// 	if err := r.AppsetController.Reconcile(); err != nil {
-	// 		r.Logger.Error(err, "failed to reconcile applicationset controller")
-	// 	}
-	// } else {
-	// 	if err := r.AppsetController.DeleteResources(); err != nil {
-	// 		r.Logger.Error(err, "failed to delete applicationset resources")
-	// 	}
-	// }
+	if r.Instance.Spec.ApplicationSet != nil {
+		if err := r.AppsetController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile applicationset controller")
+		}
+	} else {
+		if err := r.AppsetController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete applicationset resources")
+		}
+	}
 
-	// if r.Instance.Spec.Notifications.Enabled {
-	// 	if err := r.NotificationsController.Reconcile(); err != nil {
-	// 		r.Logger.Error(err, "failed to reconcile notifications controller")
-	// 	}
-	// } else {
-	// 	if err := r.NotificationsController.DeleteResources(); err != nil {
-	// 		r.Logger.Error(err, "failed to delete notifications resources")
-	// 	}
-	// }
+	if r.Instance.Spec.Notifications.Enabled {
+		if err := r.NotificationsController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile notifications controller")
+		}
+	} else {
+		if err := r.NotificationsController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete notifications resources")
+		}
+	}
 
 	if err := r.SSOController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile SSO controller")
@@ -303,7 +303,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.RedisController = &redis.RedisReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
@@ -312,10 +312,13 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+
+		AppController:    r.AppController,
+		ServerController: r.ServerController,
 	}
 
 	r.ServerController = &server.ServerReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
@@ -330,7 +333,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.AppController = &appcontroller.AppControllerReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,

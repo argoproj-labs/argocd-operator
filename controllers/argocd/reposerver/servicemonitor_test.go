@@ -15,6 +15,7 @@ import (
 func TestRepoServerReconciler_reconcileServiceMonitor(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sa := argocdcommon.MakeTestServiceAccount()
+
 	resourceName = argocdcommon.TestArgoCDName
 
 	tests := []struct {
@@ -42,7 +43,7 @@ func TestRepoServerReconciler_reconcileServiceMonitor(t *testing.T) {
 				}
 			}
 			currentService := &monitoringv1.ServiceMonitor{}
-			err = rsr.Client.Get(context.TODO(), types.NamespacedName{Name: util.GenerateResourceName(rsr.Instance.Name, RepoServerMetrics), Namespace: argocdcommon.TestNamespace}, currentService)
+			err = rsr.Client.Get(context.TODO(), types.NamespacedName{Name: util.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetrics), Namespace: argocdcommon.TestNamespace}, currentService)
 			if err != nil {
 				t.Fatalf("Could not get current Service: %v", err)
 			}
@@ -70,8 +71,8 @@ func TestRepoServerReconciler_DeleteServiceMonitor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nr := tt.setupClient()
-			if err := nr.deleteServiceMonitor(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			rsr := tt.setupClient()
+			if err := rsr.deleteServiceMonitor(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

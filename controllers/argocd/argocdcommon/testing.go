@@ -11,6 +11,7 @@ import (
 const (
 	TestNamespace  = "argocd"
 	TestArgoCDName = "argocd"
+	TestUID        = "test-uid"
 )
 
 var (

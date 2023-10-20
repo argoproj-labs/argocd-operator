@@ -2,8 +2,10 @@ package reposerver
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -23,25 +25,25 @@ func (rsr *RepoServerReconciler) GetRepoServerResources() corev1.ResourceRequire
 func (rsr *RepoServerReconciler) GetRepoServerCommand(useTLSForRedis bool) []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, UidEntryPointSh)
-	cmd = append(cmd, RepoServerController)
+	cmd = append(cmd, common.UidEntryPointSh)
+	cmd = append(cmd, common.RepoServerController)
 
-	cmd = append(cmd, redis.Redis)
-	cmd = append(cmd, redis.GetRedisServerAddress(rsr.Instance))
+	cmd = append(cmd, common.Redis)
+	cmd = append(cmd, argocdcommon.GetRedisServerAddress(rsr.Instance))
 
 	if useTLSForRedis {
-		cmd = append(cmd, redis.RedisUseTLS)
+		cmd = append(cmd, common.RedisUseTLS)
 		if rsr.Instance.Spec.Redis.DisableTLSVerification {
-			cmd = append(cmd, redis.RedisInsecureSkipTLSVerify)
+			cmd = append(cmd, common.RedisInsecureSkipTLSVerify)
 		} else {
-			cmd = append(cmd, redis.RedisCACertificate, RepoServerTLSRedisCertPath)
+			cmd = append(cmd, common.RedisCACertificate, common.RepoServerTLSRedisCertPath)
 		}
 	}
 
-	cmd = append(cmd, LogLevel)
+	cmd = append(cmd, common.LogLevel)
 	cmd = append(cmd, util.GetLogLevel(rsr.Instance.Spec.Repo.LogLevel))
 
-	cmd = append(cmd, LogFormat)
+	cmd = append(cmd, common.LogFormat)
 	cmd = append(cmd, util.GetLogFormat(rsr.Instance.Spec.Repo.LogFormat))
 
 	// *** NOTE ***
@@ -66,5 +68,19 @@ func (rsr *RepoServerReconciler) GetRepoServerReplicas() *int32 {
 
 // GetRepoServerAddress will return the Argo CD repo server address.
 func GetRepoServerAddress(name string, namespace string) string {
-	return util.FqdnServiceRef(util.NameWithSuffix(name, RepoServerControllerComponent), namespace, common.ArgoCDDefaultRepoServerPort)
+	return util.FqdnServiceRef(util.NameWithSuffix(name, common.RepoServerControllerComponent), namespace, common.ArgoCDDefaultRepoServerPort)
+}
+
+func (rsr *RepoServerReconciler) TriggerRepoServerDeploymentRollout() error {
+	name := util.NameWithSuffix(rsr.Instance.Name, common.RepoServerControllerComponent)
+	return workloads.TriggerDeploymentRollout(rsr.Client, name, rsr.Instance.Namespace, func(name string, namespace string) {
+		deployment, err := workloads.GetDeployment(name, namespace, rsr.Client)
+		if err != nil {
+			rsr.Logger.Error(err, "triggerRepoServerDeploymentRollout: failed to trigger repo-server deployment", "name", name, "namespace", namespace)
+		}
+		if deployment.Spec.Template.ObjectMeta.Labels == nil {
+			deployment.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+		}
+		deployment.Spec.Template.ObjectMeta.Labels[common.ArgoCDRepoTLSCertChangedKey] = util.NowNano()
+	})
 }

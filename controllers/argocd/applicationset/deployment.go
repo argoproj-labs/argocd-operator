@@ -179,10 +179,10 @@ func (asr *ApplicationSetReconciler) getDeploymentRequest(dep appsv1.Deployment)
 func (asr *ApplicationSetReconciler) getApplicationSetCommand() []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, EntryPointSh)
-	cmd = append(cmd, AppSetController)
+	cmd = append(cmd, common.EntryPointSh)
+	cmd = append(cmd, common.AppSetController)
 
-	cmd = append(cmd, ArgoCDRepoServer)
+	cmd = append(cmd, common.ArgoCDRepoServer)
 	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
 
 	cmd = append(cmd, common.LogLevel)
@@ -207,7 +207,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 		Command:         asr.getApplicationSetCommand(),
 		Image:           argocdcommon.GetArgoContainerImage(asr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            AppSetController,
+		Name:            common.AppSetController,
 		Env:             appSetEnv,
 		Resources:       asr.getApplicationSetResources(),
 		SecurityContext: &corev1.SecurityContext{
@@ -256,8 +256,8 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 
 	if addSCMGitlabVolumeMount {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      AppSetGitlabSCMTlsCert,
-			MountPath: AppSetGitlabSCMTlsCertPath,
+			Name:      common.AppSetGitlabSCMTlsCert,
+			MountPath: common.AppSetGitlabSCMTlsCertPath,
 		})
 	}
 
@@ -311,7 +311,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetPodVolumes(addSCMGitlabVol
 	}
 	if addSCMGitlabVolumeMount {
 		volumes = append(volumes, corev1.Volume{
-			Name: AppSetGitlabSCMTlsCert,
+			Name: common.AppSetGitlabSCMTlsCert,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{

@@ -15,35 +15,48 @@ func TestRepoServerReconciler_reconcileDeployment(t *testing.T) {
 	resourceName = argocdcommon.TestArgoCDName
 	resourceLabels = testExpectedLabels
 	ns := argocdcommon.MakeTestNamespace()
-	asr := makeTestRepoServerReconciler(t, ns)
-
-	existingDeployment := asr.getDesiredDeployment(false) // todo
+	rsr := makeTestRepoServerReconciler(t, ns)
 
 	tests := []struct {
-		name        string
-		setupClient func() *RepoServerReconciler
-		wantErr     bool
+		name           string
+		setupClient    func(useTLSForRedis bool) *RepoServerReconciler
+		wantErr        bool
+		useTLSForRedis bool
 	}{
 		{
 			name: "create a deployment",
-			setupClient: func() *RepoServerReconciler {
+			setupClient: func(useTLSForRedis bool) *RepoServerReconciler {
 				return makeTestRepoServerReconciler(t, ns)
 			},
-			wantErr: false,
+			wantErr:        false,
+			useTLSForRedis: false,
 		},
 		{
-			name: "update a deployment",
-			setupClient: func() *RepoServerReconciler {
+			name: "update a deployment when doesn't use TLS for Redis",
+			setupClient: func(useTLSForRedis bool) *RepoServerReconciler {
+				existingDeployment := rsr.getDesiredDeployment(useTLSForRedis)
 				outdatedDeployment := existingDeployment
 				outdatedDeployment.Spec.Template.Spec.ServiceAccountName = "new-service-account"
 				return makeTestRepoServerReconciler(t, outdatedDeployment, ns)
 			},
-			wantErr: false,
+			wantErr:        false,
+			useTLSForRedis: false,
+		},
+		{
+			name: "update a deployment when use TLS for Redis",
+			setupClient: func(useTLSForRedis bool) *RepoServerReconciler {
+				existingDeployment := rsr.getDesiredDeployment(useTLSForRedis)
+				outdatedDeployment := existingDeployment
+				outdatedDeployment.Spec.Template.Spec.ServiceAccountName = "new-service-account"
+				return makeTestRepoServerReconciler(t, outdatedDeployment, ns)
+			},
+			wantErr:        false,
+			useTLSForRedis: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			asr := tt.setupClient()
+			asr := tt.setupClient(tt.useTLSForRedis)
 			err := asr.reconcileDeployment()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
@@ -81,8 +94,8 @@ func TestRepoServerReconciler_DeleteDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			asr := tt.setupClient()
-			if err := asr.deleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
+			rsr := tt.setupClient()
+			if err := rsr.deleteDeployment(resourceName, ns.Name); (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")
 				} else {

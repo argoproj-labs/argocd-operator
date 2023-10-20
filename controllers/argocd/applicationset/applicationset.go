@@ -24,10 +24,10 @@ var (
 
 func (asr *ApplicationSetReconciler) Reconcile() error {
 
-	asr.Logger = ctrl.Log.WithName(AppSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
+	asr.Logger = ctrl.Log.WithName(common.AppSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
 
-	resourceName = util.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, AppSetControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
+	resourceName = util.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, common.AppSetControllerComponent)
+	resourceLabels = common.DefaultLabels(resourceName, asr.Instance.Name, common.AppSetControllerComponent)
 
 	if err := asr.reconcileServiceAccount(); err != nil {
 		asr.Logger.Info("reconciling applicationSet serviceaccount")
@@ -50,7 +50,7 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 			return err
 		}
 	} else {
-		if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
+		if err := asr.deleteWebhookRoute(common.AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
 			asr.Logger.Error(err, "deleting applicationSet webhook route: failed to delete webhook route")
 			return err
 		}

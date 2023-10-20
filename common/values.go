@@ -100,5 +100,6 @@ const (
 
 // Commnds
 const (
-	LogLevel = "--loglevel"
+	LogLevel  = "--loglevel"
+	LogFormat = "--logformat"
 )

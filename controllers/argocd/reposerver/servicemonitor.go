@@ -18,7 +18,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 
 	serviceMonitorRequest := monitoring.ServiceMonitorRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        util.GenerateResourceName(rsr.Instance.Name, RepoServerMetrics),
+			Name:        util.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetrics),
 			Namespace:   rsr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: rsr.Instance.Annotations,
@@ -26,7 +26,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					common.AppK8sKeyName: util.GenerateResourceName(rsr.Instance.Name, RepoServerControllerComponent),
+					common.AppK8sKeyName: util.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent),
 				},
 			},
 			Endpoints: []monitoringv1.Endpoint{

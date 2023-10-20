@@ -6,10 +6,7 @@ import (
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	corev1 "k8s.io/api/core/v1"
@@ -27,15 +24,15 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	}
 	if namespace.DeletionTimestamp != nil {
 		if err := rsr.deleteTLSSecret(rsr.Instance.Namespace); err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
+			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 		}
 		return err
 	}
 
-	existingSecret, err := workloads.GetSecret(RepoServerTLSSecretName, rsr.Instance.Namespace, rsr.Client)
+	existingSecret, err := workloads.GetSecret(common.RepoServerTLSSecretName, rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
+			rsr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 			return err
 		}
 	} else if existingSecret.Type != corev1.SecretTypeTLS {
@@ -56,27 +53,27 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		err = rsr.Client.Status().Update(context.TODO(), rsr.Instance)
 		// err = workloads.UpdateSecret(desiredSecret, rsr.Client)
 		if err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to update status", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
+			rsr.Logger.Error(err, "reconcileSecret: failed to update status", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 			return err
 		}
 
 		// Trigger rollout of API components
-		components := []string{common.Server, RepoServerControllerComponent, appcontroller.ArgoCDApplicationControllerComponent}
-		for _, component := range components {
-			name := util.NameWithSuffix(rsr.Instance.Name, component)
-			err = argocdcommon.TriggerRollout(rsr.Client, name, rsr.Instance.Namespace, common.DeploymentKind, func(name string, namespace string) {
-				deployment, err := workloads.GetDeployment(name, namespace, rsr.Client)
-				if err != nil {
-					rsr.Logger.Error(err, "reconcileSecret: failed to retrieve deployment", "name", name, "namespace", namespace)
-				}
-				deployment.Spec.Template.ObjectMeta.Labels[common.ArgoCDRepoTLSCertChangedKey] = util.NowNano()
-			})
-			if err != nil {
-				return err
-			}
+		err = rsr.TriggerRepoServerDeploymentRollout()
+		if err != nil {
+			return err
 		}
 
-		rsr.Logger.V(0).Info("reconcileSecret: argocd client status updated", "name", RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
+		err = rsr.ServerController.TriggerServerDeploymentRollout()
+		if err != nil {
+			return err
+		}
+
+		err = rsr.AppController.TriggerAppControllerStatefulSetRollout()
+		if err != nil {
+			return err
+		}
+
+		rsr.Logger.V(0).Info("reconcileSecret: argocd client status updated", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
 		return nil
 	}
 
@@ -84,10 +81,10 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 }
 
 func (rsr *RepoServerReconciler) deleteTLSSecret(namespace string) error {
-	if err := workloads.DeleteSecret(RepoServerTLSSecretName, namespace, rsr.Client); err != nil {
-		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", RepoServerTLSSecretName, "namespace", namespace)
+	if err := workloads.DeleteSecret(common.RepoServerTLSSecretName, namespace, rsr.Client); err != nil {
+		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", common.RepoServerTLSSecretName, "namespace", namespace)
 		return err
 	}
-	rsr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", RepoServerTLSSecretName, "namespace", namespace)
+	rsr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", common.RepoServerTLSSecretName, "namespace", namespace)
 	return nil
 }

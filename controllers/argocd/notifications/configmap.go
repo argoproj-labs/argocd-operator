@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
@@ -15,7 +16,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	configMapRequest := workloads.ConfigMapRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        NotificationsConfigMapName,
+			Name:        common.NotificationsConfigMapName,
 			Namespace:   nr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: nr.Instance.Annotations,
@@ -65,10 +66,10 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 }
 
 func (nr *NotificationsReconciler) deleteConfigMap(namespace string) error {
-	if err := workloads.DeleteConfigMap(NotificationsConfigMapName, namespace, nr.Client); err != nil {
-		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", NotificationsConfigMapName, "namespace", namespace)
+	if err := workloads.DeleteConfigMap(common.NotificationsConfigMapName, namespace, nr.Client); err != nil {
+		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", common.NotificationsConfigMapName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", NotificationsConfigMapName, "namespace", namespace)
+	nr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", common.NotificationsConfigMapName, "namespace", namespace)
 	return nil
 }

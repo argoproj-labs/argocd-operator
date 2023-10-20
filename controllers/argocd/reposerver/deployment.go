@@ -7,7 +7,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -25,7 +24,7 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 
 	rsr.Logger.Info("reconciling deployment")
 
-	useTLSForRedis, err := redis.ShouldUseTLS(rsr.Client, rsr.Instance.Namespace)
+	useTLSForRedis, err := argocdcommon.ShouldUseTLS(rsr.Client, rsr.Instance.Namespace)
 	if err != nil {
 		rsr.Logger.Error(err, "reconcileDeployment: failed to determine if TLS should be used for Redis")
 		return err
@@ -196,7 +195,7 @@ func (rsr *RepoServerReconciler) getDeploymentRequest(dep appsv1.Deployment) wor
 
 func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container {
 	initContainers := []corev1.Container{{
-		Name:            CopyUtil,
+		Name:            common.CopyUtil,
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		Command:         argocdcommon.GetArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
@@ -236,7 +235,7 @@ func (rsr *RepoServerReconciler) getRepoServerContainers(useTLSForRedis bool) []
 		Command:         rsr.GetRepoServerCommand(useTLSForRedis),
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            RepoServerController,
+		Name:            common.RepoServerController,
 		Env:             repoServerEnv,
 		Resources:       rsr.GetRepoServerResources(),
 		LivenessProbe: &corev1.Probe{

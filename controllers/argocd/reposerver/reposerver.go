@@ -10,11 +10,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type AppController interface {
+	TriggerAppControllerStatefulSetRollout() error
+}
+
+type Server interface {
+	TriggerServerDeploymentRollout() error
+}
+
 type RepoServerReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
+
+	AppController    AppController
+	ServerController Server
 }
 
 var (
@@ -23,9 +34,9 @@ var (
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
-	rsr.Logger = ctrl.Log.WithName(RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
-	resourceName = util.GenerateResourceName(rsr.Instance.Name, RepoServerControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, rsr.Instance.Name, RepoServerControllerComponent)
+	rsr.Logger = ctrl.Log.WithName(common.RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
+	resourceName = util.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent)
+	resourceLabels = common.DefaultLabels(resourceName, rsr.Instance.Name, common.RepoServerControllerComponent)
 
 	if err := rsr.reconcileService(); err != nil {
 		rsr.Logger.Info("reconciling repo server service")
