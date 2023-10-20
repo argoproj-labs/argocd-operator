@@ -59,7 +59,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
@@ -1050,22 +1049,22 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
-	bldr.Watches(&source.Kind{Type: &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, appSetGitlabSCMTLSConfigMapHandler)
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
 
 	// Watch for cluster secrets added to the argocd instance
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}}, clusterSecretResourceHandler)
+		}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})
@@ -1091,16 +1090,13 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	if IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
-		},
+		bldr.Watches(&oappsv1.DeploymentConfig{}, handler.EnqueueRequestForOwner(r.Scheme, nil, &argoproj.ArgoCD{}),
 			builder.WithPredicates(deploymentConfigPred))
 	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	bldr.Watches(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
 }

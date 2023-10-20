@@ -9,7 +9,6 @@ import (
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -215,12 +214,12 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 					Namespace: testNamespace,
 				},
 				Status: networkingv1.IngressStatus{
-					LoadBalancer: v1.LoadBalancerStatus{
-						Ingress: []v1.LoadBalancerIngress{
+					LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+						Ingress: []networkingv1.IngressLoadBalancerIngress{
 							{
 								IP:       "12.0.0.1",
 								Hostname: "argocd",
-								Ports:    []v1.PortStatus{},
+								Ports:    []networkingv1.IngressPortStatus{},
 							},
 							{
 								IP:       "12.0.0.5",
