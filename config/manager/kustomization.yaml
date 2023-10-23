@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/jrao/argocd-operator
-  newTag: v0.8.0-kc
+  newTag: v0.8.0
