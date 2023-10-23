@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -55,7 +56,13 @@ func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ReconcileArgoCD {
 	assert.NoError(t, argoproj.AddToScheme(s))
 	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
 
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	clientObjs := []client.Object{}
+	for _, obj := range objs {
+		clientObj := obj.(client.Object)
+		clientObjs = append(clientObjs, clientObj)
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
 	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,

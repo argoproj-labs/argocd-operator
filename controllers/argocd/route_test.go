@@ -207,7 +207,15 @@ func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) 
 	s.AddKnownTypes(argoproj.GroupVersion, acd)
 	routev1.Install(s)
 	configv1.Install(s)
-	cl := fake.NewFakeClient(objs...)
+
+	clientObjs := []client.Object{}
+	for _, obj := range objs {
+		clientObj := obj.(client.Object)
+		clientObjs = append(clientObjs, clientObj)
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
+
 	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,
