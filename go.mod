@@ -118,8 +118,4 @@ replace (
 
 replace k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.28.3
 
-// replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210323165736-1a6458611d18
-
-// replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.11.0
-
 replace cloud.google.com/go => cloud.google.com/go v0.99.0
