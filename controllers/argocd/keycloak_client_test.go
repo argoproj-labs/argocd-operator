@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 
 	jsoniter "github.com/json-iterator/go"
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +37,7 @@ func TestKeycloak_testLogin(t *testing.T) {
 		assert.Equal(t, authURL, req.URL.Path)
 		assert.Equal(t, req.Method, http.MethodPost)
 
-		response := keycloakv1alpha1.TokenResponse{
+		response := TokenResponse{
 			AccessToken: "dummy",
 		}
 

@@ -140,16 +140,18 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Cache: cache.Options{
-			DefaultNamespaces: getDefaultWatchedNamespacesCacheOptions(),
-		},
-
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		Scheme:                 scheme,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
+	}
+
+	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+		options.Cache = cache.Options{
+			DefaultNamespaces: watchedNsCache,
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -256,6 +258,7 @@ func getDefaultWatchedNamespacesCacheOptions() map[string]cache.Config {
 	watchedNamespaces, err := k8sutil.GetWatchNamespace()
 	if err != nil {
 		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
+		return nil
 	}
 	watchedNsList := strings.Split(watchedNamespaces, ",")
 	setupLog.Info(fmt.Sprintf("Watching namespaces: %v", watchedNsList))

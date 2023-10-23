@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strings"
 
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/pkg/errors"
 )
 
@@ -92,7 +91,7 @@ func (h *httpclient) login(user, pass string) error {
 		return err
 	}
 
-	tokenRes := &keycloakv1alpha1.TokenResponse{}
+	tokenRes := &TokenResponse{}
 	err = json.Unmarshal(body, tokenRes)
 	if err != nil {
 		return err

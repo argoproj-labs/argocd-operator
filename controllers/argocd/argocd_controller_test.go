@@ -275,6 +275,7 @@ func deletedAt(now time.Time) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		wrapped := metav1.NewTime(now)
 		a.ObjectMeta.DeletionTimestamp = &wrapped
+		a.Finalizers = []string{"test: finalizaer"}
 	}
 }
 
