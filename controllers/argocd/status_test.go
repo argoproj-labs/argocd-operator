@@ -20,11 +20,14 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	d := newKeycloakDeployment(a)
@@ -51,11 +54,14 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, oappsv1.AddToScheme(r.Scheme))
@@ -69,15 +75,19 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Unknown", a.Status.SSO)
 
+	// create new client with dc object already present, but with 0 ready replicas to simulate
 	// keycloak installation started
-	r.Client.Create(context.TODO(), dc)
+	resObjs = append(resObjs, dc)
+	subresObjs = append(subresObjs, dc)
+	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Pending", a.Status.SSO)
 
+	// create new client with dc object already present, with 1 ready replica to simulate
 	// keycloak installation completed
 	dc.Status.ReadyReplicas = dc.Spec.Replicas
-	r.Client.Status().Update(context.TODO(), dc)
+	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Running", a.Status.SSO)
@@ -136,11 +146,13 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			runtimeObjs := []client.Object{test.argoCD}
-			statusObjs := []client.Object{test.argoCD}
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-			cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(t, cl, sch)
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			r.reconcileSSO(test.argoCD)
@@ -265,10 +277,12 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	assert.NoError(t, r.reconcileStatusNotifications(a))
@@ -288,10 +302,12 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))

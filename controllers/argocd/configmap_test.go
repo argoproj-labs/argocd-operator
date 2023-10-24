@@ -580,10 +580,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing
 		kvs = append(kvs, kv)
 		a.Spec.KustomizeVersions = kvs
 	})
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
@@ -606,10 +608,12 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.DisableAdmin = true
 	})
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileGPGKeysConfigMap(a)
@@ -627,10 +631,12 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
@@ -721,10 +727,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.ResourceInclusions = customizations
 	})
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
@@ -839,10 +847,12 @@ managedfieldsmanagers:
 		a.Spec.ResourceActions = actions
 		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
 	})
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
@@ -875,10 +885,12 @@ managedfieldsmanagers:
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
@@ -958,10 +970,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileRBAC(a)

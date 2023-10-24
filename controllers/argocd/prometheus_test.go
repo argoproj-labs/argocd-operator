@@ -8,6 +8,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -163,10 +164,11 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 				},
 			}
 
-			runtimeObjs := []client.Object{test.argocd}
-			statusObjs := []client.Object{test.argocd}
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-			cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(t, cl, sch)
 
 			err := monitoringv1.AddToScheme(r.Scheme)

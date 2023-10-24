@@ -240,11 +240,14 @@ func TestGetArgoServerURI(t *testing.T) {
 func TestRemoveDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
 		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
-		runtimeObjs := []client.Object{a}
-		statusObjs := []client.Object{a}
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(t, cl, sch)
+
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if a.IsDeletionFinalizerPresent() {
@@ -253,11 +256,14 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
 		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
-		runtimeObjs := []client.Object{a}
-		statusObjs := []client.Object{a}
+
+		resObjs := []client.Object{}
+		subresObjs := []client.Object{}
+		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(t, cl, sch)
+
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -266,11 +272,14 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 func TestAddDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
 		a := makeTestArgoCD()
-		runtimeObjs := []client.Object{a}
-		statusObjs := []client.Object{a}
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(t, cl, sch)
+
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if !a.IsDeletionFinalizerPresent() {
@@ -279,11 +288,14 @@ func TestAddDeletionFinalizer(t *testing.T) {
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
 		a := makeTestArgoCD()
-		runtimeObjs := []client.Object{}
-		statusObjs := []client.Object{}
+
+		resObjs := []client.Object{}
+		subresObjs := []client.Object{}
+		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(t, cl, sch)
+
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -500,11 +512,14 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
-	runtimeObjs := []client.Object{a}
-	statusObjs := []client.Object{a}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
+
 	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
@@ -560,43 +575,46 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 
 func TestSetManagedNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
-	nsList := &v1.NamespaceList{
-		Items: []v1.Namespace{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-1",
-					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: testNamespace,
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-2",
-					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: testNamespace,
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-3",
-					Labels: map[string]string{
-						common.ArgoCDManagedByLabel: "random-namespace",
-					},
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-4",
-				},
+
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: testNamespace,
 			},
 		},
 	}
 
-	statusObjs := []client.Object{}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: testNamespace,
+			},
+		},
+	}
+
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-3",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: "random-namespace",
+			},
+		},
+	}
+
+	ns4 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-4",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3, &ns4}
+
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, nsList, statusObjs)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(t, cl, sch)
 
 	err := r.setManagedNamespaces(a)
@@ -617,19 +635,21 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 			"test-namespace-1",
 		},
 	}
-	nsList := &v1.NamespaceList{
-		Items: []v1.Namespace{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-namespace-1",
-					Labels: map[string]string{
-						common.ArgoCDManagedByClusterArgoCDLabel: testNamespace,
-					},
-				},
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel: testNamespace,
 			},
 		},
 	}
-	r := makeTestReconciler(t, nsList)
+
+	resObjs := []client.Object{a, &ns1}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.setManagedSourceNamespaces(a)
 	assert.NoError(t, err)
