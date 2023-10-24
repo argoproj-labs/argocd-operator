@@ -47,7 +47,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			err := r.reconcileArgoServerIngress(a)
 			assert.NoError(t, err)
@@ -95,7 +95,7 @@ func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			err := r.reconcileArgoServerGRPCIngress(a)
 			assert.NoError(t, err)
@@ -144,7 +144,7 @@ func TestReconcileArgoCD_reconcile_GrafanaIngress_ingressClassName(t *testing.T)
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			err := r.reconcileGrafanaIngress(a)
 			assert.NoError(t, err)
@@ -193,7 +193,7 @@ func TestReconcileArgoCD_reconcile_PrometheusIngress_ingressClassName(t *testing
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			err := r.reconcilePrometheusIngress(a)
 			assert.NoError(t, err)
@@ -226,7 +226,7 @@ func TestReconcileApplicationSetService_Ingress(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, a)
 	assert.NoError(t, r.reconcileApplicationSetControllerIngress(a))

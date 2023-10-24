@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	json "encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -86,7 +86,7 @@ func (h *httpclient) login(user, pass string) error {
 	}
 
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}

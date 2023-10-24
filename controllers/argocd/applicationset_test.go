@@ -82,7 +82,7 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 
@@ -198,7 +198,7 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 
@@ -273,7 +273,7 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 
@@ -302,7 +302,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 
@@ -402,7 +402,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 			cm := newConfigMapWithName(getCAConfigMapName(a), a)
 			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
 
@@ -436,7 +436,7 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	retSa, err := r.reconcileApplicationSetServiceAccount(a)
 	assert.NoError(t, err)
@@ -464,7 +464,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	roleRet, err := r.reconcileApplicationSetRole(a)
 	assert.NoError(t, err)
@@ -516,7 +516,7 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -561,7 +561,7 @@ func TestReconcileApplicationSet_Service(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	s := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, a)
 
@@ -578,7 +578,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	baseCommand := []string{
 		"entrypoint.sh",
@@ -671,7 +671,7 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	defaultEnv := []corev1.EnvVar{
 		{

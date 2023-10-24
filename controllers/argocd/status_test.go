@@ -27,7 +27,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -61,7 +61,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -152,7 +152,7 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
@@ -257,7 +257,7 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.routeEnabled {
 				err := r.Client.Create(context.TODO(), route)
@@ -286,7 +286,7 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
@@ -311,7 +311,7 @@ func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)

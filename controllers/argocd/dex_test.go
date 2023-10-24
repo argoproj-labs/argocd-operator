@@ -53,7 +53,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_with_dex_disabled(t *testing.T) 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "true")
@@ -124,7 +124,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_removes_dex_when_disabled(t *tes
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -196,7 +196,7 @@ func TestReconcileArgoCD_reconcileDeployments_Dex_with_resources(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -241,7 +241,7 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
@@ -471,7 +471,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -556,7 +556,7 @@ func TestReconcileArgoCD_reconcileDexService_removes_dex_when_disabled(t *testin
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -645,7 +645,7 @@ func TestReconcileArgoCD_reconcileDexServiceAccount_removes_dex_when_disabled(t 
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
@@ -735,7 +735,7 @@ func TestReconcileArgoCD_reconcileRole_dex_disabled(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
@@ -830,7 +830,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_dex_disabled(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 

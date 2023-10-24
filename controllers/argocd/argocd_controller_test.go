@@ -54,7 +54,7 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -88,7 +88,7 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
@@ -134,7 +134,7 @@ func TestReconcileArgoCD_LabelSelector(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	rt := makeTestReconciler(t, cl, sch)
+	rt := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
 
@@ -251,7 +251,7 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: a.Namespace,
@@ -315,7 +315,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 

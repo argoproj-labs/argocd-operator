@@ -169,7 +169,7 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 			runtimeObjs := []runtime.Object{}
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(t, cl, sch)
+			r := makeTestReconciler(cl, sch)
 
 			err := monitoringv1.AddToScheme(r.Scheme)
 			assert.NoError(t, err)

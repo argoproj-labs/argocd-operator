@@ -246,7 +246,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -262,7 +262,7 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
@@ -278,7 +278,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
@@ -294,7 +294,7 @@ func TestAddDeletionFinalizer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
@@ -518,7 +518,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
@@ -615,7 +615,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	err := r.setManagedNamespaces(a)
 	assert.NoError(t, err)
@@ -649,7 +649,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	err := r.setManagedSourceNamespaces(a)
 	assert.NoError(t, err)
@@ -701,7 +701,7 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)

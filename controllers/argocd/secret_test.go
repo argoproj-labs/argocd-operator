@@ -122,7 +122,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.reconcileRepoServerTLSSecret(argocd)
 		if err != nil {
@@ -232,7 +232,7 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	r.Client.Create(context.TODO(), clusterSecret)
 	r.Client.Create(context.TODO(), tlsSecret)
@@ -331,7 +331,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {
@@ -448,7 +448,7 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 

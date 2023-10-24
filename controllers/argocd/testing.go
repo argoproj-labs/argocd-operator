@@ -52,7 +52,7 @@ func ZapLogger(development bool) logr.Logger {
 
 type SchemeOpt func(*runtime.Scheme) error
 
-func makeTestReconciler(t *testing.T, client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
+func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
 	return &ReconcileArgoCD{
 		Client: client,
 		Scheme: sch,
@@ -76,7 +76,7 @@ func makeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.
 func makeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
 	s := scheme.Scheme
 	for _, opt := range sOpts {
-		opt(s)
+		_ = opt(s)
 	}
 
 	return s

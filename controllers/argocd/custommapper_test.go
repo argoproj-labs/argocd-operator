@@ -155,7 +155,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{
 			{
@@ -212,7 +212,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -262,7 +262,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -292,7 +292,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{
 			{
@@ -326,7 +326,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -387,7 +387,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{
 			{
@@ -444,7 +444,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -494,7 +494,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -524,7 +524,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{
 			{
@@ -558,7 +558,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 		runtimeObjs := []runtime.Object{}
 		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-		r := makeTestReconciler(t, cl, sch)
+		r := makeTestReconciler(cl, sch)
 
 		want := []reconcile.Request{}
 		got := r.tlsSecretMapper(context.TODO(), secret)
@@ -577,7 +577,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(t, cl, sch)
+	r := makeTestReconciler(cl, sch)
 
 	a.Namespace = "newTestNamespace"
 
