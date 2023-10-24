@@ -41,6 +41,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -52,7 +54,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -137,6 +138,12 @@ func main() {
 	if err := argocd.InspectCluster(); err != nil {
 		setupLog.Info("unable to inspect cluster")
 	}
+
+	namespace, err := k8sutil.GetWatchNamespace()
+	if err != nil {
+		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
+	}
+	setupLog.Info(fmt.Sprintf("Watching namespace \"%s\"", namespace))
 
 	// Set default manager options
 	options := manager.Options{

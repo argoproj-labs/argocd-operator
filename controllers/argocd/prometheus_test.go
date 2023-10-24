@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
@@ -162,7 +163,12 @@ func TestReconcileWorkloadStatusAlertRule(t *testing.T) {
 				},
 			}
 
-			r := makeTestReconciler(t, test.argocd)
+			runtimeObjs := []client.Object{test.argocd}
+			statusObjs := []client.Object{test.argocd}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+			r := makeTestReconciler(t, cl, sch)
+
 			err := monitoringv1.AddToScheme(r.Scheme)
 			assert.NoError(t, err)
 

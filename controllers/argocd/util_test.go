@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -16,6 +17,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -238,7 +240,11 @@ func TestGetArgoServerURI(t *testing.T) {
 func TestRemoveDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
 		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
-		r := makeTestReconciler(t, a)
+		runtimeObjs := []client.Object{a}
+		statusObjs := []client.Object{a}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		r := makeTestReconciler(t, cl, sch)
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if a.IsDeletionFinalizerPresent() {
@@ -247,7 +253,11 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
 		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
-		r := makeTestReconciler(t)
+		runtimeObjs := []client.Object{a}
+		statusObjs := []client.Object{a}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		r := makeTestReconciler(t, cl, sch)
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -256,7 +266,11 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 func TestAddDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
 		a := makeTestArgoCD()
-		r := makeTestReconciler(t, a)
+		runtimeObjs := []client.Object{a}
+		statusObjs := []client.Object{a}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		r := makeTestReconciler(t, cl, sch)
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if !a.IsDeletionFinalizerPresent() {
@@ -265,7 +279,11 @@ func TestAddDeletionFinalizer(t *testing.T) {
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
 		a := makeTestArgoCD()
-		r := makeTestReconciler(t)
+		runtimeObjs := []client.Object{}
+		statusObjs := []client.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+		r := makeTestReconciler(t, cl, sch)
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -482,7 +500,11 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
@@ -571,7 +593,11 @@ func TestSetManagedNamespaces(t *testing.T) {
 			},
 		},
 	}
-	r := makeTestReconciler(t, nsList)
+
+	statusObjs := []client.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, nsList, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.setManagedNamespaces(a)
 	assert.NoError(t, err)
@@ -649,7 +675,14 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 			},
 		}
 	})
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)

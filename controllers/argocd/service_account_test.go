@@ -20,17 +20,23 @@ import (
 	"os"
 	"testing"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// objective is to verify if the right rule associations have happened.
@@ -70,7 +76,11 @@ func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	workloadIdentifier := "xrb"
 	expectedClusterRoleBindingName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)

@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -218,7 +219,11 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
 	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
 	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
-	r := makeTestReconciler(t, argocd)
+	runtimeObjs := []client.Object{argocd}
+	statusObjs := []client.Object{argocd}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 	r.Client.Create(context.TODO(), clusterSecret)
 	r.Client.Create(context.TODO(), tlsSecret)
 
@@ -421,7 +426,11 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")

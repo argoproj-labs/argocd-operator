@@ -539,7 +539,11 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 
 func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 	a.Namespace = "newTestNamespace"
 
 	// Fake client returns an error if ResourceVersion is not nil

@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -216,7 +217,11 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+			runtimeObjs := []client.Object{test.argoCD}
+			statusObjs := []client.Object{test.argoCD}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+			r := makeTestReconciler(t, cl, sch)
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			err := r.reconcileSSO(test.argoCD)

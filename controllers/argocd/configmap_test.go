@@ -25,7 +25,9 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -39,7 +41,13 @@ var _ reconcile.Reconciler = &ReconcileArgoCD{}
 func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
@@ -61,7 +69,13 @@ func TestReconcileArgoCD_reconcileTLSCerts(t *testing.T) {
 func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(initialCerts(t, "root-ca.example.com"))
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
@@ -98,7 +112,14 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, r.reconcileTLSCerts(a))
 
 	a = makeTestArgoCD(initialCerts(t, "testing.example.com"))
@@ -187,7 +208,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 		}
-		r := makeTestReconciler(t, a)
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(t, cl, sch)
 
 		err := r.reconcileArgoConfigMap(a)
 		assert.NoError(t, err)
@@ -210,7 +237,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 func TestReconcileArgoCD_reconcileEmptyArgoConfigMap(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	// An empty Argo CD Configmap
 	emptyArgoConfigmap := &corev1.ConfigMap{
@@ -256,7 +289,13 @@ func TestReconcileArgoCDCM_withRepoCredentials(t *testing.T) {
 			"admin.enabled":                "true",
 		},
 	}
-	r := makeTestReconciler(t, a, cm)
+
+	resObjs := []client.Object{a, cm}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -277,7 +316,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.DisableAdmin = true
 	})
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -334,7 +379,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			})
 
 			secret := argoutil.NewSecretWithName(a, "token")
-			r := makeTestReconciler(t, a, sa, secret)
+
+			resObjs := []client.Object{a, sa, secret}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(t, cl, sch)
 
 			if test.updateCrSpecFunc != nil {
 				test.updateCrSpecFunc(a)
@@ -395,7 +446,13 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexDisabled(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(t, cl, sch)
 
 			err := r.reconcileArgoConfigMap(test.argoCD)
 			assert.NoError(t, err)
@@ -469,7 +526,12 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled(
 			}
 			secret := argoutil.NewSecretWithName(test.argoCD, "token")
 
-			r := makeTestReconciler(t, test.argoCD, sa, secret)
+			resObjs := []client.Object{test.argoCD, sa, secret}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(t, cl, sch)
 
 			err := r.reconcileArgoConfigMap(test.argoCD)
 			assert.NoError(t, err)
@@ -518,7 +580,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withKustomizeVersions(t *testing
 		kvs = append(kvs, kv)
 		a.Spec.KustomizeVersions = kvs
 	})
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -540,7 +606,11 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.DisableAdmin = true
 	})
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileGPGKeysConfigMap(a)
 	assert.NoError(t, err)
@@ -557,7 +627,11 @@ func TestReconcileArgoCD_reconcileGPGKeysConfigMap(t *testing.T) {
 func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -647,7 +721,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceInclusions(t *testin
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.ResourceInclusions = customizations
 	})
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -761,7 +839,11 @@ managedfieldsmanagers:
 		a.Spec.ResourceActions = actions
 		a.Spec.ResourceIgnoreDifferences = &ignoreDifferences
 	})
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -793,7 +875,11 @@ managedfieldsmanagers:
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
@@ -872,7 +958,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+	runtimeObjs := []client.Object{a}
+	statusObjs := []client.Object{a}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, runtimeObjs, statusObjs)
+	r := makeTestReconciler(t, cl, sch)
 
 	err := r.reconcileRBAC(a)
 	assert.NoError(t, err)
