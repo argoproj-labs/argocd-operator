@@ -8,6 +8,8 @@ import (
 	"sort"
 	"testing"
 
+	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
@@ -106,16 +108,21 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 		serverDepl := newDeploymentWithSuffix("server", "server", argocd)
 		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
-		objs := []runtime.Object{
-			argocd,
+
+		resObjs := []client.Object{argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
-			ctrlSts,
-		}
-
-		r := makeReconciler(t, argocd, objs...)
+			ctrlSts}
+		subresObjs := []client.Object{argocd,
+			serverDepl,
+			repoDepl,
+			ctrlSts}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(t, cl, sch)
 
 		err := r.reconcileRepoServerTLSSecret(argocd)
 		if err != nil {
@@ -308,17 +315,23 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", argocd)
 		redisDepl := newDeploymentWithSuffix("redis", "redis", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
-		objs := []runtime.Object{
-			argocd,
+
+		resObjs := []client.Object{argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
-			redisDepl,
 			ctrlSts,
-		}
-
-		r := makeReconciler(t, argocd, objs...)
+			redisDepl}
+		subresObjs := []client.Object{argocd,
+			serverDepl,
+			repoDepl,
+			ctrlSts,
+			redisDepl}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(t, cl, sch)
 
 		err := r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {

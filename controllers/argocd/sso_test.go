@@ -29,38 +29,25 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
-
-func makeFakeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
-	t.Helper()
-	s := scheme.Scheme
-	// Register template scheme
-	s.AddKnownTypes(templatev1.SchemeGroupVersion, objs...)
-	s.AddKnownTypes(oappsv1.SchemeGroupVersion, objs...)
-	assert.NoError(t, argoproj.AddToScheme(s))
-	templatev1.Install(s)
-	oappsv1.Install(s)
-	routev1.Install(s)
-
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	return &ReconcileArgoCD{
-		Client: cl,
-		Scheme: s,
-	}
-}
 
 func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloak()
 
 	templateAPIFound = true
-	r := makeFakeReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, r.reconcileSSO(a))
@@ -78,7 +65,14 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 func TestReconcile_noTemplateInstance(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDForKeycloak()
-	r := makeFakeReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, r.reconcileSSO(a))
@@ -94,25 +88,25 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 		Err                      error
 		wantSSOConfigLegalStatus string
 	}{
-		// {
-		// 	name:                     "no conflicts - no sso configured",
-		// 	argoCD:                   makeTestArgoCD(func(ac *argoproj.ArgoCD) {}),
-		// 	wantErr:                  false,
-		// 	wantSSOConfigLegalStatus: "Unknown",
-		// },
-		// {
-		// 	name: "no conflict - case insensitive sso provider value",
-		// 	argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
-		// 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-		// 			Provider: "DEX",
-		// 			Dex: &argoproj.ArgoCDDexSpec{
-		// 				Config: "test-config",
-		// 			},
-		// 		}
-		// 	}),
-		// 	wantErr:                  false,
-		// 	wantSSOConfigLegalStatus: "Success",
-		// },
+		{
+			name:                     "no conflicts - no sso configured",
+			argoCD:                   makeTestArgoCD(func(ac *argoproj.ArgoCD) {}),
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Unknown",
+		},
+		{
+			name: "no conflict - case insensitive sso provider value",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: "DEX",
+					Dex: &argoproj.ArgoCDDexSpec{
+						Config: "test-config",
+					},
+				}
+			}),
+			wantErr:                  false,
+			wantSSOConfigLegalStatus: "Success",
+		},
 		{
 			name: "no conflict - valid dex sso configurations",
 			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
@@ -221,7 +215,7 @@ func TestReconcile_illegalSSOConfiguration(t *testing.T) {
 			resObjs := []client.Object{test.argoCD}
 			subresObjs := []client.Object{test.argoCD}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(t, cl, sch)
 
@@ -256,7 +250,14 @@ func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
 
 	// Cluster does not have a template instance
 	templateAPIFound = false
-	r := makeReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, r.reconcileSSO(a))
@@ -268,7 +269,14 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	// Cluster does not have a template instance
 	templateAPIFound = false
-	r := makeReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(t, cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, r.reconcileSSO(a))

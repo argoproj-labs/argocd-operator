@@ -7,6 +7,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -203,10 +204,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				a.Spec.Server.Ingress.Enabled = test.ingressEnabled
 			})
 
-			objs := []runtime.Object{
-				a,
-			}
-
 			route := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testArgoCDName + "-server",
@@ -255,7 +252,13 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				},
 			}
 
-			r := makeReconciler(t, a, objs...)
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(t, cl, sch)
+
 			if test.routeEnabled {
 				err := r.Client.Create(context.TODO(), route)
 				assert.NoError(t, err)
