@@ -87,7 +87,7 @@ func main() {
 	var probeAddr string
 	var labelSelectorFlag string
 
-	var secureMetrics = true
+	var secureMetrics = false
 	var enableHTTP2 = false
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
