@@ -1090,8 +1090,8 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	if IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		bldr.Watches(&oappsv1.DeploymentConfig{}, handler.EnqueueRequestForOwner(r.Scheme, nil, &argoproj.ArgoCD{}),
-			builder.WithPredicates(deploymentConfigPred))
+		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
+
 	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
