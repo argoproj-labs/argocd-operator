@@ -474,6 +474,9 @@ type ArgoCDRepoSpec struct {
 
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Redis defines the location of the Redis component when Redis.Enabled = false
+	Redis *string `json:"redis,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
