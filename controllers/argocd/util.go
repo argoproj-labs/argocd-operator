@@ -59,7 +59,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
@@ -1050,22 +1049,22 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRoleBinding{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
 
-	bldr.Watches(&source.Kind{Type: &v1.ClusterRole{}}, clusterResourceHandler)
+	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
-	bldr.Watches(&source.Kind{Type: &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
-	}}}, appSetGitlabSCMTLSConfigMapHandler)
+	}}, appSetGitlabSCMTLSConfigMapHandler)
 
 	// Watch for secrets of type TLS that might be created by external processes
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{Type: corev1.SecretTypeTLS}}, tlsSecretHandler)
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
 
 	// Watch for cluster secrets added to the argocd instance
-	bldr.Watches(&source.Kind{Type: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
 			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
-		}}}}, clusterSecretResourceHandler)
+		}}}, clusterSecretResourceHandler)
 
 	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})
@@ -1091,16 +1090,13 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	if IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
-		bldr.Watches(&source.Kind{Type: &oappsv1.DeploymentConfig{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &argoproj.ArgoCD{},
-		},
-			builder.WithPredicates(deploymentConfigPred))
+		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
+
 	}
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
-	bldr.Watches(&source.Kind{Type: &corev1.Namespace{}}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
 }
@@ -1244,10 +1240,7 @@ func namespaceFilterPredicate() predicate.Predicate {
 
 			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
 			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
-			if _, ok := DeprecationEventEmissionTracker[e.Object.GetName()]; ok {
-				delete(DeprecationEventEmissionTracker, e.Object.GetName())
-			}
-
+			delete(DeprecationEventEmissionTracker, e.Object.GetName())
 			return false
 		},
 	}
@@ -1405,7 +1398,7 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
-	for ns, _ := range r.ManagedSourceNamespaces {
+	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
 			for _, namespace := range cr.Spec.SourceNamespaces {
@@ -1456,7 +1449,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	}
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
-	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace.Name)
+	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)

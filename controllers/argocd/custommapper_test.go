@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -96,7 +98,7 @@ func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
 				Client: tt.fields.client,
 				Scheme: tt.fields.scheme,
 			}
-			if got := r.clusterResourceMapper(tt.args.o); !reflect.DeepEqual(got, tt.want) {
+			if got := r.clusterResourceMapper(context.TODO(), tt.args.o); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileArgoCD.clusterRoleBindingMapper() = %v, want %v", got, tt.want)
 			}
 		})
@@ -147,12 +149,14 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-			service,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret, service}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
@@ -161,7 +165,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -202,13 +206,16 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -249,14 +256,16 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-			service,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret, service}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -277,10 +286,14 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
@@ -289,7 +302,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -307,12 +320,16 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -364,12 +381,14 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-			service,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret, service}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
@@ -378,7 +397,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -419,13 +438,16 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -466,14 +488,16 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			argocd,
-			secret,
-			service,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret, service}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -494,10 +518,14 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
@@ -506,7 +534,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				},
 			},
 		}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -524,12 +552,16 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				corev1.TLSPrivateKeyKey: []byte("bar"),
 			},
 		}
-		objs := []runtime.Object{
-			secret,
-		}
-		r := makeReconciler(t, argocd, objs...)
+
+		resObjs := []client.Object{argocd, secret}
+		subresObjs := []client.Object{argocd}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		want := []reconcile.Request{}
-		got := r.tlsSecretMapper(secret)
+		got := r.tlsSecretMapper(context.TODO(), secret)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Reconciliation unsucessful: got: %v, want: %v", got, want)
 		}
@@ -539,7 +571,14 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 
 func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	a.Namespace = "newTestNamespace"
 
 	// Fake client returns an error if ResourceVersion is not nil
@@ -586,7 +625,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.namespaceResourceMapper(tt.o); !reflect.DeepEqual(got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileArgoCD.namespaceResourceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})

@@ -33,10 +33,14 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 		labels["my-key"] = "my-value"
 		a.Spec.Server.Route.Labels = labels
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -65,10 +69,14 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -137,10 +145,14 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		a.Spec.Server.Route.Enabled = true
 		a.Spec.Server.Insecure = true
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -207,7 +219,15 @@ func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) 
 	s.AddKnownTypes(argoproj.GroupVersion, acd)
 	routev1.Install(s)
 	configv1.Install(s)
-	cl := fake.NewFakeClient(objs...)
+
+	clientObjs := []client.Object{}
+	for _, obj := range objs {
+		clientObj := obj.(client.Object)
+		clientObjs = append(clientObjs, clientObj)
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
+
 	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,
