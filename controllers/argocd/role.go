@@ -187,7 +187,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 }
 
 func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
-	var roles []*v1.Role
 
 	// create policy rules for each source namespace for ArgoCD Server
 	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
@@ -262,7 +261,6 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 				return err
 			}
 		}
-		roles = append(roles, &existingRole)
 
 		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
 			r.ManagedSourceNamespaces[sourceNamespace] = ""
