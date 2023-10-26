@@ -267,6 +267,11 @@ func getDefaultWatchedNamespacesCacheOptions() map[string]cache.Config {
 		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
 		return nil
 	}
+
+	if watchedNamespaces == "" {
+		return nil
+	}
+
 	watchedNsList := strings.Split(watchedNamespaces, ",")
 	setupLog.Info(fmt.Sprintf("Watching namespaces: %v", watchedNsList))
 
