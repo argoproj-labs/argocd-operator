@@ -58,7 +58,7 @@ func newRoleBinding(cr *argoproj.ArgoCD) *v1.RoleBinding {
 func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, cr.Namespace, namespace),
+			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, namespace),
 			Labels:      argoutil.LabelsForCluster(cr),
 			Annotations: argoutil.AnnotationsForCluster(cr),
 			Namespace:   namespace,
@@ -66,7 +66,7 @@ func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *
 	}
 }
 
-func getRoleBindingNameForSourceNamespaces(argocdName, argocdNamespace, targetNamespace string) string {
+func getRoleBindingNameForSourceNamespaces(argocdName, targetNamespace string) string {
 	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
 }
 

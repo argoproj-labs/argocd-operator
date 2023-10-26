@@ -11,8 +11,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -26,7 +28,12 @@ func TestReconcileNotifications_CreateRoles(t *testing.T) {
 		a.Spec.Notifications.Enabled = true
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	_, err := r.reconcileNotificationsRole(a)
 	assert.NoError(t, err)
@@ -58,7 +65,12 @@ func TestReconcileNotifications_CreateServiceAccount(t *testing.T) {
 		a.Spec.Notifications.Enabled = true
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	desiredSa, err := r.reconcileNotificationsServiceAccount(a)
 	assert.NoError(t, err)
@@ -88,7 +100,13 @@ func TestReconcileNotifications_CreateRoleBinding(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
@@ -125,8 +143,12 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		a.Spec.Notifications.Enabled = true
 	})
 
-	r := makeTestReconciler(t, a)
-
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 	sa := corev1.ServiceAccount{}
 
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
@@ -236,7 +258,12 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 		a.Spec.Notifications.Enabled = true
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	err := r.reconcileNotificationsSecret(a)
 	assert.NoError(t, err)
@@ -261,7 +288,12 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 		a.Spec.Notifications.Enabled = true
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	err := r.reconcileNotificationsConfigMap(a)
 	assert.NoError(t, err)
@@ -295,7 +327,12 @@ func TestReconcileNotifications_testEnvVars(t *testing.T) {
 		a.Spec.Notifications.Env = envMap
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
@@ -353,7 +390,12 @@ func TestReconcileNotifications_testLogLevel(t *testing.T) {
 		a.Spec.Notifications.LogLevel = testLogLevel
 	})
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	sa := corev1.ServiceAccount{}
 	assert.NoError(t, r.reconcileNotificationsDeployment(a, &sa))
