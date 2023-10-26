@@ -3026,6 +3026,10 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
+                  redis:
+                    description: Redis defines the location of the Redis component
+                      when Redis.Enabled = false
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
                       Value should be greater than or equal to 0. Default is nil.
