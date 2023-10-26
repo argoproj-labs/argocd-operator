@@ -26,7 +26,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
@@ -88,70 +87,6 @@ var (
 	httpPort          int32 = 8080
 	controllerRef     bool  = true
 )
-
-// KeycloakPostData defines the values required to update Keycloak Realm.
-type keycloakConfig struct {
-	ArgoName           string
-	ArgoNamespace      string
-	Username           string
-	Password           string
-	KeycloakURL        string
-	ArgoCDURL          string
-	KeycloakServerCert []byte
-	VerifyTLS          bool
-}
-
-type oidcConfig struct {
-	Name           string   `json:"name"`
-	Issuer         string   `json:"issuer"`
-	ClientID       string   `json:"clientID"`
-	ClientSecret   string   `json:"clientSecret"`
-	RequestedScope []string `json:"requestedScopes"`
-	RootCA         string   `json:"rootCA,omitempty"`
-}
-
-// KeycloakIdentityProviderMapper defines IdentityProvider Mappers
-// issue: https://github.com/keycloak/keycloak-operator/issues/471
-type KeycloakIdentityProviderMapper struct {
-	// Name
-	// +optional
-	Name string `json:"name,omitempty"`
-	// Identity Provider Alias.
-	// +optional
-	IdentityProviderAlias string `json:"identityProviderAlias,omitempty"`
-	// Identity Provider Mapper.
-	// +optional
-	IdentityProviderMapper string `json:"identityProviderMapper,omitempty"`
-	// Identity Provider Mapper config.
-	// +optional
-	Config map[string]string `json:"config,omitempty"`
-}
-
-// CustomKeycloakAPIRealm is an extention type of KeycloakAPIRealm as is it does not
-// support IdentityProvider Mappers
-// issue: https://github.com/keycloak/keycloak-operator/issues/471
-type CustomKeycloakAPIRealm struct {
-	// Realm name.
-	Realm string `json:"realm"`
-	// Realm enabled flag.
-	// +optional
-	Enabled bool `json:"enabled"`
-	// Require SSL
-	// +optional
-	SslRequired string `json:"sslRequired,omitempty"`
-	// A set of Keycloak Clients.
-	// +optional
-	Clients []*keycloakv1alpha1.KeycloakAPIClient `json:"clients,omitempty"`
-	// Client scopes
-	// +optional
-	ClientScopes []keycloakv1alpha1.KeycloakClientScope `json:"clientScopes,omitempty"`
-	// A set of Identity Providers.
-	// +optional
-	IdentityProviders []*keycloakv1alpha1.KeycloakIdentityProvider `json:"identityProviders,omitempty"`
-	// KeycloakIdentityProviderMapper defines IdentityProvider Mappers
-	// issue: https://github.com/keycloak/keycloak-operator/issues/471
-	IdentityProviderMappers []*KeycloakIdentityProviderMapper `json:"identityProviderMappers,omitempty"`
-}
 
 // getKeycloakContainerImage will return the container image for the Keycloak.
 //
@@ -900,7 +835,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 		Realm:       keycloakRealm,
 		Enabled:     true,
 		SslRequired: "external",
-		Clients: []*keycloakv1alpha1.KeycloakAPIClient{
+		Clients: []*KeycloakAPIClient{
 			{
 				ClientID:                keycloakClient,
 				Name:                    keycloakClient,
@@ -922,11 +857,11 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 				StandardFlowEnabled: true,
 			},
 		},
-		ClientScopes: []keycloakv1alpha1.KeycloakClientScope{
+		ClientScopes: []KeycloakClientScope{
 			{
 				Name:     "groups",
 				Protocol: "openid-connect",
-				ProtocolMappers: []keycloakv1alpha1.KeycloakProtocolMapper{
+				ProtocolMappers: []KeycloakProtocolMapper{
 					{
 						Name:           "groups",
 						Protocol:       "openid-connect",
@@ -946,7 +881,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 			{
 				Name:     "email",
 				Protocol: "openid-connect",
-				ProtocolMappers: []keycloakv1alpha1.KeycloakProtocolMapper{
+				ProtocolMappers: []KeycloakProtocolMapper{
 					{
 						Name:           "email",
 						Protocol:       "openid-connect",
@@ -981,7 +916,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 			baseURL = getOpenShiftAPIURL()
 		}
 
-		ks.IdentityProviders = []*keycloakv1alpha1.KeycloakIdentityProvider{
+		ks.IdentityProviders = []*KeycloakIdentityProvider{
 			{
 				Alias:       "openshift-v4",
 				DisplayName: "Login with OpenShift",

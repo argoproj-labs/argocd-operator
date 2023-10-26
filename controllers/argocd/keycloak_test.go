@@ -20,11 +20,15 @@ import (
 	"testing"
 
 	appsv1 "github.com/openshift/api/apps/v1"
+	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -346,7 +350,13 @@ func TestKeycloak_testRealmConfigCreation(t *testing.T) {
 func TestKeycloak_testServerCert(t *testing.T) {
 
 	a := makeTestArgoCDForKeycloak()
-	r := makeFakeReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	sslCertsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -413,7 +423,12 @@ func TestKeycloakConfigVerifyTLSForOpenShift(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			r := makeFakeReconciler(t, test.argoCD)
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.AddToScheme, oappsv1.AddToScheme, routev1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
 
 			keycloakRoute := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{
