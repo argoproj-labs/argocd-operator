@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -33,10 +34,13 @@ import (
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
+
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -77,16 +81,41 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+
+	var secureMetrics = false
+	var enableHTTP2 = false
+
+	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", ":8080"), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the metrics and webhook servers.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", secureMetrics, "If the metrics endpoint should be served securely.")
+
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	disableHTTP2 := func(c *tls.Config) {
+		if enableHTTP2 {
+			return
+		}
+		c.NextProtos = []string{"http/1.1"}
+	}
+	webhookServerOptions := webhook.Options{
+		TLSOpts: []func(config *tls.Config){disableHTTP2},
+		Port:    9443,
+	}
+	webhookServer := webhook.NewServer(webhookServerOptions)
+
+	metricsServerOptions := metricsserver.Options{
+		SecureServing: secureMetrics,
+		BindAddress:   metricsAddr,
+		TLSOpts:       []func(*tls.Config){disableHTTP2},
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -105,22 +134,18 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		Namespace:              namespace,
+		Metrics:                metricsServerOptions,
+		WebhookServer:          webhookServer,
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b674928d.argoproj.io",
 	}
 
-	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
-	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate
-	// Also note that you may face performance issues when using this with a high number of namespaces.
-	// More Info: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
-	if strings.Contains(namespace, ",") {
-		options.Namespace = ""
-		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
+	if watchedNsCache := getDefaultWatchedNamespacesCacheOptions(); watchedNsCache != nil {
+		options.Cache = cache.Options{
+			DefaultNamespaces: watchedNsCache,
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
@@ -207,4 +232,26 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getDefaultWatchedNamespacesCacheOptions() map[string]cache.Config {
+	watchedNamespaces, err := k8sutil.GetWatchNamespace()
+	if err != nil {
+		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
+		return nil
+	}
+
+	if watchedNamespaces == "" {
+		return nil
+	}
+
+	watchedNsList := strings.Split(watchedNamespaces, ",")
+	setupLog.Info(fmt.Sprintf("Watching namespaces: %v", watchedNsList))
+
+	defaultNamespacesCacheConfig := map[string]cache.Config{}
+	for _, ns := range watchedNsList {
+		defaultNamespacesCacheConfig[ns] = cache.Config{}
+	}
+
+	return defaultNamespacesCacheConfig
 }

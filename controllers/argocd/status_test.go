@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -83,7 +85,13 @@ func TestReconcileArgoCD_reconcileStatusSSOConfig(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			r := makeTestReconciler(t, test.argoCD)
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			err := r.reconcileSSO(test.argoCD)
@@ -144,10 +152,6 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				a.Spec.Server.Ingress.Enabled = test.ingressEnabled
 			})
 
-			objs := []runtime.Object{
-				a,
-			}
-
 			route := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testArgoCDName + "-server",
@@ -180,12 +184,12 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 					Namespace: testNamespace,
 				},
 				Status: networkingv1.IngressStatus{
-					LoadBalancer: v1.LoadBalancerStatus{
-						Ingress: []v1.LoadBalancerIngress{
+					LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+						Ingress: []networkingv1.IngressLoadBalancerIngress{
 							{
 								IP:       "12.0.0.1",
 								Hostname: "argocd",
-								Ports:    []v1.PortStatus{},
+								Ports:    []networkingv1.IngressPortStatus{},
 							},
 							{
 								IP:       "12.0.0.5",
@@ -196,7 +200,13 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 				},
 			}
 
-			r := makeReconciler(t, a, objs...)
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.routeEnabled {
 				err := r.Client.Create(context.TODO(), route)
 				assert.NoError(t, err)
@@ -219,7 +229,13 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
@@ -238,7 +254,13 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)

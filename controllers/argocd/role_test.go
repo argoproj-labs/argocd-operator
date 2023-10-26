@@ -11,7 +11,9 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
@@ -21,7 +23,14 @@ import (
 func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
@@ -53,7 +62,14 @@ func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
@@ -79,7 +95,13 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	clusterRoleName := GenerateUniqueResourceName(workloadIdentifier, a)
@@ -131,13 +153,20 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 			sourceNamespace,
 		},
 	}
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
 
 	workloadIdentifier := common.ArgoCDServerComponent
 	expectedRules := policyRuleForServerApplicationSourceNamespaces()
-	_, err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
+	err := r.reconcileRoleForApplicationSourceNamespaces(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	expectedName := getRoleNameForApplicationSourceNamespaces(sourceNamespace, a)
@@ -152,7 +181,14 @@ func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.
 func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	Register(testRoleHook)
 
@@ -170,7 +206,14 @@ func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "namespace-custom-role", a.Namespace))
 
@@ -211,7 +254,14 @@ func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// Create a managed namespace
