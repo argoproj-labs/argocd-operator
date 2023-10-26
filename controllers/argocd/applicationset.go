@@ -44,8 +44,16 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "entrypoint.sh")
 	cmd = append(cmd, "argocd-applicationset-controller")
 
-	cmd = append(cmd, "--argocd-repo-server")
-	cmd = append(cmd, getRepoServerAddress(cr))
+	if !cr.Spec.Repo.IsEnabled() {
+		if cr.Spec.ApplicationSet.RepoServer != nil && *cr.Spec.ApplicationSet.RepoServer != "" {
+			cmd = append(cmd, "--repo-server", *cr.Spec.ApplicationSet.RepoServer)
+		} else {
+			log.Error(fmt.Errorf("repo server configuration is disabled and repo server location not configured"), "repo server configuration is disabled and repo server location not configured")
+
+		}
+	} else {
+		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	}
 
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.ApplicationSet.LogLevel))

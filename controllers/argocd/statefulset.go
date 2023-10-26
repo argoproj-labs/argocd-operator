@@ -391,7 +391,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !(cr.Spec.HA.Enabled && IsComponentEnabled(cr.Spec.Redis.Enabled)) {
+		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
 			return r.Client.Delete(context.TODO(), existing)
 		}
@@ -424,7 +424,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		return nil // StatefulSet found, do nothing
 	}
 
-	if !IsComponentEnabled(cr.Spec.Redis.Enabled) {
+	if !cr.Spec.Redis.IsEnabled() {
 		log.Info("Redis disabled. Skipping starting Redis.") // Redis not enabled, do nothing.
 		return nil
 	}
@@ -654,7 +654,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !IsComponentEnabled(cr.Spec.Controller.Enabled) {
+		if !cr.Spec.Controller.IsEnabled() {
 			log.Info("Existing application controller found but should be disabled. Deleting Application Controller")
 			// Delete existing deployment for Application Controller, if any ..
 			return r.Client.Delete(context.TODO(), existing)
@@ -706,7 +706,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		return nil // StatefulSet found with nothing to do, move along...
 	}
 
-	if !IsComponentEnabled(cr.Spec.Controller.Enabled) {
+	if !cr.Spec.Controller.IsEnabled() {
 		log.Info("Application Controller disabled. Skipping starting application controller.")
 		return nil
 	}

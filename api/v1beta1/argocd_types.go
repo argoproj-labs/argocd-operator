@@ -111,6 +111,16 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Enabled is the flag to enable the Application Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
+	RepoServer *string `json:"repoServer,omitempty"`
+
+	// Redis defines the location of the Redis component when Redis.Enabled = false
+	Redis *string `json:"redis,omitempty"`
+}
+
+func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -168,6 +178,16 @@ type ArgoCDApplicationSet struct {
 
 	// Enabled is the flag to enable the Application Set Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
+	RepoServer *string `json:"repoServer,omitempty"`
+
+	// Redis defines the location of the Redis component when Redis.Enabled = false
+	Redis *string `json:"redis,omitempty"`
+}
+
+func (a *ArgoCDApplicationSet) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -425,6 +445,10 @@ type ArgoCDRedisSpec struct {
 	Enabled *bool `json:"enabled,omitempty"`
 }
 
+func (a *ArgoCDRedisSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
+}
+
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
 
@@ -486,6 +510,13 @@ type ArgoCDRepoSpec struct {
 
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Redis defines the location of the Redis component when Redis.Enabled = false
+	Redis *string `json:"redis,omitempty"`
+}
+
+func (a *ArgoCDRepoSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -579,6 +610,16 @@ type ArgoCDServerSpec struct {
 
 	// Enabled is the flag to enable ArgoCD Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
+	RepoServer *string `json:"repoServer,omitempty"`
+
+	// Redis defines the location of the Redis component when Redis.Enabled = false
+	Redis *string `json:"redis,omitempty"`
+}
+
+func (a *ArgoCDServerSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.

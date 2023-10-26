@@ -7130,6 +7130,14 @@ spec:
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
                       if not set.  Valid options are debug,info, error, and warn.
                     type: string
+                  redis:
+                    description: Redis defines the location of the Redis component
+                      when Redis.Enabled = false
+                    type: string
+                  repoServer:
+                    description: RepoServer defines the location of the RepoServer
+                      when RepoServer.Enabled = false
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for ApplicationSet.
@@ -7498,6 +7506,14 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  redis:
+                    description: Redis defines the location of the Redis component
+                      when Redis.Enabled = false
+                    type: string
+                  repoServer:
+                    description: RepoServer defines the location of the RepoServer
+                      when RepoServer.Enabled = false
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for the Application Controller.
@@ -9906,6 +9922,10 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
+                  redis:
+                    description: Redis defines the location of the Redis component
+                      when Redis.Enabled = false
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
                       Value should be greater than or equal to 0. Default is nil.
@@ -13346,12 +13366,20 @@ spec:
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogLevel if
                       not set.  Valid options are debug, info, error, and warn.
                     type: string
+                  redis:
+                    description: Redis defines the location of the Redis component
+                      when Redis.Enabled = false
+                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-server.
                       Default is nil. Value should be greater than or equal to 0.
                       Value will be ignored if Autoscaler is enabled.
                     format: int32
                     type: integer
+                  repoServer:
+                    description: RepoServer defines the location of the RepoServer
+                      when RepoServer.Enabled = false
+                    type: string
                   resources:
                     description: Resources defines the Compute Resources required
                       by the container for the Argo CD server component.

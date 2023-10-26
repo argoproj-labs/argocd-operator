@@ -119,7 +119,17 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
-		"--redis", getRedisServerAddress(cr),
+	}
+
+	if !cr.Spec.Redis.IsEnabled() {
+		if cr.Spec.Controller.Redis != nil && *cr.Spec.Controller.Redis != "" {
+			cmd = append(cmd, "--redis", *cr.Spec.Controller.Redis)
+		} else {
+			log.Error(fmt.Errorf("redis configuration is disabled and redis location not configured"), "redis configuration is disabled and redis location not configured")
+
+		}
+	} else {
+		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
 	}
 
 	if useTLSForRedis {
@@ -131,7 +141,16 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		}
 	}
 
-	cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	if !cr.Spec.Repo.IsEnabled() {
+		if cr.Spec.Controller.RepoServer != nil && *cr.Spec.Controller.RepoServer != "" {
+			cmd = append(cmd, "--repo-server", *cr.Spec.Controller.RepoServer)
+		} else {
+			log.Error(fmt.Errorf("repo server configuration is disabled and repo server location not configured"), "repo server configuration is disabled and repo server location not configured")
+		}
+	} else {
+		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	}
+
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
@@ -1594,8 +1613,4 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
 		host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 	return host
-}
-
-func IsComponentEnabled(enabled *bool) bool {
-	return enabled == nil || (enabled != nil && *enabled)
 }
