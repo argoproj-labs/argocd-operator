@@ -34,7 +34,7 @@ func TestRepoServerReconciler_reconcileDeployment(t *testing.T) {
 		{
 			name: "update a deployment when doesn't use TLS for Redis",
 			setupClient: func(useTLSForRedis bool) *RepoServerReconciler {
-				existingDeployment := rsr.getDesiredDeployment(useTLSForRedis)
+				existingDeployment := rsr.getDesiredDeployment()
 				outdatedDeployment := existingDeployment
 				outdatedDeployment.Spec.Template.Spec.ServiceAccountName = "new-service-account"
 				return makeTestRepoServerReconciler(t, outdatedDeployment, ns)
@@ -45,7 +45,7 @@ func TestRepoServerReconciler_reconcileDeployment(t *testing.T) {
 		{
 			name: "update a deployment when use TLS for Redis",
 			setupClient: func(useTLSForRedis bool) *RepoServerReconciler {
-				existingDeployment := rsr.getDesiredDeployment(useTLSForRedis)
+				existingDeployment := rsr.getDesiredDeployment()
 				outdatedDeployment := existingDeployment
 				outdatedDeployment.Spec.Template.Spec.ServiceAccountName = "new-service-account"
 				return makeTestRepoServerReconciler(t, outdatedDeployment, ns)

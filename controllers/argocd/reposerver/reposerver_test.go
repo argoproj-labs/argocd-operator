@@ -34,6 +34,7 @@ func makeTestRepoServerReconciler(t *testing.T, objs ...runtime.Object) *RepoSer
 		Instance: argocdcommon.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
 			a.Spec.Repo = argoproj.ArgoCDRepoSpec{
 				ServiceAccount: testServiceAccount,
+				AutoTLS:        common.OpenShift,
 			}
 			a.ObjectMeta = metav1.ObjectMeta{
 				Name:      argocdcommon.TestArgoCDName,

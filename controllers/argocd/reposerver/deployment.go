@@ -24,16 +24,10 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 
 	rsr.Logger.Info("reconciling deployment")
 
-	useTLSForRedis, err := argocdcommon.ShouldUseTLS(rsr.Client, rsr.Instance.Namespace)
-	if err != nil {
-		rsr.Logger.Error(err, "reconcileDeployment: failed to determine if TLS should be used for Redis")
-		return err
-	}
-
-	desiredDeployment := rsr.getDesiredDeployment(useTLSForRedis)
+	desiredDeployment := rsr.getDesiredDeployment()
 	deploymentRequest := rsr.getDeploymentRequest(*desiredDeployment)
 
-	desiredDeployment, err = workloads.RequestDeployment(deploymentRequest)
+	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		rsr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		return err
@@ -127,7 +121,7 @@ func (rsr *RepoServerReconciler) deleteDeployment(name, namespace string) error 
 	return nil
 }
 
-func (rsr *RepoServerReconciler) getDesiredDeployment(useTLSForRedis bool) *appsv1.Deployment {
+func (rsr *RepoServerReconciler) getDesiredDeployment() *appsv1.Deployment {
 	desiredDeployment := &appsv1.Deployment{}
 
 	automountToken := false
@@ -143,7 +137,7 @@ func (rsr *RepoServerReconciler) getDesiredDeployment(useTLSForRedis bool) *apps
 	podSpec := corev1.PodSpec{
 		Volumes:        rsr.getRepoServerPodVolumes(),
 		InitContainers: rsr.getRepoSeverInitContainers(),
-		Containers:     rsr.getRepoServerContainers(useTLSForRedis),
+		Containers:     rsr.getRepoServerContainers(),
 		SecurityContext: &corev1.PodSecurityContext{
 			RunAsNonRoot: util.BoolPtr(true),
 		},
@@ -223,7 +217,7 @@ func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container
 	return initContainers
 }
 
-func (rsr *RepoServerReconciler) getRepoServerContainers(useTLSForRedis bool) []corev1.Container {
+func (rsr *RepoServerReconciler) getRepoServerContainers() []corev1.Container {
 	repoServerEnv := rsr.Instance.Spec.Repo.Env
 	repoServerEnv = util.EnvMerge(repoServerEnv, util.ProxyEnvVars(), false)
 

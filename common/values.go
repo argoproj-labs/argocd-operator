@@ -62,6 +62,8 @@ const (
 
 	CapabilityDropAll = "ALL"
 
+	OpenShift = "openshift"
+
 	VolumeMountPathTLS                = "/app/config/tls"
 	VolumeMountPathRepoServerTLS      = "/app/config/reposerver/tls"
 	WorkingDirApp                     = "/app"

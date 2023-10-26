@@ -58,8 +58,6 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 			rsr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		}
 
-		// networking.EnsureAutoTLSAnnotation(existingService, common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Spec.Repo.WantsAutoTLS(), rsr.Logger)
-
 		if err = networking.CreateService(desiredService, rsr.Client); err != nil {
 			rsr.Logger.Error(err, "reconcileService: failed to create service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 			return err
@@ -68,7 +66,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		return nil
 	}
 
-	if networking.EnsureAutoTLSAnnotation(existingService, common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Spec.Repo.WantsAutoTLS(), rsr.Logger) {
+	if networking.EnsureAutoTLSAnnotation(existingService, common.ArgoCDRepoServerTLSSecretName, useTLSForRedis, rsr.Logger) {
 		if err = networking.UpdateService(existingService, rsr.Client); err != nil {
 			rsr.Logger.Error(err, "reconcileService: failed to update service", "name", existingService.Name, "namespace", existingService.Namespace)
 			return err

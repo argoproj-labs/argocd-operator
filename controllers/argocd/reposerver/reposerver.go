@@ -31,12 +31,14 @@ type RepoServerReconciler struct {
 var (
 	resourceName   string
 	resourceLabels map[string]string
+	useTLSForRedis bool
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
 	rsr.Logger = ctrl.Log.WithName(common.RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
 	resourceName = util.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent)
 	resourceLabels = common.DefaultLabels(resourceName, rsr.Instance.Name, common.RepoServerControllerComponent)
+	useTLSForRedis = rsr.Instance.Spec.Repo.WantsAutoTLS()
 
 	if err := rsr.reconcileService(); err != nil {
 		rsr.Logger.Info("reconciling repo server service")
