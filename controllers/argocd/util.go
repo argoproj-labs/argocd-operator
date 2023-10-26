@@ -1597,5 +1597,5 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
 }
 
 func IsComponentEnabled(enabled *bool) bool {
-	return enabled == nil || (enabled != nil && *enabled == true)
+	return enabled == nil || (enabled != nil && *enabled)
 }
