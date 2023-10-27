@@ -103,13 +103,13 @@ jobs:
           set -o pipefail
           bash hack/test.sh 2>&1 | tee /tmp/e2e-test.log
       - name: Upload operator logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-operator-run-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-operator-run.log
         if: ${{ failure() }}
       - name: Upload test logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-test-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-test.log
@@ -131,19 +131,19 @@ jobs:
             kubectl describe -n argocd-e2e-cluster-config $(kubectl get po -n argocd-e2e-cluster-config -o=name | grep example-argocd-server) >> /tmp/e2e-server.log
           fi
       - name: Upload application controller logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-application-controller-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-application-controller.log
         if: ${{ failure() }}
       - name: Upload server logs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-server-${{ matrix.k3s-version }}.log
           path: /tmp/e2e-server.log
         if: ${{ failure() }}
       - name: Upload pod descriptions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: e2e-pods-${{ matrix.k3s-version }}.log
           path: /tmp/pods.log
