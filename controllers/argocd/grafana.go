@@ -17,7 +17,6 @@ package argocd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,7 +113,7 @@ func loadGrafanaConfigs() (map[string]string, error) {
 	}
 
 	for _, f := range configs {
-		config, err := ioutil.ReadFile(f)
+		config, err := os.ReadFile(f)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +131,7 @@ func loadGrafanaTemplates(c *GrafanaConfig) (map[string]string, error) {
 	data := make(map[string]string)
 
 	templateDir := filepath.Join(getGrafanaConfigPath(), "templates")
-	entries, err := ioutil.ReadDir(templateDir)
+	entries, err := os.ReadDir(templateDir)
 	if err != nil {
 		return nil, err
 	}

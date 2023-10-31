@@ -33,7 +33,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argov1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
@@ -49,7 +49,13 @@ func TestReconcileArgoCD_Reconcile_with_deleted(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -77,7 +83,13 @@ func TestReconcileArgoCD_Reconcile(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -125,7 +137,13 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
-			r := makeTestReconciler(t, a)
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
 
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: a.Namespace,
@@ -171,9 +189,10 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 }
 
 func deletedAt(now time.Time) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *argoproj.ArgoCD) {
 		wrapped := metav1.NewTime(now)
 		a.ObjectMeta.DeletionTimestamp = &wrapped
+		a.Finalizers = []string{"test: finalizaer"}
 	}
 }
 
@@ -181,9 +200,15 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
 
-	resources := []runtime.Object{a}
+	resources := []client.Object{a}
 	resources = append(resources, clusterResources(a)...)
-	r := makeTestReconciler(t, resources...)
+
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -238,13 +263,13 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 }
 
 func addFinalizer(finalizer string) argoCDOpt {
-	return func(a *argov1alpha1.ArgoCD) {
+	return func(a *argoproj.ArgoCD) {
 		a.Finalizers = append(a.Finalizers, finalizer)
 	}
 }
 
-func clusterResources(argocd *argov1alpha1.ArgoCD) []runtime.Object {
-	return []runtime.Object{
+func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
+	return []client.Object{
 		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),

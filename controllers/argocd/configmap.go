@@ -17,7 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -563,7 +563,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoprojv1a1.ArgoCD) er
 
 	data := make(map[string]string)
 	for _, f := range dashboards {
-		dashboard, err := ioutil.ReadFile(f)
+		dashboard, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}
