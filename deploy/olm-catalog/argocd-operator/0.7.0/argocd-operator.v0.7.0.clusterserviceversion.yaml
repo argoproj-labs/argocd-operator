@@ -1072,12 +1072,12 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: argocd-operator
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: controller-manager
+                control-plane: argocd-operator
             spec:
               containers:
               - args:
@@ -1102,7 +1102,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
-                image: quay.io/argoprojlabs/argocd-operator@sha256:5541a1c2323016b767f53bcadf696ebd199903d2048f7bd2aee377a332ea5f2c
+                image: quay.io/argoprojlabs/argocd-operator:v0.7.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
