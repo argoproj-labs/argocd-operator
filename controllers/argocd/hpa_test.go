@@ -4,10 +4,13 @@ import (
 	"context"
 	"testing"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -21,7 +24,13 @@ func TestReconcileHPA(t *testing.T) {
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", a)
 
