@@ -45,7 +45,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 			sso = &v1beta1.ArgoCDSSOSpec{}
 		}
 		sso.Provider = v1beta1.SSOProviderTypeDex
-		sso.Dex = (*v1beta1.ArgoCDDexSpec)(src.Spec.Dex)
+		sso.Dex = ConvertAlphaToBetaDex(src.Spec.Dex)
 	}
 
 	dst.Spec.SSO = sso
@@ -244,8 +244,24 @@ func ConvertAlphaToBetaSSO(src *ArgoCDSSOSpec) *v1beta1.ArgoCDSSOSpec {
 	if src != nil {
 		dst = &v1beta1.ArgoCDSSOSpec{
 			Provider: v1beta1.SSOProviderType(src.Provider),
-			Dex:      (*v1beta1.ArgoCDDexSpec)(src.Dex),
+			Dex:      ConvertAlphaToBetaDex(src.Dex),
 			Keycloak: (*v1beta1.ArgoCDKeycloakSpec)(src.Keycloak),
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *v1beta1.ArgoCDDexSpec {
+	var dst *v1beta1.ArgoCDDexSpec
+	if src != nil {
+		dst = &v1beta1.ArgoCDDexSpec{
+			Config:         src.Config,
+			Groups:         src.Groups,
+			Image:          src.Image,
+			OpenShiftOAuth: src.OpenShiftOAuth,
+			Resources:      src.Resources,
+			Version:        src.Version,
+			Env:            nil,
 		}
 	}
 	return dst
@@ -448,8 +464,23 @@ func ConvertBetaToAlphaSSO(src *v1beta1.ArgoCDSSOSpec) *ArgoCDSSOSpec {
 	if src != nil {
 		dst = &ArgoCDSSOSpec{
 			Provider: SSOProviderType(src.Provider),
-			Dex:      (*ArgoCDDexSpec)(src.Dex),
+			Dex:      ConvertBetaToAlphaDex(src.Dex),
 			Keycloak: (*ArgoCDKeycloakSpec)(src.Keycloak),
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaDex(src *v1beta1.ArgoCDDexSpec) *ArgoCDDexSpec {
+	var dst *ArgoCDDexSpec
+	if src != nil {
+		dst = &ArgoCDDexSpec{
+			Config:         src.Config,
+			Groups:         src.Groups,
+			Image:          src.Image,
+			OpenShiftOAuth: src.OpenShiftOAuth,
+			Resources:      src.Resources,
+			Version:        src.Version,
 		}
 	}
 	return dst
