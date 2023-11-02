@@ -1,5 +1,5 @@
 channels:
-- currentCSV: argocd-operator.v0.7.0
+- currentCSV: argocd-operator.v0.8.0
   name: alpha
 defaultChannel: alpha
 packageName: argocd-operator
