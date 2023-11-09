@@ -39,6 +39,9 @@ const (
 	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
 	K8sOSLinux = "linux"
 
+	// ArgoCDRedisServerTLS is the redis server tls value.
+	ArgoCDRedisServerTLS = "argocd-operator-redis-tls"
+
 	// ArgoCDMetrics is the resource metrics key for labels.
 	ArgoCDMetrics = "metrics"
 
@@ -90,6 +93,8 @@ const (
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
 	ArgoCDKind         = "ArgoCD"
+	ClusterRoleKind    = "ClusterRole"
+	
 )
 
 // Commnds
@@ -97,4 +102,11 @@ const (
 	LogLevelCmd     = "--loglevel"
 	LogFormatCmd    = "--logformat"
 	UidEntryPointSh = "uid_entrypoint.sh"
+)
+
+// annotations
+const (
+	// AnnotationOpenShiftServiceCA is the annotation on services used to
+	// request a TLS certificate from OpenShift's Service CA for AutoTLS
+	AnnotationOpenShiftServiceCA = "service.beta.openshift.io/serving-cert-secret-name"
 )

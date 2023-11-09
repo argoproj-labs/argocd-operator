@@ -16,6 +16,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 )
 
 func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
@@ -232,7 +233,7 @@ func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-application-controller")
 	checkForUpdatedRoleRef(t, "custom-controller-role", expectedName)
 
-	t.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role")
+	t.Setenv(server.ArgoCDServerClusterRoleEnvVar, "custom-server-role")
 	assert.NoError(t, r.reconcileRoleBinding("argocd-server", p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-server")
