@@ -313,7 +313,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	}
 
 	if exists {
-		if !cr.Spec.ApplicationSet.IsEnabled() {
+		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 			err := r.Client.Delete(context.TODO(), sa)
 			return nil, err
 		}
@@ -324,7 +324,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 		return nil, err
 	}
 
-	if !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 		return nil, nil
 	}
 
@@ -428,14 +428,14 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
 			return nil, err
 		}
-		if !cr.Spec.ApplicationSet.IsEnabled() {
+		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 			err1 := r.Client.Delete(context.TODO(), role)
 			return nil, err1
 		}
 		return role, r.Client.Create(context.TODO(), role)
 	}
 
-	if !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 		err := r.Client.Delete(context.TODO(), role)
 		return nil, err
 	}
@@ -458,7 +458,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	roleBindingExists := true
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding); err != nil {
 		if !errors.IsNotFound(err) {
-			if !cr.Spec.ApplicationSet.IsEnabled() {
+			if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 				return nil
 			}
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
@@ -466,7 +466,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 		roleBindingExists = false
 	}
 
-	if !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 		err := r.Client.Delete(context.TODO(), roleBinding)
 		return err
 	}

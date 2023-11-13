@@ -1494,8 +1494,16 @@ spec:
                     description: DisableTLSVerification defines whether redis server
                       API should be accessed using strict TLS validation
                     type: boolean
+                  enabled:
+                    description: Enabled is the flag to enable Redis during ArgoCD
+                      installation. (optional, default `true`)
+                    type: boolean
                   image:
                     description: Image is the Redis container image.
+                    type: string
+                  remote:
+                    description: Remote specifies the remote URL of the Redis container.
+                      (optionnal, default '')
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -3022,9 +3030,9 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
-                  redis:
-                    description: Redis defines the location of the Redis component
-                      when Redis.Enabled = false
+                  remote:
+                    description: Remote specifies the remote URL of the Repo Server
+                      container. (optionnal, default '')
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
