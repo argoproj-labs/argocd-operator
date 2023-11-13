@@ -111,12 +111,6 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Enabled is the flag to enable the Application Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
-
-	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
-	RepoServer *string `json:"repoServer,omitempty"`
-
-	// Redis defines the location of the Redis component when Redis.Enabled = false
-	Redis *string `json:"redis,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -178,12 +172,6 @@ type ArgoCDApplicationSet struct {
 
 	// Enabled is the flag to enable the Application Set Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
-
-	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
-	RepoServer *string `json:"repoServer,omitempty"`
-
-	// Redis defines the location of the Redis component when Redis.Enabled = false
-	Redis *string `json:"redis,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
@@ -441,8 +429,10 @@ type ArgoCDRedisSpec struct {
 	AutoTLS string `json:"autotls,omitempty"`
 
 	// Enabled is the flag to enable Redis during ArgoCD installation. (optional, default `true`)
-	// +optional
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Remote specifies the remote URL of the Redis container. (optionnal, default '')
+	Remote *string `json:"remote,omitempty"`
 }
 
 func (a *ArgoCDRedisSpec) IsEnabled() bool {
@@ -511,8 +501,8 @@ type ArgoCDRepoSpec struct {
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Redis defines the location of the Redis component when Redis.Enabled = false
-	Redis *string `json:"redis,omitempty"`
+	// Remote specifies the remote URL of the Repo Server container. (optionnal, default '')
+	Remote *string `json:"remote,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -610,12 +600,6 @@ type ArgoCDServerSpec struct {
 
 	// Enabled is the flag to enable ArgoCD Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
-
-	// RepoServer defines the location of the RepoServer when RepoServer.Enabled = false
-	RepoServer *string `json:"repoServer,omitempty"`
-
-	// Redis defines the location of the Redis component when Redis.Enabled = false
-	Redis *string `json:"redis,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
