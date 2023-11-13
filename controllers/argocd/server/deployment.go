@@ -29,6 +29,7 @@ func (sr *ServerReconciler) TriggerDeploymentRollout(name, namespace, key string
 	return argocdcommon.TriggerDeploymentRollout(name, namespace, key, sr.Client)
 }
 
+// reconcileDeployment will ensure all ArgoCD Server deployment is present
 func (sr *ServerReconciler) reconcileDeployment() error {
 
 	sr.Logger.Info("reconciling deployment")
@@ -104,13 +105,14 @@ func (sr *ServerReconciler) reconcileDeployment() error {
 			sr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 			return err
 		}
+		sr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	}
-
-	sr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	
+	// deployment found, no changes detected
 	return nil
 }
 
+// deleteDeployment will delete deployment with given name.
 func (sr *ServerReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, sr.Client); err != nil {
 		sr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
@@ -120,10 +122,10 @@ func (sr *ServerReconciler) deleteDeployment(name, namespace string) error {
 	return nil
 }
 
+// getServerDeploymentTmpl returns server deployment object
 func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
 
-	// name is <name>-server
-	deploymentName := util.NameWithSuffix(sr.Instance.Name, ServerControllerComponent)
+	deploymentName := getDeploymentName(sr.Instance.Name)
 	deploymentLabels := common.DefaultLabels(deploymentName, sr.Instance.Name, ServerControllerComponent)
 
 	// set deployment params
@@ -149,7 +151,6 @@ func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
 	}
 
 	podSpec := corev1.PodSpec{
-		// TODO: use service account name and add a check at start of the reconcile to ensure sa exists.
 		ServiceAccountName: getServiceAccountName(sr.Instance.Name),
 		Volumes: []corev1.Volume{
 			{
@@ -289,20 +290,21 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 		cmd = append(cmd, "--insecure")
 	}
 
-	// TODO: use repo package
-	if sr.Instance.Spec.Repo.VerifyTLS {
-		cmd = append(cmd, "--repo-server-strict-tls")
-	}
-
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, dex.GetDexServerAddress(sr.Instance.Name, sr.Instance.Namespace))
 
+	// reposever flags
+	if reposerver.UseTLSForRepoServer(sr.Instance) {
+		cmd = append(cmd, "--repo-server-strict-tls")
+	}
+
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, reposerver.GetRepoServerAddress(sr.Instance.Name, sr.Instance.Namespace))
 
+	// redis flags 
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, redis.GetRedisServerAddress(sr.Instance))
 
@@ -317,24 +319,26 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 		}
 	}
 
+	// set log level & format
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, util.GetLogLevel(sr.Instance.Spec.Server.LogLevel))
 
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, util.GetLogLevel(sr.Instance.Spec.Server.LogFormat))
 
+	// set source namespaces
+	if sr.Instance.Spec.SourceNamespaces != nil && len(sr.Instance.Spec.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(sr.Instance.Spec.SourceNamespaces, ",")))
+	}
+
+	// extra args should always be added at the end
 	extraArgs := sr.Instance.Spec.Server.ExtraCommandArgs
 	err := util.IsMergable(extraArgs, cmd)
 	if err != nil {
 		return cmd
 	}
-
-	// TODO: return source namespaces from app-controller package?
-	if sr.Instance.Spec.SourceNamespaces != nil && len(sr.Instance.Spec.SourceNamespaces) > 0 {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(sr.Instance.Spec.SourceNamespaces, ",")))
-	}
-
 	cmd = append(cmd, extraArgs...)
+
 	return cmd
 }
 
