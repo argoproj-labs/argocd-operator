@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// reconcileRoleBinding will ensure all ArgoCD Server rolebindings are present
-func (sr *ServerReconciler) reconcileRoleBinding() error {
+// reconcileRoleBindings will ensure all ArgoCD Server rolebindings are present
+func (sr *ServerReconciler) reconcileRoleBindings() error {
 
 	sr.Logger.Info("reconciling roleBinding")
 
@@ -31,7 +31,7 @@ func (sr *ServerReconciler) reconcileRoleBinding() error {
 	}
 
 	// reconcile roleBindings for managed namespaces
-	if err = sr.reconcileManagedRoleBinding(sa); err != nil {
+	if err = sr.reconcileManagedRoleBindings(sa); err != nil {
 		reconciliationErrors = append(reconciliationErrors, err)
 	}
 
@@ -45,7 +45,7 @@ func (sr *ServerReconciler) reconcileRoleBinding() error {
 	}
 
 	// reconcile roleBindings for source namespaces
-	if err = sr.reconcileSourceRoleBinding(sa, appControllerSA); err != nil {
+	if err = sr.reconcileSourceRoleBindings(sa, appControllerSA); err != nil {
 		reconciliationErrors = append(reconciliationErrors, err)
 	}
 
@@ -65,14 +65,23 @@ func (sr *ServerReconciler) deleteRoleBinding(name, namespace string) error {
 	return nil
 }
 
-// reconcileManagedRoleBinding manages rolebindings in ArgoCD managed namespaces
-func (sr *ServerReconciler) reconcileManagedRoleBinding(sa *v1.ServiceAccount) error {
+// reconcileManagedRoleBindings manages rolebindings in ArgoCD managed namespaces
+func (sr *ServerReconciler) reconcileManagedRoleBindings(sa *v1.ServiceAccount) error {
 	var reconciliationErrors []error
 
 	for nsName := range sr.ManagedNamespaces {
 
 		rbName := getRoleBindingName(sr.Instance.Name)
 		rbLabels := common.DefaultLabels(rbName, sr.Instance.Name, ServerControllerComponent)
+
+		_, err := cluster.GetNamespace(nsName, sr.Client)
+		if err != nil {
+			if !errors.IsNotFound(err){
+				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve namespace", "name", nsName)
+				reconciliationErrors = append(reconciliationErrors, err)
+			}
+			continue
+		}
 
 		roleBindingRequest := permissions.RoleBindingRequest{
 			ObjectMeta: metav1.ObjectMeta{
@@ -167,8 +176,8 @@ func (sr *ServerReconciler) reconcileManagedRoleBinding(sa *v1.ServiceAccount) e
 	return amerr.NewAggregate(reconciliationErrors)
 }
 
-// reconcileSourceRoleBinding manages rolebindings for app in namespaces feature
-func (sr *ServerReconciler) reconcileSourceRoleBinding(serverSA, appControllerSA *v1.ServiceAccount) error {
+// reconcileSourceRoleBindings manages rolebindings for app in namespaces feature
+func (sr *ServerReconciler) reconcileSourceRoleBindings(serverSA, appControllerSA *v1.ServiceAccount) error {
 	var reconciliationErrors []error
 
 	for nsName := range sr.SourceNamespaces {
@@ -178,8 +187,10 @@ func (sr *ServerReconciler) reconcileSourceRoleBinding(serverSA, appControllerSA
 
 		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve namespace", "name", nsName)
-			reconciliationErrors = append(reconciliationErrors, err)
+			if !errors.IsNotFound(err){
+				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve namespace", "name", nsName)
+				reconciliationErrors = append(reconciliationErrors, err)
+			}
 			continue
 		}
 

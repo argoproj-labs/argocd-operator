@@ -42,6 +42,15 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 
 		roleName := getRoleName(sr.Instance.Name)
 		roleLabels := common.DefaultLabels(roleName, sr.Instance.Name, ServerControllerComponent)
+
+		_, err := cluster.GetNamespace(nsName, sr.Client)
+		if err != nil {
+			if !errors.IsNotFound(err){
+				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve namespace", "name", nsName)
+				reconciliationErrors = append(reconciliationErrors, err)
+			}
+			continue
+		}
 		
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
@@ -135,8 +144,10 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 		
 		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileSourceRoles: failed to retrieve namespace", "name", nsName)
-			reconciliationErrors = append(reconciliationErrors, err)
+			if !errors.IsNotFound(err){
+				sr.Logger.Error(err, "reconcileSourceRoles: failed to retrieve namespace", "name", nsName)
+				reconciliationErrors = append(reconciliationErrors, err)
+			}
 			continue
 		}
 

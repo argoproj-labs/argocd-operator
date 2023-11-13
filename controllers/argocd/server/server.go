@@ -56,7 +56,7 @@ func (sr *ServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if err := sr.reconcileRoleBinding(); err != nil {
+	if err := sr.reconcileRoleBindings(); err != nil {
 		return err
 	}
 
