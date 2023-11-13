@@ -44,15 +44,10 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "entrypoint.sh")
 	cmd = append(cmd, "argocd-applicationset-controller")
 
-	if !cr.Spec.Repo.IsEnabled() {
-		if cr.Spec.ApplicationSet.RepoServer != nil && *cr.Spec.ApplicationSet.RepoServer != "" {
-			cmd = append(cmd, "--argocd-repo-server", *cr.Spec.ApplicationSet.RepoServer)
-		} else {
-			log.Error(fmt.Errorf("repo server configuration is disabled and repo server location not configured"), "repo server configuration is disabled and repo server location not configured")
-
-		}
-	} else {
+	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--argocd-repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of ApplicationSet Controller.")
 	}
 
 	cmd = append(cmd, "--loglevel")
@@ -186,6 +181,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
+		if !cr.Spec.ApplicationSet.IsEnabled() {
+			err := r.Client.Delete(context.TODO(), existing)
+			return err
+		}
+
 		existingSpec := existing.Spec.Template.Spec
 
 		deploymentsDifferent := !reflect.DeepEqual(existingSpec.Containers[0], podSpec.Containers) ||
@@ -210,6 +210,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !cr.Spec.ApplicationSet.IsEnabled() {
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
@@ -309,11 +313,19 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	}
 
 	if exists {
+		if !cr.Spec.ApplicationSet.IsEnabled() {
+			err := r.Client.Delete(context.TODO(), sa)
+			return nil, err
+		}
 		return sa, nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
 		return nil, err
+	}
+
+	if !cr.Spec.ApplicationSet.IsEnabled() {
+		return nil, nil
 	}
 
 	err := r.Client.Create(context.TODO(), sa)
@@ -416,7 +428,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
 			return nil, err
 		}
+		if !cr.Spec.ApplicationSet.IsEnabled() {
+			err1 := r.Client.Delete(context.TODO(), role)
+			return nil, err1
+		}
 		return role, r.Client.Create(context.TODO(), role)
+	}
+
+	if !cr.Spec.ApplicationSet.IsEnabled() {
+		err := r.Client.Delete(context.TODO(), role)
+		return nil, err
 	}
 
 	role.Rules = policyRules
@@ -437,9 +458,17 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	roleBindingExists := true
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding); err != nil {
 		if !errors.IsNotFound(err) {
+			if !cr.Spec.ApplicationSet.IsEnabled() {
+				return nil
+			}
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 		}
 		roleBindingExists = false
+	}
+
+	if !cr.Spec.ApplicationSet.IsEnabled() {
+		err := r.Client.Delete(context.TODO(), roleBinding)
+		return err
 	}
 
 	setAppSetLabels(&roleBinding.ObjectMeta)
@@ -521,7 +550,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 	log.Info("reconciling applicationset service")
 
 	svc := newServiceWithSuffix(common.ApplicationSetServiceNameSuffix, common.ApplicationSetServiceNameSuffix, cr)
-	if cr.Spec.ApplicationSet == nil {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			err := argoutil.FetchObject(r.Client, cr.Namespace, svc.Name, svc)

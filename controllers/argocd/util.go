@@ -121,15 +121,10 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
 	}
 
-	if !cr.Spec.Redis.IsEnabled() {
-		if cr.Spec.Controller.Redis != nil && *cr.Spec.Controller.Redis != "" {
-			cmd = append(cmd, "--redis", *cr.Spec.Controller.Redis)
-		} else {
-			log.Error(fmt.Errorf("redis configuration is disabled and redis location not configured"), "redis configuration is disabled and redis location not configured")
-
-		}
-	} else {
+	if cr.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to Application Controller.")
 	}
 
 	if useTLSForRedis {
@@ -141,14 +136,10 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		}
 	}
 
-	if !cr.Spec.Repo.IsEnabled() {
-		if cr.Spec.Controller.RepoServer != nil && *cr.Spec.Controller.RepoServer != "" {
-			cmd = append(cmd, "--repo-server", *cr.Spec.Controller.RepoServer)
-		} else {
-			log.Error(fmt.Errorf("repo server configuration is disabled and repo server location not configured"), "repo server configuration is disabled and repo server location not configured")
-		}
-	} else {
+	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of Application Controller.")
 	}
 
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
@@ -599,6 +590,9 @@ func getSentinelLivenessScript(useTLSForRedis bool) string {
 
 // getRedisServerAddress will return the Redis service address for the given ArgoCD.
 func getRedisServerAddress(cr *argoproj.ArgoCD) string {
+	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		return *cr.Spec.Redis.Remote
+	}
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}

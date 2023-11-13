@@ -232,15 +232,10 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-repo-server")
 
-	if !cr.Spec.Redis.IsEnabled() {
-		if cr.Spec.Repo.Redis != nil && *cr.Spec.Repo.Redis != "" {
-			cmd = append(cmd, "--redis", *cr.Spec.Repo.Redis)
-		} else {
-			log.Error(fmt.Errorf("redis configuration is disabled and redis location not configured"), "redis configuration is disabled and redis location not configured")
-
-		}
-	} else {
+	if cr.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
 	}
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
@@ -298,26 +293,16 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, getDexServerAddress(cr))
 
-	if !cr.Spec.Repo.IsEnabled() {
-		if cr.Spec.Server.RepoServer != nil && *cr.Spec.Server.RepoServer != "" {
-			cmd = append(cmd, "--repo-server", *cr.Spec.Server.RepoServer)
-		} else {
-			log.Error(fmt.Errorf("repo server configuration is disabled and repo server location not configured"), "repo server configuration is disabled and repo server location not configured")
-
-		}
-	} else {
+	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of ArgoCD Server.")
 	}
 
-	if !cr.Spec.Redis.IsEnabled() {
-		if cr.Spec.Server.Redis != nil && *cr.Spec.Server.Redis != "" {
-			cmd = append(cmd, "--redis", *cr.Spec.Server.Redis)
-		} else {
-			log.Error(fmt.Errorf("redis configuration is disabled and redis location not configured"), "redis configuration is disabled and redis location not configured")
-
-		}
-	} else {
+	if cr.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
 	}
 
 	if useTLSForRedis {
@@ -371,6 +356,9 @@ func getDexServerAddress(cr *argoproj.ArgoCD) string {
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoproj.ArgoCD) string {
+	if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+		return *cr.Spec.Repo.Remote
+	}
 	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
