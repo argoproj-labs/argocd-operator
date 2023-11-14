@@ -1200,7 +1200,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	}
 
 	if !cr.Spec.Repo.IsEnabled() {
-		log.Info("ArgoCD Repo disabled. Skipping starting ArgoCD Repo.")
+		log.Info("ArgoCD Repo Server disabled. Skipping starting ArgoCD Repo Server.")
 		return nil
 	}
 
