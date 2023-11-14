@@ -1494,7 +1494,8 @@ spec:
                     type: string
                   remote:
                     description: Remote specifies the remote URL of the Redis container.
-                      (optionnal, default '')
+                      (optional, by default, a local instance managed by the operator
+                      is used.)
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -3023,7 +3024,8 @@ spec:
                     type: boolean
                   remote:
                     description: Remote specifies the remote URL of the Repo Server
-                      container. (optionnal, default '')
+                      container. (optional, by default, a local instance managed by
+                      the operator is used.)
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
@@ -8382,7 +8384,8 @@ spec:
                     type: string
                   remote:
                     description: Remote specifies the remote URL of the Redis container.
-                      (optionnal, default '')
+                      (optional, by default, a local instance managed by the operator
+                      is used.)
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -9911,7 +9914,8 @@ spec:
                     type: boolean
                   remote:
                     description: Remote specifies the remote URL of the Repo Server
-                      container. (optionnal, default '')
+                      container. (optional, by default, a local instance managed by
+                      the operator is used.)
                     type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.

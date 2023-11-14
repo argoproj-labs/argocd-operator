@@ -431,7 +431,7 @@ type ArgoCDRedisSpec struct {
 	// Enabled is the flag to enable Redis during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Remote specifies the remote URL of the Redis container. (optionnal, default '')
+	// Remote specifies the remote URL of the Redis container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
 }
 
@@ -501,7 +501,7 @@ type ArgoCDRepoSpec struct {
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Remote specifies the remote URL of the Repo Server container. (optionnal, default '')
+	// Remote specifies the remote URL of the Repo Server container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
 }
 
