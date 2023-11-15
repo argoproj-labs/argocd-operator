@@ -76,8 +76,8 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Notifications = v1beta1.ArgoCDNotifications(src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
-	dst.Spec.Redis = v1beta1.ArgoCDRedisSpec(src.Spec.Redis)
-	dst.Spec.Repo = v1beta1.ArgoCDRepoSpec(src.Spec.Repo)
+	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
+	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
 	dst.Spec.ResourceHealthChecks = ConvertAlphaToBetaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertAlphaToBetaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
@@ -143,8 +143,8 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Notifications = ArgoCDNotifications(src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertBetaToAlphaPrometheus(&src.Spec.Prometheus)
 	dst.Spec.RBAC = ArgoCDRBACSpec(src.Spec.RBAC)
-	dst.Spec.Redis = ArgoCDRedisSpec(src.Spec.Redis)
-	dst.Spec.Repo = ArgoCDRepoSpec(src.Spec.Repo)
+	dst.Spec.Redis = *ConvertBetaToAlphaRedis(&src.Spec.Redis)
+	dst.Spec.Repo = *ConvertBetaToAlphaRepo(&src.Spec.Repo)
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
 	dst.Spec.ResourceHealthChecks = ConvertBetaToAlphaResourceHealthChecks(src.Spec.ResourceHealthChecks)
 	dst.Spec.ResourceIgnoreDifferences = ConvertBetaToAlphaResourceIgnoreDifferences(src.Spec.ResourceIgnoreDifferences)
@@ -179,6 +179,46 @@ func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1
 			AppSync:          src.AppSync,
 			Sharding:         v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
+	var dst *v1beta1.ArgoCDRedisSpec
+	if src != nil {
+		dst = &v1beta1.ArgoCDRedisSpec{
+			AutoTLS:                src.AutoTLS,
+			DisableTLSVerification: src.DisableTLSVerification,
+			Image:                  src.Image,
+			Resources:              src.Resources,
+			Version:                src.Version,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
+	var dst *v1beta1.ArgoCDRepoSpec
+	if src != nil {
+		dst = &v1beta1.ArgoCDRepoSpec{
+			AutoTLS:              src.AutoTLS,
+			Env:                  src.Env,
+			ExecTimeout:          src.ExecTimeout,
+			ExtraRepoCommandArgs: src.ExtraRepoCommandArgs,
+			Image:                src.Image,
+			InitContainers:       src.InitContainers,
+			LogFormat:            src.LogFormat,
+			LogLevel:             src.LogLevel,
+			MountSAToken:         src.MountSAToken,
+			Replicas:             src.Replicas,
+			Resources:            src.Resources,
+			ServiceAccount:       src.ServiceAccount,
+			SidecarContainers:    src.SidecarContainers,
+			VerifyTLS:            src.VerifyTLS,
+			Version:              src.Version,
+			VolumeMounts:         src.VolumeMounts,
+			Volumes:              src.Volumes,
 		}
 	}
 	return dst
@@ -601,6 +641,46 @@ func ConvertBetaToAlphaResourceHealthChecks(src []v1beta1.ResourceHealthCheck) [
 			Check: s.Check,
 		},
 		)
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaRedis(src *v1beta1.ArgoCDRedisSpec) *ArgoCDRedisSpec {
+	var dst *ArgoCDRedisSpec
+	if src != nil {
+		dst = &ArgoCDRedisSpec{
+			AutoTLS:                src.AutoTLS,
+			DisableTLSVerification: src.DisableTLSVerification,
+			Image:                  src.Image,
+			Resources:              src.Resources,
+			Version:                src.Version,
+		}
+	}
+	return dst
+}
+
+func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
+	var dst *ArgoCDRepoSpec
+	if src != nil {
+		dst = &ArgoCDRepoSpec{
+			AutoTLS:              src.AutoTLS,
+			Env:                  src.Env,
+			ExecTimeout:          src.ExecTimeout,
+			ExtraRepoCommandArgs: src.ExtraRepoCommandArgs,
+			Image:                src.Image,
+			InitContainers:       src.InitContainers,
+			LogFormat:            src.LogFormat,
+			LogLevel:             src.LogLevel,
+			MountSAToken:         src.MountSAToken,
+			Replicas:             src.Replicas,
+			Resources:            src.Resources,
+			ServiceAccount:       src.ServiceAccount,
+			SidecarContainers:    src.SidecarContainers,
+			VerifyTLS:            src.VerifyTLS,
+			Version:              src.Version,
+			VolumeMounts:         src.VolumeMounts,
+			Volumes:              src.Volumes,
+		}
 	}
 	return dst
 }

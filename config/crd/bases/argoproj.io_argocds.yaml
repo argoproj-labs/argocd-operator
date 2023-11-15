@@ -1485,17 +1485,8 @@ spec:
                     description: DisableTLSVerification defines whether redis server
                       API should be accessed using strict TLS validation
                     type: boolean
-                  enabled:
-                    description: Enabled is the flag to enable Redis during ArgoCD
-                      installation. (optional, default `true`)
-                    type: boolean
                   image:
                     description: Image is the Redis container image.
-                    type: string
-                  remote:
-                    description: Remote specifies the remote URL of the Redis container.
-                      (optional, by default, a local instance managed by the operator
-                      is used.)
                     type: string
                   resources:
                     description: Resources defines the Compute Resources required
@@ -1560,10 +1551,6 @@ spec:
                       can currently be: - openshift - Use the OpenShift service CA
                       to request TLS config'
                     type: string
-                  enabled:
-                    description: Enabled is the flag to enable Repo Server during
-                      ArgoCD installation. (optional, default `true`)
-                    type: boolean
                   env:
                     description: Env lets you specify environment for repo server
                       pods
@@ -3022,11 +3009,6 @@ spec:
                     description: MountSAToken describes whether you would like to
                       have the Repo server mount the service account token
                     type: boolean
-                  remote:
-                    description: Remote specifies the remote URL of the Repo Server
-                      container. (optional, by default, a local instance managed by
-                      the operator is used.)
-                    type: string
                   replicas:
                     description: Replicas defines the number of replicas for argocd-repo-server.
                       Value should be greater than or equal to 0. Default is nil.

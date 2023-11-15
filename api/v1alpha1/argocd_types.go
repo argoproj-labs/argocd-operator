@@ -407,12 +407,6 @@ type ArgoCDRedisSpec struct {
 	// The value specified here can currently be:
 	// - openshift - Use the OpenShift service CA to request TLS config
 	AutoTLS string `json:"autotls,omitempty"`
-
-	// Enabled is the flag to enable Redis during ArgoCD installation. (optional, default `true`)
-	Enabled *bool `json:"enabled,omitempty"`
-
-	// Remote specifies the remote URL of the Redis container. (optional, by default, a local instance managed by the operator is used.)
-	Remote *string `json:"remote,omitempty"`
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -473,12 +467,6 @@ type ArgoCDRepoSpec struct {
 
 	// SidecarContainers defines the list of sidecar containers for the repo server deployment
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
-
-	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
-	Enabled *bool `json:"enabled,omitempty"`
-
-	// Remote specifies the remote URL of the Repo Server container. (optional, by default, a local instance managed by the operator is used.)
-	Remote *string `json:"remote,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
