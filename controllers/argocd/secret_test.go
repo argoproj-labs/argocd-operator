@@ -120,7 +120,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 			repoDepl,
 			ctrlSts}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch)
 
@@ -329,7 +329,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 			ctrlSts,
 			redisDepl}
 		runtimeObjs := []runtime.Object{}
-		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 		r := makeTestReconciler(cl, sch)
 

@@ -65,7 +65,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
-	assert.NoError(t, oappsv1.AddToScheme(r.Scheme))
+	assert.NoError(t, oappsv1.Install(r.Scheme))
 	templateAPIFound = true
 	defer removeTemplateAPI()
 
@@ -255,7 +255,7 @@ func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 			resObjs := []client.Object{a}
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch)
 
