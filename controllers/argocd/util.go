@@ -119,7 +119,12 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd := []string{
 		"argocd-application-controller",
 		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
-		"--redis", getRedisServerAddress(cr),
+	}
+
+	if cr.Spec.Redis.IsEnabled() {
+		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to Application Controller.")
 	}
 
 	if useTLSForRedis {
@@ -131,7 +136,12 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 		}
 	}
 
-	cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	if cr.Spec.Repo.IsEnabled() {
+		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of Application Controller.")
+	}
+
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
@@ -580,6 +590,9 @@ func getSentinelLivenessScript(useTLSForRedis bool) string {
 
 // getRedisServerAddress will return the Redis service address for the given ArgoCD.
 func getRedisServerAddress(cr *argoproj.ArgoCD) string {
+	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		return *cr.Spec.Redis.Remote
+	}
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
