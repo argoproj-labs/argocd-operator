@@ -218,8 +218,9 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
+    createdAt: "2023-11-21T13:52:07Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
@@ -637,8 +638,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1215,8 +1216,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1718,7 +1719,9 @@ spec:
           - create
         serviceAccountName: argocd-operator-controller-manager
       deployments:
-      - name: argocd-operator-controller-manager
+      - label:
+          control-plane: argocd-operator
+        name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -1742,7 +1745,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator@sha256:6359e98446936109e4c9491a7b919a5eac8ac6cbe737d94583bd979c2071c45f
+                image: quay.io/argoprojlabs/argocd-operator@sha256:e7cfaa424ac22cb75d82908e5fcc27caafe32179eda6f7902f33806e21e880ce
                 livenessProbe:
                   httpGet:
                     path: /healthz
