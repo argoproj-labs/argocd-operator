@@ -44,7 +44,7 @@ func IsTemplateAPIAvailable() bool {
 
 // verifyTemplateAPI will verify that the template API is present.
 func verifyTemplateAPI() error {
-	found, err := argoutil.VerifyAPI(template.SchemeGroupVersion.Group, template.SchemeGroupVersion.Version)
+	found, err := argoutil.VerifyAPI(template.GroupVersion.Group, template.GroupVersion.Version)
 	if err != nil {
 		return err
 	}

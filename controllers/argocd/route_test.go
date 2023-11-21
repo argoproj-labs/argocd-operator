@@ -37,7 +37,7 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
@@ -73,7 +73,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
@@ -149,7 +149,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	resObjs := []client.Object{argoCD}
 	subresObjs := []client.Object{argoCD}
 	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.AddToScheme, routev1.AddToScheme)
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 

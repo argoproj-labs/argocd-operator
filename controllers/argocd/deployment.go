@@ -232,9 +232,11 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "uid_entrypoint.sh")
 	cmd = append(cmd, "argocd-repo-server")
 
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, getRedisServerAddress(cr))
-
+	if cr.Spec.Redis.IsEnabled() {
+		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
+	}
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
 		if isRedisTLSVerificationDisabled(cr) {
@@ -291,11 +293,17 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, getDexServerAddress(cr))
 
-	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, getRepoServerAddress(cr))
+	if cr.Spec.Repo.IsEnabled() {
+		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of ArgoCD Server.")
+	}
 
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, getRedisServerAddress(cr))
+	if cr.Spec.Redis.IsEnabled() {
+		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
+	} else {
+		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
+	}
 
 	if useTLSForRedis {
 		cmd = append(cmd, "--redis-use-tls")
@@ -348,6 +356,9 @@ func getDexServerAddress(cr *argoproj.ArgoCD) string {
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoproj.ArgoCD) string {
+	if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+		return *cr.Spec.Repo.Remote
+	}
 	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
@@ -624,6 +635,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Redis.IsEnabled() {
+			// Deployment exists but component enabled flag has been set to false, delete the Deployment
+			log.Info("Redis exists but should be disabled. Deleting existing redis.")
+			return r.Client.Delete(context.TODO(), deploy)
+		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			return r.Client.Delete(context.TODO(), deploy)
@@ -658,6 +674,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !cr.Spec.Redis.IsEnabled() {
+		log.Info("Redis disabled. Skipping starting redis.")
+		return nil
 	}
 
 	if cr.Spec.HA.Enabled {
@@ -1103,6 +1124,13 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+
+		if !cr.Spec.Repo.IsEnabled() {
+			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
+			// Delete existing deployment for ArgoCD Repo Server, if any ..
+			return nil
+		}
+
 		changed := false
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
@@ -1169,6 +1197,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !cr.Spec.Repo.IsEnabled() {
+		log.Info("ArgoCD Repo Server disabled. Skipping starting ArgoCD Repo Server.")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
@@ -1292,6 +1325,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Server.IsEnabled() {
+			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
+			// Delete existing deployment for ArgoCD Server, if any ..
+			return nil
+		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
@@ -1335,6 +1373,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !cr.Spec.Controller.IsEnabled() {
+		log.Info("ArgoCD Repo Server disabled. Skipping starting repo server.")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
