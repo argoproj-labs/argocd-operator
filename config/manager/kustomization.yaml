@@ -13,4 +13,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/argoprojlabs/argocd-operator
-  newTag: v0.8.0
+  newTag: v0.9.0

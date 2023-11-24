@@ -4,4 +4,4 @@ metadata:
   name: example-argocd
 spec:
   applicationSet:
-    image: quay.io/argoproj/argocd@sha256:8283a9f06033c2377dc61b03daf49
+    image: quay.io/argoproj/argocd@sha256:829643e07dd938a97bef2496131d11598c9385a06030579365a6b313f9b878cf
