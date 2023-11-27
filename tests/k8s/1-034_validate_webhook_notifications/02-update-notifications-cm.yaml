@@ -1,0 +1,19 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: argocd-notifications-cm
+data:
+  service.webhook.test-webhook: |
+    url: https://webhook/hooks/example
+  template.test-app-created: |
+    webhook:
+      test-webhook:
+        method: POST
+        body: |
+          {"created":"{{.app.metadata.name}}"}
+  trigger.test-on-created: |-
+    - description: Application is created.
+      send: ["test-app-created"]
+      when: "true"
+
+
