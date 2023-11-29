@@ -1328,7 +1328,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		if !cr.Spec.Server.IsEnabled() {
 			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
 			// Delete existing deployment for ArgoCD Server, if any ..
-			return nil
+			return r.Client.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
