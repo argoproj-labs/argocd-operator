@@ -1128,7 +1128,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		if !cr.Spec.Repo.IsEnabled() {
 			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
-			return nil
+			return r.Client.Delete(context.TODO(), existing)
 		}
 
 		changed := false
