@@ -1375,7 +1375,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	if !cr.Spec.Controller.IsEnabled() {
+	if !cr.Spec.Server.IsEnabled() {
 		log.Info("ArgoCD Repo Server disabled. Skipping starting repo server.")
 		return nil
 	}
