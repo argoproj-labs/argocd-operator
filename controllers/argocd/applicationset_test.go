@@ -555,6 +555,7 @@ func setProxyEnvVars(t *testing.T) {
 func TestReconcileApplicationSet_Service(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
