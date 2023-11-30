@@ -1376,7 +1376,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	if !cr.Spec.Server.IsEnabled() {
-		log.Info("ArgoCD Repo Server disabled. Skipping starting repo server.")
+		log.Info("ArgoCD Server disabled. Skipping starting argocd server.")
 		return nil
 	}
 
