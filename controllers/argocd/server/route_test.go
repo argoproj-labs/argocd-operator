@@ -17,7 +17,7 @@ import (
 func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
-	routev1.AddToScheme(sr.Scheme)
+	routev1.Install(sr.Scheme)
 
 	ann := map[string]string {"example.com":"test"}
 
@@ -63,7 +63,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 func TestServerReconciler_routeTLS(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
-	routev1.AddToScheme(sr.Scheme)
+	routev1.Install(sr.Scheme)
 
 	secureTLSConfig := &routev1.TLSConfig{
 		Termination:                   routev1.TLSTerminationPassthrough,

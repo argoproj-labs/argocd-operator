@@ -296,7 +296,7 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, dex.GetDexServerAddress(sr.Instance.Name, sr.Instance.Namespace))
 
-	// reposever flags
+	// reposerver flags
 	if reposerver.UseTLSForRepoServer(sr.Instance) {
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
