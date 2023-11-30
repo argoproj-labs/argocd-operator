@@ -1,4 +1,11 @@
-
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-test
+  namespace: test
+status:
+  phase: Available
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
