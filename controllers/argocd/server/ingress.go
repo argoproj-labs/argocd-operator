@@ -39,8 +39,8 @@ func (sr *ServerReconciler) reconcileServerIngress() error {
 
 	// default annotations
 	ingressLabels := common.DefaultLabels(ingressName, sr.Instance.Name, ServerControllerComponent)
-	ingressLabels[ArgoCDKeyIngressSSLRedirect] = "true"
-	ingressLabels[ArgoCDKeyIngressBackendProtocol] = "HTTP"
+	ingressLabels[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
+	ingressLabels[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
 
 	// ingress disabled, cleanup and exit 
 	if !sr.Instance.Spec.Server.Ingress.Enabled {
@@ -117,7 +117,7 @@ func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
 
 	// default annotations
 	ingressLabels := common.DefaultLabels(ingressName, sr.Instance.Name, ServerControllerComponent)
-	ingressLabels[ArgoCDKeyIngressBackendProtocol] = "GRPC"
+	ingressLabels[common.NginxIngressK8sKeyBackendProtocol] = "GRPC"
 
 	// ingress disabled, cleanup and exit 
 	if !sr.Instance.Spec.Server.GRPC.Ingress.Enabled  {

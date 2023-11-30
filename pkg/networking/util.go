@@ -36,7 +36,7 @@ func EnsureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 
 	// We currently only support OpenShift for automatic TLS
 	if IsRouteAPIAvailable() {
-		autoTLSAnnotationName = common.AnnotationOpenShiftServiceCA
+		autoTLSAnnotationName = common.ServiceBetaOpenshiftKeyCertSecret
 		if svc.Annotations == nil {
 			svc.Annotations = make(map[string]string)
 		}

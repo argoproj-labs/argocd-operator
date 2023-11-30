@@ -14,7 +14,7 @@ func  TestEnsureAutoTLSAnnotation(t *testing.T) {
 	tlsAnnotations := map[string]string{
 		common.ArgoCDArgoprojKeyName:      testInstance,
 		common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-		common.AnnotationOpenShiftServiceCA: secretName,
+		common.ServiceBetaOpenshiftKeyCertSecret: secretName,
 	}
 
 	noTLSAnnotations := map[string]string{

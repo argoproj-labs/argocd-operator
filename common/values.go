@@ -103,10 +103,3 @@ const (
 	LogFormatCmd    = "--logformat"
 	UidEntryPointSh = "uid_entrypoint.sh"
 )
-
-// annotations
-const (
-	// AnnotationOpenShiftServiceCA is the annotation on services used to
-	// request a TLS certificate from OpenShift's Service CA for AutoTLS
-	AnnotationOpenShiftServiceCA = "service.beta.openshift.io/serving-cert-secret-name"
-)
