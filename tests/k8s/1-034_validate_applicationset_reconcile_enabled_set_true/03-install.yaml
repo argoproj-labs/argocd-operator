@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-test
+  namespace: test
+spec:
+  controller:
+    enabled: false
+  redis:
+    enabled: false
+  repo:
+    enabled: true
+  server:
+    enabled: true
+  applicationSet:
+    enabled: true
