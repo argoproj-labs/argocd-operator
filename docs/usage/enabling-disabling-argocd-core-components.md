@@ -1,8 +1,7 @@
-# Enabling/Disabling ArgoCD core components
+# Enabling/Disabling Core Components of ArgoCD
+The Operator oversees all Argo CD workloads, including the API server, repository server, application controller, and more.
 
-The Operator manages all Argo CD workloads, such as API server, repository server, application controller, etc.
-
-Right now, the following workloads are managed:
+Currently, the following workloads are managed:
 
 * argocd-server (API server and UI)
 * argocd-repo-server (Repository server)
@@ -10,13 +9,13 @@ Right now, the following workloads are managed:
 * argocd-applicationset-controller (ApplicationSet reconciliation controller)
 * argocd-redis (volatile cache)
 
-To support installations with a minimal resource footprint and to distribute installations across clusters or namespaces, we need to be able to only install a partial Argo CD.
+To support installations with minimal resource requirements and to facilitate distribution across clusters or namespaces, the ability to selectively install specific Argo CD components has been introduced.
 
-In order to enable/disable a specific Argo CD workload, a new flag `spec.<component>.enabled` has been introduced. The default value of the flag is `true`, which means that even if the flag is not specified, the ArgoCD workload would be enabled by default.
+To enable/disable a particular Argo CD workload, a new flag, `spec.<component>.enabled`, has been implemented. The default value of the flag is `true`, implying that if the flag is unspecified, the Argo CD workload is enabled by default.
 
-For disabling a specific Argo CD component, set the `spec.<component>.enabled` flag to `false`. The flag is available for components - controller, repo, server, redis, applicationset.
+To disable a specific Argo CD component, set the `spec.<component>.enabled` flag to `false`. This flag is only applicable to components - `controller`, `repo`, `server`, `redis`, and `applicationset`.
 
-Let's consider the below example,
+Consider the following example:
 
 ```yaml
 apiVersion: argoproj.io/v1beta1
@@ -28,12 +27,10 @@ spec:
     enabled: false
 ```
 
-In the above example, only the `controller` component is disabled and all the other components will continue running as normal.
+In this example, only the controller component is disabled, while all other components continue to run normally.
 
-
-# Providing external URL for Redis and RepoServer components
-
-While disabling the core components like `Redis` or `Repo Server`, you might want to specify an external URL for the components running in external clusters. The remote URL can now be set using the flag `spec.<component>.Remote` (where component can only be `redis` or `repo`).
+# Specifying External URLs for Redis and RepoServer Components
+When disabling core components like Redis or Repo Server, you may wish to provide an external URL for components running in external clusters. The remote URL can be set using the `spec.<component>.remote` flag (where the component can only be `redis` or `repo`).
 
 For example,
 
@@ -48,4 +45,4 @@ spec:
     remote: 'https://www.example.com/repo-server'
 ```
 
-!!! Note: The `remote` flag can only be set if the `enabled` flag is set as `false`.
+!!! Note: The remote flag can only be set if the enabled flag of the component is set to false.
