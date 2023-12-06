@@ -13,7 +13,7 @@ To support installations with minimal resource requirements and to facilitate di
 
 To enable/disable a particular Argo CD workload, a new flag, `spec.<component>.enabled`, has been implemented. The default value of the flag is `true`, implying that if the flag is unspecified, the Argo CD workload is enabled by default.
 
-To disable a specific Argo CD component, set the `spec.<component>.enabled` flag to `false`. This flag is only applicable to components - `controller`, `repo`, `server`, `redis`, and `applicationset`.
+To disable a specific Argo CD component, set the `spec.<component>.enabled` flag to `false`.
 
 Consider the following example:
 
