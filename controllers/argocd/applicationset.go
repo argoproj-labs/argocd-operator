@@ -110,8 +110,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 
 	podSpec := &deploy.Spec.Template.Spec
 
-	podSpec.ServiceAccountName = sa.ObjectMeta.Name
-
+	// sa would be nil when spec.applicationset.enabled = false
+	if sa != nil {
+		podSpec.ServiceAccountName = sa.ObjectMeta.Name
+	}
 	podSpec.Volumes = []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
@@ -181,7 +183,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 
 	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
-		if !cr.Spec.ApplicationSet.IsEnabled() {
+		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 			err := r.Client.Delete(context.TODO(), existing)
 			return err
 		}
@@ -425,19 +427,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 		if !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
 		}
+		if errors.IsNotFound(err) && cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+			return nil, nil
+		}
 		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
 			return nil, err
 		}
-		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-			err1 := r.Client.Delete(context.TODO(), role)
-			return nil, err1
-		}
 		return role, r.Client.Create(context.TODO(), role)
 	}
-
 	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		err := r.Client.Delete(context.TODO(), role)
-		return nil, err
+		return nil, r.Client.Delete(context.TODO(), role)
 	}
 
 	role.Rules = policyRules
@@ -458,17 +457,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 	roleBindingExists := true
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: cr.Namespace}, roleBinding); err != nil {
 		if !errors.IsNotFound(err) {
-			if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-				return nil
-			}
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
+		}
+		if errors.IsNotFound(err) && cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+			return nil
 		}
 		roleBindingExists = false
 	}
 
 	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		err := r.Client.Delete(context.TODO(), roleBinding)
-		return err
+		return r.Client.Delete(context.TODO(), roleBinding)
 	}
 
 	setAppSetLabels(&roleBinding.ObjectMeta)
@@ -563,6 +561,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetService(cr *argoproj.ArgoCD) er
 				return err
 			}
 		}
+		return nil
 	} else {
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 			return nil // Service found, do nothing

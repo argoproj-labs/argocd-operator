@@ -1128,7 +1128,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		if !cr.Spec.Repo.IsEnabled() {
 			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
-			return nil
+			return r.Client.Delete(context.TODO(), existing)
 		}
 
 		changed := false
@@ -1328,7 +1328,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		if !cr.Spec.Server.IsEnabled() {
 			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
 			// Delete existing deployment for ArgoCD Server, if any ..
-			return nil
+			return r.Client.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
@@ -1375,8 +1375,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	if !cr.Spec.Controller.IsEnabled() {
-		log.Info("ArgoCD Repo Server disabled. Skipping starting repo server.")
+	if !cr.Spec.Server.IsEnabled() {
+		log.Info("ArgoCD Server disabled. Skipping starting argocd server.")
 		return nil
 	}
 
