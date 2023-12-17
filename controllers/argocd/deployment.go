@@ -1397,29 +1397,6 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 	return r.Client.Update(context.TODO(), deployment)
 }
 
-func proxyEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
-	result := []corev1.EnvVar{}
-	result = append(result, vars...)
-	proxyKeys := []string{"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"}
-	for _, p := range proxyKeys {
-		if k, v := caseInsensitiveGetenv(p); k != "" {
-			result = append(result, corev1.EnvVar{Name: k, Value: v})
-		}
-	}
-	return result
-}
-
-func caseInsensitiveGetenv(s string) (string, string) {
-	if v := os.Getenv(s); v != "" {
-		return s, v
-	}
-	ls := strings.ToLower(s)
-	if v := os.Getenv(ls); v != "" {
-		return ls, v
-	}
-	return "", ""
-}
-
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
 		return strings.ToLower(v) == "true"

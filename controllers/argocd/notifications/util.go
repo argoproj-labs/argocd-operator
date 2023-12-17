@@ -1,9 +1,12 @@
-package argocd
+package notifications
 
-import argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+import (
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	corev1 "k8s.io/api/core/v1"
+)
 
-// getDefaultNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
-func getDefaultNotificationsConfig() map[string]string {
+// GetDefaultNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
+func GetDefaultNotificationsConfig() map[string]string {
 
 	notificationsConfig := make(map[string]string)
 
@@ -543,12 +546,32 @@ teams:
 	return notificationsConfig
 }
 
-// getArgoCDNotificationsControllerReplicas will return the size value for the argocd-notifications-controller replica count if it
-// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0.
-func getArgoCDNotificationsControllerReplicas(cr *argoproj.ArgoCD) *int32 {
-	if cr.Spec.Notifications.Replicas != nil && *cr.Spec.Notifications.Replicas >= 0 {
-		return cr.Spec.Notifications.Replicas
+func (nr *NotificationsReconciler) GetNotificationsCommand() []string {
+
+	cmd := make([]string, 0)
+	cmd = append(cmd, "argocd-notifications")
+
+	cmd = append(cmd, "--loglevel")
+	cmd = append(cmd, argoutil.GetLogLevel(nr.Instance.Spec.Notifications.LogLevel))
+
+	return cmd
+}
+
+// GetNotificationsResources will return the ResourceRequirements for the Notifications container.
+func (nr *NotificationsReconciler) GetNotificationsResources() corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if nr.Instance.Spec.Notifications.Resources != nil {
+		resources = *nr.Instance.Spec.Notifications.Resources
+	}
+
+	return resources
+}
+
+func (nr *NotificationsReconciler) GetArgoCDNotificationsControllerReplicas() *int32 {
+	if nr.Instance.Spec.Notifications.Replicas != nil && *nr.Instance.Spec.Notifications.Replicas >= 0 {
+		return nr.Instance.Spec.Notifications.Replicas
 	}
 
 	return nil

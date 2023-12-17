@@ -106,27 +106,6 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	return cmd
 }
 
-// getArgoContainerImage will return the container image for ArgoCD.
-func getArgoContainerImage(cr *argoproj.ArgoCD) string {
-	defaultTag, defaultImg := false, false
-	img := cr.Spec.Image
-	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
-	return argoutil.CombineImageTag(img, tag)
-}
-
 // getRepoServerContainerImage will return the container image for the Repo server.
 //
 // There are three possible options for configuring the image, and this is the
