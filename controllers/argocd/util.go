@@ -1142,41 +1142,6 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	return nil
 }
 
-func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	namespaces.Items = append(namespaces.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: cr.Namespace}})
-	r.ManagedNamespaces = namespaces
-	return nil
-}
-
-func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedSourceNamespaces = make(map[string]string)
-	namespaces := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByClusterArgoCDLabel: cr.Namespace,
-	}
-
-	// get the list of namespaces managed by the Argo CD instance
-	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
-		return err
-	}
-
-	for _, namespace := range namespaces.Items {
-		r.ManagedSourceNamespaces[namespace.Name] = ""
-	}
-
-	return nil
-}
-
 // removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
 // It also removes the managed-by-cluster-argocd label from the namespace
 func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {

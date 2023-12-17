@@ -114,6 +114,9 @@ const (
 
 	// ArgoCDKeyTLSPrivateKey is the key for TLS private keys.
 	ArgoCDKeyTLSPrivateKey = corev1.TLSPrivateKeyKey
+
+	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
+	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

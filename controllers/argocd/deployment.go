@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -331,22 +330,6 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 
 	cmd = append(cmd, extraArgs...)
 	return cmd
-}
-
-// isMergable returns error if any of the extraArgs is already part of the default command Arguments.
-func isMergable(extraArgs []string, cmd []string) error {
-	if len(extraArgs) > 0 {
-		for _, arg := range extraArgs {
-			if len(arg) > 2 && arg[:2] == "--" {
-				if ok := contains(cmd, arg); ok {
-					err := errors.New("duplicate argument error")
-					log.Error(err, fmt.Sprintf("Arg %s is already part of the default command arguments", arg))
-					return err
-				}
-			}
-		}
-	}
-	return nil
 }
 
 // getDexServerAddress will return the Dex server address.

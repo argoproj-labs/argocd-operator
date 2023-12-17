@@ -149,7 +149,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Command:         nr.GetNotificationsCommand(),
 			Image:           argocdcommon.GetArgoContainerImage(nr.Instance),
 			ImagePullPolicy: corev1.PullAlways,
-			Name:            common.ArgoCDNotificationsControllerComponent,
+			Name:            common.NotificationsControllerComponent,
 			Env:             notificationEnv,
 			Resources:       nr.GetNotificationsResources(),
 			LivenessProbe: &corev1.Probe{
