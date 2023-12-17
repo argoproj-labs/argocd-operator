@@ -25,10 +25,8 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
-
-var prometheusAPIFound = false
 
 // getPrometheusHost will return the hostname value for Prometheus.
 func getPrometheusHost(cr *argoproj.ArgoCD) string {
@@ -50,11 +48,6 @@ func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
 	return &replicas
 }
 
-// IsPrometheusAPIAvailable returns true if the Prometheus API is present.
-func IsPrometheusAPIAvailable() bool {
-	return prometheusAPIFound
-}
-
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
 func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj.ArgoCD) bool {
 	// Replica count
@@ -72,16 +65,6 @@ func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj
 		}
 	}
 	return false
-}
-
-// verifyPrometheusAPI will verify that the Prometheus API is present.
-func verifyPrometheusAPI() error {
-	found, err := argoutil.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	prometheusAPIFound = found
-	return nil
 }
 
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.

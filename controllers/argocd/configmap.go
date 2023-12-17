@@ -29,7 +29,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // createRBACConfigMap will create the Argo CD RBAC ConfigMap resource.

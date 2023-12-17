@@ -18,11 +18,9 @@ import (
 	"errors"
 	"fmt"
 
-	template "github.com/openshift/api/template/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 const (
@@ -33,24 +31,8 @@ const (
 )
 
 var (
-	templateAPIFound     = false
 	ssoConfigLegalStatus string
 )
-
-// IsTemplateAPIAvailable returns true if the template API is present.
-func IsTemplateAPIAvailable() bool {
-	return templateAPIFound
-}
-
-// verifyTemplateAPI will verify that the template API is present.
-func verifyTemplateAPI() error {
-	found, err := argoutil.VerifyAPI(template.GroupVersion.Group, template.GroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	templateAPIFound = found
-	return nil
-}
 
 // The purpose of reconcileSSO is to try and catch as many illegal configuration edge cases at the highest level (that can lead to conflicts)
 // as possible, that may arise from the operator supporting multiple SSO providers.

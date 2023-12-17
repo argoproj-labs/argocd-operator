@@ -26,7 +26,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +75,7 @@ func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1
 }
 
 func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
-	name := argoutil.NameWithSuffix(export.ObjectMeta, "export")
+	name := argoutil.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}

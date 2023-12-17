@@ -24,7 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	appsv1 "github.com/openshift/api/apps/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"

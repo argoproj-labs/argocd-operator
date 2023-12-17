@@ -25,25 +25,8 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
-
-var routeAPIFound = false
-
-// IsRouteAPIAvailable returns true if the Route API is present.
-func IsRouteAPIAvailable() bool {
-	return routeAPIFound
-}
-
-// verifyRouteAPI will verify that the Route API is present.
-func verifyRouteAPI() error {
-	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
-	if err != nil {
-		return err
-	}
-	routeAPIFound = found
-	return nil
-}
 
 // newRoute returns a new Route instance for the given ArgoCD.
 func newRoute(cr *argoproj.ArgoCD) *routev1.Route {

@@ -20,11 +20,12 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // reconcileLocalStorage will ensure the PersistentVolumeClaim is present for the ArgoCDExport.
@@ -56,7 +57,7 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 		pvc.Spec = *cr.Spec.Storage.PVC
 	} else {
 		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		pvc.Spec.Resources = argoutil.DefaultPVCResources()
+		pvc.Spec.Resources = argoutil.NewPVCResourceRequirements(DefaultPVCCapacity())
 	}
 
 	if err := controllerutil.SetControllerReference(cr, pvc, r.Scheme); err != nil {
@@ -72,4 +73,13 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 	// Create event
 	log.Info("creating new event")
 	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
+}
+
+// DefaultPVCCapacity will return the default PVC resources.
+func DefaultPVCCapacity() resource.Quantity {
+	capacity, err := resource.ParseQuantity(common.ArgoCDDefaultExportLocalCapicity)
+	if err != nil {
+		log.Error(err, "unable to parse quantity")
+	}
+	return capacity
 }
