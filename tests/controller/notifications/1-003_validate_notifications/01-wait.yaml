@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    set -e  # Exit if any command fails
+    kubectl wait --for=condition=Available deployment/argocd-notifications-controller --timeout=60s -n $NAMESPACE || { echo "argocd-notifications-controller is not available within 60s"; exit 1; }
+    kubectl wait --for=condition=Available deployment/smtp4dev --timeout=60s -n $NAMESPACE || { echo "smtp4dev is not available within 60s"; exit 1; }

@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  notifications:
+    enabled: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smtp4dev
+spec:
+  selector:
+    app: smtp4dev
+  ports:
+    - name: smtp
+      protocol: TCP
+      port: 2525
+      targetPort: 2525
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smtp4dev
+  labels:
+    app: smtp4dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smtp4dev
+  template:
+    metadata:
+      labels:
+        app: smtp4dev
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      containers:
+        - name: smtp4dev
+          image: quay.io/argoprojlabs/argocd-notifications-e2e-smtplistener:multiarch
+          ports:
+            - containerPort: 80
+            - containerPort: 2525

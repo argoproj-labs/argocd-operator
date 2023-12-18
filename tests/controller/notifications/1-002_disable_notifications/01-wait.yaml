@@ -1,0 +1,4 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: kubectl wait --for=condition=Available deployment/example-argocd-notifications-controller -n $NAMESPACE --timeout=60s

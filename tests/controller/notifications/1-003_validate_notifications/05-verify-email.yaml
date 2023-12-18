@@ -1,0 +1,17 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: | 
+    pods=$(kubectl get pods -n $NAMESPACE -o NAME | grep "applicationset-controller")
+
+    for pod in $pods; do
+        ready_status=$(kubectl get pod $pod -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+
+        if [[ $ready_status == "False" ]]; then
+            echo "Pod $pod is not in Ready state as image is invalid."
+            exit 0
+        fi
+    done
+
+    echo "Unexpected: All pods are in Ready state."
+    exit 1
