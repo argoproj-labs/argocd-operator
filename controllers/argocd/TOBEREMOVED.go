@@ -31,6 +31,7 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -2139,4 +2140,8 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 	}
 
 	return nil
+}
+
+func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }

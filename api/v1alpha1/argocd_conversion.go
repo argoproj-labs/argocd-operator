@@ -6,7 +6,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
-	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 var conversionLogger = ctrl.Log.WithName("conversion-webhook")
@@ -14,7 +14,7 @@ var conversionLogger = ctrl.Log.WithName("conversion-webhook")
 // ConvertTo converts this (v1alpha1) ArgoCD to the Hub version (v1beta1).
 func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	conversionLogger.Info("v1alpha1 to v1beta1 conversion requested.")
-	dst := dstRaw.(*v1beta1.ArgoCD)
+	dst := dstRaw.(*argoproj.ArgoCD)
 
 	// ObjectMeta conversion
 	dst.ObjectMeta = src.ObjectMeta
@@ -30,7 +30,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	if src.Spec.SSO != nil && !reflect.DeepEqual(src.Spec.SSO, &ArgoCDSSOSpec{}) {
 		if src.Spec.SSO.Image != "" || src.Spec.SSO.Version != "" || src.Spec.SSO.VerifyTLS != nil || src.Spec.SSO.Resources != nil {
 			if sso.Keycloak == nil {
-				sso.Keycloak = &v1beta1.ArgoCDKeycloakSpec{}
+				sso.Keycloak = &argoproj.ArgoCDKeycloakSpec{}
 			}
 			sso.Keycloak.Image = src.Spec.SSO.Image
 			sso.Keycloak.Version = src.Spec.SSO.Version
@@ -42,9 +42,9 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	// deprecated dex configs set in alpha (.spec.dex), override .spec.sso.dex in beta
 	if src.Spec.Dex != nil && !reflect.DeepEqual(src.Spec.Dex, &ArgoCDDexSpec{}) && (src.Spec.Dex.Config != "" || src.Spec.Dex.OpenShiftOAuth) {
 		if sso == nil {
-			sso = &v1beta1.ArgoCDSSOSpec{}
+			sso = &argoproj.ArgoCDSSOSpec{}
 		}
-		sso.Provider = v1beta1.SSOProviderTypeDex
+		sso.Provider = argoproj.SSOProviderTypeDex
 		sso.Dex = ConvertAlphaToBetaDex(src.Spec.Dex)
 	}
 
@@ -65,17 +65,17 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
 	dst.Spec.HelpChatText = src.Spec.HelpChatText
 	dst.Spec.Image = src.Spec.Image
-	dst.Spec.Import = (*v1beta1.ArgoCDImportSpec)(src.Spec.Import)
+	dst.Spec.Import = (*argoproj.ArgoCDImportSpec)(src.Spec.Import)
 	dst.Spec.InitialRepositories = src.Spec.InitialRepositories
-	dst.Spec.InitialSSHKnownHosts = v1beta1.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
+	dst.Spec.InitialSSHKnownHosts = argoproj.SSHHostsSpec(src.Spec.InitialSSHKnownHosts)
 	dst.Spec.KustomizeBuildOptions = src.Spec.KustomizeBuildOptions
 	dst.Spec.KustomizeVersions = ConvertAlphaToBetaKustomizeVersions(src.Spec.KustomizeVersions)
 	dst.Spec.OIDCConfig = src.Spec.OIDCConfig
-	dst.Spec.Monitoring = v1beta1.ArgoCDMonitoringSpec(src.Spec.Monitoring)
-	dst.Spec.NodePlacement = (*v1beta1.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
-	dst.Spec.Notifications = v1beta1.ArgoCDNotifications(src.Spec.Notifications)
+	dst.Spec.Monitoring = argoproj.ArgoCDMonitoringSpec(src.Spec.Monitoring)
+	dst.Spec.NodePlacement = (*argoproj.ArgoCDNodePlacementSpec)(src.Spec.NodePlacement)
+	dst.Spec.Notifications = argoproj.ArgoCDNotifications(src.Spec.Notifications)
 	dst.Spec.Prometheus = *ConvertAlphaToBetaPrometheus(&src.Spec.Prometheus)
-	dst.Spec.RBAC = v1beta1.ArgoCDRBACSpec(src.Spec.RBAC)
+	dst.Spec.RBAC = argoproj.ArgoCDRBACSpec(src.Spec.RBAC)
 	dst.Spec.Redis = *ConvertAlphaToBetaRedis(&src.Spec.Redis)
 	dst.Spec.Repo = *ConvertAlphaToBetaRepo(&src.Spec.Repo)
 	dst.Spec.RepositoryCredentials = src.Spec.RepositoryCredentials
@@ -91,10 +91,10 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.TLS = *ConvertAlphaToBetaTLS(&src.Spec.TLS)
 	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
 	dst.Spec.Version = src.Spec.Version
-	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
+	dst.Spec.Banner = (*argoproj.Banner)(src.Spec.Banner)
 
 	// Status conversion
-	dst.Status = v1beta1.ArgoCDStatus(src.Status)
+	dst.Status = argoproj.ArgoCDStatus(src.Status)
 
 	return nil
 }
@@ -103,7 +103,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	conversionLogger.Info("v1beta1 to v1alpha1 conversion requested.")
 
-	src := srcRaw.(*v1beta1.ArgoCD)
+	src := srcRaw.(*argoproj.ArgoCD)
 
 	// ObjectMeta conversion
 	dst.ObjectMeta = src.ObjectMeta
@@ -167,27 +167,27 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 }
 
 // Conversion funcs for v1alpha1 to v1beta1.
-func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *v1beta1.ArgoCDApplicationControllerSpec {
-	var dst *v1beta1.ArgoCDApplicationControllerSpec
+func ConvertAlphaToBetaController(src *ArgoCDApplicationControllerSpec) *argoproj.ArgoCDApplicationControllerSpec {
+	var dst *argoproj.ArgoCDApplicationControllerSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDApplicationControllerSpec{
-			Processors:       v1beta1.ArgoCDApplicationControllerProcessorsSpec(src.Processors),
+		dst = &argoproj.ArgoCDApplicationControllerSpec{
+			Processors:       argoproj.ArgoCDApplicationControllerProcessorsSpec(src.Processors),
 			LogLevel:         src.LogLevel,
 			LogFormat:        src.LogFormat,
 			Resources:        src.Resources,
 			ParallelismLimit: src.ParallelismLimit,
 			AppSync:          src.AppSync,
-			Sharding:         v1beta1.ArgoCDApplicationControllerShardSpec(src.Sharding),
+			Sharding:         argoproj.ArgoCDApplicationControllerShardSpec(src.Sharding),
 			Env:              src.Env,
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
-	var dst *v1beta1.ArgoCDRedisSpec
+func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *argoproj.ArgoCDRedisSpec {
+	var dst *argoproj.ArgoCDRedisSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDRedisSpec{
+		dst = &argoproj.ArgoCDRedisSpec{
 			AutoTLS:                src.AutoTLS,
 			DisableTLSVerification: src.DisableTLSVerification,
 			Image:                  src.Image,
@@ -198,10 +198,10 @@ func ConvertAlphaToBetaRedis(src *ArgoCDRedisSpec) *v1beta1.ArgoCDRedisSpec {
 	return dst
 }
 
-func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
-	var dst *v1beta1.ArgoCDRepoSpec
+func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *argoproj.ArgoCDRepoSpec {
+	var dst *argoproj.ArgoCDRepoSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDRepoSpec{
+		dst = &argoproj.ArgoCDRepoSpec{
 			AutoTLS:              src.AutoTLS,
 			Env:                  src.Env,
 			ExecTimeout:          src.ExecTimeout,
@@ -224,22 +224,22 @@ func ConvertAlphaToBetaRepo(src *ArgoCDRepoSpec) *v1beta1.ArgoCDRepoSpec {
 	return dst
 }
 
-func ConvertAlphaToBetaWebhookServer(src *WebhookServerSpec) *v1beta1.WebhookServerSpec {
-	var dst *v1beta1.WebhookServerSpec
+func ConvertAlphaToBetaWebhookServer(src *WebhookServerSpec) *argoproj.WebhookServerSpec {
+	var dst *argoproj.WebhookServerSpec
 	if src != nil {
-		dst = &v1beta1.WebhookServerSpec{
+		dst = &argoproj.WebhookServerSpec{
 			Host:    src.Host,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
-			Route:   v1beta1.ArgoCDRouteSpec(src.Route),
+			Ingress: argoproj.ArgoCDIngressSpec(src.Ingress),
+			Route:   argoproj.ArgoCDRouteSpec(src.Route),
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaApplicationSet(src *ArgoCDApplicationSet) *v1beta1.ArgoCDApplicationSet {
-	var dst *v1beta1.ArgoCDApplicationSet
+func ConvertAlphaToBetaApplicationSet(src *ArgoCDApplicationSet) *argoproj.ArgoCDApplicationSet {
+	var dst *argoproj.ArgoCDApplicationSet
 	if src != nil {
-		dst = &v1beta1.ArgoCDApplicationSet{
+		dst = &argoproj.ArgoCDApplicationSet{
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
 			Image:            src.Image,
@@ -252,49 +252,49 @@ func ConvertAlphaToBetaApplicationSet(src *ArgoCDApplicationSet) *v1beta1.ArgoCD
 	return dst
 }
 
-func ConvertAlphaToBetaGrafana(src *ArgoCDGrafanaSpec) *v1beta1.ArgoCDGrafanaSpec {
-	var dst *v1beta1.ArgoCDGrafanaSpec
+func ConvertAlphaToBetaGrafana(src *ArgoCDGrafanaSpec) *argoproj.ArgoCDGrafanaSpec {
+	var dst *argoproj.ArgoCDGrafanaSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDGrafanaSpec{
+		dst = &argoproj.ArgoCDGrafanaSpec{
 			Enabled: src.Enabled,
 			Host:    src.Host,
 			Image:   src.Image,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Ingress: argoproj.ArgoCDIngressSpec(src.Ingress),
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaPrometheus(src *ArgoCDPrometheusSpec) *v1beta1.ArgoCDPrometheusSpec {
-	var dst *v1beta1.ArgoCDPrometheusSpec
+func ConvertAlphaToBetaPrometheus(src *ArgoCDPrometheusSpec) *argoproj.ArgoCDPrometheusSpec {
+	var dst *argoproj.ArgoCDPrometheusSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDPrometheusSpec{
+		dst = &argoproj.ArgoCDPrometheusSpec{
 			Enabled: src.Enabled,
 			Host:    src.Host,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
-			Route:   v1beta1.ArgoCDRouteSpec(src.Route),
+			Ingress: argoproj.ArgoCDIngressSpec(src.Ingress),
+			Route:   argoproj.ArgoCDRouteSpec(src.Route),
 			Size:    src.Size,
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaSSO(src *ArgoCDSSOSpec) *v1beta1.ArgoCDSSOSpec {
-	var dst *v1beta1.ArgoCDSSOSpec
+func ConvertAlphaToBetaSSO(src *ArgoCDSSOSpec) *argoproj.ArgoCDSSOSpec {
+	var dst *argoproj.ArgoCDSSOSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDSSOSpec{
-			Provider: v1beta1.SSOProviderType(src.Provider),
+		dst = &argoproj.ArgoCDSSOSpec{
+			Provider: argoproj.SSOProviderType(src.Provider),
 			Dex:      ConvertAlphaToBetaDex(src.Dex),
-			Keycloak: (*v1beta1.ArgoCDKeycloakSpec)(src.Keycloak),
+			Keycloak: (*argoproj.ArgoCDKeycloakSpec)(src.Keycloak),
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *v1beta1.ArgoCDDexSpec {
-	var dst *v1beta1.ArgoCDDexSpec
+func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *argoproj.ArgoCDDexSpec {
+	var dst *argoproj.ArgoCDDexSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDDexSpec{
+		dst = &argoproj.ArgoCDDexSpec{
 			Config:         src.Config,
 			Groups:         src.Groups,
 			Image:          src.Image,
@@ -307,10 +307,10 @@ func ConvertAlphaToBetaDex(src *ArgoCDDexSpec) *v1beta1.ArgoCDDexSpec {
 	return dst
 }
 
-func ConvertAlphaToBetaHA(src *ArgoCDHASpec) *v1beta1.ArgoCDHASpec {
-	var dst *v1beta1.ArgoCDHASpec
+func ConvertAlphaToBetaHA(src *ArgoCDHASpec) *argoproj.ArgoCDHASpec {
+	var dst *argoproj.ArgoCDHASpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDHASpec{
+		dst = &argoproj.ArgoCDHASpec{
 			Enabled:           src.Enabled,
 			RedisProxyImage:   src.RedisProxyImage,
 			RedisProxyVersion: src.RedisProxyVersion,
@@ -320,32 +320,32 @@ func ConvertAlphaToBetaHA(src *ArgoCDHASpec) *v1beta1.ArgoCDHASpec {
 	return dst
 }
 
-func ConvertAlphaToBetaTLS(src *ArgoCDTLSSpec) *v1beta1.ArgoCDTLSSpec {
-	var dst *v1beta1.ArgoCDTLSSpec
+func ConvertAlphaToBetaTLS(src *ArgoCDTLSSpec) *argoproj.ArgoCDTLSSpec {
+	var dst *argoproj.ArgoCDTLSSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDTLSSpec{
-			CA:           v1beta1.ArgoCDCASpec(src.CA),
+		dst = &argoproj.ArgoCDTLSSpec{
+			CA:           argoproj.ArgoCDCASpec(src.CA),
 			InitialCerts: src.InitialCerts,
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
-	var dst *v1beta1.ArgoCDServerSpec
+func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *argoproj.ArgoCDServerSpec {
+	var dst *argoproj.ArgoCDServerSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDServerSpec{
-			Autoscale:        v1beta1.ArgoCDServerAutoscaleSpec(src.Autoscale),
+		dst = &argoproj.ArgoCDServerSpec{
+			Autoscale:        argoproj.ArgoCDServerAutoscaleSpec(src.Autoscale),
 			GRPC:             *ConvertAlphaToBetaGRPC(&src.GRPC),
 			Host:             src.Host,
-			Ingress:          v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Ingress:          argoproj.ArgoCDIngressSpec(src.Ingress),
 			Insecure:         src.Insecure,
 			LogLevel:         src.LogLevel,
 			LogFormat:        src.LogFormat,
 			Replicas:         src.Replicas,
 			Resources:        src.Resources,
-			Route:            v1beta1.ArgoCDRouteSpec(src.Route),
-			Service:          v1beta1.ArgoCDServerServiceSpec(src.Service),
+			Route:            argoproj.ArgoCDRouteSpec(src.Route),
+			Service:          argoproj.ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
 		}
@@ -353,21 +353,21 @@ func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
 	return dst
 }
 
-func ConvertAlphaToBetaGRPC(src *ArgoCDServerGRPCSpec) *v1beta1.ArgoCDServerGRPCSpec {
-	var dst *v1beta1.ArgoCDServerGRPCSpec
+func ConvertAlphaToBetaGRPC(src *ArgoCDServerGRPCSpec) *argoproj.ArgoCDServerGRPCSpec {
+	var dst *argoproj.ArgoCDServerGRPCSpec
 	if src != nil {
-		dst = &v1beta1.ArgoCDServerGRPCSpec{
+		dst = &argoproj.ArgoCDServerGRPCSpec{
 			Host:    src.Host,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Ingress: argoproj.ArgoCDIngressSpec(src.Ingress),
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaKustomizeVersions(src []KustomizeVersionSpec) []v1beta1.KustomizeVersionSpec {
-	var dst []v1beta1.KustomizeVersionSpec
+func ConvertAlphaToBetaKustomizeVersions(src []KustomizeVersionSpec) []argoproj.KustomizeVersionSpec {
+	var dst []argoproj.KustomizeVersionSpec
 	for _, s := range src {
-		dst = append(dst, v1beta1.KustomizeVersionSpec{
+		dst = append(dst, argoproj.KustomizeVersionSpec{
 			Version: s.Version,
 			Path:    s.Path,
 		},
@@ -376,34 +376,34 @@ func ConvertAlphaToBetaKustomizeVersions(src []KustomizeVersionSpec) []v1beta1.K
 	return dst
 }
 
-func ConvertAlphaToBetaResourceIgnoreDifferences(src *ResourceIgnoreDifference) *v1beta1.ResourceIgnoreDifference {
-	var dst *v1beta1.ResourceIgnoreDifference
+func ConvertAlphaToBetaResourceIgnoreDifferences(src *ResourceIgnoreDifference) *argoproj.ResourceIgnoreDifference {
+	var dst *argoproj.ResourceIgnoreDifference
 	if src != nil {
-		dst = &v1beta1.ResourceIgnoreDifference{
-			All:                 (*v1beta1.IgnoreDifferenceCustomization)(src.All),
+		dst = &argoproj.ResourceIgnoreDifference{
+			All:                 (*argoproj.IgnoreDifferenceCustomization)(src.All),
 			ResourceIdentifiers: ConvertAlphaToBetaResourceIdentifiers(src.ResourceIdentifiers),
 		}
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaResourceIdentifiers(src []ResourceIdentifiers) []v1beta1.ResourceIdentifiers {
-	var dst []v1beta1.ResourceIdentifiers
+func ConvertAlphaToBetaResourceIdentifiers(src []ResourceIdentifiers) []argoproj.ResourceIdentifiers {
+	var dst []argoproj.ResourceIdentifiers
 	for _, s := range src {
-		dst = append(dst, v1beta1.ResourceIdentifiers{
+		dst = append(dst, argoproj.ResourceIdentifiers{
 			Group:         s.Group,
 			Kind:          s.Kind,
-			Customization: v1beta1.IgnoreDifferenceCustomization(s.Customization),
+			Customization: argoproj.IgnoreDifferenceCustomization(s.Customization),
 		},
 		)
 	}
 	return dst
 }
 
-func ConvertAlphaToBetaResourceActions(src []ResourceAction) []v1beta1.ResourceAction {
-	var dst []v1beta1.ResourceAction
+func ConvertAlphaToBetaResourceActions(src []ResourceAction) []argoproj.ResourceAction {
+	var dst []argoproj.ResourceAction
 	for _, s := range src {
-		dst = append(dst, v1beta1.ResourceAction{
+		dst = append(dst, argoproj.ResourceAction{
 			Group:  s.Group,
 			Kind:   s.Kind,
 			Action: s.Action,
@@ -413,10 +413,10 @@ func ConvertAlphaToBetaResourceActions(src []ResourceAction) []v1beta1.ResourceA
 	return dst
 }
 
-func ConvertAlphaToBetaResourceHealthChecks(src []ResourceHealthCheck) []v1beta1.ResourceHealthCheck {
-	var dst []v1beta1.ResourceHealthCheck
+func ConvertAlphaToBetaResourceHealthChecks(src []ResourceHealthCheck) []argoproj.ResourceHealthCheck {
+	var dst []argoproj.ResourceHealthCheck
 	for _, s := range src {
-		dst = append(dst, v1beta1.ResourceHealthCheck{
+		dst = append(dst, argoproj.ResourceHealthCheck{
 			Group: s.Group,
 			Kind:  s.Kind,
 			Check: s.Check,
@@ -427,7 +427,7 @@ func ConvertAlphaToBetaResourceHealthChecks(src []ResourceHealthCheck) []v1beta1
 }
 
 // Conversion funcs for v1beta1 to v1alpha1.
-func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) *ArgoCDApplicationControllerSpec {
+func ConvertBetaToAlphaController(src *argoproj.ArgoCDApplicationControllerSpec) *ArgoCDApplicationControllerSpec {
 	var dst *ArgoCDApplicationControllerSpec
 	if src != nil {
 		dst = &ArgoCDApplicationControllerSpec{
@@ -444,7 +444,7 @@ func ConvertBetaToAlphaController(src *v1beta1.ArgoCDApplicationControllerSpec) 
 	return dst
 }
 
-func ConvertBetaToAlphaWebhookServer(src *v1beta1.WebhookServerSpec) *WebhookServerSpec {
+func ConvertBetaToAlphaWebhookServer(src *argoproj.WebhookServerSpec) *WebhookServerSpec {
 	var dst *WebhookServerSpec
 	if src != nil {
 		dst = &WebhookServerSpec{
@@ -456,7 +456,7 @@ func ConvertBetaToAlphaWebhookServer(src *v1beta1.WebhookServerSpec) *WebhookSer
 	return dst
 }
 
-func ConvertBetaToAlphaApplicationSet(src *v1beta1.ArgoCDApplicationSet) *ArgoCDApplicationSet {
+func ConvertBetaToAlphaApplicationSet(src *argoproj.ArgoCDApplicationSet) *ArgoCDApplicationSet {
 	var dst *ArgoCDApplicationSet
 	if src != nil {
 		dst = &ArgoCDApplicationSet{
@@ -472,7 +472,7 @@ func ConvertBetaToAlphaApplicationSet(src *v1beta1.ArgoCDApplicationSet) *ArgoCD
 	return dst
 }
 
-func ConvertBetaToAlphaGrafana(src *v1beta1.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpec {
+func ConvertBetaToAlphaGrafana(src *argoproj.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpec {
 	var dst *ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &ArgoCDGrafanaSpec{
@@ -485,7 +485,7 @@ func ConvertBetaToAlphaGrafana(src *v1beta1.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpe
 	return dst
 }
 
-func ConvertBetaToAlphaPrometheus(src *v1beta1.ArgoCDPrometheusSpec) *ArgoCDPrometheusSpec {
+func ConvertBetaToAlphaPrometheus(src *argoproj.ArgoCDPrometheusSpec) *ArgoCDPrometheusSpec {
 	var dst *ArgoCDPrometheusSpec
 	if src != nil {
 		dst = &ArgoCDPrometheusSpec{
@@ -499,7 +499,7 @@ func ConvertBetaToAlphaPrometheus(src *v1beta1.ArgoCDPrometheusSpec) *ArgoCDProm
 	return dst
 }
 
-func ConvertBetaToAlphaSSO(src *v1beta1.ArgoCDSSOSpec) *ArgoCDSSOSpec {
+func ConvertBetaToAlphaSSO(src *argoproj.ArgoCDSSOSpec) *ArgoCDSSOSpec {
 	var dst *ArgoCDSSOSpec
 	if src != nil {
 		dst = &ArgoCDSSOSpec{
@@ -511,7 +511,7 @@ func ConvertBetaToAlphaSSO(src *v1beta1.ArgoCDSSOSpec) *ArgoCDSSOSpec {
 	return dst
 }
 
-func ConvertBetaToAlphaDex(src *v1beta1.ArgoCDDexSpec) *ArgoCDDexSpec {
+func ConvertBetaToAlphaDex(src *argoproj.ArgoCDDexSpec) *ArgoCDDexSpec {
 	var dst *ArgoCDDexSpec
 	if src != nil {
 		dst = &ArgoCDDexSpec{
@@ -526,7 +526,7 @@ func ConvertBetaToAlphaDex(src *v1beta1.ArgoCDDexSpec) *ArgoCDDexSpec {
 	return dst
 }
 
-func ConvertBetaToAlphaHA(src *v1beta1.ArgoCDHASpec) *ArgoCDHASpec {
+func ConvertBetaToAlphaHA(src *argoproj.ArgoCDHASpec) *ArgoCDHASpec {
 	var dst *ArgoCDHASpec
 	if src != nil {
 		dst = &ArgoCDHASpec{
@@ -539,7 +539,7 @@ func ConvertBetaToAlphaHA(src *v1beta1.ArgoCDHASpec) *ArgoCDHASpec {
 	return dst
 }
 
-func ConvertBetaToAlphaTLS(src *v1beta1.ArgoCDTLSSpec) *ArgoCDTLSSpec {
+func ConvertBetaToAlphaTLS(src *argoproj.ArgoCDTLSSpec) *ArgoCDTLSSpec {
 	var dst *ArgoCDTLSSpec
 	if src != nil {
 		dst = &ArgoCDTLSSpec{
@@ -550,7 +550,7 @@ func ConvertBetaToAlphaTLS(src *v1beta1.ArgoCDTLSSpec) *ArgoCDTLSSpec {
 	return dst
 }
 
-func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
+func ConvertBetaToAlphaServer(src *argoproj.ArgoCDServerSpec) *ArgoCDServerSpec {
 	var dst *ArgoCDServerSpec
 	if src != nil {
 		dst = &ArgoCDServerSpec{
@@ -572,7 +572,7 @@ func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
 	return dst
 }
 
-func ConvertBetaToAlphaGRPC(src *v1beta1.ArgoCDServerGRPCSpec) *ArgoCDServerGRPCSpec {
+func ConvertBetaToAlphaGRPC(src *argoproj.ArgoCDServerGRPCSpec) *ArgoCDServerGRPCSpec {
 	var dst *ArgoCDServerGRPCSpec
 	if src != nil {
 		dst = &ArgoCDServerGRPCSpec{
@@ -583,7 +583,7 @@ func ConvertBetaToAlphaGRPC(src *v1beta1.ArgoCDServerGRPCSpec) *ArgoCDServerGRPC
 	return dst
 }
 
-func ConvertBetaToAlphaKustomizeVersions(src []v1beta1.KustomizeVersionSpec) []KustomizeVersionSpec {
+func ConvertBetaToAlphaKustomizeVersions(src []argoproj.KustomizeVersionSpec) []KustomizeVersionSpec {
 	var dst []KustomizeVersionSpec
 	for _, s := range src {
 		dst = append(dst, KustomizeVersionSpec{
@@ -595,7 +595,7 @@ func ConvertBetaToAlphaKustomizeVersions(src []v1beta1.KustomizeVersionSpec) []K
 	return dst
 }
 
-func ConvertBetaToAlphaResourceIgnoreDifferences(src *v1beta1.ResourceIgnoreDifference) *ResourceIgnoreDifference {
+func ConvertBetaToAlphaResourceIgnoreDifferences(src *argoproj.ResourceIgnoreDifference) *ResourceIgnoreDifference {
 	var dst *ResourceIgnoreDifference
 	if src != nil {
 		dst = &ResourceIgnoreDifference{
@@ -606,7 +606,7 @@ func ConvertBetaToAlphaResourceIgnoreDifferences(src *v1beta1.ResourceIgnoreDiff
 	return dst
 }
 
-func ConvertBetaToAlphaResourceIdentifiers(src []v1beta1.ResourceIdentifiers) []ResourceIdentifiers {
+func ConvertBetaToAlphaResourceIdentifiers(src []argoproj.ResourceIdentifiers) []ResourceIdentifiers {
 	var dst []ResourceIdentifiers
 	for _, s := range src {
 		dst = append(dst, ResourceIdentifiers{
@@ -619,7 +619,7 @@ func ConvertBetaToAlphaResourceIdentifiers(src []v1beta1.ResourceIdentifiers) []
 	return dst
 }
 
-func ConvertBetaToAlphaResourceActions(src []v1beta1.ResourceAction) []ResourceAction {
+func ConvertBetaToAlphaResourceActions(src []argoproj.ResourceAction) []ResourceAction {
 	var dst []ResourceAction
 	for _, s := range src {
 		dst = append(dst, ResourceAction{
@@ -632,7 +632,7 @@ func ConvertBetaToAlphaResourceActions(src []v1beta1.ResourceAction) []ResourceA
 	return dst
 }
 
-func ConvertBetaToAlphaResourceHealthChecks(src []v1beta1.ResourceHealthCheck) []ResourceHealthCheck {
+func ConvertBetaToAlphaResourceHealthChecks(src []argoproj.ResourceHealthCheck) []ResourceHealthCheck {
 	var dst []ResourceHealthCheck
 	for _, s := range src {
 		dst = append(dst, ResourceHealthCheck{
@@ -645,7 +645,7 @@ func ConvertBetaToAlphaResourceHealthChecks(src []v1beta1.ResourceHealthCheck) [
 	return dst
 }
 
-func ConvertBetaToAlphaRedis(src *v1beta1.ArgoCDRedisSpec) *ArgoCDRedisSpec {
+func ConvertBetaToAlphaRedis(src *argoproj.ArgoCDRedisSpec) *ArgoCDRedisSpec {
 	var dst *ArgoCDRedisSpec
 	if src != nil {
 		dst = &ArgoCDRedisSpec{
@@ -659,7 +659,7 @@ func ConvertBetaToAlphaRedis(src *v1beta1.ArgoCDRedisSpec) *ArgoCDRedisSpec {
 	return dst
 }
 
-func ConvertBetaToAlphaRepo(src *v1beta1.ArgoCDRepoSpec) *ArgoCDRepoSpec {
+func ConvertBetaToAlphaRepo(src *argoproj.ArgoCDRepoSpec) *ArgoCDRepoSpec {
 	var dst *ArgoCDRepoSpec
 	if src != nil {
 		dst = &ArgoCDRepoSpec{

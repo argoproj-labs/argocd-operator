@@ -10,7 +10,7 @@ This folder contains tests which need operator installed via OLM
 # create local image registry
 k3d registry create registry.localhost --port 12345
 
-# ensure that below "k3d-registry.localhost" entry is present in your /etc/hosts file for registry domain resolution
+# ensure that below "k3d-registry.localhost" entry is present in your /etc/hosts file for local registry domain resolution
 $ cat /etc/hosts
 ......
 ......
@@ -32,9 +32,9 @@ export REGISTRY="k3d-registry.localhost:12345"
 export ORG="local"
 export CONTROLLER_IMAGE="argocd-operator:test"
 export BUNDLE_IMAGE="argocd-operator-bundle:test"
-export VERSION="0.7.0"
+export VERSION="0.9.0"
 export CATALOG_IMAGE=argocd-operator-catalog
-export CATALOG_TAG=v0.7.0
+export CATALOG_TAG=v0.9.0
 
 # build and push operator image
 make generate
@@ -77,7 +77,7 @@ kubectl kuttl test ./tests/olm --config ./tests/kuttl-tests.yaml
 
 ```bash
 operator-sdk cleanup argocd-operator -n operators
-kubectl delete clusterserviceversion/argocd-operator.v0.7.0 -n operators
+kubectl delete clusterserviceversion/argocd-operator.v0.9.0 -n operators
 make uninstall
 
 k3d cluster delete test

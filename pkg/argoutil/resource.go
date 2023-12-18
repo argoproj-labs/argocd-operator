@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -82,4 +83,8 @@ func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 // If an error occurs as part of the check, the function will return false.
 func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
 	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
+}
+
+func FilterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
 }

@@ -17,14 +17,14 @@ package argocdexport
 import (
 	"context"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // reconcileStorage will ensure that the storage options for the ArgoCDExport are present.
-func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoproj.ArgoCDExport) error {
+func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoprojv1alpha1.ArgoCDExport) error {
 	if cr.Spec.Storage == nil {
-		cr.Spec.Storage = &argoproj.ArgoCDExportStorageSpec{
+		cr.Spec.Storage = &argoprojv1alpha1.ArgoCDExportStorageSpec{
 			Backend: common.ArgoCDExportStorageBackendLocal,
 		}
 		return r.Client.Update(context.TODO(), cr)

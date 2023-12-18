@@ -13,4 +13,4 @@ spec:
     oidc.tls.insecure.skip.verify: 'true' 
 status:
   phase: Available
-  #sso: Running
+  sso: Running

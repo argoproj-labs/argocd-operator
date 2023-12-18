@@ -778,10 +778,6 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 	return nil
 }
 
-func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
-	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
-}
-
 func argocdInstanceSelector(name string) (labels.Selector, error) {
 	selector := labels.NewSelector()
 	requirement, err := labels.NewRequirement(common.ArgoCDKeyManagedBy, selection.Equals, []string{name})

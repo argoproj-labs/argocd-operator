@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"sort"
 	"strings"
 )
 
@@ -34,6 +35,20 @@ func ContainsString(arr []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func Equal(a, b []string) bool {
+	sort.Strings(a)
+	sort.Strings(b)
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // GenerateRandomString returns a securely generated random string.

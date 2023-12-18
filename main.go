@@ -55,8 +55,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	v1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -69,8 +70,8 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(v1alpha1.AddToScheme(scheme))
-	utilruntime.Must(v1beta1.AddToScheme(scheme))
+	utilruntime.Must(argoprojv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(argoproj.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -170,12 +171,12 @@ func main() {
 	setupLog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err := v1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := argoproj.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	if err := v1beta1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := argoproj.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}

@@ -27,7 +27,7 @@ import (
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 var log = logr.Log.WithName("controller_argocdexport")
@@ -56,7 +56,7 @@ func (r *ReconcileArgoCDExport) Reconcile(ctx context.Context, request ctrl.Requ
 	reqLogger.Info("Reconciling ArgoCDExport")
 
 	// Fetch the ArgoCDExport instance
-	export := &argoproj.ArgoCDExport{}
+	export := &argoprojv1alpha1.ArgoCDExport{}
 	err := r.Client.Get(ctx, request.NamespacedName, export)
 	if err != nil {
 		if errors.IsNotFound(err) {
