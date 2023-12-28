@@ -22,4 +22,4 @@ commands:
         path: test/examples/nginx
         targetRevision: HEAD
     EOF
-- script: sleep 5
+- script: sleep 10

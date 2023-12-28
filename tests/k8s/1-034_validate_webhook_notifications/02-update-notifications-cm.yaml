@@ -10,7 +10,7 @@ data:
       test-webhook:
         method: POST
         body: |
-          {"created":"{{.app.metadata.name}}"}
+          {"created":"{{.app.metadata.name}}","type":"{{(call .repo.GetAppDetails).Type}}"}
   trigger.test-on-created: |-
     - description: Application is created.
       send: ["test-app-created"]

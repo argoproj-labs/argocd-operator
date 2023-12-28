@@ -4,7 +4,7 @@ commands:
 # verify no x509 in notifications-controller logs
 - script: | 
     #!/bin/bash
-    kubectl -n $NAMESPACE logs deployment.apps/argocd-notifications-controller | grep "x509"
+    kubectl -n $NAMESPACE logs deployment.apps/example-notifications-controller | grep "x509"
 
     PREV_CMD=$?
     if [ $PREV_CMD -eq 1 ]; then
@@ -15,11 +15,10 @@ commands:
 # verify notification delivery
 - script: | 
     #!/bin/bash
-    kubectl -n $NAMESPACE logs deployment.apps/webhook | grep '{"created":"my-app-3"}'
 
-    PREV_CMD=$?
-    if [ $PREV_CMD -eq 0 ]; then
-        exit 0
-    else
-        exit 1
-    fi
+    # delays could occur in receiving notification, hence retry before failing
+    for i in {1..5}
+    do
+        sleep 5
+        kubectl -n $NAMESPACE logs deployment.apps/webhook | grep '{"created":"my-app-3","type":"Directory"}' && break
+    done
