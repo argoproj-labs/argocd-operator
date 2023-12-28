@@ -531,6 +531,12 @@ func getNotificationsCommand(cr *argoproj.ArgoCD) []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, getLogLevel(cr.Spec.Notifications.LogLevel))
 
+	if cr.Spec.Repo.IsEnabled() {
+		cmd = append(cmd, "--argocd-repo-server", getRepoServerAddress(cr))
+	} else {
+		log.Info("Repo Server is disabled. This would affect the functioning of Notification Controller.")
+	}
+
 	return cmd
 }
 
