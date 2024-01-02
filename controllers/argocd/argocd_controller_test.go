@@ -71,7 +71,7 @@ func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
 // deletion of the associated objects.
 func TestArgoCDReconciler_Reconcile_with_deleted(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(deletedAt(time.Now()))
+	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer("test-finalizer"))
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}

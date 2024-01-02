@@ -28,7 +28,6 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
@@ -121,7 +120,7 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
 
-	if workloads.IsTemplateAPIAvailable() {
+	if IsTemplateAPIAvailable() {
 		// keycloak is installed using OpenShift templates.
 		dc := &oappsv1.DeploymentConfig{
 			ObjectMeta: metav1.ObjectMeta{
