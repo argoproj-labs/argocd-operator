@@ -11,8 +11,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
-// InspectCluster will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
-func InspectCluster() error {
+// VerifyClusterAPIs will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
+func VerifyClusterAPIs() error {
 	var inspectError error
 
 	if err := monitoring.VerifyPrometheusAPI(); err != nil {
@@ -34,12 +34,15 @@ func InspectCluster() error {
 	return inspectError
 }
 
-func GetClusterConfigNamespaces() string {
-	return os.Getenv(common.ArgoCDClusterConfigNamespacesEnvVar)
+// GetClusterConfigNamespaces returns the list of namespaces allowed to host cluster scoped instances
+func GetClusterConfigNamespaces() []string {
+	nsList := os.Getenv(common.ArgoCDClusterConfigNamespacesEnvVar)
+	return util.SplitList(nsList)
 }
 
+// IsClusterConfigNs checks if the given namespace is allowed to host a cluster scoped instance
 func IsClusterConfigNs(current string) bool {
-	clusterConfigNamespaces := util.SplitList(GetClusterConfigNamespaces())
+	clusterConfigNamespaces := GetClusterConfigNamespaces()
 	if len(clusterConfigNamespaces) > 0 {
 		if clusterConfigNamespaces[0] == "*" {
 			return true

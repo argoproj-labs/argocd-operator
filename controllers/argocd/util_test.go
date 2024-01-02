@@ -8,15 +8,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -218,7 +221,7 @@ func TestGetArgoServerURI(t *testing.T) {
 	for _, tt := range argoServerURITests {
 		t.Run(tt.name, func(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
-			r := &ArgoCDReconciler{}
+			r := &ReconcileArgoCD{}
 			networking.SetRouteAPIFound(tt.routeEnabled)
 			defer func() {
 				networking.SetRouteAPIFound(false)
@@ -234,8 +237,15 @@ func TestGetArgoServerURI(t *testing.T) {
 
 func TestRemoveDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
-		a := makeTestArgoCD(addFinalizer(common.ArgoprojKeyFinalizer))
-		r := makeTestReconciler(t, a)
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		err := r.removeDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if a.IsDeletionFinalizerPresent() {
@@ -243,8 +253,15 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 		}
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
-		a := makeTestArgoCD(addFinalizer(common.ArgoprojKeyFinalizer))
-		r := makeTestReconciler(t)
+		a := makeTestArgoCD(addFinalizer(common.ArgoCDDeletionFinalizer))
+
+		resObjs := []client.Object{}
+		subresObjs := []client.Object{}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		err := r.removeDeletionFinalizer(a)
 		assert.Error(t, err, `failed to remove deletion finalizer from argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -253,7 +270,14 @@ func TestRemoveDeletionFinalizer(t *testing.T) {
 func TestAddDeletionFinalizer(t *testing.T) {
 	t.Run("ArgoCD resource present", func(t *testing.T) {
 		a := makeTestArgoCD()
-		r := makeTestReconciler(t, a)
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		err := r.addDeletionFinalizer(a)
 		assert.NoError(t, err)
 		if !a.IsDeletionFinalizerPresent() {
@@ -262,7 +286,14 @@ func TestAddDeletionFinalizer(t *testing.T) {
 	})
 	t.Run("ArgoCD resource absent", func(t *testing.T) {
 		a := makeTestArgoCD()
-		r := makeTestReconciler(t)
+
+		resObjs := []client.Object{}
+		subresObjs := []client.Object{}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
 		err := r.addDeletionFinalizer(a)
 		assert.Error(t, err, `failed to add deletion finalizer for argocd: argocds.argoproj.io "argocd" not found`)
 	})
@@ -456,7 +487,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	testClient := testclient.NewSimpleClientset()
 	testNameSpace := "testNameSpace"
 
-	secret := util.NewSecretWithSuffix(a, "xyz")
+	secret := argoutil.NewSecretWithSuffix(a, "xyz")
 	secret.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),
@@ -479,7 +510,14 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 
 func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
@@ -533,6 +571,91 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	}
 }
 
+func TestSetManagedNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: testNamespace,
+			},
+		},
+	}
+
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: testNamespace,
+			},
+		},
+	}
+
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-3",
+			Labels: map[string]string{
+				common.ArgoCDManagedByLabel: "random-namespace",
+			},
+		},
+	}
+
+	ns4 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-4",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3, &ns4}
+
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.setManagedNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, len(r.ManagedNamespaces.Items), 3)
+	for _, n := range r.ManagedNamespaces.Items {
+		if n.Labels[common.ArgoCDManagedByLabel] != testNamespace && n.Name != testNamespace {
+			t.Errorf("Expected namespace %s to be managed by Argo CD instance %s", n.Name, testNamespace)
+		}
+	}
+}
+
+func TestSetManagedSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test-namespace-1",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDManagedByClusterArgoCDLabel: testNamespace,
+			},
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.setManagedSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(r.ManagedSourceNamespaces))
+	assert.Contains(t, r.ManagedSourceNamespaces, "test-namespace-1")
+}
+
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
@@ -573,14 +696,21 @@ func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
 			},
 		}
 	})
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	_, err := r.reconcileServiceAccount(common.ArgoCDDefaultDexServiceAccountName, a)
 	assert.NoError(t, err)
 	_, err = r.getDexOAuthClientSecret(a)
 	assert.NoError(t, err)
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
-	assert.NoError(t, util.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
 	tokenExists := false
 	for _, saSecret := range sa.Secrets {
 		if strings.Contains(saSecret.Name, "dex-server-token") {

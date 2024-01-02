@@ -24,7 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // getArgoServerPath will return the Ingress Path for the Argo CD component.
@@ -42,7 +42,7 @@ func newIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -65,7 +65,7 @@ func newIngressWithSuffix(suffix string, cr *argoproj.ArgoCD) *networkingv1.Ingr
 }
 
 // reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
-func (r *ArgoCDReconciler) reconcileIngresses(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileArgoServerIngress(cr); err != nil {
 		return err
 	}
@@ -90,9 +90,9 @@ func (r *ArgoCDReconciler) reconcileIngresses(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
-func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -130,7 +130,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "server"),
+									Name: argoutil.NameWithSuffix(cr.Name, "server"),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -166,9 +166,9 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.GRPC.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -205,7 +205,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "server"),
+									Name: argoutil.NameWithSuffix(cr.Name, "server"),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "https",
 									},
@@ -241,9 +241,9 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 }
 
 // reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -281,7 +281,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 							Path: getPathOrDefault(cr.Spec.Grafana.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "grafana"),
+									Name: argoutil.NameWithSuffix(cr.Name, "grafana"),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -318,9 +318,9 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
-func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -392,9 +392,9 @@ func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error
 }
 
 // reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
-func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
 			return r.Client.Delete(context.TODO(), ingress)
 		}
@@ -430,7 +430,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj
 							Path: "/api/webhook",
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
+									Name: argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "webhook",
 									},

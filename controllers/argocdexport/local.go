@@ -20,10 +20,12 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -46,14 +48,9 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1alpha1.ArgoCDExport)
 		return nil // Nothing to see here, move along...
 	}
 
-	pvc := NewPersistentVolumeClaim(cr.ObjectMeta)
-	if util.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
+	pvc := argoutil.NewPersistentVolumeClaim(cr.ObjectMeta)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, pvc.Name, pvc) {
 		return nil // PVC exists, move along...
-	}
-
-	pvcResources, err := DefaultPVCResources()
-	if err != nil {
-		// TO DO: decide error handling step here
 	}
 
 	// Allow override of PVC spec
@@ -61,7 +58,7 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1alpha1.ArgoCDExport)
 		pvc.Spec = *cr.Spec.Storage.PVC
 	} else {
 		pvc.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		pvc.Spec.Resources = pvcResources
+		pvc.Spec.Resources = argoutil.NewPVCResourceRequirements(DefaultPVCCapacity())
 	}
 
 	if err := controllerutil.SetControllerReference(cr, pvc, r.Scheme); err != nil {
@@ -77,4 +74,13 @@ func (r *ArgoCDExportReconciler) reconcilePVC(cr *argoprojv1alpha1.ArgoCDExport)
 	// Create event
 	log.Info("creating new event")
 	return util.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
+}
+
+// DefaultPVCCapacity will return the default PVC resources.
+func DefaultPVCCapacity() resource.Quantity {
+	capacity, err := resource.ParseQuantity(common.ArgoCDDefaultExportLocalCapicity)
+	if err != nil {
+		log.Error(err, "unable to parse quantity")
+	}
+	return capacity
 }

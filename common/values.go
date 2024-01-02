@@ -16,7 +16,7 @@ package common
 
 import "time"
 
-// values
+// Argo CD values
 const (
 	// ArgoCDDuration365Days is a duration representing 365 days.
 	ArgoCDDuration365Days = time.Hour * 24 * 365
@@ -36,30 +36,18 @@ const (
 	// ArgoCDStatusCompleted is the completed status value.
 	ArgoCDStatusCompleted = "Completed"
 
-	// ArgoCDRepoServerTLS is the argocd repo server tls value.
-	ArgoCDRepoServerTLS = "argocd-repo-server-tls"
-
-	// ArgoCDAppSetGitlabSCMTLSCertsConfigMapName is the hard-coded ApplicationSet Gitlab SCM TLS certificate data ConfigMap name.
-	ArgoCDAppSetGitlabSCMTLSCertsConfigMapName = "argocd-appset-gitlab-scm-tls-certs-cm"
-
 	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
 	K8sOSLinux = "linux"
 
-	// ArgoCDRedisServerTLSSecretName is the name of the TLS secret for the redis-server
-	ArgoCDRedisServerTLSSecretName = "argocd-operator-redis-tls"
-
 	// ArgoCDMetrics is the resource metrics key for labels.
 	ArgoCDMetrics = "metrics"
+)
 
-	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
-	ArgoCDComponentStatus = "ArgoCDComponentStatus"
-
-	TimeFormatMST = "01022006-150406-MST"
-
-	TLSCerts = "tls-certs"
-
-	CapabilityDropAll = "ALL"
-
+// general values
+const (
+	TimeFormatMST                = "01022006-150406-MST"
+	TLSCerts                     = "tls-certs"
+	CapabilityDropAll            = "ALL"
 	VolumeMountPathTLS           = "/app/config/tls"
 	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
 	WorkingDirApp                = "/app"

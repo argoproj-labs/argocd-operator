@@ -12,17 +12,3 @@ func MergeMaps(a, b map[string]string) map[string]string {
 	}
 	return mergedMap
 }
-
-// TO DO: AppendStringMap and MergeMaps do the same thing, get rid of AppendStringMap!
-
-// AppendStringMap will append the map `add` to the given map `src` and return the result.
-func AppendStringMap(src map[string]string, add map[string]string) map[string]string {
-	res := src
-	if len(src) <= 0 {
-		res = make(map[string]string, len(add))
-	}
-	for key, val := range add {
-		res[key] = val
-	}
-	return res
-}

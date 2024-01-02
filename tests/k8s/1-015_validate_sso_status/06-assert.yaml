@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: test-config
+      env:
+        - name: ARGO_WORKFLOWS_SSO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: argo-workflows-sso
+              key: client-secret
+status:
+  phase: Available
+  sso: Running
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server
+spec:
+  template:
+    spec:
+      containers:
+        - name: dex
+          env:
+            - name: ARGO_WORKFLOWS_SSO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: argo-workflows-sso
+                  key: client-secret
+status:
+  readyReplicas: 1

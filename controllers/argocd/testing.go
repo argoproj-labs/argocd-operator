@@ -32,11 +32,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
@@ -65,19 +66,43 @@ func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
 	return a
 }
 
-func makeTestReconciler(t *testing.T, objs ...runtime.Object) *ArgoCDReconciler {
-	s := scheme.Scheme
-	assert.NoError(t, argoproj.AddToScheme(s))
-	assert.NoError(t, argoprojv1alpha1.AddToScheme(s))
+type SchemeOpt func(*runtime.Scheme) error
 
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName("test-logger")
-
-	return &ArgoCDReconciler{
-		Client: cl,
-		Scheme: s,
-		Logger: logger,
+func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
+	return &ReconcileArgoCD{
+		Client: client,
+		Scheme: sch,
 	}
+}
+
+func makeNewTestReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
+	return &ArgoCDReconciler{
+		Client: client,
+		Scheme: sch,
+	}
+}
+
+func makeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.Object, runtimeObj []runtime.Object) client.Client {
+	client := fake.NewClientBuilder().WithScheme(sch)
+	if len(resObjs) > 0 {
+		client = client.WithObjects(resObjs...)
+	}
+	if len(subresObjs) > 0 {
+		client = client.WithStatusSubresource(subresObjs...)
+	}
+	if len(runtimeObj) > 0 {
+		client = client.WithRuntimeObjects(runtimeObj...)
+	}
+	return client.Build()
+}
+
+func makeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
+	s := scheme.Scheme
+	for _, opt := range sOpts {
+		_ = opt(s)
+	}
+
+	return s
 }
 
 type argoCDOpt func(*argoproj.ArgoCD)
@@ -202,7 +227,7 @@ func makeTestPolicyRules() []v1.PolicyRule {
 func initialCerts(t *testing.T, host string) argoCDOpt {
 	t.Helper()
 	return func(a *argoproj.ArgoCD) {
-		key, err := util.NewPrivateKey()
+		key, err := argoutil.NewPrivateKey()
 		assert.NoError(t, err)
 		cert, err := util.NewSelfSignedCACertificate(a.Name, key)
 		assert.NoError(t, err)
@@ -275,7 +300,7 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 	}
 }
 
-func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
+func createNs(r *ArgoCDReconciler, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
 		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedBy: managedBy}
@@ -285,20 +310,6 @@ func createNamespace(r *ArgoCDReconciler, n string, managedBy string) error {
 		r.ResourceManagedNamespaces = make(map[string]string)
 	}
 	r.ResourceManagedNamespaces[ns.Name] = ""
-
-	return r.Client.Create(context.TODO(), ns)
-}
-
-func createNamespaceManagedByClusterArgoCDLabel(r *ArgoCDReconciler, n string, managedBy string) error {
-	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
-	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedByClusterArgoCD: managedBy}
-	}
-
-	if r.AppManagedNamespaces == nil {
-		r.AppManagedNamespaces = make(map[string]string)
-	}
-	r.AppManagedNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +20,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
@@ -37,10 +38,14 @@ func TestReconcileRouteSetLabels(t *testing.T) {
 		labels["my-key"] = "my-value"
 		a.Spec.Server.Route.Labels = labels
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -73,10 +78,14 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.Route.Enabled = true
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -148,10 +157,14 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		a.Spec.Server.Route.Enabled = true
 		a.Spec.Server.Insecure = true
 	})
-	objs := []runtime.Object{
-		argoCD,
-	}
-	r := makeReconciler(t, argoCD, objs...)
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
 
 	req := reconcile.Request{
@@ -212,14 +225,22 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 }
 
-func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ArgoCDReconciler {
+func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
 	t.Helper()
 	s := scheme.Scheme
 	s.AddKnownTypes(argoproj.GroupVersion, acd)
 	routev1.Install(s)
 	configv1.Install(s)
-	cl := fake.NewFakeClient(objs...)
-	return &ArgoCDReconciler{
+
+	clientObjs := []client.Object{}
+	for _, obj := range objs {
+		clientObj := obj.(client.Object)
+		clientObjs = append(clientObjs, clientObj)
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
+
+	return &ReconcileArgoCD{
 		Client: cl,
 		Scheme: s,
 	}

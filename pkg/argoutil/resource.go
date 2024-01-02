@@ -12,17 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package argoutil
 
 import (
 	"context"
 	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
+
+// FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
+// given port.
+func FqdnServiceRef(serviceName, namespace string, port int) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, namespace, port)
+}
 
 // NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
 func NameWithSuffix(name, suffix string) string {
@@ -43,6 +53,30 @@ func GenerateUniqueResourceName(instanceName, instanceNamespace, component strin
 // The result will be stored in the given object.
 func FetchObject(client client.Client, namespace string, name string, obj client.Object) error {
 	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
+}
+
+// FetchStorageSecretName will return the name of the Secret to use for the export process.
+func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
+	name := NameWithSuffix(export.ObjectMeta.Name, "export")
+	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
+		name = export.Spec.Storage.SecretName
+	}
+	return name
+}
+
+// LabelsForCluster returns the labels for all cluster resources.
+func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
+	labels := common.DefaultLabels(cr.Name)
+	return labels
+}
+
+// annotationsForCluster returns the annotations for all cluster resources.
+func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
+	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
+	for key, val := range cr.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	return annotations
 }
 
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.

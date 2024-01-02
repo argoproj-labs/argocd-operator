@@ -6,15 +6,15 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -22,7 +22,14 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_K8s(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	d := newKeycloakDeployment(a)
@@ -49,11 +56,18 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
-	assert.NoError(t, oappsv1.AddToScheme(r.Scheme))
-	workloads.SetTemplateAPIFound(true)
+	assert.NoError(t, oappsv1.Install(r.Scheme))
+	templateAPIFound = true
 	defer removeTemplateAPI()
 
 	dc := getKeycloakDeploymentConfigTemplate(a)
@@ -63,15 +77,19 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Unknown", a.Status.SSO)
 
+	// create new client with dc object already present, but with 0 ready replicas to simulate
 	// keycloak installation started
-	r.Client.Create(context.TODO(), dc)
+	resObjs = append(resObjs, dc)
+	subresObjs = append(subresObjs, dc)
+	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Pending", a.Status.SSO)
 
+	// create new client with dc object already present, with 1 ready replica to simulate
 	// keycloak installation completed
 	dc.Status.ReadyReplicas = dc.Spec.Replicas
-	r.Client.Status().Update(context.TODO(), dc)
+	r.Client = makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 
 	_ = r.reconcileStatusKeycloak(a)
 	assert.Equal(t, "Running", a.Status.SSO)
@@ -130,7 +148,13 @@ func TestArgoCDReconciler_reconcileStatusSSO(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			r := makeTestReconciler(t, test.argoCD)
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			r.reconcileSSO(test.argoCD)
@@ -184,10 +208,6 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 				a.Spec.Server.Ingress.Enabled = test.ingressEnabled
 			})
 
-			objs := []runtime.Object{
-				a,
-			}
-
 			route := &routev1.Route{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testArgoCDName + "-server",
@@ -220,12 +240,12 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 					Namespace: testNamespace,
 				},
 				Status: networkingv1.IngressStatus{
-					LoadBalancer: v1.LoadBalancerStatus{
-						Ingress: []v1.LoadBalancerIngress{
+					LoadBalancer: networkingv1.IngressLoadBalancerStatus{
+						Ingress: []networkingv1.IngressLoadBalancerIngress{
 							{
 								IP:       "12.0.0.1",
 								Hostname: "argocd",
-								Ports:    []v1.PortStatus{},
+								Ports:    []networkingv1.IngressPortStatus{},
 							},
 							{
 								IP:       "12.0.0.5",
@@ -236,7 +256,13 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 				},
 			}
 
-			r := makeReconciler(t, a, objs...)
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.routeEnabled {
 				err := r.Client.Create(context.TODO(), route)
 				assert.NoError(t, err)
@@ -255,21 +281,27 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 	}
 }
 
-func TestArgoCDReconciler_reconcileStatusNotificationsController(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
 
 	a.Spec.Notifications.Enabled = true
-	assert.NoError(t, r.NotificationsController.Reconcile())
+	assert.NoError(t, r.reconcileNotificationsController(a))
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "Pending", a.Status.NotificationsController)
 
 	a.Spec.Notifications.Enabled = false
-	assert.NoError(t, r.NotificationsController.DeleteResources())
+	assert.NoError(t, r.deleteNotificationsResources(a))
 	assert.NoError(t, r.reconcileStatusNotifications(a))
 	assert.Equal(t, "", a.Status.NotificationsController)
 }
@@ -277,13 +309,19 @@ func TestArgoCDReconciler_reconcileStatusNotificationsController(t *testing.T) {
 func TestArgoCDReconciler_reconcileStatusApplicationSetController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Unknown", a.Status.ApplicationSetController)
 
 	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-	assert.NoError(t, r.AppsetController.Reconcile())
+	assert.NoError(t, r.reconcileApplicationSetController(a))
 	assert.NoError(t, r.reconcileStatusApplicationSetController(a))
 	assert.Equal(t, "Pending", a.Status.ApplicationSetController)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	configv1 "github.com/openshift/api/config/v1"
 	"gopkg.in/yaml.v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,14 +17,19 @@ var (
 	versionAPIFound = false
 )
 
-// IsVersionAPIAvailable returns true if the version api is present
+// IsVersionAPIAvailable returns true if the OpenShift cluster version api is present
 func IsVersionAPIAvailable() bool {
 	return versionAPIFound
 }
 
-// VerifyVersionAPI will verify that the cluster version API is present.
+// SetVersionAPIFound sets the value of versionAPIFound to provided input
+func SetVersionAPIFound(found bool) {
+	versionAPIFound = found
+}
+
+// verifyVersionAPI will verify that the template API is present.
 func VerifyVersionAPI() error {
-	found, err := util.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
+	found, err := argoutil.VerifyAPI(configv1.GroupName, configv1.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
@@ -49,7 +54,7 @@ func GetClusterVersion(client client.Client) (string, error) {
 }
 
 func GetOpenShiftAPIURL() (string, error) {
-	k8s, err := util.GetK8sClient()
+	k8s, err := argoutil.GetK8sClient()
 	if err != nil {
 		return "", fmt.Errorf("GetOpenShiftAPIURL: failed to initialize k8s client: %w", err)
 	}
@@ -83,7 +88,7 @@ func GetOpenShiftAPIURL() (string, error) {
 }
 
 func IsProxyCluster() (bool, error) {
-	configClient, err := util.GetConfigClient()
+	configClient, err := argoutil.GetConfigClient()
 	if err != nil {
 		return false, fmt.Errorf("IsProxyCluster: could not get config client: %w", err)
 	}

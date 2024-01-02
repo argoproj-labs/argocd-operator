@@ -36,8 +36,8 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
@@ -55,8 +55,8 @@ func addFinalizer(finalizer string) argoCDOpt {
 	}
 }
 
-func clusterResources(argocd *argoproj.ArgoCD) []runtime.Object {
-	return []runtime.Object{
+func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
+	return []client.Object{
 		newClusterRole(common.ArgoCDApplicationControllerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRole(common.ArgoCDServerComponent, []v1.PolicyRule{}, argocd),
 		newClusterRoleBindingWithname(common.ArgoCDApplicationControllerComponent, argocd),
@@ -73,7 +73,13 @@ func TestArgoCDReconciler_Reconcile_with_deleted(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()))
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -101,7 +107,13 @@ func TestArgoCDReconciler_Reconcile(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
-	r := makeTestReconciler(t, a)
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -126,7 +138,115 @@ func TestArgoCDReconciler_Reconcile(t *testing.T) {
 	}
 }
 
-func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
+func TestReconcileArgoCD_LabelSelector(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	//ctx := context.Background()
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-1"
+		ac.Labels = map[string]string{"foo": "bar"}
+	})
+	b := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-2"
+		ac.Labels = map[string]string{"testfoo": "testbar"}
+	})
+	c := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-3"
+	})
+
+	resObjs := []client.Object{a, b, c}
+	subresObjs := []client.Object{a, b, c}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	rt := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
+
+	// All ArgoCD instances should be reconciled if no label-selctor is applied to the operator.
+
+	// Instance 'a'
+	req1 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	res1, err := rt.Reconcile(context.TODO(), req1)
+	assert.NoError(t, err)
+	if res1.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'b'
+	req2 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      b.Name,
+			Namespace: b.Namespace,
+		},
+	}
+	res2, err := rt.Reconcile(context.TODO(), req2)
+	assert.NoError(t, err)
+	if res2.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'c'
+	req3 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+		},
+	}
+	res3, err := rt.Reconcile(context.TODO(), req3)
+	assert.NoError(t, err)
+	if res3.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Apply label-selector foo=bar to the operator.
+	// Only Instance a should reconcile with matching label "foo=bar"
+	// No reconciliation is expected for instance b and c and an error is expected.
+	rt.LabelSelector = "foo=bar"
+	reqTest := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	resTest, err := rt.Reconcile(context.TODO(), reqTest)
+	assert.NoError(t, err)
+	if resTest.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Instance 'b' is not reconciled as the label does not match, error expected
+	reqTest2 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      b.Name,
+			Namespace: b.Namespace,
+		},
+	}
+	resTest2, err := rt.Reconcile(context.TODO(), reqTest2)
+	assert.Error(t, err)
+	if resTest2.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	//Instance 'c' is not reconciled as there is no label, error expected
+	reqTest3 := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      c.Name,
+			Namespace: c.Namespace,
+		},
+	}
+	resTest3, err := rt.Reconcile(context.TODO(), reqTest3)
+	assert.Error(t, err)
+	if resTest3.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+}
+
+func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -148,8 +268,14 @@ func TestArgoCDReconciler_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *test
 
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
-			a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
-			r := makeTestReconciler(t, a)
+			a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoCDDeletionFinalizer))
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
 
 			nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: a.Namespace,
@@ -198,9 +324,15 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
 
-	resources := []runtime.Object{a}
+	resources := []client.Object{a}
 	resources = append(resources, clusterResources(a)...)
-	r := makeTestReconciler(t, resources...)
+
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	req := reconcile.Request{
@@ -240,7 +372,7 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
-			if util.IsObjectFound(r.Client, "", test.name, test.resource) {
+			if argoutil.IsObjectFound(r.Client, "", test.name, test.resource) {
 				t.Errorf("Expected %s to be deleted", test.name)
 			}
 		})
@@ -255,7 +387,11 @@ func TestArgoCDReconciler_CleanUp(t *testing.T) {
 }
 
 func TestSetResourceManagedNamespaces(t *testing.T) {
-	r := makeTestReconciler(t,
+
+	resources := []client.Object{}
+	subresObjs := []client.Object{}
+
+	runtimeObjs := []runtime.Object{
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "instance-1"
 		}),
@@ -286,7 +422,11 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 			n.Name = "test-ns-6"
 			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-3"
 		}),
-	)
+	}
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
+	r := makeNewTestReconciler(cl, sch)
 
 	instanceOne := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"
@@ -315,7 +455,11 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 }
 
 func TestSetAppManagedNamespaces(t *testing.T) {
-	r := makeTestReconciler(t,
+
+	resources := []client.Object{}
+	subresObjs := []client.Object{}
+
+	runtimeObjs := []runtime.Object{
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "instance-1"
 		}),
@@ -343,7 +487,11 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 			n.Name = "test-ns-6"
 			n.Labels[common.ArgoCDArgoprojKeyManagedBy] = "instance-1"
 		}),
-	)
+	}
+
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
+	r := makeNewTestReconciler(cl, sch)
 
 	instance := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"

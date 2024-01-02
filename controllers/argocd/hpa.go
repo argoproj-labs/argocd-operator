@@ -23,7 +23,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var (
@@ -37,7 +37,7 @@ func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodA
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -54,11 +54,11 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autos
 }
 
 func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
-	return newHorizontalPodAutoscalerWithName(util.NameWithSuffix(cr.Name, suffix), cr)
+	return newHorizontalPodAutoscalerWithName(nameWithSuffix(suffix, cr), cr)
 }
 
 // reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component, and reconcile any detected changes.
-func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 
 	defaultHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
 	defaultHPA.Spec = autoscaling.HorizontalPodAutoscalerSpec{
@@ -68,12 +68,12 @@ func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       util.NameWithSuffix(cr.Name, "server"),
+			Name:       argoutil.NameWithSuffix(cr.Name, "server"),
 		},
 	}
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
 		if !cr.Spec.Server.Autoscale.Enabled {
 			return r.Client.Delete(context.TODO(), existingHPA) // HorizontalPodAutoscaler found but globally disabled, delete it.
 		}
@@ -108,7 +108,7 @@ func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileServerHPA(cr); err != nil {
 		return err
 	}

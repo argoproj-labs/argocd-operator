@@ -223,7 +223,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.8.0
+  name: argocd-operator.v0.9.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -1732,8 +1732,6 @@ spec:
             spec:
               containers:
               - args:
-                - --health-probe-bind-address=:8081
-                - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
                 command:
                 - /manager
@@ -1744,7 +1742,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator:v0.8.0
+                image: quay.io/argoprojlabs/argocd-operator:v0.9.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1846,7 +1844,7 @@ spec:
   provider:
     name: Argo CD Community
   replaces: argocd-operator.v0.7.0
-  version: 0.8.0
+  version: 0.9.0
   webhookdefinitions:
   - admissionReviewVersions:
     - v1alpha1

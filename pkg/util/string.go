@@ -2,11 +2,11 @@ package util
 
 import (
 	"encoding/base64"
-	"fmt"
 	"sort"
 	"strings"
 )
 
+// SplitList accepts a string input containing a list of comma separated values, and returns a slice containing those values as separate elements
 func SplitList(s string) []string {
 	elems := strings.Split(s, ",")
 	for i := range elems {
@@ -15,6 +15,7 @@ func SplitList(s string) []string {
 	return elems
 }
 
+// RemoveString removes the given string from the given slice
 func RemoveString(slice []string, s string) []string {
 	var result []string
 	for _, item := range slice {
@@ -26,7 +27,7 @@ func RemoveString(slice []string, s string) []string {
 	return result
 }
 
-// ContainsString returns true if a string is part of the given slice.
+// ContainsString returns true if the given string is part of the given slice.
 func ContainsString(arr []string, s string) bool {
 	for _, val := range arr {
 		if strings.TrimSpace(val) == s {
@@ -57,14 +58,4 @@ func GenerateRandomString(s int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
-}
-
-// IsMergable returns error if any of the extraArgs is already part of the default command Arguments.
-func IsMergable(extraArgs []string, cmd []string) error {
-	for _, arg := range extraArgs {
-		if len(arg) > 2 && arg[:2] == "--" && ContainsString(cmd, arg) {
-			return fmt.Errorf("arg %s is already part of the default command arguments", arg)
-		}
-	}
-	return nil
 }

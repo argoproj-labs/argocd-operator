@@ -1,4 +1,4 @@
-package util
+package argoutil
 
 import (
 	"fmt"

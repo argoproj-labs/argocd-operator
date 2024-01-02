@@ -9,8 +9,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -46,7 +48,14 @@ func TestArgoCDReconciler_reconcileDexDeployment_with_dex_disabled(t *testing.T)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "true")
 			}
@@ -110,7 +119,14 @@ func TestArgoCDReconciler_reconcileDexDeployment_removes_dex_when_disabled(t *te
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
 			}
@@ -175,7 +191,14 @@ func TestArgoCDReconciler_reconcileDeployments_Dex_with_resources(t *testing.T) 
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
 			}
@@ -213,7 +236,14 @@ func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: argoproj.SSOProviderTypeDex,
 	}
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, r.reconcileDexDeployment(a))
 
 	deployment := &appsv1.Deployment{}
@@ -303,7 +333,8 @@ func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 					RunAsNonRoot: util.BoolPtr(true),
 				},
 				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
+					{Name: "static-files", MountPath: "/shared"},
+				},
 			},
 		},
 		ServiceAccountName: "argocd-argocd-dex-server",
@@ -314,92 +345,6 @@ func TestArgoCDReconciler_reconcileDexDeployment(t *testing.T) {
 
 func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
-
-	desiredPodSpec := corev1.PodSpec{
-		Volumes: []corev1.Volume{
-			{
-				Name: "static-files",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-		InitContainers: []corev1.Container{
-			{
-				Name:  "copyutil",
-				Image: "justatest:latest",
-				Command: []string{
-					"cp",
-					"-n",
-					"/usr/local/bin/argocd",
-					"/shared/argocd-dex",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: util.BoolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: util.BoolPtr(true),
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{
-						Name:      "static-files",
-						MountPath: "/shared",
-					},
-				},
-				ImagePullPolicy: corev1.PullAlways,
-			},
-		},
-		Containers: []corev1.Container{
-			{
-				Name:  "dex",
-				Image: "testdex:v0.0.1",
-				Command: []string{
-					"/shared/argocd-dex",
-					"rundex",
-				},
-				LivenessProbe: &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Path: "/healthz/live",
-							Port: intstr.FromInt(5558),
-						},
-					},
-					InitialDelaySeconds: 60,
-					PeriodSeconds:       30,
-				},
-				Ports: []corev1.ContainerPort{
-					{
-						Name:          "http",
-						ContainerPort: 5556,
-					},
-					{
-						Name:          "grpc",
-						ContainerPort: 5557,
-					},
-					{
-						Name:          "metrics",
-						ContainerPort: 5558,
-					},
-				},
-				SecurityContext: &corev1.SecurityContext{
-					AllowPrivilegeEscalation: util.BoolPtr(false),
-					Capabilities: &corev1.Capabilities{
-						Drop: []corev1.Capability{
-							"ALL",
-						},
-					},
-					RunAsNonRoot: util.BoolPtr(true),
-				},
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "static-files", MountPath: "/shared"}},
-			},
-		},
-		ServiceAccountName: "argocd-argocd-dex-server",
-		NodeSelector:       common.DefaultNodeSelector(),
-	}
 
 	tests := []struct {
 		name         string
@@ -430,13 +375,231 @@ func TestArgoCDReconciler_reconcileDexDeployment_withUpdate(t *testing.T) {
 					},
 				}
 			}),
-			wantPodSpec: desiredPodSpec,
+			wantPodSpec: corev1.PodSpec{
+				Volumes: []corev1.Volume{
+					{
+						Name: "static-files",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "copyutil",
+						Image: "justatest:latest",
+						Command: []string{
+							"cp",
+							"-n",
+							"/usr/local/bin/argocd",
+							"/shared/argocd-dex",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "static-files",
+								MountPath: "/shared",
+							},
+						},
+						ImagePullPolicy: corev1.PullAlways,
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:  "dex",
+						Image: "testdex:v0.0.1",
+						Command: []string{
+							"/shared/argocd-dex",
+							"rundex",
+						},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/healthz/live",
+									Port: intstr.FromInt(5558),
+								},
+							},
+							InitialDelaySeconds: 60,
+							PeriodSeconds:       30,
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 5556,
+							},
+							{
+								Name:          "grpc",
+								ContainerPort: 5557,
+							},
+							{
+								Name:          "metrics",
+								ContainerPort: 5558,
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "static-files", MountPath: "/shared"},
+						},
+					},
+				},
+				ServiceAccountName: "argocd-argocd-dex-server",
+				NodeSelector:       common.DefaultNodeSelector(),
+			},
+		},
+		{
+			name:       "update dex deployment - .spec.sso.dex.env",
+			setEnvFunc: nil,
+			updateCrFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO.Dex.Env = []corev1.EnvVar{
+					{
+						Name: "ARGO_WORKFLOWS_SSO_CLIENT_SECRET",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "argo-workflows-sso",
+								},
+								Key: "client-secret",
+							},
+						},
+					},
+				}
+			},
+			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+				}
+			}),
+			wantPodSpec: corev1.PodSpec{
+				Volumes: []corev1.Volume{
+					{
+						Name: "static-files",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+				},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "copyutil",
+						Image: "quay.io/argoproj/argocd@sha256:8576d347f30fa4c56a0129d1c0a0f5ed1e75662f0499f1ed7e917c405fd909dc",
+						Command: []string{
+							"cp",
+							"-n",
+							"/usr/local/bin/argocd",
+							"/shared/argocd-dex",
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "static-files",
+								MountPath: "/shared",
+							},
+						},
+						ImagePullPolicy: corev1.PullAlways,
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:  "dex",
+						Image: "ghcr.io/dexidp/dex@sha256:d5f887574312f606c61e7e188cfb11ddb33ff3bf4bd9f06e6b1458efca75f604",
+						Command: []string{
+							"/shared/argocd-dex",
+							"rundex",
+						},
+						LivenessProbe: &corev1.Probe{
+							ProbeHandler: corev1.ProbeHandler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Path: "/healthz/live",
+									Port: intstr.FromInt(5558),
+								},
+							},
+							InitialDelaySeconds: 60,
+							PeriodSeconds:       30,
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "http",
+								ContainerPort: 5556,
+							},
+							{
+								Name:          "grpc",
+								ContainerPort: 5557,
+							},
+							{
+								Name:          "metrics",
+								ContainerPort: 5558,
+							},
+						},
+						Env: []corev1.EnvVar{
+							{
+								Name: "ARGO_WORKFLOWS_SSO_CLIENT_SECRET",
+								ValueFrom: &corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "argo-workflows-sso",
+										},
+										Key: "client-secret",
+									},
+								},
+							},
+						},
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: boolPtr(false),
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{
+									"ALL",
+								},
+							},
+							RunAsNonRoot: boolPtr(true),
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "static-files", MountPath: "/shared"},
+						},
+					},
+				},
+				ServiceAccountName: "argocd-argocd-dex-server",
+				NodeSelector:       common.DefaultNodeSelector(),
+			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
 			}
@@ -514,7 +677,14 @@ func TestArgoCDReconciler_reconcileDexService_removes_dex_when_disabled(t *testi
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
 			}
@@ -596,7 +766,14 @@ func TestArgoCDReconciler_reconcileDexServiceAccount_removes_dex_when_disabled(t
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			if test.setEnvFunc != nil {
 				test.setEnvFunc(t, "false")
 			}
@@ -679,7 +856,14 @@ func TestArgoCDReconciler_reconcileRole_dex_disabled(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			rules := policyRuleForDexServer()
@@ -767,7 +951,14 @@ func TestArgoCDReconciler_reconcileRoleBinding_dex_disabled(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := makeTestReconciler(t, test.argoCD)
+
+			resObjs := []client.Object{test.argoCD}
+			subresObjs := []client.Object{test.argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
 			assert.NoError(t, createNamespace(r, test.argoCD.Namespace, ""))
 
 			rules := policyRuleForDexServer()

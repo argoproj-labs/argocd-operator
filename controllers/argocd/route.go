@@ -25,7 +25,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // newRoute returns a new Route instance for the given ArgoCD.
@@ -34,7 +34,7 @@ func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -57,7 +57,7 @@ func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
 }
 
 // reconcileRoutes will ensure that all ArgoCD Routes are present.
-func (r *ArgoCDReconciler) reconcileRoutes(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileGrafanaRoute(cr); err != nil {
 		return err
 	}
@@ -78,9 +78,9 @@ func (r *ArgoCDReconciler) reconcileRoutes(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
-func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -126,7 +126,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = util.NameWithSuffix(cr.Name, "grafana")
+	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "grafana")
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
@@ -140,9 +140,9 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
-func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -197,10 +197,10 @@ func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.
-func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	route := newRouteWithSuffix("server", cr)
-	found := util.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -257,7 +257,7 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = util.NameWithSuffix(cr.Name, "server")
+	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "server")
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
@@ -274,10 +274,10 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
-func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
 	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "webhook")
 	route := newRouteWithSuffix(name, cr)
-	found := util.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
+	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
@@ -334,7 +334,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *arg
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = util.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix)
+	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {

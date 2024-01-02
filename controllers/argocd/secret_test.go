@@ -8,6 +8,8 @@ import (
 	"sort"
 	"testing"
 
+	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,11 +17,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 func Test_newCASecret(t *testing.T) {
@@ -53,7 +56,7 @@ func byteMapKeys(m map[string][]byte) []string {
 	return r
 }
 
-func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
+func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -105,16 +108,21 @@ func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 		serverDepl := newDeploymentWithSuffix("server", "server", argocd)
 		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
-		objs := []runtime.Object{
-			argocd,
+
+		resObjs := []client.Object{argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
-			ctrlSts,
-		}
-
-		r := makeReconciler(t, argocd, objs...)
+			ctrlSts}
+		subresObjs := []client.Object{argocd,
+			serverDepl,
+			repoDepl,
+			ctrlSts}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.reconcileRepoServerTLSSecret(argocd)
 		if err != nil {
@@ -207,7 +215,7 @@ func Test_ArgoCDReconciler_ReconcileRepoTLSSecret(t *testing.T) {
 
 }
 
-func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
+func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -215,10 +223,17 @@ func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
 		},
 	}
 
-	clusterSecret := util.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
 	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
-	tlsSecret := util.NewSecretWithSuffix(argocd, "tls")
-	r := makeTestReconciler(t, argocd)
+	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	r.Client.Create(context.TODO(), clusterSecret)
 	r.Client.Create(context.TODO(), tlsSecret)
 
@@ -247,7 +262,7 @@ func Test_ArgoCDReconciler_ReconcileExistingArgoSecret(t *testing.T) {
 
 }
 
-func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
+func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 	argocd := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "argocd",
@@ -300,17 +315,23 @@ func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
 		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", argocd)
 		redisDepl := newDeploymentWithSuffix("redis", "redis", argocd)
 		ctrlSts := newStatefulSetWithSuffix("application-controller", "application-controller", argocd)
-		objs := []runtime.Object{
-			argocd,
+
+		resObjs := []client.Object{argocd,
 			secret,
 			service,
 			serverDepl,
 			repoDepl,
-			redisDepl,
 			ctrlSts,
-		}
-
-		r := makeReconciler(t, argocd, objs...)
+			redisDepl}
+		subresObjs := []client.Object{argocd,
+			serverDepl,
+			repoDepl,
+			ctrlSts,
+			redisDepl}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
 
 		err := r.reconcileRedisTLSSecret(argocd, true)
 		if err != nil {
@@ -421,10 +442,17 @@ func Test_ArgoCDReconciler_ReconcileRedisTLSSecret(t *testing.T) {
 func Test_ArgoCDReconciler_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
-	testSecret := util.NewSecretWithSuffix(a, "default-cluster-config")
+	testSecret := argoutil.NewSecretWithSuffix(a, "default-cluster-config")
 	//assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret), "not found")
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))

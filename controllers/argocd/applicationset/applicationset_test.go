@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var testExpectedLabels = common.DefaultLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme

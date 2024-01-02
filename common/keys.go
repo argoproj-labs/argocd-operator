@@ -39,9 +39,6 @@ const (
 	// ArgoCDKeyConfigManagementPlugins is the configuration key for config management plugins.
 	ArgoCDKeyConfigManagementPlugins = "configManagementPlugins"
 
-	// ArgoCDKeyDexConfig is the key for dex configuration.
-	ArgoCDKeyDexConfig = "dex.config"
-
 	// ArgoCDKeyGATrackingID is the configuration key for the Google  Analytics Tracking ID.
 	ArgoCDKeyGATrackingID = "ga.trackingid"
 
@@ -66,11 +63,11 @@ const (
 	// ArgoCDKeyKustomizeBuildOptions is the configuration key for the kustomize build options.
 	ArgoCDKeyKustomizeBuildOptions = "kustomize.buildOptions"
 
+	// ArgoCDKeyMetrics is the resource metrics key for labels.
+	ArgoCDKeyMetrics = "metrics"
+
 	// ArgoCDKeyOIDCConfig is the configuration key for the OIDC configuration.
 	ArgoCDKeyOIDCConfig = "oidc.config"
-
-	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
-	ArgoCDKeyPrometheus = "prometheus"
 
 	// ArgoCDKeyRBACPolicyCSV is the configuration key for the Argo CD RBAC policy CSV.
 	ArgoCDKeyRBACPolicyCSV = "policy.csv"
@@ -117,12 +114,18 @@ const (
 	// ArgoCDKeyBannerURL is the configuration key for a banner message URL.
 	ArgoCDKeyBannerURL = "ui.bannerurl"
 
+	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
+	ArgoCDKeyTLSCACert = "ca.crt"
+
 	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
 	ArgoCDPolicyMatcherMode = "policy.matchMode"
 
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
+
+	// ArgoCDDefaultServer is the default server address
+	ArgoCDDefaultServer = "https://kubernetes.default.svc"
 
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"

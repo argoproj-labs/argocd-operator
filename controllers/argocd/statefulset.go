@@ -30,6 +30,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -46,7 +47,7 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -79,7 +80,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 		},
 	}
 	if cr.Spec.NodePlacement != nil {
-		ss.Spec.Template.Spec.NodeSelector = util.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		ss.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	ss.Spec.ServiceName = name
@@ -92,25 +93,25 @@ func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.Argo
 	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
-func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 
 	ss.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
+			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 		},
 	}
 
-	ss.Spec.ServiceName = util.NameWithSuffix(cr.Name, "redis-ha")
+	ss.Spec.ServiceName = argoutil.NameWithSuffix(cr.Name, "redis-ha")
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
-			common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
+			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 		},
 	}
 
@@ -119,7 +120,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error 
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha"),
+						common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 					},
 				},
 				TopologyKey: common.K8sKeyHostname,
@@ -337,7 +338,7 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error 
 	}
 	openshift.AddSeccompProfileForOpenShift(cr, &ss.Spec.Template.Spec, r.Client)
 
-	ss.Spec.Template.Spec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-redis-ha")
+	ss.Spec.Template.Spec.ServiceAccountName = argoutil.NameWithSuffix(cr.Name, "argocd-redis-ha")
 
 	var terminationGracePeriodSeconds int64 = 60
 	ss.Spec.Template.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
@@ -391,9 +392,9 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error 
 	}
 
 	existing := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !cr.Spec.HA.Enabled {
-			// StatefulSet exists but HA enabled flag has been set to false, delete the StatefulSet
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
+			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
 			return r.Client.Delete(context.TODO(), existing)
 		}
 
@@ -423,6 +424,11 @@ func (r *ArgoCDReconciler) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error 
 		}
 
 		return nil // StatefulSet found, do nothing
+	}
+
+	if !cr.Spec.Redis.IsEnabled() {
+		log.Info("Redis disabled. Skipping starting Redis.") // Redis not enabled, do nothing.
+		return nil
 	}
 
 	if !cr.Spec.HA.Enabled {
@@ -460,7 +466,7 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 	return env
 }
 
-func (r *ArgoCDReconciler) getApplicationControllerReplicaCount(cr *argoproj.ArgoCD) int32 {
+func (r *ReconcileArgoCD) getApplicationControllerReplicaCount(cr *argoproj.ArgoCD) int32 {
 	var replicas int32 = common.ArgocdApplicationControllerDefaultReplicas
 	var minShards int32 = cr.Spec.Controller.Sharding.MinShards
 	var maxShards int32 = cr.Spec.Controller.Sharding.MaxShards
@@ -510,7 +516,7 @@ func (r *ArgoCDReconciler) getApplicationControllerReplicaCount(cr *argoproj.Arg
 	return replicas
 }
 
-func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 
 	replicas := r.getApplicationControllerReplicaCount(cr)
 
@@ -566,7 +572,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 	}}
 	openshift.AddSeccompProfileForOpenShift(cr, podSpec, r.Client)
 
-	podSpec.ServiceAccountName = util.NameWithSuffix(cr.Name, "argocd-application-controller")
+	podSpec.ServiceAccountName = argoutil.NameWithSuffix(cr.Name, "argocd-application-controller")
 	podSpec.Volumes = []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
@@ -594,7 +600,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "argocd-application-controller"),
+							common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "argocd-application-controller"),
 						},
 					},
 					TopologyKey: common.K8sKeyHostname,
@@ -650,7 +656,12 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 	}
 
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Controller.IsEnabled() {
+			log.Info("Existing application controller found but should be disabled. Deleting Application Controller")
+			// Delete existing deployment for Application Controller, if any ..
+			return r.Client.Delete(context.TODO(), existing)
+		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
@@ -698,9 +709,14 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 		return nil // StatefulSet found with nothing to do, move along...
 	}
 
+	if !cr.Spec.Controller.IsEnabled() {
+		log.Info("Application Controller disabled. Skipping starting application controller.")
+		return nil
+	}
+
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
-	if util.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
 			return err
 		}
@@ -713,7 +729,7 @@ func (r *ArgoCDReconciler) reconcileApplicationControllerStatefulSet(cr *argopro
 }
 
 // reconcileStatefulSets will ensure that all StatefulSets are present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileApplicationControllerStatefulSet(cr, useTLSForRedis); err != nil {
 		return err
 	}
@@ -724,8 +740,8 @@ func (r *ArgoCDReconciler) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForR
 }
 
 // triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
-func (r *ArgoCDReconciler) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
-	if !util.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
+func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
+	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
 		return nil
 	}
@@ -748,7 +764,7 @@ func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.Statef
 
 // Returns true if a StatefulSet has pods in ErrImagePull or ImagePullBackoff state.
 // These pods cannot be restarted automatially due to known kubernetes issue https://github.com/kubernetes/kubernetes/issues/67250
-func containsInvalidImage(cr *argoproj.ArgoCD, r *ArgoCDReconciler) bool {
+func containsInvalidImage(cr *argoproj.ArgoCD, r *ReconcileArgoCD) bool {
 
 	brokenPod := false
 

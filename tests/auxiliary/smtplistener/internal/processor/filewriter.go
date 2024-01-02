@@ -2,7 +2,7 @@ package processor
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/flashmob/go-guerrilla/backends"
 	"github.com/flashmob/go-guerrilla/mail"
@@ -26,7 +26,7 @@ var FileWriter = func() backends.Decorator {
 				stringer = e
 				data := []byte(stringer.String())
 				key := fmt.Sprintf("%s%s", "/tmp/", e.QueuedId)
-				err := ioutil.WriteFile(key, data, 0666)
+				err := os.WriteFile(key, data, 0666)
 				fmt.Println(err)
 				return p.Process(e, task)
 			} else {

@@ -26,7 +26,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // newServiceAccount returns a new ServiceAccount instance.
@@ -35,7 +35,7 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    common.DefaultLabels(cr.Name),
 		},
 	}
 }
@@ -57,7 +57,7 @@ func getServiceAccountName(crName, name string) string {
 }
 
 // reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
-func (r *ArgoCDReconciler) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	params := getPolicyRuleList(r.Client)
 
 	for _, param := range params {
@@ -77,7 +77,7 @@ func (r *ArgoCDReconciler) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ArgoCDReconciler) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
 	var role *v1.ClusterRole
 	var err error
 
@@ -93,15 +93,15 @@ func (r *ArgoCDReconciler) reconcileServiceAccountClusterPermissions(name string
 	return r.reconcileClusterRoleBinding(name, role, cr)
 }
 
-func (r *ArgoCDReconciler) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
 	return r.reconcileRoleBinding(name, rules, cr)
 }
 
-func (r *ArgoCDReconciler) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
+func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
 	sa := newServiceAccountWithName(name, cr)
 
 	exists := true
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}

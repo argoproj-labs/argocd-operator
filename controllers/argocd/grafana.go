@@ -17,7 +17,6 @@ package argocd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,7 +27,6 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // GrafanaConfig represents the Grafana configuration options.
@@ -62,7 +60,7 @@ func generateGrafanaSecretKey() ([]byte, error) {
 
 // getGrafanaHost will return the hostname value for Grafana.
 func getGrafanaHost(cr *argoproj.ArgoCD) string {
-	host := util.NameWithSuffix(cr.Name, "grafana")
+	host := nameWithSuffix("grafana", cr)
 	if len(cr.Spec.Grafana.Host) > 0 {
 		host = cr.Spec.Grafana.Host
 	}
@@ -115,7 +113,7 @@ func loadGrafanaConfigs() (map[string]string, error) {
 	}
 
 	for _, f := range configs {
-		config, err := ioutil.ReadFile(f)
+		config, err := os.ReadFile(f)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +131,7 @@ func loadGrafanaTemplates(c *GrafanaConfig) (map[string]string, error) {
 	data := make(map[string]string)
 
 	templateDir := filepath.Join(getGrafanaConfigPath(), "templates")
-	entries, err := ioutil.ReadDir(templateDir)
+	entries, err := os.ReadDir(templateDir)
 	if err != nil {
 		return nil, err
 	}
