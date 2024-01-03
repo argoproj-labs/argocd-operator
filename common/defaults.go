@@ -39,7 +39,7 @@ const (
 	ArgoCDDefaultAdminPasswordNumSymbols = 0
 
 	// ArgoCDDefaultApplicationInstanceLabelKey is the default app name as a tracking label.
-	ArgoCDDefaultApplicationInstanceLabelKey = "app.kubernetes.io/instance"
+	ArgoCDDefaultApplicationInstanceLabelKey = AppK8sKeyInstance
 
 	// ArgoCDDefaultArgoImage is the ArgoCD container image to use when not specified.
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"

@@ -249,3 +249,18 @@ func CombineImageTag(img string, tag string) string {
 	}
 	return img // No tag, use default
 }
+
+// LabelsForCluster returns the labels for all cluster resources.
+func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
+	labels := common.DefaultLabels(cr.Name)
+	return labels
+}
+
+// annotationsForCluster returns the annotations for all cluster resources.
+func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
+	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
+	for key, val := range cr.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	return annotations
+}

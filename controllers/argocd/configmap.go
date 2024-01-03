@@ -60,7 +60,7 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
 		return cr.Spec.TLS.CA.ConfigMapName
 	}
-	return argoutil.NameWithSuffix(cr.Name, common.ArgoCDCASuffix)
+	return nameWithSuffix(common.ArgoCDCASuffix, cr)
 }
 
 // getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
@@ -292,7 +292,7 @@ func newConfigMap(cr *argoproj.ArgoCD) *corev1.ConfigMap {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -303,7 +303,7 @@ func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	cm.ObjectMeta.Name = name
 
 	lbls := cm.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	cm.ObjectMeta.Labels = lbls
 
 	return cm
@@ -363,7 +363,7 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	cm.Data = map[string]string{
-		corev1.TLSCertKey: string(caSecret.Data[corev1.TLSCertKey]),
+		common.ArgoCDKeyTLSCert: string(caSecret.Data[common.ArgoCDKeyTLSCert]),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {

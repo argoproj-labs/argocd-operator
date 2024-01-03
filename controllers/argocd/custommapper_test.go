@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func TestArgoCDReconciler_clusterRoleBindingMapper(t *testing.T) {
+func TestReconcileArgoCD_clusterRoleBindingMapper(t *testing.T) {
 
 	type fields struct {
 		client client.Client
@@ -277,7 +277,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 				Name:      "argocd-repo-server-tls",
 				Namespace: "argocd-operator",
 				Annotations: map[string]string{
-					common.ArgoCDArgoprojKeyName: "argocd",
+					common.AnnotationName: "argocd",
 				},
 			},
 			Type: corev1.SecretTypeTLS,
@@ -509,7 +509,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 				Name:      "argocd-operator-redis-tls",
 				Namespace: "argocd-operator",
 				Annotations: map[string]string{
-					common.ArgoCDArgoprojKeyName: "argocd",
+					common.AnnotationName: "argocd",
 				},
 			},
 			Type: corev1.SecretTypeTLS,
@@ -569,7 +569,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 
 }
 
-func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	a := makeTestArgoCD()
 
 	resObjs := []client.Object{a}
@@ -598,7 +598,7 @@ func TestArgoCDReconciler_namespaceResourceMapper(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testNamespace",
 					Labels: map[string]string{
-						common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
+						common.ArgoCDManagedByLabel: a.Namespace,
 					},
 				},
 			},

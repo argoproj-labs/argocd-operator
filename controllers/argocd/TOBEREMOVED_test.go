@@ -22,6 +22,13 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
+	return &ReconcileArgoCD{
+		Client: client,
+		Scheme: sch,
+	}
+}
+
 func createNamespace(r *ReconcileArgoCD, n string, managedBy string) error {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
 	if managedBy != "" {
@@ -48,6 +55,28 @@ func createNamespaceManagedByClusterArgoCDLabel(r *ReconcileArgoCD, n string, ma
 	r.ManagedSourceNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
+}
+
+func stringMapKeys(m map[string]string) []string {
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
+	}
+	sort.Strings(r)
+	return r
+}
+
+func merge(base map[string]string, diff map[string]string) map[string]string {
+	result := make(map[string]string)
+
+	for k, v := range base {
+		result[k] = v
+	}
+	for k, v := range diff {
+		result[k] = v
+	}
+
+	return result
 }
 
 func TestReconcileNotifications_CreateRoles(t *testing.T) {

@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -67,13 +66,6 @@ func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
 }
 
 type SchemeOpt func(*runtime.Scheme) error
-
-func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
-	return &ReconcileArgoCD{
-		Client: client,
-		Scheme: sch,
-	}
-}
 
 func makeNewTestReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
 	return &ArgoCDReconciler{
@@ -239,15 +231,6 @@ func initialCerts(t *testing.T, host string) argoCDOpt {
 	}
 }
 
-func stringMapKeys(m map[string]string) []string {
-	r := []string{}
-	for k := range m {
-		r = append(r, k)
-	}
-	sort.Strings(r)
-	return r
-}
-
 func makeTestControllerResources() *corev1.ResourceRequirements {
 	return &corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
@@ -312,17 +295,4 @@ func createNs(r *ArgoCDReconciler, n string, managedBy string) error {
 	r.ResourceManagedNamespaces[ns.Name] = ""
 
 	return r.Client.Create(context.TODO(), ns)
-}
-
-func merge(base map[string]string, diff map[string]string) map[string]string {
-	result := make(map[string]string)
-
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range diff {
-		result[k] = v
-	}
-
-	return result
 }

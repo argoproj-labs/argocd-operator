@@ -23,8 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -62,21 +60,6 @@ func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 		name = export.Spec.Storage.SecretName
 	}
 	return name
-}
-
-// LabelsForCluster returns the labels for all cluster resources.
-func LabelsForCluster(cr *argoproj.ArgoCD) map[string]string {
-	labels := common.DefaultLabels(cr.Name)
-	return labels
-}
-
-// annotationsForCluster returns the annotations for all cluster resources.
-func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
-	annotations := common.DefaultAnnotations(cr.Name, cr.Namespace)
-	for key, val := range cr.ObjectMeta.Annotations {
-		annotations[key] = val
-	}
-	return annotations
 }
 
 // IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.

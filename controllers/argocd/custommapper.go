@@ -19,9 +19,9 @@ func (r *ReconcileArgoCD) clusterResourceMapper(ctx context.Context, o client.Ob
 	namespacedArgoCDObject := client.ObjectKey{}
 
 	for k, v := range crbAnnotations {
-		if k == common.ArgoCDArgoprojKeyName {
+		if k == common.AnnotationName {
 			namespacedArgoCDObject.Name = v
-		} else if k == common.ArgoCDArgoprojKeyNamespace {
+		} else if k == common.AnnotationNamespace {
 			namespacedArgoCDObject.Namespace = v
 		}
 	}
@@ -113,7 +113,7 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 		if !ok {
 			return result
 		}
-		if owner, ok := secret.Annotations[common.ArgoCDArgoprojKeyName]; ok {
+		if owner, ok := secret.Annotations[common.AnnotationName]; ok {
 			namespacedArgoCDObject.Name = owner
 			namespacedArgoCDObject.Namespace = o.GetNamespace()
 			result = []reconcile.Request{
