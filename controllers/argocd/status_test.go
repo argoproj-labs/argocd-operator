@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
@@ -166,7 +165,7 @@ func TestArgoCDReconciler_reconcileStatusSSO(t *testing.T) {
 	}
 }
 
-func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusHost(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -198,10 +197,7 @@ func TestArgoCDReconciler_reconcileStatusHost(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			networking.SetRouteAPIFound(test.testRouteAPIFound)
-			defer func() {
-				networking.SetRouteAPIFound(false)
-			}()
+			routeAPIFound = test.testRouteAPIFound
 
 			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.Server.Route.Enabled = test.routeEnabled

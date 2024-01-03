@@ -1128,7 +1128,7 @@ func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
 func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// TemplateAPI is available, Install keycloak using openshift templates.
-	if workloads.IsTemplateAPIAvailable() {
+	if IsTemplateAPIAvailable() {
 		err := r.reconcileKeycloakForOpenShift(cr)
 		if err != nil {
 			return err
