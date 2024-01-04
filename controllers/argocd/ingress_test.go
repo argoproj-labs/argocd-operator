@@ -15,7 +15,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func TestArgoCDReconciler_reconcile_ServerIngress_ingressClassName(t *testing.T) {
+func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	nginx := "nginx"
@@ -63,7 +63,7 @@ func TestArgoCDReconciler_reconcile_ServerIngress_ingressClassName(t *testing.T)
 	}
 }
 
-func TestArgoCDReconciler_reconcile_ServerGRPCIngress_ingressClassName(t *testing.T) {
+func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	nginx := "nginx"
@@ -111,7 +111,7 @@ func TestArgoCDReconciler_reconcile_ServerGRPCIngress_ingressClassName(t *testin
 	}
 }
 
-func TestArgoCDReconciler_reconcile_GrafanaIngress_ingressClassName(t *testing.T) {
+func TestReconcileArgoCD_reconcile_GrafanaIngress_ingressClassName(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	nginx := "nginx"
@@ -160,7 +160,7 @@ func TestArgoCDReconciler_reconcile_GrafanaIngress_ingressClassName(t *testing.T
 	}
 }
 
-func TestArgoCDReconciler_reconcile_PrometheusIngress_ingressClassName(t *testing.T) {
+func TestReconcileArgoCD_reconcile_PrometheusIngress_ingressClassName(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	nginx := "nginx"

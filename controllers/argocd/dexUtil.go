@@ -9,7 +9,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // getDexContainerImage will return the container image for the Dex server.
@@ -46,10 +46,10 @@ func getDexContainerImage(cr *argoproj.ArgoCD) string {
 		tag = common.ArgoCDDefaultDexVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDDexImageEnvVar); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDDexImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return util.CombineImageTag(img, tag)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 // getDexOAuthRedirectURI will return the OAuth redirect URI for the Dex server.

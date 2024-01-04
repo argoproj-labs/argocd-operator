@@ -35,7 +35,7 @@ func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -46,7 +46,7 @@ func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.Service
 	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
 
 	lbls := sa.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	sa.ObjectMeta.Labels = lbls
 
 	return sa

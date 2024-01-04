@@ -34,7 +34,7 @@ func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -45,7 +45,7 @@ func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
 	route.ObjectMeta.Name = name
 
 	lbls := route.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	route.ObjectMeta.Labels = lbls
 
 	return route
@@ -126,7 +126,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "grafana")
+	route.Spec.To.Name = nameWithSuffix("grafana", cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
@@ -257,7 +257,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "server")
+	route.Spec.To.Name = nameWithSuffix("server", cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
@@ -334,7 +334,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix)
+	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {

@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestArgoCDReconciler_reconcileServiceAccountPermissions(t *testing.T) {
+func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -77,7 +77,7 @@ func TestArgoCDReconciler_reconcileServiceAccountPermissions(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
 
-func TestArgoCDReconciler_reconcileServiceAccountClusterPermissions(t *testing.T) {
+func TestReconcileArgoCD_reconcileServiceAccountClusterPermissions(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 

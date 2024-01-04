@@ -37,7 +37,7 @@ func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodA
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -47,7 +47,7 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autos
 	hpa.ObjectMeta.Name = name
 
 	lbls := hpa.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	hpa.ObjectMeta.Labels = lbls
 
 	return hpa
@@ -68,7 +68,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       argoutil.NameWithSuffix(cr.Name, "server"),
+			Name:       nameWithSuffix("server", cr),
 		},
 	}
 

@@ -20,8 +20,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // DexConnector represents an authentication connector for Dex.
@@ -127,7 +125,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 			return nil
 		}
 
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format(common.TimeFormatMST)
+		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
@@ -185,7 +183,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 
 	// Get the current redirect URI
 	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[common.SAOpenshiftKeyOAuthRedirectURI]
+	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
 	if found && currentURI == uri {
 		return nil // Redirect URI annotation found and correct, move along...
 	}
@@ -195,7 +193,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 		ann = make(map[string]string)
 	}
 
-	ann[common.SAOpenshiftKeyOAuthRedirectURI] = uri
+	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
 	sa.ObjectMeta.Annotations = ann
 
 	return r.Client.Update(context.TODO(), sa)
@@ -205,7 +203,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 
-	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	dexEnv := proxyEnvVars()
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil {
@@ -244,13 +242,13 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 		Resources: getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -265,19 +263,19 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/usr/local/bin/argocd",
 			"/shared/argocd-dex",
 		},
-		Env:             util.ProxyEnvVars(),
+		Env:             proxyEnvVars(),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -307,7 +305,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage := getDexContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
 
@@ -315,7 +313,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage = getArgoContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
@@ -374,7 +372,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "dex-server"),
+		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{

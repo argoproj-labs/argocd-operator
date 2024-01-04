@@ -32,7 +32,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -57,10 +56,10 @@ func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret)
 
 // hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
 func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
-	actualCert := string(actual.Data[corev1.TLSCertKey])
-	actualKey := string(actual.Data[corev1.TLSPrivateKeyKey])
-	expectedCert := string(expected.Data[corev1.TLSCertKey])
-	expectedKey := string(expected.Data[corev1.TLSPrivateKeyKey])
+	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
+	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
+	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
 
 	if actualCert != expectedCert || actualKey != expectedKey {
 		log.Info("tls secret has changed")
@@ -83,21 +82,21 @@ func nowNano() string {
 func newCASecret(cr *argoproj.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr, "ca")
 
-	key, err := util.NewPrivateKey()
+	key, err := argoutil.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
 
-	cert, err := util.NewSelfSignedCACertificate(cr.Name, key)
+	cert, err := argoutil.NewSelfSignedCACertificate(cr.Name, key)
 	if err != nil {
 		return nil, err
 	}
 
 	// This puts both ca.crt and tls.crt into the secret.
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:              util.EncodeCertificatePEM(cert),
-		corev1.ServiceAccountRootCAKey: util.EncodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey:        util.EncodePrivateKeyPEM(key),
+		corev1.TLSCertKey:              argoutil.EncodeCertificatePEM(cert),
+		corev1.ServiceAccountRootCAKey: argoutil.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey:        argoutil.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -107,7 +106,7 @@ func newCASecret(cr *argoproj.ArgoCD) (*corev1.Secret, error) {
 func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.PrivateKey, cr *argoproj.ArgoCD) (*corev1.Secret, error) {
 	secret := argoutil.NewTLSSecret(cr, suffix)
 
-	key, err := util.NewPrivateKey()
+	key, err := argoutil.NewPrivateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +120,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 
 	dnsNames := []string{
 		cr.ObjectMeta.Name,
-		argoutil.NameWithSuffix(cr.Name, "grpc"),
+		nameWithSuffix("grpc", cr),
 		fmt.Sprintf("%s.%s.svc.cluster.local", cr.ObjectMeta.Name, cr.ObjectMeta.Namespace),
 	}
 
@@ -132,14 +131,14 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 		dnsNames = append(dnsNames, getPrometheusHost(cr))
 	}
 
-	cert, err := util.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
+	cert, err := argoutil.NewSignedCertificate(cfg, dnsNames, key, caCert, caKey)
 	if err != nil {
 		return nil, err
 	}
 
 	secret.Data = map[string][]byte{
-		corev1.TLSCertKey:       util.EncodeCertificatePEM(cert),
-		corev1.TLSPrivateKeyKey: util.EncodePrivateKeyPEM(key),
+		corev1.TLSCertKey:       argoutil.EncodeCertificatePEM(cert),
+		corev1.TLSPrivateKeyKey: argoutil.EncodePrivateKeyPEM(key),
 	}
 
 	return secret, nil
@@ -180,8 +179,8 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 		common.ArgoCDKeyAdminPassword:      []byte(hashedPassword),
 		common.ArgoCDKeyAdminPasswordMTime: nowBytes(),
 		common.ArgoCDKeyServerSecretKey:    sessionKey,
-		corev1.TLSCertKey:                  tlsSecret.Data[corev1.TLSCertKey],
-		corev1.TLSPrivateKeyKey:            tlsSecret.Data[corev1.TLSPrivateKeyKey],
+		common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
+		common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 	}
 
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
@@ -233,12 +232,12 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	caCert, err := util.ParsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
+	caCert, err := argoutil.ParsePEMEncodedCert(caSecret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return err
 	}
 
-	caKey, err := util.ParsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
+	caKey, err := argoutil.ParsePEMEncodedPrivateKey(caSecret.Data[corev1.TLSPrivateKeyKey])
 	if err != nil {
 		return err
 	}
@@ -329,8 +328,8 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 	}
 
 	if hasArgoTLSChanged(secret, tlsSecret) {
-		secret.Data[corev1.TLSCertKey] = tlsSecret.Data[corev1.TLSCertKey]
-		secret.Data[corev1.TLSPrivateKeyKey] = tlsSecret.Data[corev1.TLSPrivateKeyKey]
+		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
+		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
 		changed = true
 	}
 
@@ -425,7 +424,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD) error {
 	var clusterConfigInstance bool
 	secret := argoutil.NewSecretWithSuffix(cr, "default-cluster-config")
-	secret.Labels[common.ArgoCDArgoprojKeySecretType] = "cluster"
+	secret.Labels[common.ArgoCDSecretTypeLabel] = "cluster"
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
 			"insecure": false,
@@ -434,7 +433,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 
 	namespaceList := corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
-		common.ArgoCDArgoprojKeyManagedBy: cr.Namespace,
+		common.ArgoCDManagedByLabel: cr.Namespace,
 	}
 	if err := r.Client.List(context.TODO(), &namespaceList, listOption); err != nil {
 		return err
@@ -445,7 +444,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 		namespaces = append(namespaces, namespace.Name)
 	}
 
-	if !util.ContainsString(namespaces, cr.Namespace) {
+	if !containsString(namespaces, cr.Namespace) {
 		namespaces = append(namespaces, cr.Namespace)
 	}
 	sort.Strings(namespaces)
@@ -477,7 +476,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
-					if !util.ContainsString(ns, strings.TrimSpace(n)) {
+					if !containsString(ns, strings.TrimSpace(n)) {
 						ns = append(ns, strings.TrimSpace(n))
 					}
 				}
@@ -687,7 +686,7 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 	clusterSecrets := &corev1.SecretList{}
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{
-			common.ArgoCDArgoprojKeySecretType: "cluster",
+			common.ArgoCDSecretTypeLabel: "cluster",
 		}),
 		Namespace: cr.Namespace,
 	}

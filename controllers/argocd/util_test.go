@@ -14,8 +14,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +40,7 @@ var imageTests = []struct {
 	{
 		name:      "dex default configuration",
 		imageFunc: getDexContainerImage,
-		want:      util.CombineImageTag(common.ArgoCDDefaultDexImage, common.ArgoCDDefaultDexVersion),
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultDexImage, common.ArgoCDDefaultDexVersion),
 	},
 	{
 		name:      "dex spec configuration",
@@ -63,13 +61,13 @@ var imageTests = []struct {
 		imageFunc: getDexContainerImage,
 		want:      dexTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDDexImageEnvVar, dexTestImage)
+			t.Setenv(common.ArgoCDDexImageEnvName, dexTestImage)
 		},
 	},
 	{
 		name:      "argo default configuration",
 		imageFunc: getArgoContainerImage,
-		want:      util.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
 	},
 	{
 		name:      "argo spec configuration",
@@ -84,13 +82,13 @@ var imageTests = []struct {
 		imageFunc: getArgoContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDImageEnvVar, argoTestImage)
+			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
 		},
 	},
 	{
 		name:      "grafana default configuration",
 		imageFunc: getGrafanaContainerImage,
-		want:      util.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
 	},
 	{
 		name:      "grafana spec configuration",
@@ -106,13 +104,13 @@ var imageTests = []struct {
 		imageFunc: getGrafanaContainerImage,
 		want:      grafanaTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDGrafanaImageEnvVar, grafanaTestImage)
+			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
 		},
 	},
 	{
 		name:      "redis default configuration",
 		imageFunc: getRedisContainerImage,
-		want:      util.CombineImageTag(common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersion),
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersion),
 	},
 	{
 		name:      "redis spec configuration",
@@ -128,13 +126,13 @@ var imageTests = []struct {
 		imageFunc: getRedisContainerImage,
 		want:      redisTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisImageEnvVar, redisTestImage)
+			t.Setenv(common.ArgoCDRedisImageEnvName, redisTestImage)
 		},
 	},
 	{
 		name:      "redis ha default configuration",
 		imageFunc: getRedisHAContainerImage,
-		want: util.CombineImageTag(
+		want: argoutil.CombineImageTag(
 			common.ArgoCDDefaultRedisImage,
 			common.ArgoCDDefaultRedisVersionHA),
 	},
@@ -152,13 +150,13 @@ var imageTests = []struct {
 		imageFunc: getRedisHAContainerImage,
 		want:      redisHATestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAImageEnvVar, redisHATestImage)
+			t.Setenv(common.ArgoCDRedisHAImageEnvName, redisHATestImage)
 		},
 	},
 	{
 		name:      "redis ha proxy default configuration",
 		imageFunc: getRedisHAProxyContainerImage,
-		want: util.CombineImageTag(
+		want: argoutil.CombineImageTag(
 			common.ArgoCDDefaultRedisHAProxyImage,
 			common.ArgoCDDefaultRedisHAProxyVersion),
 	},
@@ -176,7 +174,7 @@ var imageTests = []struct {
 		imageFunc: getRedisHAProxyContainerImage,
 		want:      redisHAProxyTestImage,
 		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDRedisHAProxyImageEnvVar, redisHAProxyTestImage)
+			t.Setenv(common.ArgoCDRedisHAProxyImageEnvName, redisHAProxyTestImage)
 		},
 	},
 }
@@ -222,10 +220,7 @@ func TestGetArgoServerURI(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cr := makeTestArgoCD(tt.opts...)
 			r := &ReconcileArgoCD{}
-			networking.SetRouteAPIFound(tt.routeEnabled)
-			defer func() {
-				networking.SetRouteAPIFound(false)
-			}()
+			setRouteAPIFound(t, tt.routeEnabled)
 
 			result := r.getArgoServerURI(cr)
 			if result != tt.want {
@@ -488,7 +483,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	testNameSpace := "testNameSpace"
 
 	secret := argoutil.NewSecretWithSuffix(a, "xyz")
-	secret.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
+	secret.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),
 		"namespaces": []byte(strings.Join([]string{testNameSpace, "testNamespace2"}, ",")),
@@ -527,7 +522,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
 		Labels: map[string]string{
-			common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
+			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
@@ -537,7 +532,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
 		Labels: map[string]string{
-			common.ArgoCDArgoprojKeyManagedBy: a.Namespace,
+			common.ArgoCDManagedByLabel: a.Namespace,
 		}},
 	}
 
@@ -547,7 +542,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
 		Labels: map[string]string{
-			common.ArgoCDArgoprojKeyManagedBy: "newNamespace",
+			common.ArgoCDManagedByLabel: "newNamespace",
 		}},
 	}
 
@@ -562,11 +557,11 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	assert.NoError(t, err)
 	for _, n := range nsList.Items {
 		if n.Name == ns3.Name {
-			_, ok := n.Labels[common.ArgoCDArgoprojKeyManagedBy]
+			_, ok := n.Labels[common.ArgoCDManagedByLabel]
 			assert.Equal(t, ok, true)
 			continue
 		}
-		_, ok := n.Labels[common.ArgoCDArgoprojKeyManagedBy]
+		_, ok := n.Labels[common.ArgoCDManagedByLabel]
 		assert.Equal(t, ok, false)
 	}
 }
@@ -659,10 +654,8 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
-	s1, err := util.GenerateRandomString(20)
-	assert.NoError(t, err)
-	s2, err := util.GenerateRandomString(20)
-	assert.NoError(t, err)
+	s1 := generateRandomString(20)
+	s2 := generateRandomString(20)
 
 	assert.NotEqual(t, s1, s2)
 
@@ -675,18 +668,18 @@ func TestGenerateRandomString(t *testing.T) {
 }
 
 func generateEncodedPEM(t *testing.T, host string) []byte {
-	key, err := util.NewPrivateKey()
+	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 
-	cert, err := util.NewSelfSignedCACertificate("foo", key)
+	cert, err := argoutil.NewSelfSignedCACertificate("foo", key)
 	assert.NoError(t, err)
 
-	encoded := util.EncodeCertificatePEM(cert)
+	encoded := argoutil.EncodeCertificatePEM(cert)
 	return encoded
 }
 
-// TestArgoCDReconciler_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
-func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
+// TestReconcileArgoCD_reconcileDexOAuthClientSecret This test make sures that if dex is enabled a service account is created with token stored in a secret which is used for oauth
+func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{

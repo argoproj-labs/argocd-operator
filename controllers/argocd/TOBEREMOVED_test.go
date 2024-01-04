@@ -22,6 +22,14 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+func setRouteAPIFound(t *testing.T, routeEnabled bool) {
+	routeAPIEnabledTemp := routeAPIFound
+	t.Cleanup(func() {
+		routeAPIFound = routeAPIEnabledTemp
+	})
+	routeAPIFound = routeEnabled
+}
+
 func makeTestReconciler(client client.Client, sch *runtime.Scheme) *ReconcileArgoCD {
 	return &ReconcileArgoCD{
 		Client: client,

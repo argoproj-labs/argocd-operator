@@ -439,7 +439,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 	})
 }
 
-func Test_ArgoCDReconciler_ClusterPermissionsSecret(t *testing.T) {
+func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 

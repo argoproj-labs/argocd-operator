@@ -32,7 +32,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 func getRedisHAReplicas(cr *argoproj.ArgoCD) *int32 {
@@ -47,7 +46,7 @@ func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -58,20 +57,20 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 	ss.ObjectMeta.Name = name
 
 	lbls := ss.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
-	lbls[common.AppK8sKeyComponent] = component
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
 	ss.ObjectMeta.Labels = lbls
 
 	ss.Spec = appsv1.StatefulSetSpec{
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.AppK8sKeyName: name,
+				common.ArgoCDKeyName: name,
 			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.AppK8sKeyName: name,
+					common.ArgoCDKeyName: name,
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -100,18 +99,18 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	ss.Spec.Replicas = getRedisHAReplicas(cr)
 	ss.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 		},
 	}
 
-	ss.Spec.ServiceName = argoutil.NameWithSuffix(cr.Name, "redis-ha")
+	ss.Spec.ServiceName = nameWithSuffix("redis-ha", cr)
 
 	ss.Spec.Template.ObjectMeta = metav1.ObjectMeta{
 		Annotations: map[string]string{
 			"checksum/init-config": "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac", // TODO: Should this be hard-coded?
 		},
 		Labels: map[string]string{
-			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
+			common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 		},
 	}
 
@@ -120,10 +119,10 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha"),
+						common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
 					},
 				},
-				TopologyKey: common.K8sKeyHostname,
+				TopologyKey: common.ArgoCDKeyHostname,
 			}},
 		},
 	}
@@ -180,13 +179,13 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: util.BoolPtr(false),
+				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: util.BoolPtr(true),
+				RunAsNonRoot: boolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -251,13 +250,13 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			},
 			Resources: getRedisHAResources(cr),
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: util.BoolPtr(false),
+				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: util.BoolPtr(true),
+				RunAsNonRoot: boolPtr(true),
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				{
@@ -302,13 +301,13 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		Name:            "config-init",
 		Resources:       getRedisHAResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -336,9 +335,9 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		RunAsNonRoot: &runAsNonRoot,
 		RunAsUser:    &runAsUser,
 	}
-	openshift.AddSeccompProfileForOpenShift(cr, &ss.Spec.Template.Spec, r.Client)
+	AddSeccompProfileForOpenShift(r.Client, &ss.Spec.Template.Spec)
 
-	ss.Spec.Template.Spec.ServiceAccountName = argoutil.NameWithSuffix(cr.Name, "argocd-redis-ha")
+	ss.Spec.Template.Spec.ServiceAccountName = nameWithSuffix("argocd-redis-ha", cr)
 
 	var terminationGracePeriodSeconds int64 = 60
 	ss.Spec.Template.Spec.TerminationGracePeriodSeconds = &terminationGracePeriodSeconds
@@ -377,7 +376,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   util.BoolPtr(true),
+					Optional:   boolPtr(true),
 				},
 			},
 		},
@@ -404,7 +403,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
-				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 				changed = true
 			}
 
@@ -524,9 +523,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
-	controllerEnv = util.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
 	// Let user specify their own environment first
-	controllerEnv = util.EnvMerge(controllerEnv, util.ProxyEnvVars(), false)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
@@ -551,13 +550,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		},
 		Resources: getArgoApplicationControllerResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -579,7 +578,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   util.BoolPtr(true),
+					Optional:   boolPtr(true),
 				},
 			},
 		},
@@ -588,7 +587,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   util.BoolPtr(true),
+					Optional:   boolPtr(true),
 				},
 			},
 		},
@@ -600,7 +599,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "argocd-application-controller"),
+							common.ArgoCDKeyName: argoutil.NameWithSuffix(cr.Name, "argocd-application-controller"),
 						},
 					},
 					TopologyKey: common.K8sKeyHostname,
@@ -628,19 +627,19 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	} else {
 		podSpec.InitContainers = []corev1.Container{{
 			Command:         getArgoImportCommand(r.Client, cr),
-			Env:             util.ProxyEnvVars(getArgoImportContainerEnv(export)...),
+			Env:             proxyEnvVars(getArgoImportContainerEnv(export)...),
 			Resources:       getArgoApplicationControllerResources(cr),
 			Image:           getArgoImportContainerImage(export),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            "argocd-import",
 			SecurityContext: &corev1.SecurityContext{
-				AllowPrivilegeEscalation: util.BoolPtr(false),
+				AllowPrivilegeEscalation: boolPtr(false),
 				Capabilities: &corev1.Capabilities{
 					Drop: []corev1.Capability{
 						"ALL",
 					},
 				},
-				RunAsNonRoot: util.BoolPtr(true),
+				RunAsNonRoot: boolPtr(true),
 			},
 			VolumeMounts: getArgoImportVolumeMounts(),
 		}}
@@ -667,7 +666,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		changed := false
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr, useTLSForRedis)
@@ -769,7 +768,7 @@ func containsInvalidImage(cr *argoproj.ArgoCD, r *ReconcileArgoCD) bool {
 	brokenPod := false
 
 	podList := &corev1.PodList{}
-	listOption := client.MatchingLabels{common.AppK8sKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
+	listOption := client.MatchingLabels{common.ArgoCDKeyName: fmt.Sprintf("%s-%s", cr.Name, "application-controller")}
 
 	if err := r.Client.List(context.TODO(), podList, listOption); err != nil {
 		log.Error(err, "Failed to list Pods")

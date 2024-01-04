@@ -226,3 +226,29 @@ func CreateRole(role *rbacv1.Role, client cntrlClient.Client) error {
     return client.Create(context.TODO(), role)
 }
 ```
+
+
+** Update: Jan 3, 2024 **
+
+Some major changes introduced that we should observe going forwards:
+
+- Concurrent development of new operator while leaving existing code and packages untouched for the most part. We want to avoid introducing any changes to existing code as far as possible, to keep things from breaking and make sure the branch always compiles. The only exception is parts of existing code that will carry into the new code base as well (such as changes to argocd-_types.go). Changes to these files are acceptable since they will continue to remain and need to be updated. Avoid changes to files that are definitely going away (such as deployments.go for ex)
+  
+- Addition of TOBEREMOVED.go in every package
+Instead of deleting a piece of code that has been refactored/moved/renamed (to be used by the new code), duplicate that code in the new location and move the existing function/set of functions into that package's TOBEREMOVED.go. This ensures existing code does not break (references remain in tact) and we have a way to track which code has not yet been replicated in the new codebase
+
+- If renaming/moving constants, do the same
+move existing constant to TOBEREMOVED and create the renamed constant in the correct location
+
+- If moving/replacing unit tests around, do the same
+Move existing unit test to TOBEREMOVED_test.go so we don't lose the existing unit test
+
+- Moving component constants to common package
+In order to avoid potential import cycles it might be best to keep all component constants in the common package as oppposed to their own individual packages as was decided before. However, each component gets a dedicated file for it self (appcontroller.go, redis.go etc) so as to still maintain some isolation and organization for those components
+In the future maybe we can keep only the publicly needed constants in common for each component but for now let's keep all constants together
+
+- Separation of pkg/argoutil and pkg/util packages
+Going forwards, pkg/util is reserved for pure utility functions that are not kubernetes/argocd-operator specific. This includes things like string/bit manipulation, data structure operations etc. Each unique function should be in a dedicated file following existing patterns. For any "utility" functions that are kubernetes/argo-cd/operator specific place them in pkg/argoutil package. This includes things like k8s client/api manipulation/communications, argo-cd admin password/security related stuff etc
+
+- Maintaining both ReconcileArgoCD and ArgoCDReconciler
+ArgoCDReconciler is the updated reconciler struct, while ReconcileArgoCD is the old reconciler struct. We should maintain both temporarily, since all of the existing code base requires the continued existence of ReconcileArgoCD, and keeping it around reduces the no. of changes to old code during rebase against master

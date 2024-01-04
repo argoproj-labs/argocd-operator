@@ -33,7 +33,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 var (
@@ -95,7 +94,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 		wantContainerImage string
 	}{
 		{
-			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvVar env var set",
+			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set",
 			setEnvVarFunc: nil,
 			envVar:        "",
 			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
@@ -108,7 +107,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 			wantContainerImage: "quay.io/keycloak/keycloak@sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9",
 		},
 		{
-			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvVar env var set - for OCP",
+			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set - for OCP",
 			setEnvVarFunc: nil,
 			envVar:        "",
 			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
@@ -121,9 +120,9 @@ func TestKeycloakContainerImage(t *testing.T) {
 			wantContainerImage: "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:720a7e4c4926c41c1219a90daaea3b971a3d0da5a152a96fed4fb544d80f52e3",
 		},
 		{
-			name: "ArgoCDKeycloakImageEnvVar env var set",
+			name: "ArgoCDKeycloakImageEnvName env var set",
 			setEnvVarFunc: func(t *testing.T, s string) {
-				t.Setenv(common.ArgoCDKeycloakImageEnvVar, s)
+				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
 			},
 			envVar: "envImage:latest",
 			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
@@ -136,9 +135,9 @@ func TestKeycloakContainerImage(t *testing.T) {
 			wantContainerImage: "envImage:latest",
 		},
 		{
-			name: "both cr.spec.sso.keycloak.Image and ArgoCDKeycloakImageEnvVar are set",
+			name: "both cr.spec.sso.keycloak.Image and ArgoCDKeycloakImageEnvName are set",
 			setEnvVarFunc: func(t *testing.T, s string) {
-				t.Setenv(common.ArgoCDKeycloakImageEnvVar, s)
+				t.Setenv(common.ArgoCDKeycloakImageEnvName, s)
 			},
 			envVar: "envImage:latest",
 			argoCD: makeArgoCD(func(cr *argoproj.ArgoCD) {
@@ -162,7 +161,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			workloads.SetTemplateAPIFound(test.templateAPIFound)
+			templateAPIFound = test.templateAPIFound
 
 			if test.setEnvVarFunc != nil {
 				test.setEnvVarFunc(t, test.envVar)
@@ -180,7 +179,7 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 func TestNewKeycloakTemplateInstance(t *testing.T) {
 	// For OpenShift Container Platform.
-	workloads.SetTemplateAPIFound(true)
+	templateAPIFound = true
 
 	defer removeTemplateAPI()
 
@@ -197,7 +196,7 @@ func TestNewKeycloakTemplateInstance(t *testing.T) {
 
 func TestNewKeycloakTemplate(t *testing.T) {
 	// For OpenShift Container Platform.
-	workloads.SetTemplateAPIFound(true)
+	templateAPIFound = true
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -213,7 +212,7 @@ func TestNewKeycloakTemplate(t *testing.T) {
 
 func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 	// For OpenShift Container Platform.
-	workloads.SetTemplateAPIFound(true)
+	templateAPIFound = true
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -245,8 +244,8 @@ func TestNewKeycloakTemplate_testDeploymentConfig(t *testing.T) {
 
 func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	// For OpenShift Container Platform.
-	t.Setenv(common.ArgoCDKeycloakImageEnvVar, "")
-	workloads.SetTemplateAPIFound(true)
+	t.Setenv(common.ArgoCDKeycloakImageEnvName, "")
+	templateAPIFound = true
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -498,5 +497,5 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 }
 
 func removeTemplateAPI() {
-	workloads.SetTemplateAPIFound(false)
+	templateAPIFound = false
 }

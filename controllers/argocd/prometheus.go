@@ -74,7 +74,7 @@ func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -85,7 +85,7 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -96,7 +96,7 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 	svcmon.ObjectMeta.Name = name
 
 	lbls := svcmon.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	lbls[common.ArgoCDKeyRelease] = "prometheus-operator"
 	svcmon.ObjectMeta.Labels = lbls
 
@@ -125,12 +125,12 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, common.ArgoCDMetrics),
+			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: common.ArgoCDMetrics,
+			Port: common.ArgoCDKeyMetrics,
 		},
 	}
 
@@ -186,7 +186,7 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "repo-server"),
+			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -218,12 +218,12 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 
 	sm.Spec.Selector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "server-metrics"),
+			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
 		},
 	}
 	sm.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port: common.ArgoCDMetrics,
+			Port: common.ArgoCDKeyMetrics,
 		},
 	}
 

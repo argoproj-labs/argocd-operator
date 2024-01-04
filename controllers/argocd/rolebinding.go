@@ -17,7 +17,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.
@@ -25,8 +24,8 @@ func newClusterRoleBinding(cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
 	return &v1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      common.DefaultLabels(cr.Name),
-			Annotations: util.MergeMaps(common.DefaultAnnotations(cr.Name, cr.Namespace), cr.Annotations),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
 		},
 	}
 }
@@ -37,7 +36,7 @@ func newClusterRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.Cluster
 	roleBinding.Name = GenerateUniqueResourceName(name, cr)
 
 	labels := roleBinding.ObjectMeta.Labels
-	labels[common.AppK8sKeyName] = name
+	labels[common.ArgoCDKeyName] = name
 	roleBinding.ObjectMeta.Labels = labels
 
 	return roleBinding
@@ -48,8 +47,8 @@ func newRoleBinding(cr *argoproj.ArgoCD) *v1.RoleBinding {
 	return &v1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.Name,
-			Labels:      common.DefaultLabels(cr.Name),
-			Annotations: util.MergeMaps(common.DefaultAnnotations(cr.Name, cr.Namespace), cr.Annotations),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
 			Namespace:   cr.Namespace,
 		},
 	}
@@ -77,7 +76,7 @@ func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 	roleBinding.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
 
 	labels := roleBinding.ObjectMeta.Labels
-	labels[common.AppK8sKeyName] = name
+	labels[common.ArgoCDKeyName] = name
 	roleBinding.ObjectMeta.Labels = labels
 
 	return roleBinding
@@ -129,8 +128,8 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 		}
 		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
-			// only create dexServer and redisHa rolebindings for the namespace where the argocd instance is deployed
-			if cr.ObjectMeta.Namespace != namespace.Name && (name == common.ArgoCDDexServerComponent || name == common.ArgoCDRedisHAComponent) {
+			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
+			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
 				continue
 			}
 		}
@@ -311,10 +310,10 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 
 func getCustomRoleName(name string) string {
 	if name == common.ArgoCDApplicationControllerComponent {
-		return os.Getenv(common.ArgoCDControllerClusterRoleEnvVar)
+		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
 	}
 	if name == common.ArgoCDServerComponent {
-		return os.Getenv(common.ArgoCDServerClusterRoleEnvVar)
+		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
 	}
 	return ""
 }
@@ -329,7 +328,7 @@ func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *
 	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
 
 	labels := roleBinding.ObjectMeta.Labels
-	labels[common.AppK8sKeyName] = roleBinding.ObjectMeta.Name
+	labels[common.ArgoCDKeyName] = roleBinding.ObjectMeta.Name
 	roleBinding.ObjectMeta.Labels = labels
 
 	return roleBinding

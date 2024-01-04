@@ -20,7 +20,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func TestArgoCDReconciler_reconcileRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -59,7 +59,7 @@ func TestArgoCDReconciler_reconcileRole(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
-func TestArgoCDReconciler_reconcileRole_for_new_namespace(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -106,7 +106,7 @@ func TestArgoCDReconciler_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.Equal(t, expectedRoleNamespace, grafanaRoles[0].ObjectMeta.Namespace)
 }
 
-func TestArgoCDReconciler_reconcileClusterRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -158,7 +158,7 @@ func TestArgoCDReconciler_reconcileClusterRole(t *testing.T) {
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
 }
 
-func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
@@ -192,7 +192,7 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 
 }
 
-func TestArgoCDReconciler_RoleHooks(t *testing.T) {
+func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
 
@@ -217,7 +217,7 @@ func TestArgoCDReconciler_RoleHooks(t *testing.T) {
 	assert.Equal(t, role.Rules, []v1.PolicyRule{})
 }
 
-func TestArgoCDReconciler_reconcileRole_custom_role(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -246,7 +246,7 @@ func TestArgoCDReconciler_reconcileRole_custom_role(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// set the custom role as env variable
-	t.Setenv(common.ArgoCDControllerClusterRoleEnvVar, "custom-role")
+	t.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role")
 
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)

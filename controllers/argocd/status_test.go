@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func TestArgoCDReconciler_reconcileStatusKeycloak_K8s(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusKeycloak_K8s(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
@@ -51,7 +51,7 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_K8s(t *testing.T) {
 	assert.Equal(t, "Running", a.Status.SSO)
 }
 
-func TestArgoCDReconciler_reconcileStatusKeycloak_OpenShift(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCDForKeycloak()
@@ -94,7 +94,7 @@ func TestArgoCDReconciler_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 	assert.Equal(t, "Running", a.Status.SSO)
 }
 
-func TestArgoCDReconciler_reconcileStatusSSO(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -302,7 +302,7 @@ func TestReconcileArgoCD_reconcileStatusNotificationsController(t *testing.T) {
 	assert.Equal(t, "", a.Status.NotificationsController)
 }
 
-func TestArgoCDReconciler_reconcileStatusApplicationSetController(t *testing.T) {
+func TestReconcileArgoCD_reconcileStatusApplicationSetController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 

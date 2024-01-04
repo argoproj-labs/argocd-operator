@@ -25,9 +25,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	oappsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 
 	appsv1 "github.com/openshift/api/apps/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -114,7 +113,7 @@ func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 
 	if img == "" {
 		img = common.ArgoCDKeycloakImage
-		if workloads.IsTemplateAPIAvailable() {
+		if IsTemplateAPIAvailable() {
 			img = common.ArgoCDKeycloakImageForOpenShift
 		}
 		defaultImg = true
@@ -126,15 +125,15 @@ func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 
 	if tag == "" {
 		tag = common.ArgoCDKeycloakVersion
-		if workloads.IsTemplateAPIAvailable() {
+		if IsTemplateAPIAvailable() {
 			tag = common.ArgoCDKeycloakVersionForOpenShift
 		}
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDKeycloakImageEnvVar); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDKeycloakImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return util.CombineImageTag(img, tag)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 func getKeycloakConfigMapTemplate(ns string) *corev1.ConfigMap {
@@ -216,7 +215,7 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 	}
 
 	return corev1.Container{
-		Env:             util.ProxyEnvVars(envVars...),
+		Env:             proxyEnvVars(envVars...),
 		Image:           getKeycloakContainerImage(cr),
 		ImagePullPolicy: "Always",
 		LivenessProbe: &corev1.Probe{
@@ -520,8 +519,8 @@ func newKeycloakIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -624,7 +623,7 @@ func newKeycloakDeployment(cr *argoproj.ArgoCD) *k8sappsv1.Deployment {
 						{
 							Name:  defaultKeycloakIdentifier,
 							Image: getKeycloakContainerImage(cr),
-							Env:   util.ProxyEnvVars(getKeycloakContainerEnv()...),
+							Env:   proxyEnvVars(getKeycloakContainerEnv()...),
 							Ports: []corev1.ContainerPort{
 								{Name: "http", ContainerPort: httpPort},
 								{Name: "https", ContainerPort: portTLS},
@@ -918,14 +917,10 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 
 	// Add OpenShift-v4 as Identity Provider only for OpenShift environment.
 	// No Identity Provider is configured by default for non-openshift environments.
-	if workloads.IsTemplateAPIAvailable() {
+	if IsTemplateAPIAvailable() {
 		baseURL := "https://kubernetes.default.svc.cluster.local"
-		if ok, _ := cluster.IsProxyCluster(); ok {
-			var err error
-			baseURL, err = cluster.GetOpenShiftAPIURL()
-			if err != nil {
-				return nil, err
-			}
+		if isProxyCluster() {
+			baseURL = getOpenShiftAPIURL()
 		}
 
 		ks.IdentityProviders = []*KeycloakIdentityProvider{
@@ -1017,7 +1012,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	// Create openshift OAuthClient
-	if workloads.IsTemplateAPIAvailable() {
+	if IsTemplateAPIAvailable() {
 		oAuthClient := &oauthv1.OAuthClient{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "OAuthClient",
@@ -1108,7 +1103,19 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 // HandleKeycloakPodDeletion resets the Realm Creation Status to false when keycloak pod is deleted.
 func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
-	dcClient, err := argoutil.GetOAppsClient()
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "unable to get k8s config")
+		return err
+	}
+
+	// Initialize deployment config client.
+	dcClient, err := oappsv1client.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to create apps client for Deployment config %s in namespace %s",
+			dc.Name, dc.Namespace))
+		return err
+	}
 
 	log.Info("Set the Realm Creation status annoation to false")
 	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
@@ -1146,7 +1153,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoproj.ArgoCD) er
 func deleteKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// If SSO is installed using OpenShift templates.
-	if workloads.IsTemplateAPIAvailable() {
+	if IsTemplateAPIAvailable() {
 		err := deleteKeycloakConfigForOpenShift(cr)
 		if err != nil {
 			return err

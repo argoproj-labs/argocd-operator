@@ -18,7 +18,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func TestArgoCDReconciler_reconcileRoleBinding(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -55,7 +55,7 @@ func TestArgoCDReconciler_reconcileRoleBinding(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, roleBinding))
 }
 
-func TestArgoCDReconciler_reconcileRoleBinding_for_new_namespace(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -158,7 +158,7 @@ func TestReconcileRoleBinding_for_Managed_Teminating_Namespace(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "managedNS2"}, roleBinding))
 }
 
-func TestArgoCDReconciler_reconcileClusterRoleBinding(t *testing.T) {
+func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -190,7 +190,7 @@ func TestArgoCDReconciler_reconcileClusterRoleBinding(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 }
 
-func TestArgoCDReconciler_reconcileRoleBinding_custom_role(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -232,20 +232,20 @@ func TestArgoCDReconciler_reconcileRoleBinding_custom_role(t *testing.T) {
 		assert.Equal(t, roleBinding.RoleRef, expectedRoleRef)
 	}
 
-	t.Setenv(common.ArgoCDControllerClusterRoleEnvVar, "custom-controller-role")
+	t.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-controller-role")
 	assert.NoError(t, r.reconcileRoleBinding(common.ArgoCDApplicationControllerComponent, p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-application-controller")
 	checkForUpdatedRoleRef(t, "custom-controller-role", expectedName)
 
-	t.Setenv(common.ArgoCDServerClusterRoleEnvVar, "custom-server-role")
+	t.Setenv(common.ArgoCDServerClusterRoleEnvName, "custom-server-role")
 	assert.NoError(t, r.reconcileRoleBinding("argocd-server", p, a))
 
 	expectedName = fmt.Sprintf("%s-%s", a.Name, "argocd-server")
 	checkForUpdatedRoleRef(t, "custom-server-role", expectedName)
 }
 
-func TestArgoCDReconciler_reconcileRoleBinding_forSourceNamespaces(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()

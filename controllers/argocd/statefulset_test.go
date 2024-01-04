@@ -19,7 +19,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/stretchr/testify/assert"
 
@@ -40,7 +39,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   util.BoolPtr(true),
+					Optional:   boolPtr(true),
 				},
 			},
 		},
@@ -49,7 +48,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   util.BoolPtr(true),
+					Optional:   boolPtr(true),
 				},
 			},
 		},
@@ -71,7 +70,7 @@ func controllerDefaultVolumeMounts() []corev1.VolumeMount {
 	return mounts
 }
 
-func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -90,7 +89,7 @@ func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_disabled(t *testing.T) {
 	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
-func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
+func TestReconcileArgoCD_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD()
@@ -137,7 +136,7 @@ func TestArgoCDReconciler_reconcileRedisStatefulSet_HA_enabled(t *testing.T) {
 	assert.Errorf(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s), "not found")
 }
 
-func TestArgoCDReconciler_reconcileApplicationController(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -181,7 +180,7 @@ func TestArgoCDReconciler_reconcileApplicationController(t *testing.T) {
 	}
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withRedisTLS(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withRedisTLS(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -219,7 +218,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withRedisTLS(t *testing
 	}
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withUpdate(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -258,7 +257,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withUpdate(t *testing.T
 	}
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withUpgrade(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withUpgrade(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -277,7 +276,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withUpgrade(t *testing.
 	assert.Errorf(t, err, "not found")
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withResources(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withResources(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCDWithResources(func(a *argoproj.ArgoCD) {
 		a.Spec.Import = &argoproj.ArgoCDImportSpec{
@@ -345,7 +344,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withResources(t *testin
 	assert.False(t, testResources.Limits.Memory().Equal(*rsC.Limits.Memory()))
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -426,7 +425,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withSharding(t *testing
 	}
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withAppSync(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T) {
 
 	expectedEnv := []corev1.EnvVar{
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
@@ -549,7 +548,7 @@ func Test_ContainsValidImage(t *testing.T) {
 
 }
 
-func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *testing.T) {
+func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
@@ -561,7 +560,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: util.BoolPtr(true),
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             2,
 				MaxShards:             4,
 				ClustersPerShard:      1,
@@ -573,7 +572,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: util.BoolPtr(true),
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             4,
 				ClustersPerShard:      3,
@@ -585,7 +584,7 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
 				Enabled:               false,
 				Replicas:              1,
-				DynamicScalingEnabled: util.BoolPtr(true),
+				DynamicScalingEnabled: boolPtr(true),
 				MinShards:             1,
 				MaxShards:             2,
 				ClustersPerShard:      1,
@@ -600,13 +599,13 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 		})
 
 		clusterSecret1 := argoutil.NewSecretWithSuffix(a, "cluster1")
-		clusterSecret1.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
+		clusterSecret1.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
 
 		clusterSecret2 := argoutil.NewSecretWithSuffix(a, "cluster2")
-		clusterSecret2.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
+		clusterSecret2.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
 
 		clusterSecret3 := argoutil.NewSecretWithSuffix(a, "cluster3")
-		clusterSecret3.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
+		clusterSecret3.Labels = map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}
 
 		resObjs := []client.Object{a}
 		subresObjs := []client.Object{a}

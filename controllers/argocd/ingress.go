@@ -42,7 +42,7 @@ func newIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -53,7 +53,7 @@ func newIngressWithName(name string, cr *argoproj.ArgoCD) *networkingv1.Ingress 
 	ingress.ObjectMeta.Name = name
 
 	lbls := ingress.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	ingress.ObjectMeta.Labels = lbls
 
 	return ingress
@@ -106,8 +106,8 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.Ingress.Annotations) > 0 {
@@ -130,7 +130,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: argoutil.NameWithSuffix(cr.Name, "server"),
+									Name: nameWithSuffix("server", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -182,7 +182,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "GRPC"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.GRPC.Ingress.Annotations) > 0 {
@@ -205,7 +205,7 @@ func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) er
 							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: argoutil.NameWithSuffix(cr.Name, "server"),
+									Name: nameWithSuffix("server", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "https",
 									},
@@ -257,8 +257,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Grafana.Ingress.Annotations) > 0 {
@@ -281,7 +281,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 							Path: getPathOrDefault(cr.Spec.Grafana.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: argoutil.NameWithSuffix(cr.Name, "grafana"),
+									Name: nameWithSuffix("grafana", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -334,8 +334,8 @@ func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error 
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
@@ -408,8 +408,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 
 	// Add annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations) > 0 {
@@ -430,7 +430,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 							Path: "/api/webhook",
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
+									Name: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "webhook",
 									},
