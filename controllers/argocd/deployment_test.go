@@ -964,7 +964,7 @@ func deploymentDefaultTolerations() []corev1.Toleration {
 	return toleration
 }
 
-func TestReconcileArgoCD_reconcileRepoServerRedisTLS(t *testing.T) {
+func TestReconcileArgocd_reconcileRepoServerRedisTLS(t *testing.T) {
 	t.Run("with DisableTLSVerification = false (the default)", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()

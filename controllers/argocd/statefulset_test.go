@@ -528,7 +528,7 @@ func Test_ContainsValidImage(t *testing.T) {
 	po := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				common.AppK8sKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
+				common.ArgoCDKeyName: fmt.Sprintf("%s-%s", a.Name, "application-controller"),
 			},
 		},
 	}

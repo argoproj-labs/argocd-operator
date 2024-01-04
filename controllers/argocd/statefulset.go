@@ -31,7 +31,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 )
 
 func getRedisHAReplicas(cr *argoproj.ArgoCD) *int32 {
@@ -569,9 +568,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 		},
 	}}
-	openshift.AddSeccompProfileForOpenShift(cr, podSpec, r.Client)
-
-	podSpec.ServiceAccountName = argoutil.NameWithSuffix(cr.Name, "argocd-application-controller")
+	AddSeccompProfileForOpenShift(r.Client, podSpec)
+	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
 	podSpec.Volumes = []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
@@ -599,10 +597,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 				PodAffinityTerm: corev1.PodAffinityTerm{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.ArgoCDKeyName: argoutil.NameWithSuffix(cr.Name, "argocd-application-controller"),
+							common.ArgoCDKeyName: nameWithSuffix("argocd-application-controller", cr),
 						},
 					},
-					TopologyKey: common.K8sKeyHostname,
+					TopologyKey: common.ArgoCDKeyHostname,
 				},
 				Weight: int32(100),
 			},
@@ -610,10 +608,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								common.AppK8sKeyPartOf: common.ArgoCDAppName,
+								common.ArgoCDKeyPartOf: common.ArgoCDAppName,
 							},
 						},
-						TopologyKey: common.K8sKeyHostname,
+						TopologyKey: common.ArgoCDKeyHostname,
 					},
 					Weight: int32(5),
 				}},

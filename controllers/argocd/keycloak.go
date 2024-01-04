@@ -25,7 +25,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	oappsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 
 	appsv1 "github.com/openshift/api/apps/v1"
@@ -82,12 +81,11 @@ const (
 
 var (
 	// client secret for keycloak, argocd and openshift-v4 IdP.
-	oAuthClientSecret string
-
-	graceTime     int64 = 75
-	portTLS       int32 = 8443
-	httpPort      int32 = 8080
-	controllerRef bool  = true
+	oAuthClientSecret       = generateRandomString(8)
+	graceTime         int64 = 75
+	portTLS           int32 = 8443
+	httpPort          int32 = 8080
+	controllerRef     bool  = true
 )
 
 // getKeycloakContainerImage will return the container image for the Keycloak.
@@ -832,11 +830,6 @@ func (r *ReconcileArgoCD) prepareKeycloakConfigForK8s(cr *argoproj.ArgoCD) (*key
 
 // creates a keycloak realm configuration which when posted to keycloak using http client creates a keycloak realm.
 func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
-
-	oAuthClientSecret, err := util.GenerateRandomString(8)
-	if err != nil {
-		//TO DO: handle error
-	}
 
 	ks := &CustomKeycloakAPIRealm{
 		Realm:       keycloakRealm,

@@ -28,7 +28,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -275,10 +274,10 @@ func getGrafanaContainerImage(cr *argoproj.ArgoCD) string {
 		tag = common.ArgoCDDefaultGrafanaVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDGrafanaImageEnvVar); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
-	return util.CombineImageTag(img, tag)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 // getGrafanaResources will return the ResourceRequirements for the Grafana container.
@@ -309,7 +308,7 @@ func getRedisConf(useTLSForRedis bool) string {
 	params := map[string]string{
 		"UseTLS": strconv.FormatBool(useTLSForRedis),
 	}
-	conf, err := util.LoadTemplateFile(path, params)
+	conf, err := loadTemplateFile(path, params)
 	if err != nil {
 		log.Error(err, "unable to load redis configuration")
 		return ""
@@ -330,7 +329,7 @@ func getRedisContainerImage(cr *argoproj.ArgoCD) string {
 		tag = common.ArgoCDDefaultRedisVersion
 		defaultTag = true
 	}
-	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
+	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
 	}
 	return argoutil.CombineImageTag(img, tag)
