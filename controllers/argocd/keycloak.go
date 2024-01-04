@@ -22,10 +22,11 @@ import (
 	"fmt"
 	"os"
 
+	oappsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	oappsv1client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 
 	appsv1 "github.com/openshift/api/apps/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"

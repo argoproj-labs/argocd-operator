@@ -1,8 +1,9 @@
 package workloads
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	templatev1 "github.com/openshift/api/template/v1"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var (

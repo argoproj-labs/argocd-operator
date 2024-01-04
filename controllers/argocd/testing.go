@@ -15,12 +15,10 @@
 package argocd
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-logr/logr"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/stretchr/testify/assert"
@@ -283,16 +281,16 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 	}
 }
 
-func createNs(r *ArgoCDReconciler, n string, managedBy string) error {
-	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
-	if managedBy != "" {
-		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedBy: managedBy}
-	}
+// func createNs(r *ArgoCDReconciler, n string, managedBy string) error {
+// 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
+// 	if managedBy != "" {
+// 		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedBy: managedBy}
+// 	}
 
-	if r.ResourceManagedNamespaces == nil {
-		r.ResourceManagedNamespaces = make(map[string]string)
-	}
-	r.ResourceManagedNamespaces[ns.Name] = ""
+// 	if r.ResourceManagedNamespaces == nil {
+// 		r.ResourceManagedNamespaces = make(map[string]string)
+// 	}
+// 	r.ResourceManagedNamespaces[ns.Name] = ""
 
-	return r.Client.Create(context.TODO(), ns)
-}
+// 	return r.Client.Create(context.TODO(), ns)
+// }

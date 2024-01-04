@@ -1,8 +1,9 @@
 package monitoring
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var prometheusAPIFound = false

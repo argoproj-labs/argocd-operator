@@ -3,11 +3,12 @@ package networking
 import (
 	"errors"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // common test variables used across workloads tests

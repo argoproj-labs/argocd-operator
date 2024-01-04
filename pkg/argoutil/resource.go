@@ -22,8 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 )
 
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the

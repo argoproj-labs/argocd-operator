@@ -1,8 +1,9 @@
 package argoutil
 
 import (
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/sethvargo/go-password/password"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // GenerateArgoAdminPassword will generate and return the admin password for Argo CD.
