@@ -5,6 +5,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +24,7 @@ func FetchSecret(client client.Client, meta metav1.ObjectMeta, name string) (*co
 func NewSecret(cr *argoproj.ArgoCD) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels: argoutil.LabelsForCluster(cr),
 		},
 		Type: corev1.SecretTypeOpaque,
 	}

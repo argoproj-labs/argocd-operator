@@ -1,8 +1,8 @@
-package notifications
+package common
 
-// Values
+// notifications
 const (
-	NotificationsControllerComponent = "notifications-controller"
+	NotificationsControllerComponent = "argocd-notifications-controller"
 	NotificationsSecretName          = "argocd-notifications-secret"
 	NotificationsConfigMapName       = "argocd-notifications-cm"
 )

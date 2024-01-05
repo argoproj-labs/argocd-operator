@@ -26,6 +26,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -74,7 +75,7 @@ func newPrometheus(cr *argoproj.ArgoCD) *monitoringv1.Prometheus {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }
@@ -85,7 +86,7 @@ func newServiceMonitor(cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    common.DefaultLabels(cr.Name, cr.Name, ""),
+			Labels:    argoutil.LabelsForCluster(cr),
 		},
 	}
 }

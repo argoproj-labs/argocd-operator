@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 
@@ -40,7 +41,7 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 			}
 
 			currentConfigMap := &corev1.ConfigMap{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: NotificationsConfigMapName, Namespace: argocdcommon.TestNamespace}, currentConfigMap)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsConfigMapName, Namespace: argocdcommon.TestNamespace}, currentConfigMap)
 			if err != nil {
 				t.Fatalf("Could not get current ConfigMap: %v", err)
 			}
