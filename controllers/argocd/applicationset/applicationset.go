@@ -27,7 +27,7 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 	asr.Logger = ctrl.Log.WithName(AppSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
 
 	resourceName = util.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, AppSetControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
+	resourceLabels = common.DefaultResourceLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
 
 	if err := asr.reconcileServiceAccount(); err != nil {
 		asr.Logger.Info("reconciling applicationSet serviceaccount")

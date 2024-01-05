@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -16,7 +17,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 
 	secretRequest := workloads.SecretRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NotificationsSecretName,
+			Name:      common.NotificationsSecretName,
 			Namespace: nr.Instance.Namespace,
 			Labels:    resourceLabels,
 		},
@@ -67,10 +68,10 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 }
 
 func (nr *NotificationsReconciler) deleteSecret(namespace string) error {
-	if err := workloads.DeleteSecret(NotificationsSecretName, namespace, nr.Client); err != nil {
-		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", NotificationsSecretName, "namespace", namespace)
+	if err := workloads.DeleteSecret(common.NotificationsSecretName, namespace, nr.Client); err != nil {
+		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", common.NotificationsSecretName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", NotificationsSecretName, "namespace", namespace)
+	nr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", common.NotificationsSecretName, "namespace", namespace)
 	return nil
 }

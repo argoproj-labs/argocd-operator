@@ -24,10 +24,10 @@ var (
 
 func (nr *NotificationsReconciler) Reconcile() error {
 
-	nr.Logger = ctrl.Log.WithName(NotificationsControllerComponent).WithValues("instance", nr.Instance.Name, "instance-namespace", nr.Instance.Namespace)
+	nr.Logger = ctrl.Log.WithName(common.NotificationsControllerComponent).WithValues("instance", nr.Instance.Name, "instance-namespace", nr.Instance.Namespace)
 
-	resourceName = util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, NotificationsControllerComponent)
-	resourceLabels = common.DefaultLabels(resourceName, nr.Instance.Name, NotificationsControllerComponent)
+	resourceName = util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, common.NotificationsControllerComponent)
+	resourceLabels = common.DefaultResourceLabels(resourceName, nr.Instance.Name, common.NotificationsControllerComponent)
 
 	if err := nr.reconcileServiceAccount(); err != nil {
 		nr.Logger.Info("reconciling notifications serviceaccount")

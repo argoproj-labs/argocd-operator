@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 
@@ -40,7 +41,7 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 			}
 
 			currentSecret := &corev1.Secret{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: NotificationsSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
 			if err != nil {
 				t.Fatalf("Could not get current Secret: %v", err)
 			}

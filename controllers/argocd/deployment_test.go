@@ -18,6 +18,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/google/go-cmp/cmp"
@@ -1679,7 +1680,7 @@ func TestArgoCDReconciler_reconcile_RepoServerChanges(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      test.serviceAccount,
 					Namespace: a.Namespace,
-					Labels:    common.DefaultLabels(a.Name, a.Name, ""),
+					Labels:    argoutil.LabelsForCluster(a),
 				},
 			}
 			r.Client.Create(context.TODO(), sa)
