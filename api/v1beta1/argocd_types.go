@@ -108,6 +108,13 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Enabled is the flag to enable the Application Controller during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -162,6 +169,13 @@ type ArgoCDApplicationSet struct {
 
 	// SCMRootCAConfigMap is the name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller (optional).
 	SCMRootCAConfigMap string `json:"scmRootCAConfigMap,omitempty"`
+
+	// Enabled is the flag to enable the Application Set Controller during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ArgoCDApplicationSet) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDCASpec defines the CA options for ArgCD.
@@ -203,6 +217,9 @@ type ArgoCDDexSpec struct {
 	// Version is the Dex container image tag.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Dex","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
+
+	// Env lets you specify environment variables for Dex.
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ArgoCDGrafanaSpec defines the desired state for the Grafana component.
@@ -410,6 +427,16 @@ type ArgoCDRedisSpec struct {
 	// The value specified here can currently be:
 	// - openshift - Use the OpenShift service CA to request TLS config
 	AutoTLS string `json:"autotls,omitempty"`
+
+	// Enabled is the flag to enable Redis during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Remote specifies the remote URL of the Redis container. (optional, by default, a local instance managed by the operator is used.)
+	Remote *string `json:"remote,omitempty"`
+}
+
+func (a *ArgoCDRedisSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
@@ -470,6 +497,16 @@ type ArgoCDRepoSpec struct {
 
 	// SidecarContainers defines the list of sidecar containers for the repo server deployment
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
+
+	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Remote specifies the remote URL of the Repo Server container. (optional, by default, a local instance managed by the operator is used.)
+	Remote *string `json:"remote,omitempty"`
+}
+
+func (a *ArgoCDRepoSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -560,6 +597,13 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+
+	// Enabled is the flag to enable ArgoCD Server during ArgoCD installation. (optional, default `true`)
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (a *ArgoCDServerSpec) IsEnabled() bool {
+	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
@@ -934,7 +978,7 @@ type WebhookServerSpec struct {
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoprojKeyFinalizer {
+		if finalizer == common.ArgoCDDeletionFinalizer {
 			return true
 		}
 	}
@@ -965,7 +1009,7 @@ func (a *ArgoCD) ApplicationInstanceLabelKey() string {
 	if a.Spec.ApplicationInstanceLabelKey != "" {
 		return a.Spec.ApplicationInstanceLabelKey
 	} else {
-		return common.AppK8sKeyInstance
+		return common.ArgoCDDefaultApplicationInstanceLabelKey
 	}
 }
 
