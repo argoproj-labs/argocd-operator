@@ -1,8 +1,9 @@
 package notifications
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // GetDefaultNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
@@ -552,7 +553,7 @@ func (nr *NotificationsReconciler) GetNotificationsCommand() []string {
 	cmd = append(cmd, "argocd-notifications")
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, util.GetLogLevel(nr.Instance.Spec.Notifications.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(nr.Instance.Spec.Notifications.LogLevel))
 
 	return cmd
 }
