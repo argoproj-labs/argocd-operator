@@ -5,9 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,6 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 type ingressOpt func(*networkingv1.Ingress)

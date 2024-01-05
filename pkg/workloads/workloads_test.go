@@ -3,12 +3,13 @@ package workloads
 import (
 	"errors"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // common test variables used across workloads tests
