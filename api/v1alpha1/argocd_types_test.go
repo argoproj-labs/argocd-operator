@@ -13,7 +13,7 @@ func Test_ArgoCD_ApplicationInstanceLabelKey(t *testing.T) {
 	cr.Spec.ApplicationInstanceLabelKey = "my.corp/instance"
 	assert.Equal(t, cr.ApplicationInstanceLabelKey(), "my.corp/instance")
 	cr = &ArgoCD{}
-	assert.Equal(t, cr.ApplicationInstanceLabelKey(), common.AppK8sKeyInstance)
+	assert.Equal(t, cr.ApplicationInstanceLabelKey(), common.ArgoCDDefaultApplicationInstanceLabelKey)
 }
 
 func Test_ResourceTrackingMethodToString(t *testing.T) {
