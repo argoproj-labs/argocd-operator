@@ -104,7 +104,7 @@ spec:
 
 ### Add Command Arguments to ApplicationSets Controller
 
-Below example shows how a user can add command arguments to the ApplicationSet controller. 
+Below example shows how a user can add command arguments to the ApplicationSet controller.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -137,7 +137,10 @@ spec:
     SCMRootCAConfigMap: example-gitlab-scm-tls-cert
 ```
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
 ## Config Management Plugins
 
 Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
@@ -200,7 +203,7 @@ spec:
     resources: {}
 ```
 
-The following example shows how to set command line parameters using the env variable 
+The following example shows how to set command line parameters using the env variable
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -213,7 +216,7 @@ spec:
   controller:
     env:
     - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
-      value: '120'    
+      value: '120'
 ```
 
 The following example shows how to set multiple replicas of Argo CD Application Controller. This example will scale up/down the Argo CD Application Controller based on the parameter clustersPerShard. The number of replicas will be set between minShards and maxShards.
@@ -236,7 +239,6 @@ spec:
 
 !!! note
     In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
-
 
 The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
 
@@ -757,10 +759,10 @@ metadata:
   labels:
     example: nodeplacement-example
 spec:
-  nodePlacement: 
-    nodeSelector: 
+  nodePlacement:
+    nodeSelector:
       key1: value1
-    tolerations: 
+    tolerations:
     - key: key1
       operator: Equal
       value: value1
@@ -768,7 +770,7 @@ spec:
     - key: key1
       operator: Equal
       value: value1
-      effect: NoExecute   
+      effect: NoExecute
 ```
 
 ## Prometheus Options
@@ -965,7 +967,11 @@ spec:
 
 Resource behavior can be customized using subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`). Each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
 
+<<<<<<< HEAD
 !!! note 
+=======
+!!! note
+>>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
     `.spec.resourceCustomizations` field is no longer in support from Argo CD Operator v0.8.0 onward. Consider using `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead.
 
 ### Resource Customizations (with subkeys)
@@ -1058,7 +1064,7 @@ spec:
             return obj
 ```
 
-After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+After applying these changes your `argocd-cm` Configmap should contain the following fields:
 
 ```
 resource.customizations.ignoreDifferences.apps_Deployment: |
@@ -1148,7 +1154,7 @@ spec:
         - /spec/replicas
 ```
 
-After applying these changes your `argocd-cm` Configmap should contain the following fields: 
+After applying these changes your `argocd-cm` Configmap should contain the following fields:
 
 ```
 resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
@@ -1227,7 +1233,7 @@ spec:
 
 ## Resource Tracking Method
 
-You can configure which 
+You can configure which
 [resource tracking method](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/#choosing-a-tracking-method)
 Argo CD should use to keep track of the resources it manages.
 
@@ -1286,7 +1292,7 @@ Enabled | false | Toggle Autoscaling support globally for the Argo CD server com
 HPA | [Object] | HorizontalPodAutoscaler options for the Argo CD Server component.
 
 !!! note
-    When `.spec.server.autoscale.enabled` is set to `true`, the number of required replicas (if set) in `.spec.server.replicas` will be ignored. The final replica count on the server deployment will be controlled by the Horizontal Pod Autoscaler instead. 
+    When `.spec.server.autoscale.enabled` is set to `true`, the number of required replicas (if set) in `.spec.server.replicas` will be ignored. The final replica count on the server deployment will be controlled by the Horizontal Pod Autoscaler instead.
 
 ### Server Command Arguments
 
@@ -1449,13 +1455,14 @@ Image | `quay.io/dexidp/dex` | The container image for Dex. This overrides the `
 OpenShiftOAuth | false | Enable automatic configuration of OpenShift OAuth authentication for the Dex server. This is ignored if a value is present for `sso.dex.config`.
 Resources | [Empty] | The container compute resources.
 Version | v2.21.0 (SHA) | The tag to use with the Dex container image.
+Env | [Empty] | Environment to set for Dex.
 
 ### Dex Example
 
 !!! note
     `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
 
-The following examples show all properties set to the default values.  
+The following examples show all properties set to the default values.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -1506,7 +1513,7 @@ spec:
 
 ### Important Note regarding Role Mappings:
 
-To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map. 
+To have a specific user be properly atrributed with the `role:admin` upon SSO through Openshift, the user needs to be in a **group** with the `cluster-admin` role added. If the user only has a direct `ClusterRoleBinding` to the Openshift role for `cluster-admin`, the ArgoCD role will not map.
 
 A quick fix will be to create an `cluster-admins` group, add the user to the group and then apply the `cluster-admin` ClusterRole to the group.
 
@@ -1675,7 +1682,7 @@ spec:
 
 ## Banner
 
-The following properties are available for configuring a [UI banner message](https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners). 
+The following properties are available for configuring a [UI banner message](https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners).
 
 Name | Default | Description
 --- | --- | ---
