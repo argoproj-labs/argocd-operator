@@ -1732,11 +1732,6 @@ spec:
             spec:
               containers:
               - args:
-<<<<<<< HEAD
-                - --health-probe-bind-address=:8081
-                - --metrics-bind-address=127.0.0.1:8080
-=======
->>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
                 - --leader-elect
                 command:
                 - /manager
