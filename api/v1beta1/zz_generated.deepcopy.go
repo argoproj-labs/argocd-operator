@@ -24,7 +24,11 @@ package v1beta1
 import (
 	routev1 "github.com/openshift/api/route/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+<<<<<<< HEAD
 	v1 "k8s.io/api/core/v1"
+=======
+	"k8s.io/api/core/v1"
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"

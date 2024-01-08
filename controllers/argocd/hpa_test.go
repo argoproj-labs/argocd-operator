@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

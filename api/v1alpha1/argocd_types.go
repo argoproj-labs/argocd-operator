@@ -37,7 +37,11 @@ func init() {
 // Important: Run "make" to regenerate code after modifying this file
 
 // +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 version is deprecated and will be converted to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API version."
+<<<<<<< HEAD
 // +kubebuilder:object:root=true
+=======
+//+kubebuilder:object:root=true
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 
 // ArgoCD is the Schema for the argocds API
 // +k8s:openapi-gen=true

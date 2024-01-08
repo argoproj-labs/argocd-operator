@@ -10,7 +10,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
+<<<<<<< HEAD
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+=======
+	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 )
 
 type argoCDAlphaOpt func(*ArgoCD)
@@ -31,10 +35,17 @@ func makeTestArgoCDAlpha(opts ...argoCDAlphaOpt) *ArgoCD {
 	return a
 }
 
+<<<<<<< HEAD
 type argoCDBetaOpt func(*argoproj.ArgoCD)
 
 func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *argoproj.ArgoCD {
 	a := &argoproj.ArgoCD{
+=======
+type argoCDBetaOpt func(*v1beta1.ArgoCD)
+
+func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *v1beta1.ArgoCD {
+	a := &v1beta1.ArgoCD{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-argocd",
 			Namespace: "default",
@@ -54,7 +65,11 @@ func TestAlphaToBetaConversion(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          *ArgoCD
+<<<<<<< HEAD
 		expectedOutput *argoproj.ArgoCD
+=======
+		expectedOutput *v1beta1.ArgoCD
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 	}{
 		// dex conversion
 		{
@@ -66,10 +81,17 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Version:        "latest",
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: "dex",
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: "dex",
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						OpenShiftOAuth: true,
 						Image:          "test",
 						Version:        "latest",
@@ -97,10 +119,17 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						OpenShiftOAuth: true,
 						Resources: &corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
@@ -124,10 +153,17 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Config: "test-config",
 					},
 				}
@@ -142,9 +178,15 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						OpenShiftOAuth: false,
 					},
 				}
@@ -165,6 +207,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
@@ -172,6 +215,15 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						OpenShiftOAuth: true,
 					},
 					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+					},
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Image: "keycloak",
 					},
 				}
@@ -192,12 +244,21 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					VerifyTLS: tls,
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				tls := new(bool)
 				*tls = false
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeKeycloak,
 					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				tls := new(bool)
+				*tls = false
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeKeycloak,
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						RootCA:    "__CA__",
 						VerifyTLS: tls,
 					},
@@ -211,9 +272,15 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Image: "test-image",
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Image: "test-image",
 					},
 				}
@@ -224,7 +291,11 @@ func TestAlphaToBetaConversion(t *testing.T) {
 		{
 			name:           "ArgoCD Example - Empty",
 			input:          makeTestArgoCDAlpha(func(cr *ArgoCD) {}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {}),
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {}),
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 		},
 		{
 			name: "ArgoCD Example - Dex + RBAC",
@@ -248,10 +319,17 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						OpenShiftOAuth: true,
 					},
 				}
@@ -259,14 +337,23 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				defaultPolicy := "role:readonly"
 				policy := "g, system:cluster-admins, role:admin"
 				scope := "[groups]"
+<<<<<<< HEAD
 				cr.Spec.RBAC = argoproj.ArgoCDRBACSpec{
+=======
+				cr.Spec.RBAC = v1beta1.ArgoCDRBACSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 					DefaultPolicy: &defaultPolicy,
 					Policy:        &policy,
 					Scopes:        &scope,
 				}
 
+<<<<<<< HEAD
 				cr.Spec.Server = argoproj.ArgoCDServerSpec{
 					Route: argoproj.ArgoCDRouteSpec{
+=======
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
+					Route: v1beta1.ArgoCDRouteSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Enabled: true,
 					},
 				}
@@ -321,9 +408,15 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.ResourceIgnoreDifferences = &argoproj.ResourceIgnoreDifference{
 					All: &argoproj.IgnoreDifferenceCustomization{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.ResourceIgnoreDifferences = &v1beta1.ResourceIgnoreDifference{
+					All: &v1beta1.IgnoreDifferenceCustomization{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						JsonPointers: []string{
 							"/spec/replicas",
 						},
@@ -331,11 +424,19 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							"kube-controller-manager",
 						},
 					},
+<<<<<<< HEAD
 					ResourceIdentifiers: []argoproj.ResourceIdentifiers{
 						{
 							Group: "admissionregistration.k8s.io",
 							Kind:  "MutatingWebhookConfiguration",
 							Customization: argoproj.IgnoreDifferenceCustomization{
+=======
+					ResourceIdentifiers: []v1beta1.ResourceIdentifiers{
+						{
+							Group: "admissionregistration.k8s.io",
+							Kind:  "MutatingWebhookConfiguration",
+							Customization: v1beta1.IgnoreDifferenceCustomization{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 								JqPathExpressions: []string{
 									"'.webhooks[]?.clientConfig.caBundle'",
 								},
@@ -344,7 +445,11 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						{
 							Group: "apps",
 							Kind:  "Deployment",
+<<<<<<< HEAD
 							Customization: argoproj.IgnoreDifferenceCustomization{
+=======
+							Customization: v1beta1.IgnoreDifferenceCustomization{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 								ManagedFieldsManagers: []string{
 									"kube-controller-manager",
 								},
@@ -355,13 +460,21 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						},
 					},
 				}
+<<<<<<< HEAD
 				cr.Spec.ResourceHealthChecks = []argoproj.ResourceHealthCheck{
+=======
+				cr.Spec.ResourceHealthChecks = []v1beta1.ResourceHealthCheck{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 					{
 						Group: "certmanager.k8s.io",
 						Kind:  "Certificate",
 					},
 				}
+<<<<<<< HEAD
 				cr.Spec.ResourceActions = []argoproj.ResourceAction{
+=======
+				cr.Spec.ResourceActions = []v1beta1.ResourceAction{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 					{
 						Group: "apps",
 						Kind:  "Deployment",
@@ -377,7 +490,11 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					"ping": "pong",
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 				cr.Spec.Image = "test-image"
 				cr.Spec.ExtraConfig = map[string]string{
 					"ping": "pong",
@@ -411,6 +528,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Insecure: true,
 				}
 			}),
+<<<<<<< HEAD
 			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.Server.Autoscale = argoproj.ArgoCDServerAutoscaleSpec{
 					Enabled: true,
@@ -426,6 +544,23 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						},
 					},
 					Ingress: argoproj.ArgoCDIngressSpec{
+=======
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.Server.Autoscale = v1beta1.ArgoCDServerAutoscaleSpec{
+					Enabled: true,
+				}
+				cr.Spec.Import = &v1beta1.ArgoCDImportSpec{
+					Name: "test-name",
+				}
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
+					Host: "test-host.argocd.org",
+					GRPC: v1beta1.ArgoCDServerGRPCSpec{
+						Ingress: v1beta1.ArgoCDIngressSpec{
+							Enabled: false,
+						},
+					},
+					Ingress: v1beta1.ArgoCDIngressSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Enabled: true,
 						TLS: []v1.IngressTLS{
 							{Hosts: []string{
@@ -443,13 +578,21 @@ func TestAlphaToBetaConversion(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			// Set v1beta1 object in Hub, converted values will be set in this object.
+<<<<<<< HEAD
 			var hub conversion.Hub = &argoproj.ArgoCD{}
+=======
+			var hub conversion.Hub = &v1beta1.ArgoCD{}
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 
 			// Call ConvertTo function to convert v1alpha1 version to v1beta1
 			test.input.ConvertTo(hub)
 
 			// Fetch the converted object
+<<<<<<< HEAD
 			result := hub.(*argoproj.ArgoCD)
+=======
+			result := hub.(*v1beta1.ArgoCD)
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 
 			// Compare converted object with expected.
 			assert.Equal(t, test.expectedOutput, result)
@@ -462,17 +605,29 @@ func TestAlphaToBetaConversion(t *testing.T) {
 func TestBetaToAlphaConversion(t *testing.T) {
 	tests := []struct {
 		name           string
+<<<<<<< HEAD
 		input          *argoproj.ArgoCD
+=======
+		input          *v1beta1.ArgoCD
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 		expectedOutput *ArgoCD
 	}{
 		{
 			name:           "ArgoCD Example - Empty",
+<<<<<<< HEAD
 			input:          makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {}),
+=======
+			input:          makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {}),
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {}),
 		},
 		{
 			name: "ArgoCD Example - Image + ExtraConfig",
+<<<<<<< HEAD
 			input: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
+=======
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 				cr.Spec.Image = "test-image"
 				cr.Spec.ExtraConfig = map[string]string{
 					"ping": "pong",
@@ -487,10 +642,17 @@ func TestBetaToAlphaConversion(t *testing.T) {
 		},
 		{
 			name: "ArgoCD Example - Dex + RBAC",
+<<<<<<< HEAD
 			input: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
+=======
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						OpenShiftOAuth: true,
 					},
 				}
@@ -498,14 +660,23 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				defaultPolicy := "role:readonly"
 				policy := "g, system:cluster-admins, role:admin"
 				scope := "[groups]"
+<<<<<<< HEAD
 				cr.Spec.RBAC = argoproj.ArgoCDRBACSpec{
+=======
+				cr.Spec.RBAC = v1beta1.ArgoCDRBACSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 					DefaultPolicy: &defaultPolicy,
 					Policy:        &policy,
 					Scopes:        &scope,
 				}
 
+<<<<<<< HEAD
 				cr.Spec.Server = argoproj.ArgoCDServerSpec{
 					Route: argoproj.ArgoCDRouteSpec{
+=======
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
+					Route: v1beta1.ArgoCDRouteSpec{
+>>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
 						Enabled: true,
 					},
 				}
