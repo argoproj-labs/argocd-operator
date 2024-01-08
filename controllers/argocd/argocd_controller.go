@@ -24,8 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
@@ -90,12 +88,6 @@ type ArgoCDReconciler struct {
 }
 
 var log = ctrl.Log.WithName("controller_argocd")
-
-// Map to keep track of running Argo CD instances using their namespaces as key and phase as value
-// This map will be used for the performance metrics purposes
-// Important note: This assumes that each instance only contains one Argo CD instance
-// as, having multiple Argo CD instances in the same namespace is considered an anti-pattern
-var ActiveInstanceMap = make(map[string]string)
 
 // Map to keep track of running Argo CD instances using their namespaces as key and phase as value
 // This map will be used for the performance metrics purposes
