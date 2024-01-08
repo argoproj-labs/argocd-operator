@@ -13,15 +13,17 @@ import (
 	"text/template"
 	"time"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/sethvargo/go-password/password"

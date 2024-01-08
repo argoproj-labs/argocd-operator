@@ -4,8 +4,9 @@ import (
 	"github.com/sethvargo/go-password/password"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // GenerateArgoAdminPassword will generate and return the admin password for Argo CD.
