@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	routev1 "github.com/openshift/api/route/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -27,34 +26,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
-
-// newRoute returns a new Route instance for the given ArgoCD.
-func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
-		},
-	}
-}
-
-// newRouteWithName returns a new Route with the given name and ArgoCD.
-func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
-	route := newRoute(cr)
-	route.ObjectMeta.Name = name
-
-	lbls := route.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	route.ObjectMeta.Labels = lbls
-
-	return route
-}
-
-// newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
-func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
-	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
-}
 
 // reconcileRoutes will ensure that all ArgoCD Routes are present.
 func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {

@@ -5,6 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	argopass "github.com/argoproj/argo-cd/v2/util/password"
 )
 
 // GenerateArgoAdminPassword will generate and return the admin password for Argo CD.
@@ -35,11 +36,7 @@ func HasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret)
 	expectedPwd := string(expected.Data[common.ArgoCDKeyAdminPassword])
 
 	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
-	if !validPwd {
-		log.Info("admin password has changed")
-		return true
-	}
-	return false
+	return !validPwd
 }
 
 // HasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
@@ -50,7 +47,6 @@ func HasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
 	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
 
 	if actualCert != expectedCert || actualKey != expectedKey {
-		log.Info("tls secret has changed")
 		return true
 	}
 	return false
