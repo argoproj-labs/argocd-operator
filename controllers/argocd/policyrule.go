@@ -120,6 +120,7 @@ func policyRuleForServer() []v1.PolicyRule {
 			Resources: []string{
 				"applications",
 				"appprojects",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"create",
@@ -156,6 +157,7 @@ func policyRuleForNotificationsController() []v1.PolicyRule {
 			Resources: []string{
 				"applications",
 				"appprojects",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"get",
@@ -217,6 +219,7 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"applications",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"create",
@@ -252,6 +255,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"applications",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"list",
