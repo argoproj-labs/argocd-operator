@@ -6,22 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 )
 
 func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	a := makeTestArgoCD()
 	t.Run("Ensure annotation will be set for OpenShift", func(t *testing.T) {
-		networking.SetRouteAPIFound(true)
-		defer func() {
-			networking.SetRouteAPIFound(false)
-		}()
+		routeAPIFound = true
 		svc := newService(a)
 
 		// Annotation is inserted, update is required
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, true)
-		atls, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
+		atls, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, true)
 		assert.Equal(t, atls, "some-secret")
 
@@ -30,18 +26,15 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will be unset for OpenShift", func(t *testing.T) {
-		networking.SetRouteAPIFound(true)
-		defer func() {
-			networking.SetRouteAPIFound(false)
-		}()
+		routeAPIFound = true
 		svc := newService(a)
 		svc.Annotations = make(map[string]string)
-		svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = "some-secret"
+		svc.Annotations[common.AnnotationOpenShiftServiceCA] = "some-secret"
 
 		// Annotation getting removed, update required
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", false)
 		assert.Equal(t, needUpdate, true)
-		_, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
+		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, false)
 
 		// Annotation does not exist, no update required
@@ -49,11 +42,11 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		assert.Equal(t, needUpdate, false)
 	})
 	t.Run("Ensure annotation will not be set for non-OpenShift", func(t *testing.T) {
-		networking.SetRouteAPIFound(false)
+		routeAPIFound = false
 		svc := newService(a)
 		needUpdate := ensureAutoTLSAnnotation(svc, "some-secret", true)
 		assert.Equal(t, needUpdate, false)
-		_, ok := svc.Annotations[common.ServiceBetaOpenshiftKeyCertSecret]
+		_, ok := svc.Annotations[common.AnnotationOpenShiftServiceCA]
 		assert.Equal(t, ok, false)
 	})
 }

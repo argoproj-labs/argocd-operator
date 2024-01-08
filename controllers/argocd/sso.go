@@ -39,7 +39,7 @@ var (
 // The operator must support `.spec.sso.dex` fields for dex, and `.spec.sso.keycloak` fields for keycloak.
 // The operator must identify edge cases involving partial configurations of specs, spec mismatch with
 // active provider, contradicting configuration etc, and throw the appropriate errors.
-func (r *ArgoCDReconciler) reconcileSSO(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 
 	// reset ssoConfigLegalStatus at the beginning of each SSO reconciliation round
 	ssoConfigLegalStatus = ssoLegalUnknown
@@ -164,7 +164,7 @@ func (r *ArgoCDReconciler) reconcileSSO(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-func (r *ArgoCDReconciler) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *argoproj.ArgoCD) error {
 
 	log.Info("uninstalling existing SSO configuration")
 

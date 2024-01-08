@@ -19,8 +19,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // DexConnector represents an authentication connector for Dex.
@@ -41,9 +40,9 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 }
 
 // getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
-func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
+func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
 
@@ -88,8 +87,8 @@ func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string
 	}
 
 	// Fetch the secret to obtain the token
-	secret := util.NewSecretWithName(cr, tokenSecret.Name)
-	if err := util.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
+	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}
 
@@ -98,7 +97,7 @@ func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string
 }
 
 // reconcileDexConfiguration will ensure that Dex is configured properly.
-func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 
@@ -121,20 +120,19 @@ func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *a
 
 		// Trigger rollout of Dex Deployment to pick up changes.
 		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-		if !util.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 			log.Info("unable to locate dex deployment")
 			return nil
 		}
 
-		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format(common.TimeFormatMST)
+		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
 }
 
 // getOpenShiftDexConfig will return the configuration for the Dex server running on OpenShift.
-func (r *ArgoCDReconciler) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, error) {
-
+func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, error) {
 	groups := []string{}
 
 	// Allow override of groups from CR
@@ -167,8 +165,7 @@ func (r *ArgoCDReconciler) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, e
 }
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.
-func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error {
-
+func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error {
 	// if openShiftOAuth set to false in `.spec.sso.dex`, no need to configure it
 	if cr.Spec.SSO == nil || cr.Spec.SSO.Dex == nil || !cr.Spec.SSO.Dex.OpenShiftOAuth {
 		return nil // OpenShift OAuth not enabled, move along...
@@ -176,7 +173,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error
 
 	log.Info("oauth enabled, configuring dex service account")
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return err
 	}
 
@@ -186,7 +183,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error
 
 	// Get the current redirect URI
 	ann := sa.ObjectMeta.Annotations
-	currentURI, found := ann[common.SAOpenshiftKeyOAuthRedirectURI]
+	currentURI, found := ann[common.ArgoCDKeyDexOAuthRedirectURI]
 	if found && currentURI == uri {
 		return nil // Redirect URI annotation found and correct, move along...
 	}
@@ -196,17 +193,22 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error
 		ann = make(map[string]string)
 	}
 
-	ann[common.SAOpenshiftKeyOAuthRedirectURI] = uri
+	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
 	sa.ObjectMeta.Annotations = ann
 
 	return r.Client.Update(context.TODO(), sa)
 }
 
 // reconcileDexDeployment will ensure the Deployment resource is present for the ArgoCD Dex component.
-func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 
-	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	dexEnv := proxyEnvVars()
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil {
+		dexEnv = append(dexEnv, cr.Spec.SSO.Dex.Env...)
+	}
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command: []string{
@@ -215,7 +217,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 		Image: getDexContainerImage(cr),
 		Name:  "dex",
-		Env:   util.ProxyEnvVars(),
+		Env:   dexEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
@@ -240,13 +242,13 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		},
 		Resources: getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -261,19 +263,19 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 			"/usr/local/bin/argocd",
 			"/shared/argocd-dex",
 		},
-		Env:             util.ProxyEnvVars(),
+		Env:             proxyEnvVars(),
 		Image:           getArgoContainerImage(cr),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "copyutil",
 		Resources:       getDexResources(cr),
 		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: util.BoolPtr(false),
+			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
 				Drop: []corev1.Capability{
 					"ALL",
 				},
 			},
-			RunAsNonRoot: util.BoolPtr(true),
+			RunAsNonRoot: boolPtr(true),
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "static-files",
@@ -290,7 +292,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	}}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -303,7 +305,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage := getDexContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
 
@@ -311,7 +313,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		desiredImage = getArgoContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
 			changed = true
 		}
 		updateNodePlacement(existing, deploy, &changed)
@@ -352,9 +354,9 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileDexService will ensure that the Service for Dex is present.
-func (r *ArgoCDReconciler) reconcileDexService(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -370,7 +372,7 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "dex-server"),
+		common.ArgoCDKeyName: nameWithSuffix("dex-server", cr),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -397,8 +399,7 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoproj.ArgoCD) error {
 
 // reconcileDexResources consolidates all dex resources reconciliation calls. It serves as the single place to trigger both creation
 // and deletion of dex resources based on the specified configuration of dex
-func (r *ArgoCDReconciler) reconcileDexResources(cr *argoproj.ArgoCD) error {
-
+func (r *ReconcileArgoCD) reconcileDexResources(cr *argoproj.ArgoCD) error {
 	if _, err := r.reconcileRole(common.ArgoCDDexServerComponent, policyRuleForDexServer(), cr); err != nil {
 		log.Error(err, "error reconciling dex role")
 	}
@@ -441,17 +442,16 @@ func (r *ArgoCDReconciler) reconcileDexResources(cr *argoproj.ArgoCD) error {
 // RoleBinding and deployment are dependent on these resouces. During deletion the order is reversed.
 // Deployment and RoleBinding must be deleted before the role and sa. deleteDexResources will only be called during
 // delete events, so we don't need to worry about duplicate, recurring reconciliation calls
-func (r *ArgoCDReconciler) deleteDexResources(cr *argoproj.ArgoCD) error {
-
+func (r *ReconcileArgoCD) deleteDexResources(cr *argoproj.ArgoCD) error {
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
 
-	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
 	}
-	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), role); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), role); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -470,7 +470,7 @@ func (r *ArgoCDReconciler) deleteDexResources(cr *argoproj.ArgoCD) error {
 	// since reconcileArgoConfigMap won't call reconcileDexConfiguration once dex has been disabled (to avoid reconciling on
 	// dexconfig unnecessarily when it isn't enabled)
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 			log.Error(err, "error reconciling dex configuration in configmap")
 		}

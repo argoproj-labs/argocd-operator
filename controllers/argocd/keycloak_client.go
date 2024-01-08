@@ -6,12 +6,11 @@ import (
 	"crypto/x509"
 	json "encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
-	keycloakv1alpha1 "github.com/keycloak/keycloak-operator/pkg/apis/keycloak/v1alpha1"
 	"github.com/pkg/errors"
 )
 
@@ -87,12 +86,12 @@ func (h *httpclient) login(user, pass string) error {
 	}
 
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
 
-	tokenRes := &keycloakv1alpha1.TokenResponse{}
+	tokenRes := &TokenResponse{}
 	err = json.Unmarshal(body, tokenRes)
 	if err != nil {
 		return err
