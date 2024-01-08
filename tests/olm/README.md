@@ -32,9 +32,9 @@ export REGISTRY="k3d-registry.localhost:12345"
 export ORG="local"
 export CONTROLLER_IMAGE="argocd-operator:test"
 export BUNDLE_IMAGE="argocd-operator-bundle:test"
-export VERSION="0.8.0"
+export VERSION="0.9.0"
 export CATALOG_IMAGE=argocd-operator-catalog
-export CATALOG_TAG=v0.8.0
+export CATALOG_TAG=v0.9.0
 
 # build and push operator image
 make generate
@@ -77,7 +77,7 @@ kubectl kuttl test ./tests/olm --config ./tests/kuttl-tests.yaml
 
 ```bash
 operator-sdk cleanup argocd-operator -n operators
-kubectl delete clusterserviceversion/argocd-operator.v0.8.0 -n operators
+kubectl delete clusterserviceversion/argocd-operator.v0.9.0 -n operators
 make uninstall
 
 k3d cluster delete test
