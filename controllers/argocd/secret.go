@@ -24,7 +24,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
@@ -40,43 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-// hasArgoAdminPasswordChanged will return true if the Argo admin password has changed.
-func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
-	actualPwd := string(actual.Data[common.ArgoCDKeyAdminPassword])
-	expectedPwd := string(expected.Data[common.ArgoCDKeyAdminPassword])
-
-	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
-	if !validPwd {
-		log.Info("admin password has changed")
-		return true
-	}
-	return false
-}
-
-// hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
-func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
-	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
-	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
-	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
-	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
-
-	if actualCert != expectedCert || actualKey != expectedKey {
-		log.Info("tls secret has changed")
-		return true
-	}
-	return false
-}
-
-// nowBytes is a shortcut function to return the current date/time in RFC3339 format.
-func nowBytes() []byte {
-	return []byte(time.Now().UTC().Format(time.RFC3339))
-}
-
-// nowNano returns a string with the current UTC time as epoch in nanoseconds
-func nowNano() string {
-	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
-}
 
 // newCASecret creates a new CA secret with the given suffix for the given ArgoCD.
 func newCASecret(cr *argoproj.ArgoCD) (*corev1.Secret, error) {

@@ -13,14 +13,15 @@ import (
 	"text/template"
 	"time"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	argopass "github.com/argoproj/argo-cd/v2/util/password"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
-
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/sethvargo/go-password/password"
@@ -2145,4 +2146,106 @@ func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error 
 
 func filterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
 	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
+}
+
+// hasArgoAdminPasswordChanged will return true if the Argo admin password has changed.
+func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualPwd := string(actual.Data[common.ArgoCDKeyAdminPassword])
+	expectedPwd := string(expected.Data[common.ArgoCDKeyAdminPassword])
+
+	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
+	if !validPwd {
+		log.Info("admin password has changed")
+		return true
+	}
+	return false
+}
+
+// hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
+func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
+	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
+	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
+
+	if actualCert != expectedCert || actualKey != expectedKey {
+		log.Info("tls secret has changed")
+		return true
+	}
+	return false
+}
+
+// nowBytes is a shortcut function to return the current date/time in RFC3339 format.
+func nowBytes() []byte {
+	return []byte(time.Now().UTC().Format(time.RFC3339))
+}
+
+// nowNano returns a string with the current UTC time as epoch in nanoseconds
+func nowNano() string {
+	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+}
+
+// newRoute returns a new Route instance for the given ArgoCD.
+func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newRouteWithName returns a new Route with the given name and ArgoCD.
+func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
+	route := newRoute(cr)
+	route.ObjectMeta.Name = name
+
+	lbls := route.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	route.ObjectMeta.Labels = lbls
+
+	return route
+}
+
+// newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
+func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
+	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+}
+
+// hasArgoAdminPasswordChanged will return true if the Argo admin password has changed.
+func hasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualPwd := string(actual.Data[common.ArgoCDKeyAdminPassword])
+	expectedPwd := string(expected.Data[common.ArgoCDKeyAdminPassword])
+
+	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
+	if !validPwd {
+		log.Info("admin password has changed")
+		return true
+	}
+	return false
+}
+
+// hasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
+func hasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
+	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
+	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
+
+	if actualCert != expectedCert || actualKey != expectedKey {
+		log.Info("tls secret has changed")
+		return true
+	}
+	return false
+}
+
+// nowBytes is a shortcut function to return the current date/time in RFC3339 format.
+func nowBytes() []byte {
+	return []byte(time.Now().UTC().Format(time.RFC3339))
+}
+
+// nowNano returns a string with the current UTC time as epoch in nanoseconds
+func nowNano() string {
+	return fmt.Sprintf("%d", time.Now().UTC().UnixNano())
 }
