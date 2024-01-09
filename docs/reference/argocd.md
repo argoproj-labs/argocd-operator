@@ -138,9 +138,12 @@ spec:
 ```
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
+=======
+>>>>>>> f1cbb48aad1bc2f6e0b69491d01e7cac22d75c1f
 ## Config Management Plugins
 
 Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
@@ -968,10 +971,14 @@ spec:
 Resource behavior can be customized using subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`). Each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 !!! note 
 =======
 !!! note
 >>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
+=======
+!!! note
+>>>>>>> f1cbb48aad1bc2f6e0b69491d01e7cac22d75c1f
     `.spec.resourceCustomizations` field is no longer in support from Argo CD Operator v0.8.0 onward. Consider using `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead.
 
 ### Resource Customizations (with subkeys)
