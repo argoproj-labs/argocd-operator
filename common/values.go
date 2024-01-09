@@ -58,6 +58,11 @@ const (
 	PrometheusOperator = "prometheus-operator"
 
 	SecretTypeCluster = "cluster"
+	// ArgoCDRBACTypeAppManagement is the value used when an rbac resource is targeted for applicaton management
+	ArgoCDRBACTypeAppManagement = "app-management"
+
+	// ArgoCDRBACTypeAppManagement is the value used when an rbac resource is targeted for resource management
+	ArgoCDRBACTypeResourceMananagement = "resource-management"
 )
 
 // general values

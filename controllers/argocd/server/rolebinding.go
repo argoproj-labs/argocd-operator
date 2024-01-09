@@ -74,12 +74,16 @@ func (sr *ServerReconciler) reconcileManagedRoleBindings(sa *v1.ServiceAccount) 
 		rbName := getRoleBindingName(sr.Instance.Name)
 		rbLabels := common.DefaultResourceLabels(rbName, sr.Instance.Name, ServerControllerComponent)
 
-		_, err := cluster.GetNamespace(nsName, sr.Client)
+		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve namespace", "name", nsName)
+				sr.Logger.Error(err, "reconcileManagedRoleBindings: failed to retrieve namespace", "name", nsName)
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
+			continue
+		}
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.V(1).Info("reconcileManagedRoleBindings: skipping namespace in terminating state", "name", ns.Name)
 			continue
 		}
 
@@ -111,6 +115,14 @@ func (sr *ServerReconciler) reconcileManagedRoleBindings(sa *v1.ServiceAccount) 
 				Kind:     common.ClusterRoleKind,
 				Name:     getCustomRoleName(),
 			}
+		}
+
+		// for non control-plane namespace, add special resource management label to roleBinding
+		if nsName != sr.Instance.Namespace {
+			if len(roleBindingRequest.ObjectMeta.Labels) == 0 {
+				roleBindingRequest.ObjectMeta.Labels = make(map[string]string)
+			}
+			roleBindingRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeResourceMananagement
 		}
 
 		desiredRB := permissions.RequestRoleBinding(roleBindingRequest)
@@ -188,20 +200,13 @@ func (sr *ServerReconciler) reconcileSourceRoleBindings(serverSA, appControllerS
 		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve namespace", "name", nsName)
+				sr.Logger.Error(err, "reconcileSourceRoleBindings: failed to retrieve namespace", "name", nsName)
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
 			continue
 		}
-
-		// do not reconcile rolebindings for namespaces already containing managed-by label
-		// as it already contain rolebindings with permissions to manipulate application resources
-		// reconciled during reconcilation of ManagedNamespaces
-		if _, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
-			err := sr.deleteRoleBinding(rbName, nsName)
-			if err != nil {
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.V(1).Info("reconcileSourceRoleBindings: skipping namespace in terminating state", "name", ns.Name)
 			continue
 		}
 
@@ -230,23 +235,32 @@ func (sr *ServerReconciler) reconcileSourceRoleBindings(serverSA, appControllerS
 				},
 			},
 		}
+
+		// for non control-plane namespace, add special app management label to roleBinding
+		if nsName != sr.Instance.Namespace {
+			if len(roleBindingRequest.ObjectMeta.Labels) == 0 {
+				roleBindingRequest.ObjectMeta.Labels = make(map[string]string)
+			}
+			roleBindingRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeAppManagement
+		}
+
 		desiredRB := permissions.RequestRoleBinding(roleBindingRequest)
 
 		// rolebinding doesn't exist in the namespace, create it
 		existingRB, err := permissions.GetRoleBinding(desiredRB.Name, desiredRB.Namespace, sr.Client)
 		if err != nil {
 			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to retrieve roleBinding", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
+				sr.Logger.Error(err, "reconcileSourceRoleBindings: failed to retrieve roleBinding", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
 				reconciliationErrors = append(reconciliationErrors, err)
 				continue
 			}
 
 			if err = permissions.CreateRoleBinding(desiredRB, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to create roleBinding", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
+				sr.Logger.Error(err, "reconcileSourceRoleBindings: failed to create roleBinding", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
 				reconciliationErrors = append(reconciliationErrors, err)
 				continue
 			}
-			sr.Logger.V(0).Info("reconcileSourceRoleBinding: roleBinding created", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
+			sr.Logger.V(0).Info("reconcileSourceRoleBindings: roleBinding created", "name", desiredRB.Name, "namespace", desiredRB.Namespace)
 			continue
 		}
 
@@ -271,11 +285,11 @@ func (sr *ServerReconciler) reconcileSourceRoleBindings(serverSA, appControllerS
 
 		if rbChanged {
 			if err = permissions.UpdateRoleBinding(existingRB, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileSourceRoleBinding: failed to update roleBinding", "name", existingRB.Name, "namespace", existingRB.Namespace)
+				sr.Logger.Error(err, "reconcileSourceRoleBindings: failed to update roleBinding", "name", existingRB.Name, "namespace", existingRB.Namespace)
 				reconciliationErrors = append(reconciliationErrors, err)
 				continue
 			}
-			sr.Logger.V(0).Info("reconcileSourceRoleBinding: roleBinding updated", "name", existingRB.Name, "namespace", existingRB.Namespace)
+			sr.Logger.V(0).Info("reconcileSourceRoleBindings: roleBinding updated", "name", existingRB.Name, "namespace", existingRB.Namespace)
 		}
 
 		// rolebinding found, no changes detected

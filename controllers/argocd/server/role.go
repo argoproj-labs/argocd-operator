@@ -43,12 +43,17 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 		roleName := getRoleName(sr.Instance.Name)
 		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
 
-		_, err := cluster.GetNamespace(nsName, sr.Client)
+		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve namespace", "name", nsName)
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
+			continue
+		}
+
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.V(1).Info("reconcileManagedRoles: skipping namespace in terminating state", "name", ns.Name)
 			continue
 		}
 
@@ -63,12 +68,16 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 			Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		}
 
-		roleRequest.ObjectMeta.Namespace = nsName
+		roleRequest.Rules = getPolicyRulesForArgoCDNamespace()
 
-		if nsName == sr.Instance.Namespace {
-			roleRequest.Rules = getPolicyRulesForArgoCDNamespace()
-		} else {
+		// managing non control-plane/ArgoCD namespace, use stricter rules & special resource management label
+		if nsName != sr.Instance.Namespace {
 			roleRequest.Rules = getPolicyRulesForManagedNamespace()
+			
+			if len(roleRequest.ObjectMeta.Labels) == 0 {
+				roleRequest.ObjectMeta.Labels = make(map[string]string)
+			}
+			roleRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeResourceMananagement
 		}
 
 		desiredRole, err := permissions.RequestRole(roleRequest)
@@ -123,7 +132,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 				reconciliationErrors = append(reconciliationErrors, err)
 				continue
 			}
-			
+
 			sr.Logger.V(0).Info("reconcileManagedRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 		}
 
@@ -135,7 +144,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 	return amerr.NewAggregate(reconciliationErrors)
 }
 
-// reconcileSourceRoles manages roles for app in namespaces feature
+// reconcileSourceRoles manages roles for app in any namespaces feature
 func (sr *ServerReconciler) reconcileSourceRoles() error {
 	var reconciliationErrors []error
 
@@ -153,14 +162,8 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 			continue
 		}
 
-		// do not reconcile roles for namespaces already containing managed-by label
-		// as it already contain roles with permissions to manipulate application resources
-		// reconciled during reconcilation of ManagedNamespaces
-		if _, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
-			err := sr.deleteRole(roleName, nsName)
-			if err != nil {
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.V(1).Info("reconcileSourceRoles: skipping namespace in terminating state", "name", ns.Name)
 			continue
 		}
 
@@ -176,6 +179,14 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 		}
 
 		roleRequest.Rules = getPolicyRulesForSourceNamespace()
+
+		// for non control-plane namespace, add special app management label to role
+		if nsName != sr.Instance.Namespace {
+			if len(roleRequest.ObjectMeta.Labels) == 0 {
+				roleRequest.ObjectMeta.Labels = make(map[string]string)
+			}
+			roleRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeAppManagement
+		}
 
 		desiredRole, err := permissions.RequestRole(roleRequest)
 		if err != nil {
@@ -289,23 +300,6 @@ func getPolicyRulesForManagedNamespace() []rbacv1.PolicyRule {
 				"update",
 				"patch",
 				"delete",
-			},
-		}, {
-			APIGroups: []string{
-				"argoproj.io",
-			},
-			Resources: []string{
-				"applications",
-				"appprojects",
-			},
-			Verbs: []string{
-				"create",
-				"get",
-				"list",
-				"watch",
-				"update",
-				"delete",
-				"patch",
 			},
 		},
 		{

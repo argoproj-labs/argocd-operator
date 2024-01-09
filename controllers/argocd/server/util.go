@@ -13,10 +13,12 @@ func getCustomRoleName() string {
 	return os.Getenv(ArgoCDServerClusterRoleEnvVar)
 }
 
+// Return role name as "argocdName_targetNamespace"
 func getRoleNameForSourceNamespace(argocdName, targetNamespace string) string {
 	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
 }
 
+// Return rolebinding name as "argocdName_targetNamespace"
 func getRoleBindingNameForSourceNamespace(argocdName, targetNamespace string) string {
 	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
 }
@@ -25,10 +27,12 @@ func getServiceAccountName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
+// Return role name as "argoCDName-argocd-server"
 func getRoleName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
+// Return rolebinding name as "argoCDName-argocd-server"
 func getRoleBindingName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
