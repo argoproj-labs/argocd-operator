@@ -30,7 +30,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoExportCommand will return the command for the ArgoCD export process.
@@ -293,7 +293,7 @@ func (r *ArgoCDExportReconciler) argocdName(namespace string) (string, error) {
 		return "", err
 	}
 	if len(argocds.Items) != 1 {
-		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
+		return "", fmt.Errorf("no Argo CD instance found in namespace %s", namespace)
 	}
 	argocd := argocds.Items[0]
 	return argocd.Name, nil

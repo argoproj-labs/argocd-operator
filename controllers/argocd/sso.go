@@ -18,8 +18,9 @@ import (
 	"errors"
 	"fmt"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 const (

@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 )
 
 func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
