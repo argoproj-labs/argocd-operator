@@ -1,13 +1,14 @@
 package notifications
 
 import (
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 type NotificationsReconciler struct {
@@ -26,7 +27,7 @@ func (nr *NotificationsReconciler) Reconcile() error {
 
 	nr.Logger = ctrl.Log.WithName(common.NotificationsControllerComponent).WithValues("instance", nr.Instance.Name, "instance-namespace", nr.Instance.Namespace)
 
-	resourceName = util.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, common.NotificationsControllerComponent)
+	resourceName = argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, common.NotificationsControllerComponent)
 	resourceLabels = common.DefaultResourceLabels(resourceName, nr.Instance.Name, common.NotificationsControllerComponent)
 
 	if err := nr.reconcileServiceAccount(); err != nil {

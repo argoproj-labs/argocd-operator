@@ -29,7 +29,8 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoExportCommand will return the command for the ArgoCD export process.
@@ -227,7 +228,7 @@ func (r *ArgoCDExportReconciler) reconcileCronJob(cr *argoprojv1alpha1.ArgoCDExp
 	}
 
 	cj := newCronJob(cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
 			return r.Client.Update(context.TODO(), cj)
@@ -262,7 +263,7 @@ func (r *ArgoCDExportReconciler) reconcileJob(cr *argoprojv1alpha1.ArgoCDExport)
 	}
 
 	job := newJob(cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted
@@ -292,7 +293,7 @@ func (r *ArgoCDExportReconciler) argocdName(namespace string) (string, error) {
 		return "", err
 	}
 	if len(argocds.Items) != 1 {
-		return "", fmt.Errorf("No Argo CD instance found in namespace %s", namespace)
+		return "", fmt.Errorf("no Argo CD instance found in namespace %s", namespace)
 	}
 	argocd := argocds.Items[0]
 	return argocd.Name, nil

@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var (

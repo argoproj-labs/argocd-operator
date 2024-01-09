@@ -23,7 +23,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // generateBackupKey will generate and return the backup key for the export process.
@@ -61,7 +61,7 @@ func (r *ArgoCDExportReconciler) reconcileExport(cr *argoprojv1alpha1.ArgoCDExpo
 
 // FetchStorageSecretName will return the name of the Secret to use for the export process.
 func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
-	name := util.NameWithSuffix(export.ObjectMeta.Name, "export")
+	name := argoutil.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}
@@ -74,8 +74,8 @@ func (r *ArgoCDExportReconciler) reconcileExportSecret(cr *argoprojv1alpha1.Argo
 	// Dummy CR to retrieve secret
 	a := &argoproj.ArgoCD{}
 	a.ObjectMeta = cr.ObjectMeta
-	secret := util.NewSecretWithName(a, name)
-	if util.IsObjectFound(r.Client, cr.Namespace, name, secret) {
+	secret := argoutil.NewSecretWithName(a, name)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, name, secret) {
 		backupKey := secret.Data[common.ArgoCDKeyBackupKey]
 		if len(backupKey) <= 0 {
 			backupKey, err := generateBackupKey()
