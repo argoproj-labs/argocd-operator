@@ -14,7 +14,7 @@ func (sr *ServerReconciler) reconcileServiceAccount() error {
 	sr.Logger.V(0).Info("reconciling serviceAccount")
 
 	saName := getServiceAccountName(sr.Instance.Name)
-	saLabels := common.DefaultLabels(saName, sr.Instance.Name, ServerControllerComponent)
+	saLabels := common.DefaultResourceLabels(saName, sr.Instance.Name, ServerControllerComponent)
 
 	saRequest := permissions.ServiceAccountRequest{
 		ObjectMeta: metav1.ObjectMeta{
@@ -43,7 +43,7 @@ func (sr *ServerReconciler) reconcileServiceAccount() error {
 			sr.Logger.Error(err, "reconcileServiceAccount: failed to create serviceAccount", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
 			return err
 		}
-		
+
 		sr.Logger.V(0).Info("reconcileServiceAccount: serviceAccount created", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
 		return nil
 	}

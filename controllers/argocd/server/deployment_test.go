@@ -17,10 +17,10 @@ func TestServerReconciler_createUpdateAndDeleteDeployment(t *testing.T) {
 
 	expectedName := "argocd-server"
 	expectedLabels := map[string]string{
-		"app.kubernetes.io/name":      expectedName,
-		"app.kubernetes.io/instance":  argocdcommon.TestArgoCDName,
-		"app.kubernetes.io/component": "server",
-		"app.kubernetes.io/part-of":   "argocd",
+		"app.kubernetes.io/name":       expectedName,
+		"app.kubernetes.io/instance":   argocdcommon.TestArgoCDName,
+		"app.kubernetes.io/component":  "server",
+		"app.kubernetes.io/part-of":    "argocd",
 		"app.kubernetes.io/managed-by": "argocd-operator",
 	}
 

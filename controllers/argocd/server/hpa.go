@@ -25,19 +25,19 @@ func (sr *ServerReconciler) reconcileHorizontalPodAutoscaler() error {
 
 	hpaName := getHPAName(sr.Instance.Name)
 	hpaNS := sr.Instance.Namespace
-	hpaLabels := common.DefaultLabels(hpaName, hpaNS, ServerControllerComponent)
+	hpaLabels := common.DefaultResourceLabels(hpaName, hpaNS, ServerControllerComponent)
 
 	deploymentName := getDeploymentName(sr.Instance.Name)
 
-	// AutoScale not enabled, cleanup any existing hpa & exit 
+	// AutoScale not enabled, cleanup any existing hpa & exit
 	if !sr.Instance.Spec.Server.Autoscale.Enabled {
 		return sr.deleteHorizontalPodAutoscaler(hpaName, hpaNS)
 	}
 
 	hpaReq := workloads.HorizontalPodAutoscalerRequest{
-		ObjectMeta:  metav1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        hpaName,
-			Namespace: 	 hpaNS,
+			Namespace:   hpaNS,
 			Labels:      hpaLabels,
 			Annotations: sr.Instance.Annotations,
 		},
@@ -51,14 +51,14 @@ func (sr *ServerReconciler) reconcileHorizontalPodAutoscaler() error {
 				Name:       deploymentName,
 			},
 		},
-		Client: sr.Client,
+		Client:    sr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
 	// HPA spec provided in ArgoCD CR, override default spec
 	if sr.Instance.Spec.Server.Autoscale.HPA != nil {
 		hpaReq.Spec = *sr.Instance.Spec.Server.Autoscale.HPA
-	} 
+	}
 
 	desiredHPA, err := workloads.RequestHorizontalPodAutoscaler(hpaReq)
 	if err != nil {
@@ -102,7 +102,7 @@ func (sr *ServerReconciler) reconcileHorizontalPodAutoscaler() error {
 
 		sr.Logger.V(0).Info("reconcileHorizontalPodAutoscaler: hpa updated", "name", existingHPA.Name, "namespace", existingHPA.Namespace)
 	}
-	
+
 	// hpa found, no changes detected
 	return nil
 

@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func  TestEnsureAutoTLSAnnotation(t *testing.T) { 
+func TestEnsureAutoTLSAnnotation(t *testing.T) {
 
 	secretName := "some-secret"
 
 	tlsAnnotations := map[string]string{
-		common.ArgoCDArgoprojKeyName:      testInstance,
-		common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+		common.ArgoCDArgoprojKeyName:             testInstance,
+		common.ArgoCDArgoprojKeyNamespace:        testInstanceNamespace,
 		common.ServiceBetaOpenshiftKeyCertSecret: secretName,
 	}
 
@@ -30,7 +30,7 @@ func  TestEnsureAutoTLSAnnotation(t *testing.T) {
 		EnsureAutoTLSAnnotation(svc, secretName, true)
 		assert.Equal(t, tlsAnnotations, svc.ObjectMeta.Annotations)
 
-		// Annotation already set, no duplicate addition 
+		// Annotation already set, no duplicate addition
 		EnsureAutoTLSAnnotation(svc, secretName, true)
 		assert.Equal(t, tlsAnnotations, svc.ObjectMeta.Annotations)
 

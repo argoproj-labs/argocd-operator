@@ -107,7 +107,7 @@ func (sr *ServerReconciler) reconcileDeployment() error {
 		}
 		sr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	}
-	
+
 	// deployment found, no changes detected
 	return nil
 }
@@ -126,7 +126,7 @@ func (sr *ServerReconciler) deleteDeployment(name, namespace string) error {
 func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
 
 	deploymentName := getDeploymentName(sr.Instance.Name)
-	deploymentLabels := common.DefaultLabels(deploymentName, sr.Instance.Name, ServerControllerComponent)
+	deploymentLabels := common.DefaultResourceLabels(deploymentName, sr.Instance.Name, ServerControllerComponent)
 
 	// set deployment params
 	env := sr.Instance.Spec.Server.Env
@@ -304,7 +304,7 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 	cmd = append(cmd, "--repo-server")
 	cmd = append(cmd, reposerver.GetRepoServerAddress(sr.Instance.Name, sr.Instance.Namespace))
 
-	// redis flags 
+	// redis flags
 	cmd = append(cmd, "--redis")
 	cmd = append(cmd, redis.GetRedisServerAddress(sr.Instance))
 
@@ -341,5 +341,3 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 
 	return cmd
 }
-
-

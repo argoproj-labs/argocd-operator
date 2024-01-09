@@ -25,15 +25,6 @@ const (
 
 	// ArgoCDComponentStatus is the default group name of argocd-component-status-alert prometheusRule
 	ArgoCDComponentStatus = "ArgoCDComponentStatus"
-	
-	// ArgoCDRepoServerTLSSecretName is the name of the TLS secret for the repo-server
-	ArgoCDRepoServerTLSSecretName = "argocd-repo-server-tls"
-
-	// ArgoCDRedisServerTLSSecretName is the name of the TLS secret for the redis-server
-	ArgoCDRedisServerTLSSecretName = "argocd-operator-redis-tls"
-
-	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
-	ArgoCDServerTLSSecretName = "argocd-server-tls"
 
 	// ArgoCDOperatorName is the name of the operator that manages Argo CD instances and workloads
 	ArgoCDOperatorName = "argocd-operator"

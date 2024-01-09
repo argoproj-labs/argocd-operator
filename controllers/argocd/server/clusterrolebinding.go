@@ -12,7 +12,7 @@ import (
 func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
 
 	crbName := getClusterRoleBindingName(sr.Instance.Name, sr.Instance.Namespace)
-	crbLables := common.DefaultLabels(crbName, sr.Instance.Name, ServerControllerComponent)
+	crbLables := common.DefaultResourceLabels(crbName, sr.Instance.Name, ServerControllerComponent)
 
 	// ArgoCD instance is not cluster scoped, cleanup any existing cluster rolebindings & exit
 	if !sr.ClusterScoped {
@@ -50,7 +50,6 @@ func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
 		Kind:     common.ClusterRoleKind,
 		Name:     getClusterRoleName(sr.Instance.Name, sr.Instance.Namespace),
 	}
-
 
 	desiredCRB := permissions.RequestClusterRoleBinding(crbRequest)
 
@@ -96,7 +95,7 @@ func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
 		}
 		sr.Logger.V(0).Info("reconcileClusterRoleBinding: cluster rolebinding updated", "name", existingCRB.Name, "namespace", existingCRB.Namespace)
 	}
-	
+
 	// cluster rolebinding found, no changes detected
 	return nil
 }

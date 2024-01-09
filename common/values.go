@@ -94,7 +94,6 @@ const (
 	ServiceAccountKind = "ServiceAccount"
 	ArgoCDKind         = "ArgoCD"
 	ClusterRoleKind    = "ClusterRole"
-	
 )
 
 // Commnds

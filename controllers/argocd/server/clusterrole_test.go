@@ -29,7 +29,7 @@ func TestServerReconciler_createAndDeleteClusterRole(t *testing.T) {
 	sr.ClusterScoped = true
 	err = sr.reconcileClusterRole()
 	assert.NoError(t, err)
-	
+
 	// cluster role should be created as ArgoCD is cluster scoped
 	cr = &rbacv1.ClusterRole{}
 	err = sr.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: "argocd-argocd-argocd-server"}, cr)

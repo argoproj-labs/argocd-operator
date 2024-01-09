@@ -20,11 +20,11 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 	nginx := "nginx"
 
 	// configure ingress resource in ArgoCD
-	sr.Instance.Spec.Server =  argoproj.ArgoCDServerSpec{
-			Ingress: argoproj.ArgoCDIngressSpec{
-				Enabled: true,
-				IngressClassName: &nginx,
-			},
+	sr.Instance.Spec.Server = argoproj.ArgoCDServerSpec{
+		Ingress: argoproj.ArgoCDIngressSpec{
+			Enabled:          true,
+			IngressClassName: &nginx,
+		},
 	}
 
 	err := sr.reconcileServerIngress()
@@ -32,13 +32,13 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
 	// modify ingress resource in ArgoCD
 	var nilClass *string = nil
-	ann := map[string]string {"example.com": "test"}
+	ann := map[string]string{"example.com": "test"}
 	sr.Instance.Spec.Server.Ingress.IngressClassName = nilClass
 	sr.Instance.Spec.Server.Ingress.Annotations = ann
 
@@ -47,7 +47,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -59,7 +59,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
@@ -71,23 +71,23 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 	nginx := "nginx"
 
 	// configure grpc ingress resource in ArgoCD
-	sr.Instance.Spec.Server.GRPC.Ingress =  argoproj.ArgoCDIngressSpec{
-												Enabled: true,
-												IngressClassName: &nginx,
-											}
+	sr.Instance.Spec.Server.GRPC.Ingress = argoproj.ArgoCDIngressSpec{
+		Enabled:          true,
+		IngressClassName: &nginx,
+	}
 
 	err := sr.reconcileServerGRPCIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
 	// modify grpc ingress resource in ArgoCD
 	var nilClass *string = nil
-	ann := map[string]string {"example.com": "test"}
+	ann := map[string]string{"example.com": "test"}
 	sr.Instance.Spec.Server.GRPC.Ingress.IngressClassName = nilClass
 	sr.Instance.Spec.Server.GRPC.Ingress.Annotations = ann
 
@@ -96,7 +96,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -108,7 +108,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd",}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }

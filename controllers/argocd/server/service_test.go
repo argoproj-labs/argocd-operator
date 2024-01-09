@@ -20,7 +20,7 @@ func TestServerReconciler_createAndUpdateService(t *testing.T) {
 
 	// service should be created with default service type
 	svc := &corev1.Service{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, svc)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, svc)
 	assert.NoError(t, err)
 	assert.Equal(t, corev1.ServiceTypeClusterIP, svc.Spec.Type)
 
@@ -28,10 +28,10 @@ func TestServerReconciler_createAndUpdateService(t *testing.T) {
 	sr.Instance.Spec.Server.Service.Type = corev1.ServiceTypeLoadBalancer
 	err = sr.reconcileService()
 	assert.NoError(t, err)
-	
+
 	// service type should be updated
 	svc = &corev1.Service{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, svc)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, svc)
 	assert.NoError(t, err)
 	assert.Equal(t, corev1.ServiceTypeLoadBalancer, svc.Spec.Type)
 }

@@ -19,11 +19,11 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 	sr := makeTestServerReconciler(t, ns)
 	routev1.Install(sr.Scheme)
 
-	ann := map[string]string {"example.com":"test"}
+	ann := map[string]string{"example.com": "test"}
 
 	// configure route resource in ArgoCD
-	sr.Instance.Spec.Server.Route =  argoproj.ArgoCDRouteSpec{
-		Enabled: true,
+	sr.Instance.Spec.Server.Route = argoproj.ArgoCDRouteSpec{
+		Enabled:     true,
 		Annotations: ann,
 	}
 
@@ -32,7 +32,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be created
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, ann, route.ObjectMeta.Annotations)
 
@@ -41,10 +41,10 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 	sr.Instance.Spec.Server.Route.WildcardPolicy = &policy
 	err = sr.reconcileRoute()
 	assert.NoError(t, err)
-	
+
 	// route resource should be updated
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, policy, route.Spec.WildcardPolicy)
 
@@ -55,7 +55,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be deleted
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
@@ -69,7 +69,7 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 		Termination:                   routev1.TLSTerminationPassthrough,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
-	secureRoutePort :=  &routev1.RoutePort{
+	secureRoutePort := &routev1.RoutePort{
 		TargetPort: intstr.FromString("https"),
 	}
 
@@ -77,12 +77,12 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 		Termination:                   routev1.TLSTerminationEdge,
 	}
-	insecureRoutePort :=  &routev1.RoutePort{
+	insecureRoutePort := &routev1.RoutePort{
 		TargetPort: intstr.FromString("http"),
 	}
 
 	// configure route resource with default configs in ArgoCD
-	sr.Instance.Spec.Server.Route =  argoproj.ArgoCDRouteSpec{
+	sr.Instance.Spec.Server.Route = argoproj.ArgoCDRouteSpec{
 		Enabled: true,
 	}
 
@@ -91,24 +91,21 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 
 	// route resource should be created with default tls config
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, secureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, secureRoutePort, route.Spec.Port)
-
 
 	// disable tls using insecure flag
 	sr.Instance.Spec.Server.Insecure = true
 	err = sr.reconcileRoute()
 	assert.NoError(t, err)
-	
+
 	// route resource should be updated to use insecure tls configs
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd",}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, insecureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, insecureRoutePort, route.Spec.Port)
 
 }
-
-

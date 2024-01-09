@@ -21,23 +21,23 @@ func getRoleBindingNameForSourceNamespace(argocdName, targetNamespace string) st
 	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
 }
 
-func getServiceAccountName(argoCDName string) string{
+func getServiceAccountName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
-func getRoleName(argoCDName string) string{
+func getRoleName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
-func getRoleBindingName(argoCDName string) string{
+func getRoleBindingName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
-func getClusterRoleName(argoCDName, namespace string) string{
+func getClusterRoleName(argoCDName, namespace string) string {
 	return util.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
 }
 
-func getClusterRoleBindingName(argoCDName, namespace string) string{
+func getClusterRoleBindingName(argoCDName, namespace string) string {
 	return util.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
 }
 
@@ -57,11 +57,11 @@ func getRouteName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, ServerSuffix)
 }
 
-func getIngressName(argoCDName string) string{
+func getIngressName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, "server")
 }
 
-func getGRPCIngressName(argoCDName string) string{
+func getGRPCIngressName(argoCDName string) string {
 	return util.NameWithSuffix(argoCDName, "grpc")
 }
 
@@ -91,5 +91,3 @@ func getGRPCHost(cr *argoproj.ArgoCD) string {
 	}
 	return host
 }
-
-

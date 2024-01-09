@@ -19,7 +19,7 @@ func (sr *ServerReconciler) reconcileService() error {
 	sr.Logger.Info("reconciling services")
 
 	svcName := getServiceName(sr.Instance.Name)
-	svcLabels := common.DefaultLabels(svcName, sr.Instance.Name, ServerControllerComponent)
+	svcLabels := common.DefaultResourceLabels(svcName, sr.Instance.Name, ServerControllerComponent)
 
 	// the server Service type for the ArgoCD
 	svcType := corev1.ServiceTypeClusterIP
@@ -56,7 +56,7 @@ func (sr *ServerReconciler) reconcileService() error {
 		Client:    sr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
-	
+
 	desiredSvc, err := networking.RequestService(svcRequest)
 	if err != nil {
 		sr.Logger.Error(err, "reconcileService: failed to request service", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)

@@ -16,9 +16,6 @@ func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
 	return util.FqdnServiceRef(util.NameWithSuffix(name, ArgoCDRedisControllerComponent), namespace, common.ArgoCDDefaultRedisPort)
 }
 
-
 func IsRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Redis.DisableTLSVerification
 }
-
-

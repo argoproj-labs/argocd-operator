@@ -31,7 +31,7 @@ func TestServerReconciler_createAndDeleteClusterRoleBinding(t *testing.T) {
 	sr.ClusterScoped = true
 	err = sr.reconcileClusterRoleBinding()
 	assert.NoError(t, err)
-	
+
 	// cluster rolebinding should be created as ArgoCD is cluster scoped
 	cr = &rbacv1.ClusterRoleBinding{}
 	err = sr.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: "argocd-argocd-argocd-server"}, cr)

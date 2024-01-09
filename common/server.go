@@ -2,11 +2,17 @@ package common
 
 // names
 const (
-	// ArgoCDServerComponent is the name of the Dex server control plane component
+	// ArgoCDServerComponent is the name of the Argo CD server control plane component
 	ArgoCDServerComponent = "argocd-server"
 
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"
+)
+
+// values
+const (
+	// VolumeMountPathArgoCDServerTLS is the path to mount argocd-server tls certs
+	VolumeMountPathArgoCDServerTLS = "/app/config/server/tls"
 )
 
 // defaults

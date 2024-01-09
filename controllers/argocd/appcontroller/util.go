@@ -4,6 +4,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
-func GetAppControllerName(argoCDName string) string{
+func GetAppControllerName(argoCDName string) string {
 	return util.GenerateResourceName(argoCDName, AppControllerComponent)
 }

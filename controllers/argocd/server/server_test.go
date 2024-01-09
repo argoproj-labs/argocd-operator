@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func makeTestServerReconciler(t *testing.T, objs ...runtime.Object) *ServerReconciler{
+func makeTestServerReconciler(t *testing.T, objs ...runtime.Object) *ServerReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoproj.AddToScheme(s))
 

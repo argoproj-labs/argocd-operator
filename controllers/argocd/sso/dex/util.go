@@ -11,4 +11,3 @@ import (
 func GetDexServerAddress(name string, namespace string) string {
 	return fmt.Sprintf("https://%s", util.FqdnServiceRef(util.NameWithSuffix(name, ArgoCDDexControllerComponent), namespace, common.ArgoCDDefaultDexHTTPPort))
 }
-

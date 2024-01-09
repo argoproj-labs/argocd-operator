@@ -13,14 +13,14 @@ import (
 )
 
 // reconcileRoute will ensure that ArgoCD .Spec.Server.Route resource is present.
-func (sr * ServerReconciler) reconcileRoute() error {
+func (sr *ServerReconciler) reconcileRoute() error {
 
 	sr.Logger.Info("reconciling route")
 
 	routeName := getRouteName(sr.Instance.Name)
-	routeLabels := common.DefaultLabels(routeName, sr.Instance.Name, ServerControllerComponent)
+	routeLabels := common.DefaultResourceLabels(routeName, sr.Instance.Name, ServerControllerComponent)
 
-	// route disabled, cleanup and exit 
+	// route disabled, cleanup and exit
 	if !sr.Instance.Spec.Server.Route.Enabled {
 		return sr.deleteRoute(routeName, sr.Instance.Namespace)
 	}
@@ -30,7 +30,7 @@ func (sr * ServerReconciler) reconcileRoute() error {
 			Name:        routeName,
 			Labels:      routeLabels,
 			Annotations: sr.Instance.Annotations,
-			Namespace: sr.Instance.Namespace,
+			Namespace:   sr.Instance.Namespace,
 		},
 		Client:    sr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
@@ -111,7 +111,7 @@ func (sr * ServerReconciler) reconcileRoute() error {
 			sr.Logger.Error(err, "reconcileRoute: failed to create route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 			return err
 		}
-		
+
 		sr.Logger.V(0).Info("reconcileRoute: route created", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 		return nil
 	}

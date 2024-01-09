@@ -14,7 +14,7 @@ import (
 func (sr *ServerReconciler) reconcileClusterRole() error {
 
 	crName := getClusterRoleName(sr.Instance.Name, sr.Instance.Namespace)
-	crLables := common.DefaultLabels(crName, sr.Instance.Name, ServerControllerComponent)
+	crLables := common.DefaultResourceLabels(crName, sr.Instance.Name, ServerControllerComponent)
 
 	// ArgoCD instance is not cluster scoped, cleanup any existing cluster role & exit
 	if !sr.ClusterScoped {
@@ -29,7 +29,7 @@ func (sr *ServerReconciler) reconcileClusterRole() error {
 			Labels:      crLables,
 			Annotations: sr.Instance.Annotations,
 		},
-		Rules: 	   getPolicyRuleForClusterRule(),
+		Rules:     getPolicyRuleForClusterRule(),
 		Client:    sr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
@@ -66,7 +66,7 @@ func (sr *ServerReconciler) reconcileClusterRole() error {
 		}
 		sr.Logger.V(0).Info("reconcileClusterRole: role updated", "name", existingCR.Name)
 	}
-	
+
 	// hpa found, no changes detected
 	return nil
 }

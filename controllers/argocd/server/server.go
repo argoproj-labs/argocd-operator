@@ -22,7 +22,6 @@ type ServerReconciler struct {
 	SourceNamespaces  map[string]string
 }
 
-
 func (sr *ServerReconciler) Reconcile() error {
 
 	sr.Logger = ctrl.Log.WithName(ServerControllerComponent).WithValues("instance", sr.Instance.Name, "instance-namespace", sr.Instance.Namespace)
@@ -81,7 +80,7 @@ func (sr *ServerReconciler) Reconcile() error {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 

@@ -41,17 +41,17 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 	for nsName := range sr.ManagedNamespaces {
 
 		roleName := getRoleName(sr.Instance.Name)
-		roleLabels := common.DefaultLabels(roleName, sr.Instance.Name, ServerControllerComponent)
+		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
 
 		_, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
-			if !errors.IsNotFound(err){
+			if !errors.IsNotFound(err) {
 				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve namespace", "name", nsName)
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
 			continue
 		}
-		
+
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        roleName,
@@ -116,7 +116,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 				}
 				sr.Logger.V(0).Info("reconcileManagedRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 			}
-			
+
 			// role found, no changes detected
 			continue
 		} else {
@@ -140,11 +140,11 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 	for nsName := range sr.SourceNamespaces {
 
 		roleName := getRoleNameForSourceNamespace(sr.Instance.Name, nsName)
-		roleLabels := common.DefaultLabels(roleName, sr.Instance.Name, ServerControllerComponent)
-		
+		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
+
 		ns, err := cluster.GetNamespace(nsName, sr.Client)
 		if err != nil {
-			if !errors.IsNotFound(err){
+			if !errors.IsNotFound(err) {
 				sr.Logger.Error(err, "reconcileSourceRoles: failed to retrieve namespace", "name", nsName)
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
@@ -164,10 +164,10 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: 		 roleName,
+				Name:        roleName,
 				Labels:      roleLabels,
 				Annotations: sr.Instance.Annotations,
-				Namespace: nsName,
+				Namespace:   nsName,
 			},
 			Client:    sr.Client,
 			Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
@@ -211,7 +211,7 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 			}
 			sr.Logger.V(0).Info("reconcileSourceRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 		}
-		
+
 		// role found, no changes detected
 		continue
 	}
@@ -230,7 +230,7 @@ func (sr *ServerReconciler) deleteRoles(argoCDName, namespace string) error {
 			reconciliationErrors = append(reconciliationErrors, err)
 		}
 	}
-	
+
 	// delete source ns roles
 	for nsName := range sr.SourceNamespaces {
 		err := sr.deleteRole(getRoleNameForSourceNamespace(argoCDName, nsName), nsName)
