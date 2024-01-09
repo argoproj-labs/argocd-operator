@@ -71,7 +71,7 @@ The operator will create these ConfigMaps for the cluster and set the initial va
 ### Secrets
 
 There is a Secret that is used by Argo CD named `argocd-secret`. The `argocd-server` component reads this secret to
-obtain the admin password for authentication.
+obtain the admin password for authentication. NOTE: Upon initial deployment, the initial password for the `admin` user is stored in the `argocd-cluster` secret instead.
 
 This Secret is managed by the operator and should not be changed directly.
 
