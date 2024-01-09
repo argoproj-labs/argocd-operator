@@ -309,10 +309,11 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
 // getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
 func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 	op := common.ArgoCDDefaultServerOperationProcessors
-	if cr.Spec.Controller.Processors.Operation > op {
-		op = cr.Spec.Controller.Processors.Operation
+	if cr.Spec.Controller.Processors.Operation > 0 {
+		return cr.Spec.Controller.Processors.Operation
+	} else {
+		return op
 	}
-	return op
 }
 
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
