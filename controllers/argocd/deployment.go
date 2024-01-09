@@ -30,7 +30,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -72,14 +72,14 @@ func (r *ArgoCDReconciler) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if util.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
+	if argoutil.IsObjectFound(r.Client, namespace, cr.Spec.Import.Name, export) {
 		return export
 	}
 	return nil
 }
 
 func getArgoExportSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
-	name := util.NameWithSuffix(export.ObjectMeta.Name, "export")
+	name := argoutil.NameWithSuffix(export.ObjectMeta.Name, "export")
 	if export.Spec.Storage != nil && len(export.Spec.Storage.SecretName) > 0 {
 		name = export.Spec.Storage.SecretName
 	}
@@ -94,7 +94,7 @@ func getArgoImportBackend(client client.Client, cr *argoproj.ArgoCD) string {
 	}
 
 	export := &argoprojv1alpha1.ArgoCDExport{}
-	if util.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
+	if argoutil.IsObjectFound(client, namespace, cr.Spec.Import.Name, export) {
 		if export.Spec.Storage != nil && len(export.Spec.Storage.Backend) > 0 {
 			backend = export.Spec.Storage.Backend
 		}
@@ -157,7 +157,7 @@ func getArgoImportContainerImage(cr *argoprojv1alpha1.ArgoCDExport) string {
 		tag = cr.Spec.Version
 	}
 
-	return util.CombineImageTag(img, tag)
+	return argoutil.CombineImageTag(img, tag)
 }
 
 // getArgoImportVolumeMounts will return the VolumneMounts for the given ArgoCDExport.
@@ -249,10 +249,10 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, util.GetLogLevel(cr.Spec.Repo.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Repo.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, util.GetLogFormat(cr.Spec.Repo.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Repo.LogFormat))
 
 	// *** NOTE ***
 	// Do Not add any new default command line arguments below this.
@@ -311,10 +311,10 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, util.GetLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Server.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, util.GetLogFormat(cr.Spec.Server.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Server.LogFormat))
 
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
 	err := isMergable(extraArgs, cmd)
@@ -347,12 +347,12 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
-	return fmt.Sprintf("https://%s", util.FqdnServiceRef(cr.Name, "dex-server", common.ArgoCDDefaultDexHTTPPort))
+	return fmt.Sprintf("https://%s", argoutil.FqdnServiceRef(cr.Name, "dex-server", common.ArgoCDDefaultDexHTTPPort))
 }
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoproj.ArgoCD) string {
-	return util.FqdnServiceRef(util.NameWithSuffix(cr.Name, "repo-server"), cr.Namespace, common.ArgoCDDefaultRepoServerPort)
+	return argoutil.FqdnServiceRef(argoutil.NameWithSuffix(cr.Name, "repo-server"), cr.Namespace, common.ArgoCDDefaultRepoServerPort)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.
@@ -395,7 +395,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		deploy.Spec.Template.Spec.NodeSelector = util.AppendStringMap(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		deploy.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 	return deploy
@@ -491,7 +491,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: util.NameWithSuffix(cr.Name, "grafana-config"),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "grafana.ini",
@@ -504,7 +504,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: util.NameWithSuffix(cr.Name, "grafana-config"),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "datasource.yaml",
@@ -517,7 +517,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: util.NameWithSuffix(cr.Name, "grafana-config"),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-config"),
 					},
 					Items: []corev1.KeyToPath{{
 						Key:  "provider.yaml",
@@ -530,7 +530,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: util.NameWithSuffix(cr.Name, "grafana-dashboards"),
+						Name: argoutil.NameWithSuffix(cr.Name, "grafana-dashboards"),
 					},
 				},
 			},
@@ -538,7 +538,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error
 	}
 
 	existing := newDeploymentWithSuffix("grafana", "grafana", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Grafana.Enabled {
 			// Deployment exists but enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)
@@ -627,7 +627,7 @@ func (r *ArgoCDReconciler) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS 
 	}
 
 	existing := newDeploymentWithSuffix("redis", "redis", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
 			return r.Client.Delete(context.TODO(), deploy)
@@ -684,7 +684,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) 
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
-								common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
+								common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
 							},
 						},
 						TopologyKey: common.FailureDomainBetaK8sKeyZone,
@@ -696,7 +696,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) 
 				{
 					LabelSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
+							common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"),
 						},
 					},
 					TopologyKey: common.K8sKeyHostname,
@@ -837,7 +837,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) 
 	}
 
 	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
 			return r.Client.Delete(context.TODO(), existing)
@@ -896,9 +896,9 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFo
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
 	// Environment specified in the CR take precedence over everything else
-	repoEnv = util.EnvMerge(repoEnv, util.ProxyEnvVars(), false)
+	repoEnv = argoutil.EnvMerge(repoEnv, util.ProxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = util.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
+		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
 	}
 
 	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
@@ -1106,7 +1106,7 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFo
 	}
 
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		changed := false
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
@@ -1185,7 +1185,7 @@ func (r *ArgoCDReconciler) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFo
 func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
-	serverEnv = util.EnvMerge(serverEnv, util.ProxyEnvVars(), false)
+	serverEnv = argoutil.EnvMerge(serverEnv, util.ProxyEnvVars(), false)
 	openshift.AddSeccompProfileForOpenShift(cr, &deploy.Spec.Template.Spec, r.Client)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
@@ -1295,7 +1295,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLS
 	}
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
@@ -1349,7 +1349,7 @@ func (r *ArgoCDReconciler) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLS
 
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ArgoCDReconciler) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
-	if !util.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
+	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
 		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
 		return nil
 	}

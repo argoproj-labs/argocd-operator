@@ -3,9 +3,10 @@ package monitoring
 import (
 	"errors"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // common test variables used across workloads tests

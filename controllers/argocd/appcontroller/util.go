@@ -2,12 +2,13 @@ package appcontroller
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 func (acr *AppControllerReconciler) TriggerAppControllerStatefulSetRollout() error {
-	name := util.NameWithSuffix(acr.Instance.Name, common.ApplicationControllerComponent)
+	name := argoutil.NameWithSuffix(acr.Instance.Name, common.ApplicationControllerComponent)
 	return workloads.TriggerStatefulSetRollout(acr.Client, name, acr.Instance.Namespace, func(name string, namespace string) {
 		statefulSet, err := workloads.GetStatefulSet(name, namespace, acr.Client)
 		if err != nil {

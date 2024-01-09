@@ -19,6 +19,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
@@ -43,7 +44,7 @@ func UseDex(cr *argoproj.ArgoCD) bool {
 // getDexOAuthClientSecret will return the OAuth client secret for the given ArgoCD.
 func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string, error) {
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return nil, err
 	}
 
@@ -88,8 +89,8 @@ func (r *ArgoCDReconciler) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string
 	}
 
 	// Fetch the secret to obtain the token
-	secret := util.NewSecretWithName(cr, tokenSecret.Name)
-	if err := util.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
+	secret := argoutil.NewSecretWithName(cr, tokenSecret.Name)
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, secret.Name, secret); err != nil {
 		return nil, err
 	}
 
@@ -121,7 +122,7 @@ func (r *ArgoCDReconciler) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *a
 
 		// Trigger rollout of Dex Deployment to pick up changes.
 		deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-		if !util.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+		if !argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
 			log.Info("unable to locate dex deployment")
 			return nil
 		}
@@ -176,7 +177,7 @@ func (r *ArgoCDReconciler) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error
 
 	log.Info("oauth enabled, configuring dex service account")
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, cr)
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		return err
 	}
 
@@ -290,7 +291,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	}}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -354,7 +355,7 @@ func (r *ArgoCDReconciler) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 // reconcileDexService will ensure that the Service for Dex is present.
 func (r *ArgoCDReconciler) reconcileDexService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("dex-server", "dex-server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
@@ -370,7 +371,7 @@ func (r *ArgoCDReconciler) reconcileDexService(cr *argoproj.ArgoCD) error {
 	}
 
 	svc.Spec.Selector = map[string]string{
-		common.AppK8sKeyName: util.NameWithSuffix(cr.Name, "dex-server"),
+		common.AppK8sKeyName: argoutil.NameWithSuffix(cr.Name, "dex-server"),
 	}
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -446,12 +447,12 @@ func (r *ArgoCDReconciler) deleteDexResources(cr *argoproj.ArgoCD) error {
 	sa := &corev1.ServiceAccount{}
 	role := &rbacv1.Role{}
 
-	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
 	}
-	if err := util.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), role); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDexServerComponent), role); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -470,7 +471,7 @@ func (r *ArgoCDReconciler) deleteDexResources(cr *argoproj.ArgoCD) error {
 	// since reconcileArgoConfigMap won't call reconcileDexConfiguration once dex has been disabled (to avoid reconciling on
 	// dexconfig unnecessarily when it isn't enabled)
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if err := r.reconcileDexConfiguration(cm, cr); err != nil {
 			log.Error(err, "error reconciling dex configuration in configmap")
 		}

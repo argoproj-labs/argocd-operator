@@ -6,7 +6,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,7 +43,7 @@ func TestRepoServerReconciler_reconcileServiceMonitor(t *testing.T) {
 				}
 			}
 			currentService := &monitoringv1.ServiceMonitor{}
-			err = rsr.Client.Get(context.TODO(), types.NamespacedName{Name: util.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetrics), Namespace: argocdcommon.TestNamespace}, currentService)
+			err = rsr.Client.Get(context.TODO(), types.NamespacedName{Name: argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetrics), Namespace: argocdcommon.TestNamespace}, currentService)
 			if err != nil {
 				t.Fatalf("Could not get current Service: %v", err)
 			}

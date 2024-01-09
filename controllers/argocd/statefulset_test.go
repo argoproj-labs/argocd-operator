@@ -12,6 +12,7 @@ import (
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/google/go-cmp/cmp"
@@ -536,13 +537,13 @@ func TestArgoCDReconciler_reconcileApplicationController_withDynamicSharding(t *
 			a.Spec.Controller.Sharding = st.sharding
 		})
 
-		clusterSecret1 := util.NewSecretWithSuffix(a, "cluster1")
+		clusterSecret1 := argoutil.NewSecretWithSuffix(a, "cluster1")
 		clusterSecret1.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
-		clusterSecret2 := util.NewSecretWithSuffix(a, "cluster2")
+		clusterSecret2 := argoutil.NewSecretWithSuffix(a, "cluster2")
 		clusterSecret2.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
-		clusterSecret3 := util.NewSecretWithSuffix(a, "cluster3")
+		clusterSecret3 := argoutil.NewSecretWithSuffix(a, "cluster3")
 		clusterSecret3.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 
 		r := makeTestReconciler(t, a)

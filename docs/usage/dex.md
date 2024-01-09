@@ -11,13 +11,13 @@ Dex can be used to delegate authentication to external identity providers like G
 
 ## Installing & Configuring Dex
 
-Dex configuration has moved to `.spec.sso` in release v0.4.0. Dex can be enabled by setting `.spec.sso.provider` to `dex` in the Argo CD CR. 
+Dex configuration has moved to `.spec.sso` in release v0.4.0. Dex can be enabled by setting `.spec.sso.provider` to `dex` in the Argo CD CR.
 
 !!! note
-    It is now mandatory to specify `.spec.sso.dex` either with OpenShift configuration through `openShiftOAuth: true` or valid custom configuration supplied through `.spec.sso.dex.config`. Absence of either will result in an error due to failing health checks on Dex. 
+    It is now mandatory to specify `.spec.sso.dex` either with OpenShift configuration through `openShiftOAuth: true` or valid custom configuration supplied through `.spec.sso.dex.config`. Absence of either will result in an error due to failing health checks on Dex.
 
 !!! note
-    Specifying `.spec.sso.dex` without setting dex as the provider will result in an error. 
+    Specifying `.spec.sso.dex` without setting dex as the provider will result in an error.
 
 !!! note
     `.spec.dex` is no longer supported in Argo CD operator v0.8.0 onwards, use `.spec.sso.dex` instead.
@@ -111,9 +111,47 @@ spec:
               - name: dummy-org
 ```
 
-## Uninstalling Dex 
+## Use ArgoCD's Dex for Argo Workflows authentication
+
+The below section describes how to configure Argo CD's Dex to accept authentication requests from Argo Workflows.
+
+1. Register the application in the identity provider as explained [here](https://argoproj.github.io/argo-cd/operator-manual/user-management/#1-register-the-application-in-the-identity-provider).
+
+2. Update the Argo CD CR.
+
+In the `sso.dex.env` key, add the environment variable as shown in the [example manifests for authenticating against Argo CD's Dex](https://argoproj.github.io/argo-workflows/argo-server-sso-argocd/#example-manifests-for-authenticating-against-argo-cds-dex-kustomize).
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  sso:
+    provider: dex
+    dex:
+      config: |
+        connectors:
+          # GitHub example
+          - type: github
+            id: github
+            name: GitHub
+            config:
+              clientID: xxxxxxxxxxxxxx
+              clientSecret: $dex.github.clientSecret # Alternatively $<some_K8S_secret>:dex.github.clientSecret
+              orgs:
+              - name: dummy-org
+      env:
+        - name: ARGO_WORKFLOWS_SSO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: argo-workflows-sso
+              key: client-secret
+```
+
+## Uninstalling Dex
 
 !!! note
     `DISABLE_DEX` environment variable is no longer supported in Argo CD operator v0.8.0 onwards.
 
-Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider. 
+Dex can be uninstalled either by removing `.spec.sso` from the Argo CD CR, or switching to a different SSO provider.

@@ -12,6 +12,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -456,7 +457,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	testClient := testclient.NewSimpleClientset()
 	testNameSpace := "testNameSpace"
 
-	secret := util.NewSecretWithSuffix(a, "xyz")
+	secret := argoutil.NewSecretWithSuffix(a, "xyz")
 	secret.Labels = map[string]string{common.ArgoCDArgoprojKeySecretType: "cluster"}
 	secret.Data = map[string][]byte{
 		"server":     []byte(common.ArgoCDDefaultServer),
@@ -580,7 +581,7 @@ func TestArgoCDReconciler_reconcileDexOAuthClientSecret(t *testing.T) {
 	_, err = r.getDexOAuthClientSecret(a)
 	assert.NoError(t, err)
 	sa := newServiceAccountWithName(common.ArgoCDDefaultDexServiceAccountName, a)
-	assert.NoError(t, util.FetchObject(r.Client, a.Namespace, sa.Name, sa))
+	assert.NoError(t, argoutil.FetchObject(r.Client, a.Namespace, sa.Name, sa))
 	tokenExists := false
 	for _, saSecret := range sa.Secrets {
 		if strings.Contains(saSecret.Name, "dex-server-token") {

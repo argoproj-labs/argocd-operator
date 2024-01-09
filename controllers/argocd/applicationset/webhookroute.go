@@ -3,10 +3,10 @@ package applicationset
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -110,7 +110,7 @@ func (asr *ApplicationSetReconciler) getWebhookRouteSpec() routev1.RouteSpec {
 		},
 		To: routev1.RouteTargetReference{
 			Kind: common.ServiceKind,
-			Name: util.NameWithSuffix(asr.Instance.Name, common.AppSetControllerComponent),
+			Name: argoutil.NameWithSuffix(asr.Instance.Name, common.AppSetControllerComponent),
 		},
 	}
 

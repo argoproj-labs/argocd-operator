@@ -7,6 +7,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -146,7 +147,7 @@ func (rsr *RepoServerReconciler) getDesiredDeployment() *appsv1.Deployment {
 	}
 
 	if rsr.Instance.Spec.NodePlacement != nil {
-		podSpec.NodeSelector = util.AppendStringMap(podSpec.NodeSelector, rsr.Instance.Spec.NodePlacement.NodeSelector)
+		podSpec.NodeSelector = argoutil.AppendStringMap(podSpec.NodeSelector, rsr.Instance.Spec.NodePlacement.NodeSelector)
 		podSpec.Tolerations = rsr.Instance.Spec.NodePlacement.Tolerations
 	}
 

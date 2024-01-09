@@ -6,6 +6,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -128,7 +129,7 @@ func (asr *ApplicationSetReconciler) getDesiredDeployment() *appsv1.Deployment {
 		if err != nil {
 			asr.Logger.Error(err, "failed to get SCM Root CA ConfigMap")
 		}
-		if util.IsObjectFound(asr.Client, asr.Instance.Namespace, asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
+		if argoutil.IsObjectFound(asr.Client, asr.Instance.Namespace, asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, cm) {
 			addSCMGitlabVolumeMount = true
 		}
 	}
@@ -186,11 +187,11 @@ func (asr *ApplicationSetReconciler) getApplicationSetCommand() []string {
 	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
 
 	cmd = append(cmd, common.LogLevel)
-	cmd = append(cmd, util.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := asr.Instance.Spec.ApplicationSet.ExtraCommandArgs
-	err := util.IsMergable(extraArgs, cmd)
+	err := argocdcommon.IsMergable(extraArgs, cmd)
 	if err != nil {
 		return cmd
 	}

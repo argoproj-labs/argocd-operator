@@ -3,7 +3,7 @@ package reposerver
 import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,7 +36,7 @@ var (
 
 func (rsr *RepoServerReconciler) Reconcile() error {
 	rsr.Logger = ctrl.Log.WithName(common.RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
-	resourceName = util.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent)
+	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent)
 	resourceLabels = common.DefaultResourceLabels(resourceName, rsr.Instance.Name, common.RepoServerControllerComponent)
 	useTLSForRedis = rsr.Instance.Spec.Repo.WantsAutoTLS()
 

@@ -8,6 +8,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
@@ -126,10 +127,10 @@ func GetRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return GetRedisHAProxyAddress(cr.Namespace)
 	}
-	return util.FqdnServiceRef(common.ArgoCDDefaultRedisSuffix, cr.Namespace, common.ArgoCDDefaultRedisPort)
+	return argoutil.FqdnServiceRef(common.ArgoCDDefaultRedisSuffix, cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
 // getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
 func GetRedisHAProxyAddress(namespace string) string {
-	return util.FqdnServiceRef(common.RedisHAProxyServiceName, namespace, common.ArgoCDDefaultRedisPort)
+	return argoutil.FqdnServiceRef(common.RedisHAProxyServiceName, namespace, common.ArgoCDDefaultRedisPort)
 }

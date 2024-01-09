@@ -29,6 +29,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -227,7 +228,7 @@ func (r *ArgoCDExportReconciler) reconcileCronJob(cr *argoprojv1alpha1.ArgoCDExp
 	}
 
 	cj := newCronJob(cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
 			return r.Client.Update(context.TODO(), cj)
@@ -262,7 +263,7 @@ func (r *ArgoCDExportReconciler) reconcileJob(cr *argoprojv1alpha1.ArgoCDExport)
 	}
 
 	job := newJob(cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, job.Name, job) {
 		if job.Status.Succeeded > 0 && cr.Status.Phase != common.ArgoCDStatusCompleted {
 			// Mark status Phase as Complete
 			cr.Status.Phase = common.ArgoCDStatusCompleted

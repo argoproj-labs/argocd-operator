@@ -27,6 +27,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -115,10 +116,10 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	}
 
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, util.GetLogLevel(cr.Spec.Controller.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(cr.Spec.Controller.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, util.GetLogFormat(cr.Spec.Controller.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(cr.Spec.Controller.LogFormat))
 
 	return cmd
 }
@@ -201,7 +202,7 @@ func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
 func getArgoServerGRPCHost(cr *argoproj.ArgoCD) string {
-	host := util.NameWithSuffix(cr.Name, "grpc")
+	host := argoutil.NameWithSuffix(cr.Name, "grpc")
 	if len(cr.Spec.Server.GRPC.Host) > 0 {
 		host = cr.Spec.Server.GRPC.Host
 	}
@@ -245,7 +246,7 @@ func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
 func (r *ArgoCDReconciler) getArgoServerURI(cr *argoproj.ArgoCD) string {
-	host := util.NameWithSuffix(cr.Name, "server") // Default to service name
+	host := argoutil.NameWithSuffix(cr.Name, "server") // Default to service name
 
 	// Use the external hostname provided by the user
 	if cr.Spec.Server.Host != "" {
@@ -255,7 +256,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	// Use Ingress host if enabled
 	if cr.Spec.Server.Ingress.Enabled {
 		ing := newIngressWithSuffix("server", cr)
-		if util.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
 			host = ing.Spec.Rules[0].Host
 		}
 	}
@@ -263,7 +264,7 @@ func (r *ArgoCDReconciler) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	// Use Route host if available, override Ingress if both exist
 	if networking.IsRouteAPIAvailable() {
 		route := newRouteWithSuffix("server", cr)
-		if util.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
 		}
 	}
@@ -394,7 +395,7 @@ func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
 
 // getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
 func getRedisHAProxyAddress(cr *argoproj.ArgoCD) string {
-	return util.FqdnServiceRef(util.NameWithSuffix(cr.Name, "redis-ha-haproxy"), cr.Namespace, common.ArgoCDDefaultRedisPort)
+	return argoutil.FqdnServiceRef(argoutil.NameWithSuffix(cr.Name, "redis-ha-haproxy"), cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
 // getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
@@ -424,7 +425,7 @@ func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
 func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
+		"ServiceName": argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
@@ -441,7 +442,7 @@ func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
+		"ServiceName": argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 		"UseTLS":      strconv.FormatBool(useTLSForRedis),
 	}
 
@@ -458,7 +459,7 @@ func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
 func getRedisHAProxyScript(cr *argoproj.ArgoCD) string {
 	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
 	vars := map[string]string{
-		"ServiceName": util.NameWithSuffix(cr.Name, "redis-ha"),
+		"ServiceName": argoutil.NameWithSuffix(cr.Name, "redis-ha"),
 	}
 
 	script, err := util.LoadTemplateFile(path, vars)
@@ -558,8 +559,8 @@ func getRedisServerAddress(cr *argoproj.ArgoCD) string {
 	if cr.Spec.HA.Enabled {
 		return getRedisHAProxyAddress(cr)
 	}
-	return util.FqdnServiceRef(
-		util.NameWithSuffix(cr.Name, common.ArgoCDDefaultRedisSuffix), cr.Namespace, common.ArgoCDDefaultRedisPort)
+	return argoutil.FqdnServiceRef(
+		argoutil.NameWithSuffix(cr.Name, common.ArgoCDDefaultRedisSuffix), cr.Namespace, common.ArgoCDDefaultRedisPort)
 }
 
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
@@ -763,7 +764,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoproj.ArgoCD) error {
 	}
 
 	clusterRoleList := &v1.ClusterRoleList{}
-	if err := util.FilterObjectsBySelector(r.Client, clusterRoleList, selector); err != nil {
+	if err := argoutil.FilterObjectsBySelector(r.Client, clusterRoleList, selector); err != nil {
 		return fmt.Errorf("failed to filter ClusterRoles for %s: %w", cr.Name, err)
 	}
 
@@ -772,7 +773,7 @@ func (r *ArgoCDReconciler) deleteClusterResources(cr *argoproj.ArgoCD) error {
 	}
 
 	clusterBindingsList := &v1.ClusterRoleBindingList{}
-	if err := util.FilterObjectsBySelector(r.Client, clusterBindingsList, selector); err != nil {
+	if err := argoutil.FilterObjectsBySelector(r.Client, clusterBindingsList, selector); err != nil {
 		return fmt.Errorf("failed to filter ClusterRoleBindings for %s: %w", cr.Name, err)
 	}
 

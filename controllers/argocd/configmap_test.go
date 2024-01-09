@@ -31,7 +31,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
@@ -333,7 +333,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_withDexConnector(t *testing.T) 
 				}
 			})
 
-			secret := util.NewSecretWithName(a, "token")
+			secret := argoutil.NewSecretWithName(a, "token")
 			r := makeTestReconciler(t, a, sa, secret)
 
 			if test.updateCrSpecFunc != nil {
@@ -467,7 +467,7 @@ func TestArgoCDReconciler_reconcileArgoConfigMap_dexConfigDeletedwhenDexDisabled
 					Name: "token",
 				}},
 			}
-			secret := util.NewSecretWithName(test.argoCD, "token")
+			secret := argoutil.NewSecretWithName(test.argoCD, "token")
 
 			r := makeTestReconciler(t, test.argoCD, sa, secret)
 

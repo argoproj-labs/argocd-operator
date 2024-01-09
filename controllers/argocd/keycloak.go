@@ -24,6 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -430,7 +431,7 @@ func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.Deployment
 	}
 
 	if cr.Spec.NodePlacement != nil {
-		dc.Spec.Template.Spec.NodeSelector = util.AppendStringMap(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		dc.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(dc.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
 		dc.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
 	}
 

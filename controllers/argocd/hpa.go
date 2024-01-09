@@ -24,7 +24,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var (
@@ -55,7 +54,7 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autos
 }
 
 func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
-	return newHorizontalPodAutoscalerWithName(util.NameWithSuffix(cr.Name, suffix), cr)
+	return newHorizontalPodAutoscalerWithName(argoutil.NameWithSuffix(cr.Name, suffix), cr)
 }
 
 // reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component, and reconcile any detected changes.
@@ -69,12 +68,12 @@ func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       util.NameWithSuffix(cr.Name, "server"),
+			Name:       argoutil.NameWithSuffix(cr.Name, "server"),
 		},
 	}
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
 		if !cr.Spec.Server.Autoscale.Enabled {
 			return r.Client.Delete(context.TODO(), existingHPA) // HorizontalPodAutoscaler found but globally disabled, delete it.
 		}

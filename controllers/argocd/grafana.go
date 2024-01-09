@@ -28,7 +28,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 // GrafanaConfig represents the Grafana configuration options.
@@ -62,7 +62,7 @@ func generateGrafanaSecretKey() ([]byte, error) {
 
 // getGrafanaHost will return the hostname value for Grafana.
 func getGrafanaHost(cr *argoproj.ArgoCD) string {
-	host := util.NameWithSuffix(cr.Name, "grafana")
+	host := argoutil.NameWithSuffix(cr.Name, "grafana")
 	if len(cr.Spec.Grafana.Host) > 0 {
 		host = cr.Spec.Grafana.Host
 	}

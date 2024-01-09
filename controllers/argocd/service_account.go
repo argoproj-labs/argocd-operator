@@ -27,7 +27,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newServiceAccount returns a new ServiceAccount instance.
@@ -102,7 +101,7 @@ func (r *ArgoCDReconciler) reconcileServiceAccount(name string, cr *argoproj.Arg
 	sa := newServiceAccountWithName(name, cr)
 
 	exists := true
-	if err := util.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !errors.IsNotFound(err) {
 			return nil, err
 		}
