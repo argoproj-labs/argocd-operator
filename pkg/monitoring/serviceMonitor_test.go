@@ -5,9 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +15,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	util "github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 type serviceMonitorOpt func(*monitoringv1.ServiceMonitor)
@@ -41,7 +43,7 @@ func getTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonit
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+					common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 				},
 			},
 			Endpoints: []monitoringv1.Endpoint{
@@ -90,7 +92,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -125,7 +127,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -162,7 +164,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{
@@ -199,7 +201,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							common.AppK8sKeyName: util.GenerateResourceName(testInstance, common.ArgoCDMetrics),
+							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
 						},
 					},
 					Endpoints: []monitoringv1.Endpoint{

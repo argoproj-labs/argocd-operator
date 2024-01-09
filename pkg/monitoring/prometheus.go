@@ -1,8 +1,9 @@
 package monitoring
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 var prometheusAPIFound = false
@@ -12,9 +13,14 @@ func IsPrometheusAPIAvailable() bool {
 	return prometheusAPIFound
 }
 
+// SetPrometheusAPIFound sets the value of prometheusAPIFound to provided input
+func SetPrometheusAPIFound(found bool) {
+	prometheusAPIFound = found
+}
+
 // VerifyPrometheusAPI will verify that the Prometheus API is present.
 func VerifyPrometheusAPI() error {
-	found, err := util.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
+	found, err := argoutil.VerifyAPI(monitoringv1.SchemeGroupVersion.Group, monitoringv1.SchemeGroupVersion.Version)
 	if err != nil {
 		return err
 	}

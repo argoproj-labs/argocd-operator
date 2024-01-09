@@ -50,6 +50,7 @@ metadata:
     cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
 ```
 
+
 Enable `../certmanager` directory under the `resources` section in `config/default/kustomization.yaml` file.
 ```yaml
 resources:

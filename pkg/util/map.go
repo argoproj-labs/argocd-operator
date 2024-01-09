@@ -1,5 +1,7 @@
 package util
 
+import "sort"
+
 // combines 2 maps and returns the result. In case of conflicts, values in 2nd input overwrite values in 1st input
 func MergeMaps(a, b map[string]string) map[string]string {
 	mergedMap := make(map[string]string, 0)
@@ -13,16 +15,12 @@ func MergeMaps(a, b map[string]string) map[string]string {
 	return mergedMap
 }
 
-// TO DO: AppendStringMap and MergeMaps do the same thing, get rid of AppendStringMap!
-
-// AppendStringMap will append the map `add` to the given map `src` and return the result.
-func AppendStringMap(src map[string]string, add map[string]string) map[string]string {
-	res := src
-	if len(src) <= 0 {
-		res = make(map[string]string, len(add))
+// StringMapKeys accepts a map with string keys as input and returns a sorted slice of its keys
+func StringMapKeys(m map[string]string) []string {
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
 	}
-	for key, val := range add {
-		res[key] = val
-	}
-	return res
+	sort.Strings(r)
+	return r
 }
