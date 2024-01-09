@@ -55,6 +55,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        roleName,
+				Namespace:	 nsName,
 				Labels:      roleLabels,
 				Annotations: sr.Instance.Annotations,
 			},
@@ -78,55 +79,56 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 			continue
 		}
 
-		// create default role only if custom role is not set
-		if getCustomRoleName() == "" {
-			// role doesn't exist in the namespace, create it
-			existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, sr.Client)
-			if err != nil {
-				if !errors.IsNotFound(err) {
-					sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-					reconciliationErrors = append(reconciliationErrors, err)
-					continue
-				}
-
-				// Only set ownerReferences for roles in same namespace as ArgoCD CR
-				if sr.Instance.Namespace == desiredRole.Namespace {
-					if err = controllerutil.SetControllerReference(sr.Instance, desiredRole, sr.Scheme); err != nil {
-						sr.Logger.Error(err, "reconcileManagedRoles: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-						reconciliationErrors = append(reconciliationErrors, err)
-					}
-				}
-
-				if err = permissions.CreateRole(desiredRole, sr.Client); err != nil {
-					sr.Logger.Error(err, "reconcileManagedRoles: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-					reconciliationErrors = append(reconciliationErrors, err)
-					continue
-				}
-				sr.Logger.V(0).Info("reconcileManagedRoles: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-				continue
-			}
-
-			// difference in existing & desired role, reset it
-			if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
-				existingRole.Rules = desiredRole.Rules
-				if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
-					sr.Logger.Error(err, "reconcileManagedRoles: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
-					reconciliationErrors = append(reconciliationErrors, err)
-					continue
-				}
-				sr.Logger.V(0).Info("reconcileManagedRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
-			}
-
-			// role found, no changes detected
-			continue
-		} else {
-			// custom role in use, cleanup default role
+		// custom role in use, cleanup default role & continue
+		if getCustomRoleName() != "" {
 			err := sr.deleteRole(desiredRole.Name, desiredRole.Namespace)
 			if err != nil {
 				reconciliationErrors = append(reconciliationErrors, err)
 			}
 			continue
 		}
+
+		// if custom role is not set & default role doesn't exist in the namespace, create it
+		existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, sr.Client)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+				reconciliationErrors = append(reconciliationErrors, err)
+				continue
+			}
+
+			// Only set ownerReferences for roles in same namespace as ArgoCD CR
+			if sr.Instance.Namespace == desiredRole.Namespace {
+				if err = controllerutil.SetControllerReference(sr.Instance, desiredRole, sr.Scheme); err != nil {
+					sr.Logger.Error(err, "reconcileManagedRoles: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+					reconciliationErrors = append(reconciliationErrors, err)
+				}
+			}
+
+			if err = permissions.CreateRole(desiredRole, sr.Client); err != nil {
+				sr.Logger.Error(err, "reconcileManagedRoles: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+				reconciliationErrors = append(reconciliationErrors, err)
+				continue
+			}
+
+			sr.Logger.V(0).Info("reconcileManagedRoles: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+			continue
+		}
+
+		// difference in existing & desired role, reset it
+		if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
+			existingRole.Rules = desiredRole.Rules
+			if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
+				sr.Logger.Error(err, "reconcileManagedRoles: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
+				reconciliationErrors = append(reconciliationErrors, err)
+				continue
+			}
+			
+			sr.Logger.V(0).Info("reconcileManagedRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+		}
+
+		// role found, no changes detected
+		continue
 
 	}
 
