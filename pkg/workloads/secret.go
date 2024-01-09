@@ -27,7 +27,6 @@ type SecretRequest struct {
 
 // newSecret returns a new Secret instance for the given ArgoCD.
 func newSecret(objMeta metav1.ObjectMeta, data map[string][]byte, stringData map[string]string, secretType corev1.SecretType) *corev1.Secret {
-
 	return &corev1.Secret{
 		ObjectMeta: objMeta,
 		Data:       data,

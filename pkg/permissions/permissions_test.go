@@ -3,9 +3,10 @@ package permissions
 import (
 	"errors"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 // common test variables used across permissions tests

@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/go-logr/logr"
 )
 
 // ServiceRequest objects contain all the required information to produce a service object in return

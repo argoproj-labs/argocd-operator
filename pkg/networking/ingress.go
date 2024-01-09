@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
 // IngressRequest objects contain all the required information to produce a ingress object in return

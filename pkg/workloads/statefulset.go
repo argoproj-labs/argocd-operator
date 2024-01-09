@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
 // StatefulRequest objects contain all the required information to produce a stateful object in return
