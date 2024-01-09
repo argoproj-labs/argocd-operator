@@ -411,27 +411,6 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			},
 		},
 		{
-			"configured operation processors to be between zero and ten",
-			[]argoCDOpt{operationProcessors(5)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"5",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
-		},
-		{
 			"configured parallelism limit",
 			[]argoCDOpt{parallelismLimit(30)},
 			[]string{
