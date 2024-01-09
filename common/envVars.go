@@ -18,18 +18,6 @@ const (
 	// to used for the Dex container.
 	ArgoCDRepoImageEnvVar = "ARGOCD_REPOSERVER_IMAGE"
 
-	// ArgoCDRedisHAProxyImageEnvVar is the environment variable used to get the image
-	// to used for the Redis HA Proxy container.
-	ArgoCDRedisHAProxyImageEnvVar = "ARGOCD_REDIS_HA_PROXY_IMAGE"
-
-	// ArgoCDRedisHAImageEnvVar is the environment variable used to get the image
-	// to used for the the Redis container in HA mode.
-	ArgoCDRedisHAImageEnvVar = "ARGOCD_REDIS_HA_IMAGE"
-
-	// ArgoCDRedisImageEnvVar is the environment variable used to get the image
-	// to used for the Redis container.
-	ArgoCDRedisImageEnvVar = "ARGOCD_REDIS_IMAGE"
-
 	// ArgoCDGrafanaImageEnvVar is the environment variable used to get the image
 	// to used for the Grafana container.
 	ArgoCDGrafanaImageEnvVar = "ARGOCD_GRAFANA_IMAGE"

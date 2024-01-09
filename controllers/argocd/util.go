@@ -20,7 +20,6 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -37,7 +36,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -155,10 +153,6 @@ func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 
 func isRepoServerTLSVerificationRequested(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Repo.VerifyTLS
-}
-
-func isRedisTLSVerificationDisabled(cr *argoproj.ArgoCD) bool {
-	return cr.Spec.Redis.DisableTLSVerification
 }
 
 // getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
@@ -292,240 +286,6 @@ func getGrafanaResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	return resources
 }
 
-// getRedisConfigPath will return the path for the Redis configuration templates.
-func getRedisConfigPath() string {
-	path := os.Getenv("REDIS_CONFIG_PATH")
-	if len(path) > 0 {
-		return path
-	}
-	return common.ArgoCDDefaultRedisConfigPath
-}
-
-// getRedisInitScript will load the redis configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisContainerImage will return the container image for the Redis server.
-func getRedisContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAContainerImage will return the container image for the Redis server in HA mode.
-func getRedisHAContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.Redis.Image
-	if img == "" {
-		img = common.ArgoCDDefaultRedisImage
-		defaultImg = true
-	}
-	tag := cr.Spec.Redis.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultRedisVersionHA
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDRedisHAImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD.
-func getRedisHAProxyAddress(cr *argoproj.ArgoCD) string {
-	return fqdnServiceRef("redis-ha-haproxy", common.ArgoCDDefaultRedisPort, cr)
-}
-
-// getRedisHAProxyContainerImage will return the container image for the Redis HA Proxy.
-func getRedisHAProxyContainerImage(cr *argoproj.ArgoCD) string {
-	defaultImg, defaultTag := false, false
-	img := cr.Spec.HA.RedisProxyImage
-	if len(img) <= 0 {
-		img = common.ArgoCDDefaultRedisHAProxyImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.HA.RedisProxyVersion
-	if len(tag) <= 0 {
-		tag = common.ArgoCDDefaultRedisHAProxyVersion
-		defaultTag = true
-	}
-
-	if e := os.Getenv(common.ArgoCDRedisHAProxyImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getRedisInitScript will load the redis init script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisInitScript(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis init-script")
-		return ""
-	}
-	return script
-}
-
-// getRedisHAProxySConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyConfig(cr *argoproj.ArgoCD, useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/haproxy.cfg.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-		"UseTLS":      strconv.FormatBool(useTLSForRedis),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy configuration")
-		return ""
-	}
-	return script
-}
-
-// getRedisHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisHAProxyScript(cr *argoproj.ArgoCD) string {
-	path := fmt.Sprintf("%s/haproxy_init.sh.tpl", getRedisConfigPath())
-	vars := map[string]string{
-		"ServiceName": nameWithSuffix("redis-ha", cr),
-	}
-
-	script, err := loadTemplateFile(path, vars)
-	if err != nil {
-		log.Error(err, "unable to load redis haproxy init script")
-		return ""
-	}
-	return script
-}
-
-// getRedisResources will return the ResourceRequirements for the Redis container.
-func getRedisResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Redis.Resources != nil {
-		resources = *cr.Spec.Redis.Resources
-	}
-
-	return resources
-}
-
-// getRedisHAResources will return the ResourceRequirements for the Redis HA.
-func getRedisHAResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.HA.Resources != nil {
-		resources = *cr.Spec.HA.Resources
-	}
-
-	return resources
-}
-
-// getRedisSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisSentinelConf(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel.conf.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis sentinel configuration")
-		return ""
-	}
-	return conf
-}
-
-// getRedisLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis liveness script")
-		return ""
-	}
-	return conf
-}
-
-// getRedisReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getRedisReadinessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/redis_readiness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load redis readiness script")
-		return ""
-	}
-	return conf
-}
-
-// getSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
-// If an error occurs, an empty string value will be returned.
-func getSentinelLivenessScript(useTLSForRedis bool) string {
-	path := fmt.Sprintf("%s/sentinel_liveness.sh.tpl", getRedisConfigPath())
-	params := map[string]string{
-		"UseTLS": strconv.FormatBool(useTLSForRedis),
-	}
-	conf, err := loadTemplateFile(path, params)
-	if err != nil {
-		log.Error(err, "unable to load sentinel liveness script")
-		return ""
-	}
-	return conf
-}
-
-// getRedisServerAddress will return the Redis service address for the given ArgoCD.
-func getRedisServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
-		return *cr.Spec.Redis.Remote
-	}
-	if cr.Spec.HA.Enabled {
-		return getRedisHAProxyAddress(cr)
-	}
-	return fqdnServiceRef(common.ArgoCDDefaultRedisSuffix, common.ArgoCDDefaultRedisPort, cr)
-}
-
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
 func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) error {
 	log.Info("reconciling CA secret")
@@ -538,55 +298,6 @@ func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) err
 		return err
 	}
 	return nil
-}
-
-func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
-	var tlsSecretObj corev1.Secret
-	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
-	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			log.Error(err, "error looking up redis tls secret")
-		}
-		return false
-	}
-
-	secretOwnerRefs := tlsSecretObj.GetOwnerReferences()
-	if len(secretOwnerRefs) > 0 {
-		// OpenShift service CA makes the owner reference for the TLS secret to the
-		// service, which in turn is owned by the controller. This method performs
-		// a lookup of the controller through the intermediate owning service.
-		for _, secretOwner := range secretOwnerRefs {
-			if isOwnerOfInterest(secretOwner) {
-				key := client.ObjectKey{Name: secretOwner.Name, Namespace: tlsSecretObj.GetNamespace()}
-				svc := &corev1.Service{}
-
-				// Get the owning object of the secret
-				err := r.Client.Get(context.TODO(), key, svc)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("could not get owner of secret %s", tlsSecretObj.GetName()))
-					return false
-				}
-
-				// If there's an object of kind ArgoCD in the owner's list,
-				// this will be our reconciled object.
-				serviceOwnerRefs := svc.GetOwnerReferences()
-				for _, serviceOwner := range serviceOwnerRefs {
-					if serviceOwner.Kind == "ArgoCD" {
-						return true
-					}
-				}
-			}
-		}
-	} else {
-		// For secrets without owner (i.e. manually created), we apply some
-		// heuristics. This may not be as accurate (e.g. if the user made a
-		// typo in the resource's name), but should be good enough for now.
-		if _, ok := tlsSecretObj.Annotations[common.AnnotationName]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 // reconcileResources will reconcile common ArgoCD resources.
@@ -977,19 +688,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
-}
-
-// triggerRollout will trigger a rollout of a Kubernetes resource specified as
-// obj. It currently supports Deployment and StatefulSet resources.
-func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
-	switch res := obj.(type) {
-	case *appsv1.Deployment:
-		return r.triggerDeploymentRollout(res, key)
-	case *appsv1.StatefulSet:
-		return r.triggerStatefulSetRollout(res, key)
-	default:
-		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
-	}
 }
 
 func namespaceFilterPredicate() predicate.Predicate {

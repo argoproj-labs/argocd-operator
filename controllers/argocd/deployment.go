@@ -1369,17 +1369,6 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	return r.Client.Create(context.TODO(), deploy)
 }
 
-// triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
-func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
-	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
-		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
-		return nil
-	}
-
-	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
-	return r.Client.Update(context.TODO(), deployment)
-}
-
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
 		return strings.ToLower(v) == "true"

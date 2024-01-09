@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,10 +50,7 @@ func UpdateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) err
 func DeleteConfigMap(name, namespace string, client cntrlClient.Client) error {
 	existingConfigMap, err := GetConfigMap(name, namespace, client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
+		return err
 	}
 
 	if err := client.Delete(context.TODO(), existingConfigMap); err != nil {

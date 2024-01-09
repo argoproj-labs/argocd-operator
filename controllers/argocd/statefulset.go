@@ -736,17 +736,6 @@ func (r *ReconcileArgoCD) reconcileStatefulSets(cr *argoproj.ArgoCD, useTLSForRe
 	return nil
 }
 
-// triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
-func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
-	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
-		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
-		return nil
-	}
-
-	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
-	return r.Client.Update(context.TODO(), sts)
-}
-
 // to update nodeSelector and tolerations in reconciler
 func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, ss.Spec.Template.Spec.NodeSelector) {

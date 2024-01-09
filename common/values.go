@@ -75,6 +75,7 @@ const (
 	SecretKind         = "Secret"
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
+	ArgoCDKind         = "ArgoCD"
 )
 
 // Commnds

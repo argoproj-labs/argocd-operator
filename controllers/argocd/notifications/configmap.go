@@ -68,6 +68,9 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 func (nr *NotificationsReconciler) deleteConfigMap(namespace string) error {
 	if err := workloads.DeleteConfigMap(common.NotificationsConfigMapName, namespace, nr.Client); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", common.NotificationsConfigMapName, "namespace", namespace)
 		return err
 	}
