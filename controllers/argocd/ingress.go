@@ -25,7 +25,6 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // getArgoServerPath will return the Ingress Path for the Argo CD component.
@@ -54,7 +53,7 @@ func newIngressWithName(name string, cr *argoproj.ArgoCD) *networkingv1.Ingress 
 	ingress.ObjectMeta.Name = name
 
 	lbls := ingress.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	ingress.ObjectMeta.Labels = lbls
 
 	return ingress
@@ -66,7 +65,7 @@ func newIngressWithSuffix(suffix string, cr *argoproj.ArgoCD) *networkingv1.Ingr
 }
 
 // reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
-func (r *ArgoCDReconciler) reconcileIngresses(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileArgoServerIngress(cr); err != nil {
 		return err
 	}
@@ -91,9 +90,9 @@ func (r *ArgoCDReconciler) reconcileIngresses(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
-func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -107,8 +106,8 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.Ingress.Annotations) > 0 {
@@ -131,7 +130,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 							Path: getPathOrDefault(cr.Spec.Server.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "server"),
+									Name: nameWithSuffix("server", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -167,9 +166,9 @@ func (r *ArgoCDReconciler) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error
 }
 
 // reconcileArgoServerGRPCIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grpc", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Server.GRPC.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -183,7 +182,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "GRPC"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "GRPC"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Server.GRPC.Ingress.Annotations) > 0 {
@@ -206,7 +205,7 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 							Path: getPathOrDefault(cr.Spec.Server.GRPC.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "server"),
+									Name: nameWithSuffix("server", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "https",
 									},
@@ -242,9 +241,9 @@ func (r *ArgoCDReconciler) reconcileArgoServerGRPCIngress(cr *argoproj.ArgoCD) e
 }
 
 // reconcileGrafanaIngress will ensure that the ArgoCD Server GRPC Ingress is present.
-func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("grafana", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -258,8 +257,8 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Grafana.Ingress.Annotations) > 0 {
@@ -282,7 +281,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 							Path: getPathOrDefault(cr.Spec.Grafana.Ingress.Path),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, "grafana"),
+									Name: nameWithSuffix("grafana", cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "http",
 									},
@@ -319,9 +318,9 @@ func (r *ArgoCDReconciler) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
-func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("prometheus", cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
@@ -335,8 +334,8 @@ func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error
 
 	// Add default annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
@@ -393,9 +392,9 @@ func (r *ArgoCDReconciler) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error
 }
 
 // reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
-func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
-	if util.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
 			return r.Client.Delete(context.TODO(), ingress)
 		}
@@ -409,8 +408,8 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj
 
 	// Add annotations
 	atns := make(map[string]string)
-	atns[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	atns[common.NginxIngressK8sKeyBackendProtocol] = "HTTP"
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
 
 	// Override default annotations if specified
 	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations) > 0 {
@@ -431,7 +430,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerIngress(cr *argoproj
 							Path: "/api/webhook",
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: util.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix),
+									Name: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
 									Port: networkingv1.ServiceBackendPort{
 										Name: "webhook",
 									},
