@@ -42,13 +42,6 @@ import (
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
-func deletedAt(now time.Time) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		wrapped := metav1.NewTime(now)
-		a.ObjectMeta.DeletionTimestamp = &wrapped
-	}
-}
-
 func addFinalizer(finalizer string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Finalizers = append(a.Finalizers, finalizer)
@@ -320,7 +313,15 @@ func TestReconcileArgoCD_Reconcile_RemoveManagedByLabelOnArgocdDeletion(t *testi
 	}
 }
 
-func TestArgoCDReconciler_CleanUp(t *testing.T) {
+func deletedAt(now time.Time) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		wrapped := metav1.NewTime(now)
+		a.ObjectMeta.DeletionTimestamp = &wrapped
+		a.Finalizers = []string{"test: finalizaer"}
+	}
+}
+
+func TestReconcileArgoCD_CleanUp(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD(deletedAt(time.Now()), addFinalizer(common.ArgoprojKeyFinalizer))
 

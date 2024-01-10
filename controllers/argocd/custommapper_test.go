@@ -13,7 +13,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -115,7 +115,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 	}
 
 	t.Run("Map with proper ownerReference", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-repo-server",
 				Namespace: "argocd-operator",
@@ -172,7 +172,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 	})
 
 	t.Run("Map with ownerReference on non-existing owner", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-repo-server",
 				Namespace: "argocd-operator",
@@ -222,7 +222,7 @@ func TestReconcileArgoCD_tlsSecretMapperRepoServer(t *testing.T) {
 	})
 
 	t.Run("Map with invalid owner", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-repo-server",
 				Namespace: "argocd-operator",
@@ -347,7 +347,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 	}
 
 	t.Run("Map with proper ownerReference", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-redis",
 				Namespace: "argocd-operator",
@@ -404,7 +404,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 	})
 
 	t.Run("Map with ownerReference on non-existing owner", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-redis",
 				Namespace: "argocd-operator",
@@ -454,7 +454,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 	})
 
 	t.Run("Map with invalid owner", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-redis",
 				Namespace: "argocd-operator",

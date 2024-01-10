@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	v1beta1 "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 type argoCDAlphaOpt func(*ArgoCD)
@@ -31,10 +31,10 @@ func makeTestArgoCDAlpha(opts ...argoCDAlphaOpt) *ArgoCD {
 	return a
 }
 
-type argoCDBetaOpt func(*argoproj.ArgoCD)
+type argoCDBetaOpt func(*v1beta1.ArgoCD)
 
-func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
+func makeTestArgoCDBeta(opts ...argoCDBetaOpt) *v1beta1.ArgoCD {
+	a := &v1beta1.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-argocd",
 			Namespace: "default",
@@ -54,7 +54,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          *ArgoCD
-		expectedOutput *argoproj.ArgoCD
+		expectedOutput *v1beta1.ArgoCD
 	}{
 		// dex conversion
 		{
@@ -66,10 +66,10 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Version:        "latest",
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
 					Provider: "dex",
-					Dex: &argoproj.ArgoCDDexSpec{
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 						Image:          "test",
 						Version:        "latest",
@@ -97,10 +97,10 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 						Resources: &corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
@@ -124,10 +124,10 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
 						Config: "test-config",
 					},
 				}
@@ -142,9 +142,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Dex: &argoproj.ArgoCDDexSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: false,
 					},
 				}
@@ -165,13 +165,13 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
-					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
 						Image: "keycloak",
 					},
 				}
@@ -192,12 +192,12 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					VerifyTLS: tls,
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
 				tls := new(bool)
 				*tls = false
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeKeycloak,
-					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeKeycloak,
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
 						RootCA:    "__CA__",
 						VerifyTLS: tls,
 					},
@@ -211,9 +211,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Image: "test-image",
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Keycloak: &v1beta1.ArgoCDKeycloakSpec{
 						Image: "test-image",
 					},
 				}
@@ -224,7 +224,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 		{
 			name:           "ArgoCD Example - Empty",
 			input:          makeTestArgoCDAlpha(func(cr *ArgoCD) {}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {}),
 		},
 		{
 			name: "ArgoCD Example - Dex + RBAC",
@@ -248,10 +248,10 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -259,14 +259,14 @@ func TestAlphaToBetaConversion(t *testing.T) {
 				defaultPolicy := "role:readonly"
 				policy := "g, system:cluster-admins, role:admin"
 				scope := "[groups]"
-				cr.Spec.RBAC = argoproj.ArgoCDRBACSpec{
+				cr.Spec.RBAC = v1beta1.ArgoCDRBACSpec{
 					DefaultPolicy: &defaultPolicy,
 					Policy:        &policy,
 					Scopes:        &scope,
 				}
 
-				cr.Spec.Server = argoproj.ArgoCDServerSpec{
-					Route: argoproj.ArgoCDRouteSpec{
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
+					Route: v1beta1.ArgoCDRouteSpec{
 						Enabled: true,
 					},
 				}
@@ -321,9 +321,9 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					},
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.ResourceIgnoreDifferences = &argoproj.ResourceIgnoreDifference{
-					All: &argoproj.IgnoreDifferenceCustomization{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.ResourceIgnoreDifferences = &v1beta1.ResourceIgnoreDifference{
+					All: &v1beta1.IgnoreDifferenceCustomization{
 						JsonPointers: []string{
 							"/spec/replicas",
 						},
@@ -331,11 +331,11 @@ func TestAlphaToBetaConversion(t *testing.T) {
 							"kube-controller-manager",
 						},
 					},
-					ResourceIdentifiers: []argoproj.ResourceIdentifiers{
+					ResourceIdentifiers: []v1beta1.ResourceIdentifiers{
 						{
 							Group: "admissionregistration.k8s.io",
 							Kind:  "MutatingWebhookConfiguration",
-							Customization: argoproj.IgnoreDifferenceCustomization{
+							Customization: v1beta1.IgnoreDifferenceCustomization{
 								JqPathExpressions: []string{
 									"'.webhooks[]?.clientConfig.caBundle'",
 								},
@@ -344,7 +344,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						{
 							Group: "apps",
 							Kind:  "Deployment",
-							Customization: argoproj.IgnoreDifferenceCustomization{
+							Customization: v1beta1.IgnoreDifferenceCustomization{
 								ManagedFieldsManagers: []string{
 									"kube-controller-manager",
 								},
@@ -355,13 +355,13 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						},
 					},
 				}
-				cr.Spec.ResourceHealthChecks = []argoproj.ResourceHealthCheck{
+				cr.Spec.ResourceHealthChecks = []v1beta1.ResourceHealthCheck{
 					{
 						Group: "certmanager.k8s.io",
 						Kind:  "Certificate",
 					},
 				}
-				cr.Spec.ResourceActions = []argoproj.ResourceAction{
+				cr.Spec.ResourceActions = []v1beta1.ResourceAction{
 					{
 						Group: "apps",
 						Kind:  "Deployment",
@@ -377,7 +377,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					"ping": "pong",
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
 				cr.Spec.Image = "test-image"
 				cr.Spec.ExtraConfig = map[string]string{
 					"ping": "pong",
@@ -411,21 +411,21 @@ func TestAlphaToBetaConversion(t *testing.T) {
 					Insecure: true,
 				}
 			}),
-			expectedOutput: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.Server.Autoscale = argoproj.ArgoCDServerAutoscaleSpec{
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.Server.Autoscale = v1beta1.ArgoCDServerAutoscaleSpec{
 					Enabled: true,
 				}
-				cr.Spec.Import = &argoproj.ArgoCDImportSpec{
+				cr.Spec.Import = &v1beta1.ArgoCDImportSpec{
 					Name: "test-name",
 				}
-				cr.Spec.Server = argoproj.ArgoCDServerSpec{
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
 					Host: "test-host.argocd.org",
-					GRPC: argoproj.ArgoCDServerGRPCSpec{
-						Ingress: argoproj.ArgoCDIngressSpec{
+					GRPC: v1beta1.ArgoCDServerGRPCSpec{
+						Ingress: v1beta1.ArgoCDIngressSpec{
 							Enabled: false,
 						},
 					},
-					Ingress: argoproj.ArgoCDIngressSpec{
+					Ingress: v1beta1.ArgoCDIngressSpec{
 						Enabled: true,
 						TLS: []v1.IngressTLS{
 							{Hosts: []string{
@@ -443,13 +443,13 @@ func TestAlphaToBetaConversion(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			// Set v1beta1 object in Hub, converted values will be set in this object.
-			var hub conversion.Hub = &argoproj.ArgoCD{}
+			var hub conversion.Hub = &v1beta1.ArgoCD{}
 
 			// Call ConvertTo function to convert v1alpha1 version to v1beta1
 			test.input.ConvertTo(hub)
 
 			// Fetch the converted object
-			result := hub.(*argoproj.ArgoCD)
+			result := hub.(*v1beta1.ArgoCD)
 
 			// Compare converted object with expected.
 			assert.Equal(t, test.expectedOutput, result)
@@ -462,17 +462,17 @@ func TestAlphaToBetaConversion(t *testing.T) {
 func TestBetaToAlphaConversion(t *testing.T) {
 	tests := []struct {
 		name           string
-		input          *argoproj.ArgoCD
+		input          *v1beta1.ArgoCD
 		expectedOutput *ArgoCD
 	}{
 		{
 			name:           "ArgoCD Example - Empty",
-			input:          makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {}),
+			input:          makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {}),
 			expectedOutput: makeTestArgoCDAlpha(func(cr *ArgoCD) {}),
 		},
 		{
 			name: "ArgoCD Example - Image + ExtraConfig",
-			input: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
 				cr.Spec.Image = "test-image"
 				cr.Spec.ExtraConfig = map[string]string{
 					"ping": "pong",
@@ -487,10 +487,10 @@ func TestBetaToAlphaConversion(t *testing.T) {
 		},
 		{
 			name: "ArgoCD Example - Dex + RBAC",
-			input: makeTestArgoCDBeta(func(cr *argoproj.ArgoCD) {
-				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
-					Provider: argoproj.SSOProviderTypeDex,
-					Dex: &argoproj.ArgoCDDexSpec{
+			input: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.SSO = &v1beta1.ArgoCDSSOSpec{
+					Provider: v1beta1.SSOProviderTypeDex,
+					Dex: &v1beta1.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
 				}
@@ -498,14 +498,14 @@ func TestBetaToAlphaConversion(t *testing.T) {
 				defaultPolicy := "role:readonly"
 				policy := "g, system:cluster-admins, role:admin"
 				scope := "[groups]"
-				cr.Spec.RBAC = argoproj.ArgoCDRBACSpec{
+				cr.Spec.RBAC = v1beta1.ArgoCDRBACSpec{
 					DefaultPolicy: &defaultPolicy,
 					Policy:        &policy,
 					Scopes:        &scope,
 				}
 
-				cr.Spec.Server = argoproj.ArgoCDServerSpec{
-					Route: argoproj.ArgoCDRouteSpec{
+				cr.Spec.Server = v1beta1.ArgoCDServerSpec{
+					Route: v1beta1.ArgoCDRouteSpec{
 						Enabled: true,
 					},
 				}
