@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,10 +50,7 @@ func UpdateStatefulSet(StatefulSet *appsv1.StatefulSet, client cntrlClient.Clien
 func DeleteStatefulSet(name, namespace string, client cntrlClient.Client) error {
 	existingStatefulSet, err := GetStatefulSet(name, namespace, client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
+		return err
 	}
 
 	if err := client.Delete(context.TODO(), existingStatefulSet); err != nil {

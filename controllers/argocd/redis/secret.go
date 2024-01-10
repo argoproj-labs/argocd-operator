@@ -51,6 +51,18 @@ func (rr *RedisReconciler) reconcileTLSSecret() error {
 			return err
 		}
 
-	}
+		// trigger redis rollout
+		err := rr.TriggerRollout()
 
+		// trigger server rollout
+		err = rr.Server.TriggerRollout()
+
+		// trigger repo-server rollout
+		err = rr.RepoServer.TriggerRollout()
+
+		// trigger app-controller rollout
+		err = rr.Appcontroller.TriggerRollout()
+
+	}
+	return nil
 }

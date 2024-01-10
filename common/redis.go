@@ -29,6 +29,8 @@ const (
 	RedisHASuffix = "redis-ha"
 
 	RedisHAProxySuffix = "redis-ha-haproxy"
+
+	RedisHAServerSuffix = "redis-ha-server"
 )
 
 // defaults

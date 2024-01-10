@@ -55,3 +55,36 @@ func (rr *RedisReconciler) GetHAResources() corev1.ResourceRequirements {
 	}
 	return resources
 }
+
+// TriggerHARollout deletes HA configmaps and statefulset to be recreated automatically during reconciliation, and triggers rollout for deployments
+func (rr *RedisReconciler) TriggerHARollout() []error {
+	var rolloutErrors []error
+
+	err := rr.deleteConfigMap(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	err = rr.deleteConfigMap(common.ArgoCDRedisHAHealthConfigMapName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	err = rr.TriggerDeploymentRollout(HAProxyResourceName, rr.Instance.Namespace, TLSCertChangedKey)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	// If we use triggerRollout on the redis stateful set, kubernetes will attempt to restart the  pods
+	// one at a time, and the first one to restart (which will be using tls) will hang as it tries to
+	// communicate with the existing pods (which are not using tls) to establish which is the master.
+	// So instead we delete the stateful set, which will delete all the pods.
+	err = rr.deleteStatefulSet(HAServerResourceName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	return rolloutErrors
+}
+
+func (rr *RedisReconciler) DeleteHAResources() error {}

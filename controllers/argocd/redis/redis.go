@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,14 +21,17 @@ type RedisReconciler struct {
 	Logger   logr.Logger
 
 	Appcontroller AppController
+	Server        Server
+	RepoServer    RepoServer
 	TLSEnabled    bool
 }
 
 var (
-	resourceName        string
-	HAProxyResourceName string
-	HAResourceName      string
-	resourceLabels      map[string]string
+	resourceName         string
+	HAProxyResourceName  string
+	HAResourceName       string
+	HAServerResourceName string
+	resourceLabels       map[string]string
 )
 
 func (rr *RedisReconciler) Reconcile() error {
@@ -38,6 +42,7 @@ func (rr *RedisReconciler) Reconcile() error {
 
 	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisComponent)
 	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
+	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
 	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
 	resourceLabels = common.DefaultResourceLabels(resourceName, rr.Instance.Name, common.RedisComponent)
 
@@ -54,8 +59,22 @@ func (rr *RedisReconciler) Reconcile() error {
 }
 
 func (rr *RedisReconciler) TriggerRollout() error {
+
+	if rr.Instance.Spec.HA.Enabled {
+		errs := rr.TriggerHARollout()
+		if len(errs) > 0 {
+			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout")
+		}
+	} else {
+		err := rr.TriggerDeploymentRollout(resourceName, rr.Instance.Namespace, TLSCertChangedKey)
+		if err != nil {
+			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout: %w", err)
+		}
+	}
 	return nil
 }
+
+func (rr *RedisReconciler) DeleteResources() error {}
 
 func (rr *RedisReconciler) UpdateInstanceStatus() error {
 	return rr.Client.Status().Update(context.TODO(), rr.Instance)
