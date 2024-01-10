@@ -16,12 +16,13 @@ func TestServerReconciler_createAndDeleteServiceAccount(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
 
-	expectedSAName := fmt.Sprint(argocdcommon.TestArgoCDName + "argocd-server")
+	expectedSAName := fmt.Sprint(argocdcommon.TestArgoCDName + "-argocd-server")
 	expectedSALabels := map[string]string{
 		"app.kubernetes.io/name":       expectedSAName,
 		"app.kubernetes.io/instance":   argocdcommon.TestArgoCDName,
 		"app.kubernetes.io/part-of":    "argocd",
 		"app.kubernetes.io/managed-by": "argocd-operator",
+		"app.kubernetes.io/component":  "server",
 	}
 
 	// create service account
