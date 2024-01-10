@@ -18,7 +18,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 // newClusterRoleBinding returns a new ClusterRoleBinding instance.

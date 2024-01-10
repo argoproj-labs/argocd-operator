@@ -1,9 +1,9 @@
 package appcontroller
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 func GetAppControllerName(argoCDName string) string {
-	return util.GenerateResourceName(argoCDName, AppControllerComponent)
+	return argoutil.GenerateResourceName(argoCDName, AppControllerComponent)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -321,10 +322,10 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 
 	// set log level & format
 	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, util.GetLogLevel(sr.Instance.Spec.Server.LogLevel))
+	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, util.GetLogLevel(sr.Instance.Spec.Server.LogFormat))
+	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogFormat))
 
 	// set source namespaces
 	if sr.Instance.Spec.SourceNamespaces != nil && len(sr.Instance.Spec.SourceNamespaces) > 0 {

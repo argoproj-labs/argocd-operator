@@ -6,7 +6,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
 func getCustomRoleName() string {
@@ -24,49 +24,49 @@ func getRoleBindingNameForSourceNamespace(argocdName, targetNamespace string) st
 }
 
 func getServiceAccountName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
 // Return role name as "argoCDName-argocd-server"
 func getRoleName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
 // Return rolebinding name as "argoCDName-argocd-server"
 func getRoleBindingName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ArgoCDServerSuffix)
 }
 
 func getClusterRoleName(argoCDName, namespace string) string {
-	return util.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
+	return argoutil.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
 }
 
 func getClusterRoleBindingName(argoCDName, namespace string) string {
-	return util.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
+	return argoutil.GenerateUniqueResourceName(argoCDName, argoCDName, ArgoCDServerSuffix)
 }
 
 func getDeploymentName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ServerSuffix)
 }
 
 func getServiceName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ServerSuffix)
 }
 
 func getHPAName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ServerSuffix)
 }
 
 func getRouteName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, ServerSuffix)
+	return argoutil.NameWithSuffix(argoCDName, ServerSuffix)
 }
 
 func getIngressName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, "server")
+	return argoutil.NameWithSuffix(argoCDName, "server")
 }
 
 func getGRPCIngressName(argoCDName string) string {
-	return util.NameWithSuffix(argoCDName, "grpc")
+	return argoutil.NameWithSuffix(argoCDName, "grpc")
 }
 
 // getHost will return the host for the given ArgoCD.
@@ -89,7 +89,7 @@ func getPathOrDefault(path string) string {
 
 // getGRPCHost will return the GRPC host for the given ArgoCD.
 func getGRPCHost(cr *argoproj.ArgoCD) string {
-	host := util.NameWithSuffix(cr.Name, "grpc")
+	host := argoutil.NameWithSuffix(cr.Name, "grpc")
 	if len(cr.Spec.Server.GRPC.Host) > 0 {
 		host = cr.Spec.Server.GRPC.Host
 	}

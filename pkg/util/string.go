@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"errors"
 	"sort"
 	"strings"
 )
@@ -82,4 +83,19 @@ func StringPtr(val string) *string {
 // ConstructString concatenates the supplied parts by using the provided separator. Any empty strings are skipped
 func ConstructString(separtor string, parts ...string) string {
 	return strings.Join(RemoveString(parts, ""), separtor)
+}
+
+// IsMergable returns error if any of the extraArgs is already part of the default command Arguments.
+func IsMergable(extraArgs []string, cmd []string) error {
+	if len(extraArgs) > 0 {
+		for _, arg := range extraArgs {
+			if len(arg) > 2 && arg[:2] == "--" {
+				if ok := ContainsString(cmd, arg); ok {
+					err := errors.New("duplicate argument error")
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

@@ -60,7 +60,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        roleName,
-				Namespace:	 nsName,
+				Namespace:   nsName,
 				Labels:      roleLabels,
 				Annotations: sr.Instance.Annotations,
 			},
@@ -73,7 +73,7 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 		// managing non control-plane/ArgoCD namespace, use stricter rules & special resource management label
 		if nsName != sr.Instance.Namespace {
 			roleRequest.Rules = getPolicyRulesForManagedNamespace()
-			
+
 			if len(roleRequest.ObjectMeta.Labels) == 0 {
 				roleRequest.ObjectMeta.Labels = make(map[string]string)
 			}
