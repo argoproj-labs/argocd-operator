@@ -117,6 +117,9 @@ const (
 
 	// ArgoCDNotificationsControllerComponent is the name of the Notifications controller control plane component
 	ArgoCDNotificationsControllerComponent = "argocd-notifications-controller"
+
+	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
+	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

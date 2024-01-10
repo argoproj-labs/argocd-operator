@@ -14,14 +14,14 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, common.ArgoCDNotificationsControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, common.NotificationsControllerComponent)
 
 func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {
 	s := scheme.Scheme
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(common.ArgoCDNotificationsControllerComponent)
+	logger := ctrl.Log.WithName(common.NotificationsControllerComponent)
 
 	return &NotificationsReconciler{
 		Client:   cl,

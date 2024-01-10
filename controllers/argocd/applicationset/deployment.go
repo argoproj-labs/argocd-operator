@@ -208,7 +208,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 		Command:         asr.getApplicationSetCommand(),
 		Image:           argocdcommon.GetArgoContainerImage(asr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            common.AppSetController,
+		Name:            resourceName,
 		Env:             appSetEnv,
 		Resources:       asr.getApplicationSetResources(),
 		SecurityContext: &corev1.SecurityContext{
