@@ -4,12 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 var (
@@ -22,7 +25,13 @@ func TestReconcileHPA(t *testing.T) {
 
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", a)
 
@@ -33,7 +42,7 @@ func TestReconcileHPA(t *testing.T) {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       argoutil.NameWithSuffix(a.Name, "server"),
+			Name:       nameWithSuffix("server", a),
 		},
 	}
 
@@ -44,7 +53,7 @@ func TestReconcileHPA(t *testing.T) {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       argoutil.NameWithSuffix(a.Name, "server"),
+			Name:       nameWithSuffix("server", a),
 		},
 	}
 

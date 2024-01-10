@@ -11,17 +11,26 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 )
 
-func TestArgoCDReconciler_reconcileRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
@@ -50,10 +59,17 @@ func TestArgoCDReconciler_reconcileRole(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: a.Namespace}, reconciledRole))
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 }
-func TestArgoCDReconciler_reconcileRole_for_new_namespace(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "newNamespaceTest", a.Namespace))
 
@@ -90,10 +106,16 @@ func TestArgoCDReconciler_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.Equal(t, expectedRoleNamespace, grafanaRoles[0].ObjectMeta.Namespace)
 }
 
-func TestArgoCDReconciler_reconcileClusterRole(t *testing.T) {
+func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
 
 	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	clusterRoleName := GenerateUniqueResourceName(workloadIdentifier, a)
@@ -136,7 +158,7 @@ func TestArgoCDReconciler_reconcileClusterRole(t *testing.T) {
 	assert.Contains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, reconciledClusterRole).Error(), "not found")
 }
 
-func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
+func TestReconcileArgoCD_reconcileRoleForApplicationSourceNamespaces(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	sourceNamespace := "newNamespaceTest"
 	a := makeTestArgoCD()
@@ -145,7 +167,14 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 			sourceNamespace,
 		},
 	}
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
 
@@ -163,10 +192,17 @@ func TestArgoCDReconciler_reconcileRoleForApplicationSourceNamespaces(t *testing
 
 }
 
-func TestArgoCDReconciler_RoleHooks(t *testing.T) {
+func TestReconcileArgoCD_RoleHooks(t *testing.T) {
 	defer resetHooks()()
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	Register(testRoleHook)
 
@@ -181,10 +217,17 @@ func TestArgoCDReconciler_RoleHooks(t *testing.T) {
 	assert.Equal(t, role.Rules, []v1.PolicyRule{})
 }
 
-func TestArgoCDReconciler_reconcileRole_custom_role(t *testing.T) {
+func TestReconcileArgoCD_reconcileRole_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespace(r, "namespace-custom-role", a.Namespace))
 
@@ -203,7 +246,7 @@ func TestArgoCDReconciler_reconcileRole_custom_role(t *testing.T) {
 	assert.Equal(t, expectedRules, reconciledRole.Rules)
 
 	// set the custom role as env variable
-	t.Setenv(common.ArgoCDControllerClusterRoleEnvVar, "custom-role")
+	t.Setenv(common.ArgoCDControllerClusterRoleEnvName, "custom-role")
 
 	_, err = r.reconcileRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
@@ -225,7 +268,14 @@ func TestArgoCDReconciler_reconcileRole_custom_role(t *testing.T) {
 func TestReconcileRoles_ManagedTerminatingNamespace(t *testing.T) {
 
 	a := makeTestArgoCD()
-	r := makeTestReconciler(t, a)
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	// Create a managed namespace

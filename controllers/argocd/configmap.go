@@ -17,7 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -33,7 +33,7 @@ import (
 )
 
 // createRBACConfigMap will create the Argo CD RBAC ConfigMap resource.
-func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) createRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	data := make(map[string]string)
 	data[common.ArgoCDKeyRBACPolicyCSV] = getRBACPolicy(cr)
 	data[common.ArgoCDKeyRBACPolicyDefault] = getRBACDefaultPolicy(cr)
@@ -48,7 +48,7 @@ func (r *ArgoCDReconciler) createRBACConfigMap(cm *corev1.ConfigMap, cr *argopro
 
 // getApplicationInstanceLabelKey will return the application instance label key  for the given ArgoCD.
 func getApplicationInstanceLabelKey(cr *argoproj.ArgoCD) string {
-	key := common.AppK8sKeyInstance
+	key := common.ArgoCDDefaultApplicationInstanceLabelKey
 	if len(cr.Spec.ApplicationInstanceLabelKey) > 0 {
 		key = cr.Spec.ApplicationInstanceLabelKey
 	}
@@ -60,7 +60,7 @@ func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
 		return cr.Spec.TLS.CA.ConfigMapName
 	}
-	return argoutil.NameWithSuffix(cr.Name, common.ArgoCDCASuffix)
+	return nameWithSuffix(common.ArgoCDCASuffix, cr)
 }
 
 // getSCMRootCAConfigMapName will return the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
@@ -158,7 +158,10 @@ func getResourceHealthChecks(cr *argoproj.ArgoCD) map[string]string {
 	if cr.Spec.ResourceHealthChecks != nil {
 		resourceHealthChecks := cr.Spec.ResourceHealthChecks
 		for _, healthCustomization := range resourceHealthChecks {
-			subkey := "resource.customizations.health." + healthCustomization.Group + "_" + healthCustomization.Kind
+			if healthCustomization.Group != "" {
+				healthCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.health." + healthCustomization.Group + healthCustomization.Kind
 			subvalue := healthCustomization.Check
 			healthCheck[subkey] = subvalue
 		}
@@ -181,7 +184,10 @@ func getResourceIgnoreDifferences(cr *argoproj.ArgoCD) (map[string]string, error
 			ignoreDiff[subkey] = subvalue
 		}
 		for _, ignoreDiffCustomization := range resourceIgnoreDiff.ResourceIdentifiers {
-			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + "_" + ignoreDiffCustomization.Kind
+			if ignoreDiffCustomization.Group != "" {
+				ignoreDiffCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.ignoreDifferences." + ignoreDiffCustomization.Group + ignoreDiffCustomization.Kind
 			bytes, err := yaml.Marshal(ignoreDiffCustomization.Customization)
 			if err != nil {
 				return ignoreDiff, err
@@ -199,7 +205,10 @@ func getResourceActions(cr *argoproj.ArgoCD) map[string]string {
 	if cr.Spec.ResourceActions != nil {
 		resourceAction := cr.Spec.ResourceActions
 		for _, actionCustomization := range resourceAction {
-			subkey := "resource.customizations.actions." + actionCustomization.Group + "_" + actionCustomization.Kind
+			if actionCustomization.Group != "" {
+				actionCustomization.Group += "_"
+			}
+			subkey := "resource.customizations.actions." + actionCustomization.Group + actionCustomization.Kind
 			subvalue := actionCustomization.Action
 			action[subkey] = subvalue
 		}
@@ -294,7 +303,7 @@ func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	cm.ObjectMeta.Name = name
 
 	lbls := cm.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	cm.ObjectMeta.Labels = lbls
 
 	return cm
@@ -307,7 +316,7 @@ func newConfigMapWithSuffix(suffix string, cr *argoproj.ArgoCD) *corev1.ConfigMa
 }
 
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
-func (r *ArgoCDReconciler) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
 		return err
 	}
@@ -341,7 +350,7 @@ func (r *ArgoCDReconciler) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRed
 
 // reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
 // This ConfigMap holds the CA Certificate data for client use.
-func (r *ArgoCDReconciler) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(getCAConfigMapName(cr), cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, do nothing
@@ -354,7 +363,7 @@ func (r *ArgoCDReconciler) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	}
 
 	cm.Data = map[string]string{
-		corev1.TLSCertKey: string(caSecret.Data[corev1.TLSCertKey]),
+		common.ArgoCDKeyTLSCert: string(caSecret.Data[common.ArgoCDKeyTLSCert]),
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -364,7 +373,7 @@ func (r *ArgoCDReconciler) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
-func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 
 	cm.Data = make(map[string]string)
@@ -475,7 +484,7 @@ func (r *ArgoCDReconciler) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGrafanaConfiguration will ensure that the Grafana configuration ConfigMap is present.
-func (r *ArgoCDReconciler) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) error {
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -521,7 +530,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) er
 }
 
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
-func (r *ArgoCDReconciler) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error {
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -539,7 +548,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error
 
 	data := make(map[string]string)
 	for _, f := range dashboards {
-		dashboard, err := ioutil.ReadFile(f)
+		dashboard, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}
@@ -557,7 +566,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error
 }
 
 // reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
-func (r *ArgoCDReconciler) reconcileRBAC(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		return r.reconcileRBACConfigMap(cm, cr)
@@ -566,7 +575,7 @@ func (r *ArgoCDReconciler) reconcileRBAC(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	changed := false
 	// Policy CSV
 	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
@@ -600,7 +609,7 @@ func (r *ArgoCDReconciler) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argo
 }
 
 // reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileRedisHAConfigMap(cr, useTLSForRedis); err != nil {
 		return err
 	}
@@ -611,7 +620,7 @@ func (r *ArgoCDReconciler) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useT
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -638,7 +647,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, 
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if !cr.Spec.HA.Enabled {
@@ -666,7 +675,7 @@ func (r *ArgoCDReconciler) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLS
 	return r.Client.Create(context.TODO(), cm)
 }
 
-func (r *ArgoCDReconciler) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
@@ -676,7 +685,7 @@ func (r *ArgoCDReconciler) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
 }
 
-func (r *ArgoCDReconciler) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
@@ -687,7 +696,7 @@ func (r *ArgoCDReconciler) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 }
 
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
-func (r *ArgoCDReconciler) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDKnownHostsConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, move along...
@@ -704,7 +713,7 @@ func (r *ArgoCDReconciler) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
-func (r *ArgoCDReconciler) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDTLSCertsConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		return nil // ConfigMap found, move along...
@@ -719,7 +728,7 @@ func (r *ArgoCDReconciler) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
-func (r *ArgoCDReconciler) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDGPGKeysConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
 		return nil

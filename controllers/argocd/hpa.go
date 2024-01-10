@@ -47,18 +47,18 @@ func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autos
 	hpa.ObjectMeta.Name = name
 
 	lbls := hpa.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
+	lbls[common.ArgoCDKeyName] = name
 	hpa.ObjectMeta.Labels = lbls
 
 	return hpa
 }
 
 func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
-	return newHorizontalPodAutoscalerWithName(argoutil.NameWithSuffix(cr.Name, suffix), cr)
+	return newHorizontalPodAutoscalerWithName(nameWithSuffix(suffix, cr), cr)
 }
 
 // reconcileServerHPA will ensure that the HorizontalPodAutoscaler is present for the Argo CD Server component, and reconcile any detected changes.
-func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 
 	defaultHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
 	defaultHPA.Spec = autoscaling.HorizontalPodAutoscalerSpec{
@@ -68,7 +68,7 @@ func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		ScaleTargetRef: autoscaling.CrossVersionObjectReference{
 			APIVersion: "apps/v1",
 			Kind:       "Deployment",
-			Name:       argoutil.NameWithSuffix(cr.Name, "server"),
+			Name:       nameWithSuffix("server", cr),
 		},
 	}
 
@@ -108,7 +108,7 @@ func (r *ArgoCDReconciler) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
-func (r *ArgoCDReconciler) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileServerHPA(cr); err != nil {
 		return err
 	}

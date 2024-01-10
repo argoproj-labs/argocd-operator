@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	routev1 "github.com/openshift/api/route/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -28,36 +27,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
-// newRoute returns a new Route instance for the given ArgoCD.
-func newRoute(cr *argoproj.ArgoCD) *routev1.Route {
-	return &routev1.Route{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
-		},
-	}
-}
-
-// newRouteWithName returns a new Route with the given name and ArgoCD.
-func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
-	route := newRoute(cr)
-	route.ObjectMeta.Name = name
-
-	lbls := route.ObjectMeta.Labels
-	lbls[common.AppK8sKeyName] = name
-	route.ObjectMeta.Labels = lbls
-
-	return route
-}
-
-// newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
-func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
-	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
-}
-
 // reconcileRoutes will ensure that all ArgoCD Routes are present.
-func (r *ArgoCDReconciler) reconcileRoutes(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 	if err := r.reconcileGrafanaRoute(cr); err != nil {
 		return err
 	}
@@ -78,7 +49,7 @@ func (r *ArgoCDReconciler) reconcileRoutes(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileGrafanaRoute will ensure that the ArgoCD Grafana Route is present.
-func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
@@ -126,7 +97,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "grafana")
+	route.Spec.To.Name = nameWithSuffix("grafana", cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
@@ -140,7 +111,7 @@ func (r *ArgoCDReconciler) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
-func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("prometheus", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
@@ -197,7 +168,7 @@ func (r *ArgoCDReconciler) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileServerRoute will ensure that the ArgoCD Server Route is present.
-func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	route := newRouteWithSuffix("server", cr)
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
@@ -257,7 +228,7 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, "server")
+	route.Spec.To.Name = nameWithSuffix("server", cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
@@ -274,7 +245,7 @@ func (r *ArgoCDReconciler) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
-func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argoproj.ArgoCD) error {
 	name := fmt.Sprintf("%s-%s", common.ApplicationSetServiceNameSuffix, "webhook")
 	route := newRouteWithSuffix(name, cr)
 	found := argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route)
@@ -334,7 +305,7 @@ func (r *ArgoCDReconciler) reconcileApplicationSetControllerWebhookRoute(cr *arg
 	}
 
 	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = argoutil.NameWithSuffix(cr.Name, common.ApplicationSetServiceNameSuffix)
+	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 
 	// Allow override of the WildcardPolicy for the Route
 	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
