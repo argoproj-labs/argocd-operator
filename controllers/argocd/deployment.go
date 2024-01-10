@@ -206,24 +206,6 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-func getArgoRedisArgs(useTLS bool) []string {
-	args := make([]string, 0)
-
-	args = append(args, "--save", "")
-	args = append(args, "--appendonly", "no")
-
-	if useTLS {
-		args = append(args, "--tls-port", "6379")
-		args = append(args, "--port", "0")
-
-		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
-		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
-		args = append(args, "--tls-auth-clients", "no")
-	}
-
-	return args
-}
-
 // getArgoRepoCommand will return the command for the ArgoCD Repo component.
 func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)

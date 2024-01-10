@@ -562,13 +562,13 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.ReposerverController = &reposerver.RepoServerReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
 	r.ServerController = &server.ServerReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
@@ -583,7 +583,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	r.AppController = &appcontroller.AppControllerReconciler{
-		Client:            &r.Client,
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,

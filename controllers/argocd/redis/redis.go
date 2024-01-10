@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"context"
+
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	cntrlr "sigs.k8s.io/controller-runtime"
@@ -17,7 +19,8 @@ type RedisReconciler struct {
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 
-	TLSEnabled bool
+	Appcontroller AppController
+	TLSEnabled    bool
 }
 
 var (
@@ -52,4 +55,8 @@ func (rr *RedisReconciler) Reconcile() error {
 
 func (rr *RedisReconciler) TriggerRollout() error {
 	return nil
+}
+
+func (rr *RedisReconciler) UpdateInstanceStatus() error {
+	return rr.Client.Status().Update(context.TODO(), rr.Instance)
 }

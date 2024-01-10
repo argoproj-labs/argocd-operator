@@ -15,6 +15,18 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	initShTpl             = "init.sh.tpl"
+	redisConfTpl          = "redis.conf.tpl"
+	sentinelConfTpl       = "sentinel.conf.tpl"
+	livenessShTpl         = "redis_liveness.sh.tpl"
+	readinessShTpl        = "redis_readiness.sh.tpl"
+	sentinelLivenessShTpl = "sentinel_liveness.sh.tpl"
+
+	TLSCertPath = "/app/config/redis/tls/tls.crt"
+	TLSKeyPath  = "/app/config/redis/tls/tls.key"
+)
+
 func (rr *RedisReconciler) TLSVerificationDisabled() bool {
 	return rr.Instance.Spec.Redis.DisableTLSVerification
 }
@@ -173,4 +185,23 @@ func getConfigPath() string {
 		path = val
 	}
 	return path
+}
+
+// getArgs will return the list of cmd args to be supplied to the redis container
+func (rr *RedisReconciler) getArgs() []string {
+	args := make([]string, 0)
+
+	args = append(args, "--save", "")
+	args = append(args, "--appendonly", "no")
+
+	if rr.TLSEnabled {
+		args = append(args, "--tls-port", strconv.Itoa(common.DefaultRedisPort))
+		args = append(args, "--port", "0")
+
+		args = append(args, "--tls-cert-file", TLSCertPath)
+		args = append(args, "--tls-key-file", TLSKeyPath)
+		args = append(args, "--tls-auth-clients", "no")
+	}
+
+	return args
 }

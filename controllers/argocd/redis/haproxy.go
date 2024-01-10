@@ -11,6 +11,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
+const (
+	haproxyCfgTpl  = "haproxy.cfg.tpl"
+	haproxyInitTpl = "haproxy_init.sh.tpl"
+)
+
 // GetHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD instance
 func (rr *RedisReconciler) GetHAProxyAddress() string {
 	return argoutil.FqdnServiceRef(HAProxyResourceName, rr.Instance.Namespace, common.DefaultRedisPort)

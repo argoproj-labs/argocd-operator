@@ -2586,6 +2586,24 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTL
 	return nil
 }
 
+func getArgoRedisArgs(useTLS bool) []string {
+	args := make([]string, 0)
+
+	args = append(args, "--save", "")
+	args = append(args, "--appendonly", "no")
+
+	if useTLS {
+		args = append(args, "--tls-port", "6379")
+		args = append(args, "--port", "0")
+
+		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
+		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
+		args = append(args, "--tls-auth-clients", "no")
+	}
+
+	return args
+}
+
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
 	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
