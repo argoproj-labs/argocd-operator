@@ -261,7 +261,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
 		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
-		return reconcile.Result{}, fmt.Errorf("Error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
+		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
 	newPhase := argocd.Status.Phase
@@ -457,7 +457,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 	}
 
 	// check if any of the exisiting namespaces are carrying the label when they should not be. If yes, remove it
-	for existingNs, _ := range existingManagedNsMap {
+	for existingNs := range existingManagedNsMap {
 		if _, ok := desiredManagedNsMap[existingNs]; !ok {
 			ns, err := cluster.GetNamespace(existingNs, r.Client)
 			if err != nil {

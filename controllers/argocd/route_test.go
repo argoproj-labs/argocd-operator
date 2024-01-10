@@ -5,14 +5,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -215,27 +212,6 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 }
 
-func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
-	t.Helper()
-	s := scheme.Scheme
-	s.AddKnownTypes(argoproj.GroupVersion, acd)
-	routev1.Install(s)
-	configv1.Install(s)
-
-	clientObjs := []client.Object{}
-	for _, obj := range objs {
-		clientObj := obj.(client.Object)
-		clientObjs = append(clientObjs, clientObj)
-	}
-
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
-
-	return &ReconcileArgoCD{
-		Client: cl,
-		Scheme: s,
-	}
-}
-
 func makeArgoCD(opts ...func(*argoproj.ArgoCD)) *argoproj.ArgoCD {
 	argoCD := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{
@@ -254,20 +230,5 @@ func fatalIfError(t *testing.T, err error, format string, a ...interface{}) {
 	t.Helper()
 	if err != nil {
 		t.Fatalf(format, a...)
-	}
-}
-
-func loadSecret(t *testing.T, c client.Client, name string) *corev1.Secret {
-	t.Helper()
-	secret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: testNamespace}, secret)
-	fatalIfError(t, err, "failed to load secret %q", name)
-	return secret
-}
-
-func testNamespacedName(name string) types.NamespacedName {
-	return types.NamespacedName{
-		Name:      name,
-		Namespace: testNamespace,
 	}
 }
