@@ -11,7 +11,7 @@ Currently, the following workloads are managed:
 
 To support installations with minimal resource requirements and to facilitate distribution across clusters or namespaces, the ability to selectively install specific Argo CD components has been introduced.
 
-To enable/disable a particular Argo CD workload, a new flag, `spec.<component>.enabled`, has been implemented. The default value of the flag is `true`, implying that if the flag is unspecified, the Argo CD workload is enabled by default.
+To enable/disable a particular Argo CD component, a new flag, `spec.<component>.enabled`, has been implemented. The default value of the flag is `true`, implying that if the flag is unspecified, the Argo CD workload is enabled by default.
 
 To disable a specific Argo CD component, set the `spec.<component>.enabled` flag to `false`.
 
@@ -30,7 +30,7 @@ spec:
 In this example, only the controller component is disabled, while all other components continue to run normally.
 
 # Specifying External URLs for Redis and RepoServer Components
-When disabling core components like Redis or Repo Server, you may wish to provide an external URL for components running in external clusters. The remote URL can be set using the `spec.<component>.remote` flag (where the component can only be `redis` or `repo`).
+When disabling core components like Redis or Repo Server, you may wish to provide an external URL for components running in external clusters. The remote URL can be set using the `spec.<component>.remote` flag (component can either be `redis` or `repo`).
 
 For example,
 
