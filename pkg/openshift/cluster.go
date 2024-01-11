@@ -25,6 +25,11 @@ func IsOpenShiftEnv() bool {
 	return isOpenShiftEnv
 }
 
+// SetIsOpenShiftEnv sets the value of isOpenShiftEnv to provided input
+func SetIsOpenShiftEnv(val bool) {
+	isOpenShiftEnv = val
+}
+
 // IsVersionAPIAvailable returns true if the OpenShift cluster version api is present
 func IsVersionAPIAvailable() bool {
 	return versionAPIFound
