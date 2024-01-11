@@ -27,23 +27,17 @@ type RedisReconciler struct {
 }
 
 var (
-	resourceName         string
-	HAProxyResourceName  string
-	HAResourceName       string
-	HAServerResourceName string
-	resourceLabels       map[string]string
+	resourceName   string
+	resourceLabels map[string]string
 )
 
 func (rr *RedisReconciler) Reconcile() error {
 
 	// controller logic goes here
 
-	rr.Logger = cntrlr.Log.WithName(common.RedisComponent).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
+	rr.Logger = cntrlr.Log.WithName(common.RedisController).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
 
 	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisComponent)
-	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
-	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
-	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
 	resourceLabels = common.DefaultResourceLabels(resourceName, rr.Instance.Name, common.RedisComponent)
 
 	// check if TLS needs to be used

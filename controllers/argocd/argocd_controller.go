@@ -502,9 +502,16 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.RedisController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile redis controller")
-		return err
+	if r.Instance.Spec.Redis.IsEnabled() {
+		if err := r.RedisController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile redis controller")
+			return err
+		}
+	} else {
+		if err := r.RedisController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete redis controller")
+			return err
+		}
 	}
 
 	if err := r.ReposerverController.Reconcile(); err != nil {

@@ -2,11 +2,10 @@ package common
 
 // names
 const (
+	RedisController = "redis-controller"
+
 	// RedisComponentName is the Redis control plane component
 	RedisComponent = "redis"
-
-	// RedisHAComponentName is the Redis HA control plane component
-	RedisHAComponent = "redis-ha"
 
 	// ArgoCDRedisHAConfigMapName is the upstream ArgoCD Redis HA ConfigMap name.
 	ArgoCDRedisHAConfigMapName = "argocd-redis-ha-configmap"

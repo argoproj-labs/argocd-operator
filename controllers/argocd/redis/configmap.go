@@ -1,10 +1,13 @@
 package redis
 
 import (
+	"fmt"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -40,28 +43,24 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 
 	desiredCM, err := workloads.RequestConfigMap(cmRequest)
 	if err != nil {
-		rr.Logger.Error(err, "reconcileHAConfigMap: failed to request configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		rr.Logger.V(1).Info("reconcileHAConfigMap: one or more mutations could not be applied")
-		return err
+		return errors.Wrap(err, fmt.Sprintf("reconcileHAConfigMap: failed to request configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 	}
 
 	namespace, err := cluster.GetNamespace(rr.Instance.Namespace, rr.Client)
 	if err != nil {
-		rr.Logger.Error(err, "reconcileHAConfigMap: failed to retrieve namespace", "name", rr.Instance.Namespace)
-		return err
+		return errors.Wrap(err, fmt.Sprintf("reconcileHAConfigMap: failed to retrieve namespace %s", rr.Instance.Namespace))
 	}
 	if namespace.DeletionTimestamp != nil {
 		if err := rr.deleteConfigMap(desiredCM.Name, desiredCM.Namespace); err != nil {
-			rr.Logger.Error(err, "reconcileHAConfigMap: failed to delete configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAConfigMap: failed to delete configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
-		return err
 	}
 
 	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			rr.Logger.Error(err, "reconcileHAConfigMap: failed to retrieve configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
 
 		if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
@@ -69,8 +68,7 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		}
 
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
-			rr.Logger.Error(err, "reconcileHAConfigMap: failed to create configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
-			return err
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
 		rr.Logger.V(0).Info("reconcileHAConfigMap: configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		return nil
@@ -109,16 +107,14 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 	}
 	if namespace.DeletionTimestamp != nil {
 		if err := rr.deleteConfigMap(desiredCM.Name, desiredCM.Namespace); err != nil {
-			rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to delete configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAHealthConfigMap: failed to delete configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
-		return err
 	}
 
 	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to retrieve configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAHealthConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
 
 		if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
@@ -126,8 +122,7 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		}
 
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
-			rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to create configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
-			return err
+			return errors.Wrap(err, fmt.Sprintf("reconcileHAHealthConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace))
 		}
 		rr.Logger.V(0).Info("reconcileHAHealthConfigMap: configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		return nil
@@ -138,11 +133,10 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 
 func (rr *RedisReconciler) deleteConfigMap(name, namespace string) error {
 	if err := workloads.DeleteConfigMap(name, namespace, rr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrap(err, fmt.Sprintf("deleteConfigMap: failed to delete configMap %s in namespace %s", name, namespace))
 	}
 	rr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", name, "namespace", namespace)
 	return nil

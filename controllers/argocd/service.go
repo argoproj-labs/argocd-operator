@@ -316,46 +316,6 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 	return r.Client.Create(context.TODO(), svc)
 }
 
-// ensureAutoTLSAnnotation ensures that the service svc has the desired state
-// of the auto TLS annotation set, which is either set (when enabled is true)
-// or unset (when enabled is false).
-//
-// Returns true when annotations have been updated, otherwise returns false.
-//
-// When this method returns true, the svc resource will need to be updated on
-// the cluster.
-func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled bool) bool {
-	var autoTLSAnnotationName, autoTLSAnnotationValue string
-
-	// We currently only support OpenShift for automatic TLS
-	if IsRouteAPIAvailable() {
-		autoTLSAnnotationName = common.AnnotationOpenShiftServiceCA
-		if svc.Annotations == nil {
-			svc.Annotations = make(map[string]string)
-		}
-		autoTLSAnnotationValue = secretName
-	}
-
-	if autoTLSAnnotationName != "" {
-		val, ok := svc.Annotations[autoTLSAnnotationName]
-		if enabled {
-			if !ok || val != secretName {
-				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
-				svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
-				return true
-			}
-		} else {
-			if ok {
-				log.Info(fmt.Sprintf("removing AutoTLS from service %s", svc.ObjectMeta.Name))
-				delete(svc.Annotations, autoTLSAnnotationName)
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
 // reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
 func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("repo-server", "repo-server", cr)

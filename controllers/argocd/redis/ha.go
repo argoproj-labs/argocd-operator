@@ -4,11 +4,23 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	corev1 "k8s.io/api/core/v1"
+)
+
+var (
+	HAProxyResourceName  string
+	HAResourceName       string
+	HAServerResourceName string
 )
 
 func (rr *RedisReconciler) reconcileHA() []error {
 	var reconciliationErrors []error
+
+	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
+	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
+	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
+
 	// reconcile configmaps
 	reconciliationErrors = append(reconciliationErrors, rr.reconcileHAConfigMaps()...)
 	if len(reconciliationErrors) > 0 {
@@ -17,7 +29,6 @@ func (rr *RedisReconciler) reconcileHA() []error {
 		}
 		return reconciliationErrors
 	}
-
 	return reconciliationErrors
 }
 
@@ -33,7 +44,11 @@ func (rr *RedisReconciler) reconcileHAConfigMaps() []error {
 	if err := rr.reconcileHAHealthConfigMap(); err != nil {
 		reconciliationErrors = append(reconciliationErrors, err)
 	}
+	return reconciliationErrors
+}
 
+func (rr *RedisReconciler) reconcileHAServices() []error {
+	var reconciliationErrors []error
 	return reconciliationErrors
 }
 
