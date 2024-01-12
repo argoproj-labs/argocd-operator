@@ -39,8 +39,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -655,7 +654,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 
 	bldr.Owns(&v1.RoleBinding{})
 
-	if networking.IsRouteAPIAvailable() {
+	if openshift.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
 		bldr.Owns(&routev1.Route{})
 	}
@@ -668,7 +667,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	if workloads.IsTemplateAPIAvailable() {
+	if openshift.IsTemplateAPIAvailable() {
 		// Watch for the changes to Deployment Config
 		bldr.Owns(&oappsv1.DeploymentConfig{})
 
