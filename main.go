@@ -236,7 +236,7 @@ func main() {
 		}
 	}
 
-	if err = (&argocd.ReconcileArgoCD{
+	if err = (&argocd.ArgoCDReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		LabelSelector: labelSelectorFlag,
