@@ -359,6 +359,28 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 		},
 	}
 
+	getDexConfig := func(t *testing.T, k8sClient client.Client) map[string]interface{} {
+		t.Helper()
+
+		cm := &corev1.ConfigMap{}
+		err := k8sClient.Get(context.TODO(), types.NamespacedName{
+			Name:      common.ArgoCDConfigMapName,
+			Namespace: testNamespace,
+		}, cm)
+		assert.NoError(t, err)
+
+		dex, ok := cm.Data["dex.config"]
+		if !ok {
+			t.Fatal("reconcileArgoConfigMap with dex failed")
+		}
+
+		m := make(map[string]interface{})
+		err = yaml.Unmarshal([]byte(dex), &m)
+		assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
+
+		return m
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			sa := &corev1.ServiceAccount{
@@ -393,22 +415,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			err := r.reconcileArgoConfigMap(a)
 			assert.NoError(t, err)
 
-			cm := &corev1.ConfigMap{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
-				Name:      common.ArgoCDConfigMapName,
-				Namespace: testNamespace,
-			}, cm)
-			assert.NoError(t, err)
-
-			dex, ok := cm.Data["dex.config"]
-			if !ok {
-				t.Fatal("reconcileArgoConfigMap with dex failed")
-			}
-
-			m := make(map[string]interface{})
-			err = yaml.Unmarshal([]byte(dex), &m)
-			assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
-
+			m := getDexConfig(t, r.Client)
 			connectors, ok := m["connectors"]
 			if !ok {
 				t.Fatal("no connectors found in dex.config")
@@ -416,6 +423,32 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
 			config := dexConnector["config"]
 			assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
+
+			type expiry struct {
+				IdTokens    string `yaml:"idTokens"`
+				SigningKeys string `yaml:"signingKeys"`
+			}
+
+			dexCfg := map[string]interface{}{
+				"expiry": expiry{
+					IdTokens:    "1hr",
+					SigningKeys: "12hr",
+				},
+			}
+
+			dexCfgBytes, err := yaml.Marshal(dexCfg)
+			assert.NoError(t, err)
+
+			a.Spec.SSO.Dex.Config = string(dexCfgBytes)
+
+			err = r.reconcileArgoConfigMap(a)
+			assert.NoError(t, err)
+
+			m = getDexConfig(t, r.Client)
+			_, ok = m["expiry"]
+			if !ok {
+				t.Fatal("default dex config not found")
+			}
 		})
 	}
 
