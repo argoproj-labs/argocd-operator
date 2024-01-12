@@ -1,4 +1,4 @@
-package cluster
+package openshift
 
 import (
 	"context"
@@ -23,6 +23,11 @@ var (
 func IsOpenShiftEnv() bool {
 	isOpenShiftEnv = IsVersionAPIAvailable()
 	return isOpenShiftEnv
+}
+
+// SetIsOpenShiftEnv sets the value of isOpenShiftEnv to provided input
+func SetIsOpenShiftEnv(val bool) {
+	isOpenShiftEnv = val
 }
 
 // IsVersionAPIAvailable returns true if the OpenShift cluster version api is present

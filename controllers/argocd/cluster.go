@@ -4,11 +4,9 @@ import (
 	"os"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 )
 
 // VerifyClusterAPIs will verify the availability of extra features on the cluster, such as Prometheus and OpenShift Routes.
@@ -19,15 +17,15 @@ func VerifyClusterAPIs() error {
 		inspectError = err
 	}
 
-	if err := networking.VerifyRouteAPI(); err != nil {
+	if err := openshift.VerifyRouteAPI(); err != nil {
 		inspectError = err
 	}
 
-	if err := workloads.VerifyTemplateAPI(); err != nil {
+	if err := openshift.VerifyTemplateAPI(); err != nil {
 		inspectError = err
 	}
 
-	if err := cluster.VerifyVersionAPI(); err != nil {
+	if err := openshift.VerifyVersionAPI(); err != nil {
 		inspectError = err
 	}
 

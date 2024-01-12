@@ -33,7 +33,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1843,9 +1842,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	return sa, err
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.Role, error) {
+func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*rbacv1.Role, error) {
 
-	policyRules := []v1.PolicyRule{
+	policyRules := []rbacv1.PolicyRule{
 
 		// ApplicationSet
 		{
@@ -1951,7 +1950,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 	return role, r.Client.Update(context.TODO(), role)
 }
 
-func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
+func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD, role *rbacv1.Role, sa *corev1.ServiceAccount) error {
 
 	name := "applicationset-controller"
 
@@ -1976,15 +1975,15 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 
 	setAppSetLabels(&roleBinding.ObjectMeta)
 
-	roleBinding.RoleRef = v1.RoleRef{
-		APIGroup: v1.GroupName,
+	roleBinding.RoleRef = rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
 		Kind:     "Role",
 		Name:     role.Name,
 	}
 
-	roleBinding.Subjects = []v1.Subject{
+	roleBinding.Subjects = []rbacv1.Subject{
 		{
-			Kind:      v1.ServiceAccountKind,
+			Kind:      rbacv1.ServiceAccountKind,
 			Name:      sa.Name,
 			Namespace: sa.Namespace,
 		},

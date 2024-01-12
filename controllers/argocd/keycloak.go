@@ -28,7 +28,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
+<<<<<<< HEAD
 	appsv1 "github.com/openshift/api/apps/v1"
+=======
+>>>>>>> 648f98c06185519193e214bea6a077169e04007e
 	oappsv1 "github.com/openshift/api/apps/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -271,12 +274,12 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 	}
 }
 
-func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.DeploymentConfig {
+func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *oappsv1.DeploymentConfig {
 	ns := cr.Namespace
 	var medium corev1.StorageMedium = "Memory"
 	keycloakContainer := getKeycloakContainer(cr)
 
-	dc := &appsv1.DeploymentConfig{
+	dc := &oappsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"argocd.argoproj.io/realm-created": "false",
@@ -295,10 +298,10 @@ func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.Deployment
 			},
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "DeploymentConfig"},
-		Spec: appsv1.DeploymentConfigSpec{
+		Spec: oappsv1.DeploymentConfigSpec{
 			Replicas: 1,
 			Selector: map[string]string{"deploymentConfig": "${APPLICATION_NAME}"},
-			Strategy: appsv1.DeploymentStrategy{
+			Strategy: oappsv1.DeploymentStrategy{
 				Type: "Recreate",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -355,8 +358,8 @@ func getKeycloakDeploymentConfigTemplate(cr *argoproj.ArgoCD) *appsv1.Deployment
 					NodeSelector: common.DefaultNodeSelector(),
 				},
 			},
-			Triggers: appsv1.DeploymentTriggerPolicies{
-				appsv1.DeploymentTriggerPolicy{
+			Triggers: oappsv1.DeploymentTriggerPolicies{
+				oappsv1.DeploymentTriggerPolicy{
 					Type: "ConfigChange",
 				},
 			},

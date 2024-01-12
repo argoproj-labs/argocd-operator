@@ -637,6 +637,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 
 	deployment.Spec.Template.Spec.Containers[0].Command[6] = "debug"
 	err = r.reconcileRepoDeployment(a, false)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
 }

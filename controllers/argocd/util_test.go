@@ -15,7 +15,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	testclient "k8s.io/client-go/kubernetes/fake"
@@ -513,13 +514,13 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	nsArgocd := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	nsArgocd := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: a.Namespace,
 	}}
 	err := r.Client.Create(context.TODO(), nsArgocd)
 	assert.NoError(t, err)
 
-	ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
@@ -529,7 +530,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	err = r.Client.Create(context.TODO(), ns)
 	assert.NoError(t, err)
 
-	ns2 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns2 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace2",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: a.Namespace,
@@ -539,7 +540,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	err = r.Client.Create(context.TODO(), ns2)
 	assert.NoError(t, err)
 
-	ns3 := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
+	ns3 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 		Name: "testNamespace3",
 		Labels: map[string]string{
 			common.ArgoCDManagedByLabel: "newNamespace",
@@ -552,7 +553,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 	err = r.removeManagedByLabelFromNamespaces(a.Namespace)
 	assert.NoError(t, err)
 
-	nsList := &v1.NamespaceList{}
+	nsList := &corev1.NamespaceList{}
 	err = r.Client.List(context.TODO(), nsList)
 	assert.NoError(t, err)
 	for _, n := range nsList.Items {
@@ -569,7 +570,7 @@ func TestRemoveManagedByLabelFromNamespaces(t *testing.T) {
 func TestSetManagedNamespaces(t *testing.T) {
 	a := makeTestArgoCD()
 
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{
@@ -578,7 +579,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns2 := v1.Namespace{
+	ns2 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",
 			Labels: map[string]string{
@@ -587,7 +588,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns3 := v1.Namespace{
+	ns3 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-3",
 			Labels: map[string]string{
@@ -596,7 +597,7 @@ func TestSetManagedNamespaces(t *testing.T) {
 		},
 	}
 
-	ns4 := v1.Namespace{
+	ns4 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-4",
 		},
@@ -628,7 +629,7 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 			"test-namespace-1",
 		},
 	}
-	ns1 := v1.Namespace{
+	ns1 := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 			Labels: map[string]string{

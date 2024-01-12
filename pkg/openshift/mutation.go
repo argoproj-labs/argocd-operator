@@ -8,7 +8,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
@@ -17,12 +16,12 @@ func init() {
 }
 
 func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client) error {
-	if !cluster.IsVersionAPIAvailable() {
+	if !IsOpenShiftEnv() {
 		return nil
 	}
 	switch obj := resource.(type) {
 	case *corev1.PodSpec:
-		version, err := cluster.GetClusterVersion(client)
+		version, err := GetClusterVersion(client)
 		if err != nil {
 			return err
 		}

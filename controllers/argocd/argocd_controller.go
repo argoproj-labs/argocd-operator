@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"time"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	oappsv1 "github.com/openshift/api/apps/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -35,14 +38,21 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -616,4 +626,59 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
 	return bldr.Complete(r)
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	bldr := ctrl.NewControllerManagedBy(mgr)
+	r.setResourceWatches(bldr)
+	return bldr.Complete(r)
+}
+
+// TO DO: THIS IS INCOMPLETE
+func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Builder {
+	// Watch for changes to primary resource ArgoCD
+	bldr.For(&argoproj.ArgoCD{})
+
+	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.ConfigMap{})
+
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.Secret{})
+
+	// Watch for changes to Service sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.Service{})
+
+	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
+	bldr.Owns(&appsv1.Deployment{})
+
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	bldr.Owns(&appsv1.StatefulSet{})
+
+	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
+	bldr.Owns(&networkingv1.Ingress{})
+
+	bldr.Owns(&v1.Role{})
+
+	bldr.Owns(&v1.RoleBinding{})
+
+	if networking.IsRouteAPIAvailable() {
+		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
+		bldr.Owns(&routev1.Route{})
+	}
+
+	if monitoring.IsPrometheusAPIAvailable() {
+		// Watch Prometheus sub-resources owned by ArgoCD instances.
+		bldr.Owns(&monitoringv1.Prometheus{})
+
+		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
+		bldr.Owns(&monitoringv1.ServiceMonitor{})
+	}
+
+	if workloads.IsTemplateAPIAvailable() {
+		// Watch for the changes to Deployment Config
+		bldr.Owns(&oappsv1.DeploymentConfig{})
+
+	}
+	return bldr
 }
