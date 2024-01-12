@@ -212,30 +212,6 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
-func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
-	t.Helper()
-	s := scheme.Scheme
-	s.AddKnownTypes(argoproj.GroupVersion, acd)
-	routev1.Install(s)
-	configv1.Install(s)
-
-	clientObjs := []client.Object{}
-	for _, obj := range objs {
-		clientObj := obj.(client.Object)
-		clientObjs = append(clientObjs, clientObj)
-	}
-
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).WithStatusSubresource(clientObjs...).Build()
-
-	return &ReconcileArgoCD{
-		Client: cl,
-		Scheme: s,
-	}
-}
-
-=======
->>>>>>> 648f98c06185519193e214bea6a077169e04007e
 func makeArgoCD(opts ...func(*argoproj.ArgoCD)) *argoproj.ArgoCD {
 	argoCD := &argoproj.ArgoCD{
 		ObjectMeta: metav1.ObjectMeta{

@@ -35,11 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
-<<<<<<< HEAD
-	"k8s.io/apimachinery/pkg/api/errors"
-=======
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
->>>>>>> 648f98c06185519193e214bea6a077169e04007e
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

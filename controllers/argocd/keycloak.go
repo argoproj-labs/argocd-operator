@@ -28,10 +28,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
-<<<<<<< HEAD
-	appsv1 "github.com/openshift/api/apps/v1"
-=======
->>>>>>> 648f98c06185519193e214bea6a077169e04007e
 	oappsv1 "github.com/openshift/api/apps/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
