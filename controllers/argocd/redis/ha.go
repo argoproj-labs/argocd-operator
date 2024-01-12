@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"errors"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
@@ -21,22 +23,27 @@ func (rr *RedisReconciler) reconcileHA() []error {
 	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
 	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
 
-	// reconcile configmaps
-	reconciliationErrors = append(reconciliationErrors, rr.reconcileHAConfigMaps()...)
-	if len(reconciliationErrors) > 0 {
-		for _, re := range reconciliationErrors {
-			rr.Logger.Error(re, "reconcileHA: failed to reconcile configmaps")
+	// reconcile ha configmaps
+	if errs := rr.reconcileHAConfigMaps(); len(errs) > 0 {
+		for _, err := range reconciliationErrors {
+			rr.Logger.Error(err, "reconcileHA")
 		}
-		return reconciliationErrors
+		reconciliationErrors = append(reconciliationErrors, errors.New("reconcileHA: failed to reconcile config maps"))
 	}
+
+	// reconcile ha services
+	if errs := rr.reconcileHAServices(); len(errs) > 0 {
+		for _, err := range reconciliationErrors {
+			rr.Logger.Error(err, "reconcileHA")
+		}
+		reconciliationErrors = append(reconciliationErrors, errors.New("reconcileHA: failed to reconcile services"))
+	}
+
 	return reconciliationErrors
 }
 
 func (rr *RedisReconciler) reconcileHAConfigMaps() []error {
 	var reconciliationErrors []error
-
-	rr.Logger.Info("reconciling configMaps")
-
 	if err := rr.reconcileHAConfigMap(); err != nil {
 		reconciliationErrors = append(reconciliationErrors, err)
 	}
@@ -49,8 +56,55 @@ func (rr *RedisReconciler) reconcileHAConfigMaps() []error {
 
 func (rr *RedisReconciler) reconcileHAServices() []error {
 	var reconciliationErrors []error
+	if err := rr.reconcileHAMasterService(); err != nil {
+		reconciliationErrors = append(reconciliationErrors, err)
+	}
+
+	if err := rr.reconcileHAProxyService(); err != nil {
+		reconciliationErrors = append(reconciliationErrors, err)
+	}
+
+	if errs := rr.reconcileHAAnnourceServices(); len(errs) > 0 {
+		for _, err := range errs {
+			rr.Logger.Error(err, "reconcileHAServices")
+		}
+		reconciliationErrors = append(reconciliationErrors, errors.New("reconcileHAServices: failed to reconcile HA annouce services"))
+	}
 	return reconciliationErrors
 }
+
+// TriggerHARollout deletes HA configmaps and statefulset to be recreated automatically during reconciliation, and triggers rollout for deployments
+func (rr *RedisReconciler) TriggerHARollout(key string) []error {
+	var rolloutErrors []error
+
+	err := rr.deleteConfigMap(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	err = rr.deleteConfigMap(common.ArgoCDRedisHAHealthConfigMapName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	err = rr.TriggerDeploymentRollout(HAProxyResourceName, rr.Instance.Namespace, key)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	// If we use triggerRollout on the redis stateful set, kubernetes will attempt to restart the  pods
+	// one at a time, and the first one to restart (which will be using tls) will hang as it tries to
+	// communicate with the existing pods (which are not using tls) to establish which is the master.
+	// So instead we delete the stateful set, which will delete all the pods.
+	err = rr.deleteStatefulSet(HAServerResourceName, rr.Instance.Namespace)
+	if err != nil {
+		rolloutErrors = append(rolloutErrors, err)
+	}
+
+	return rolloutErrors
+}
+
+func (rr *RedisReconciler) DeleteHAResources() error {}
 
 // GetHAContainerImage will return the container image for the Redis server in HA mode.
 func (rr *RedisReconciler) GetHAContainerImage() string {
@@ -70,36 +124,3 @@ func (rr *RedisReconciler) GetHAResources() corev1.ResourceRequirements {
 	}
 	return resources
 }
-
-// TriggerHARollout deletes HA configmaps and statefulset to be recreated automatically during reconciliation, and triggers rollout for deployments
-func (rr *RedisReconciler) TriggerHARollout() []error {
-	var rolloutErrors []error
-
-	err := rr.deleteConfigMap(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace)
-	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
-	}
-
-	err = rr.deleteConfigMap(common.ArgoCDRedisHAHealthConfigMapName, rr.Instance.Namespace)
-	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
-	}
-
-	err = rr.TriggerDeploymentRollout(HAProxyResourceName, rr.Instance.Namespace, TLSCertChangedKey)
-	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
-	}
-
-	// If we use triggerRollout on the redis stateful set, kubernetes will attempt to restart the  pods
-	// one at a time, and the first one to restart (which will be using tls) will hang as it tries to
-	// communicate with the existing pods (which are not using tls) to establish which is the master.
-	// So instead we delete the stateful set, which will delete all the pods.
-	err = rr.deleteStatefulSet(HAServerResourceName, rr.Instance.Namespace)
-	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
-	}
-
-	return rolloutErrors
-}
-
-func (rr *RedisReconciler) DeleteHAResources() error {}

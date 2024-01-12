@@ -1,13 +1,13 @@
 package redis
 
 type AppController interface {
-	TriggerRollout() error
+	TriggerRollout(string) error
 }
 
 type Server interface {
-	TriggerRollout() error
+	TriggerRollout(string) error
 }
 
 type RepoServer interface {
-	TriggerRollout() error
+	TriggerRollout(string) error
 }

@@ -557,7 +557,8 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 }
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
-	r.SecretController = &secret.SecretReconciler{
+
+	secretController := &secret.SecretReconciler{
 		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
@@ -565,25 +566,25 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		ManagedNamespaces: r.ResourceManagedNamespaces,
 	}
 
-	r.ConfigMapController = &configmap.ConfigMapReconciler{
+	configMapController := &configmap.ConfigMapReconciler{
 		Client:   &r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.RedisController = &redis.RedisReconciler{
+	redisController := &redis.RedisReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.ReposerverController = &reposerver.RepoServerReconciler{
+	reposerverController := &reposerver.RepoServerReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.ServerController = &server.ServerReconciler{
+	serverController := &server.ServerReconciler{
 		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
@@ -592,13 +593,13 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		SourceNamespaces:  r.AppManagedNamespaces,
 	}
 
-	r.NotificationsController = &notifications.NotificationsReconciler{
+	notificationsController := &notifications.NotificationsReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.AppController = &appcontroller.AppControllerReconciler{
+	appController := &appcontroller.AppControllerReconciler{
 		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
@@ -607,17 +608,40 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		SourceNamespaces:  r.AppManagedNamespaces,
 	}
 
-	r.AppsetController = &applicationset.ApplicationSetReconciler{
+	appsetController := &applicationset.ApplicationSetReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.SSOController = &sso.SSOReconciler{
+	ssoController := &sso.SSOReconciler{
 		Client:   &r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
+
+	r.AppController = appController
+
+	r.ServerController = serverController
+
+	r.ReposerverController = reposerverController
+
+	r.AppsetController = appsetController
+
+	r.RedisController = redisController
+	r.RedisController.Appcontroller = appController
+	r.RedisController.Server = serverController
+	r.RedisController.RepoServer = reposerverController
+	r.RedisController.IsOpenShiftEnv = openshift.IsOpenShiftEnv()
+
+	r.NotificationsController = notificationsController
+
+	r.SSOController = ssoController
+
+	r.ConfigMapController = configMapController
+
+	r.SecretController = secretController
+
 }
 
 // SetupWithManager sets up the controller with the Manager.

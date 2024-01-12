@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 // FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
@@ -39,13 +41,22 @@ func NameWithSuffix(name, suffix string) string {
 }
 
 // GenerateResourceName generates names for namespace scoped resources
-func GenerateResourceName(instanceName, component string) string {
-	return NameWithSuffix(instanceName, component)
+func GenerateResourceName(instanceName, suffix string) string {
+	return NameWithSuffix(instanceName, suffix)
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
-func GenerateUniqueResourceName(instanceName, instanceNamespace, component string) string {
-	return fmt.Sprintf("%s-%s-%s", instanceName, instanceNamespace, component)
+func GenerateUniqueResourceName(instanceName, instanceNamespace, suffix string) string {
+	return fmt.Sprintf("%s-%s-%s", instanceName, instanceNamespace, suffix)
+}
+
+func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        resName,
+		Namespace:   resNs,
+		Labels:      common.DefaultResourceLabels(resName, instanceName, component),
+		Annotations: common.DefaultResourceAnnotations(instanceName, instanceNs),
+	}
 }
 
 // FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.

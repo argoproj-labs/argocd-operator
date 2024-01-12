@@ -6,6 +6,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -13,13 +14,14 @@ import (
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (rr *RedisReconciler) reconcileTLSSecret() error {
+func (rr *RedisReconciler) reconcileTLSSecret() []error {
+	var reconErrs []error
 	var sha256sum string
 
 	tlsSecret, err := workloads.GetSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client)
 	if err != nil {
-		rr.Logger.Error(err, "reconcileTLSSecret: failed to retrieve secret", "name", common.ArgoCDRedisServerTLSSecretName, "namespace", rr.Instance.Namespace)
-		return err
+		reconErrs = append(reconErrs, errors.Wrap(err, fmt.Sprintf("reconcileTLSSecret: failed to retrieve secret %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace)))
+		return reconErrs
 	}
 
 	if tlsSecret.Type != corev1.SecretTypeTLS {
@@ -47,22 +49,30 @@ func (rr *RedisReconciler) reconcileTLSSecret() error {
 		rr.Instance.Status.RedisTLSChecksum = sha256sum
 		err = rr.UpdateInstanceStatus()
 		if err != nil {
-			rr.Logger.Error(err, "reconcileTLSSecret: failed to update instance status")
-			return err
+			reconErrs = append(reconErrs, errors.Wrap(err, "reconcileTLSSecret: failed to update instance status"))
+			return reconErrs
 		}
 
 		// trigger redis rollout
-		err := rr.TriggerRollout()
+		if err := rr.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
+			reconErrs = append(reconErrs, err)
+		}
 
 		// trigger server rollout
-		err = rr.Server.TriggerRollout()
+		if err := rr.Server.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
+			reconErrs = append(reconErrs, err)
+		}
 
 		// trigger repo-server rollout
-		err = rr.RepoServer.TriggerRollout()
+		if err := rr.RepoServer.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
+			reconErrs = append(reconErrs, err)
+		}
 
 		// trigger app-controller rollout
-		err = rr.Appcontroller.TriggerRollout()
+		if err := rr.Appcontroller.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
+			reconErrs = append(reconErrs, err)
+		}
 
 	}
-	return nil
+	return reconErrs
 }

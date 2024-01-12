@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -2676,4 +2677,294 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 	}
 
 	return false
+}
+
+// reconcileRedisHAAnnounceServices will ensure that the announce Services are present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAAnnounceServices(cr *argoproj.ArgoCD) error {
+	for i := int32(0); i < common.ArgoCDDefaultRedisHAReplicas; i++ {
+		svc := newServiceWithSuffix(fmt.Sprintf("redis-ha-announce-%d", i), "redis", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+			if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+				return r.Client.Delete(context.TODO(), svc)
+			}
+			return nil // Service found, do nothing
+		}
+
+		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+			return nil //return as Ha is not enabled do nothing
+		}
+
+		svc.ObjectMeta.Annotations = map[string]string{
+			common.ArgoCDKeyTolerateUnreadyEndpounts: "true",
+		}
+
+		svc.Spec.PublishNotReadyAddresses = true
+
+		svc.Spec.Selector = map[string]string{
+			common.ArgoCDKeyName:               nameWithSuffix("redis-ha", cr),
+			common.ArgoCDKeyStatefulSetPodName: nameWithSuffix(fmt.Sprintf("redis-ha-server-%d", i), cr),
+		}
+
+		svc.Spec.Ports = []corev1.ServicePort{
+			{
+				Name:       "server",
+				Port:       common.ArgoCDDefaultRedisPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("redis"),
+			}, {
+				Name:       "sentinel",
+				Port:       common.ArgoCDDefaultRedisSentinelPort,
+				Protocol:   corev1.ProtocolTCP,
+				TargetPort: intstr.FromString("sentinel"),
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+			return err
+		}
+
+		if err := r.Client.Create(context.TODO(), svc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reconcileRedisHAMasterService will ensure that the "master" Service is present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAMasterService(cr *argoproj.ArgoCD) error {
+	svc := newServiceWithSuffix("redis-ha", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		return nil // Service found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+		return nil //return as Ha is not enabled do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "server",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		}, {
+			Name:       "sentinel",
+			Port:       common.ArgoCDDefaultRedisSentinelPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("sentinel"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) error {
+	svc := newServiceWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+
+		if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+			return r.Client.Update(context.TODO(), svc)
+		}
+		return nil // Service found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+		return nil //return as Ha is not enabled do nothing
+	}
+
+	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "haproxy",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromString("redis"),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisHAServices will ensure that all required Services are present for Redis when running in HA mode.
+func (r *ReconcileArgoCD) reconcileRedisHAServices(cr *argoproj.ArgoCD) error {
+
+	if err := r.reconcileRedisHAAnnounceServices(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAMasterService(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisHAProxyService(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileRedisService will ensure that the Service for Redis is present.
+func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
+	svc := newServiceWithSuffix("redis", "redis", cr)
+
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.Redis.IsEnabled() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+			return r.Client.Update(context.TODO(), svc)
+		}
+		if cr.Spec.HA.Enabled {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		return nil // Service found, do nothing
+	}
+
+	if cr.Spec.HA.Enabled || !cr.Spec.Redis.IsEnabled() {
+		return nil //return as Ha is enabled do nothing
+	}
+
+	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "tcp-redis",
+			Port:       common.ArgoCDDefaultRedisPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ArgoCDDefaultRedisPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileRedisTLSSecret checks whether the argocd-operator-redis-tls secret
+// has changed since our last reconciliation loop. It does so by comparing the
+// checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
+// values calculated from the live state in the cluster.
+func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	var tlsSecretObj corev1.Secret
+	var sha256sum string
+
+	log.Info("reconciling redis-server TLS secret")
+
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
+		// We only process secrets of type kubernetes.io/tls
+		return nil
+	} else {
+		// We do the checksum over a concatenated byte stream of cert + key
+		crt, crtOk := tlsSecretObj.Data[corev1.TLSCertKey]
+		key, keyOk := tlsSecretObj.Data[corev1.TLSPrivateKeyKey]
+		if crtOk && keyOk {
+			var sumBytes []byte
+			sumBytes = append(sumBytes, crt...)
+			sumBytes = append(sumBytes, key...)
+			sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+		}
+	}
+
+	// The content of the TLS secret has changed since we last looked if the
+	// calculated checksum doesn't match the one stored in the status.
+	if cr.Status.RedisTLSChecksum != sha256sum {
+		// We store the value early to prevent a possible restart loop, for the
+		// cost of a possibly missed restart when we cannot update the status
+		// field of the resource.
+		cr.Status.RedisTLSChecksum = sha256sum
+		err = r.Client.Status().Update(context.TODO(), cr)
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of redis
+		if cr.Spec.HA.Enabled {
+			err = r.recreateRedisHAConfigMap(cr, useTLSForRedis)
+			if err != nil {
+				return err
+			}
+			err = r.recreateRedisHAHealthConfigMap(cr, useTLSForRedis)
+			if err != nil {
+				return err
+			}
+			haProxyDepl := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+			err = r.triggerRollout(haProxyDepl, "redis.tls.cert.changed")
+			if err != nil {
+				return err
+			}
+			// If we use triggerRollout on the redis stateful set, kubernetes will attempt to restart the  pods
+			// one at a time, and the first one to restart (which will be using tls) will hang as it tries to
+			// communicate with the existing pods (which are not using tls) to establish which is the master.
+			// So instead we delete the stateful set, which will delete all the pods.
+			redisSts := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
+			if argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
+				err = r.Client.Delete(context.TODO(), redisSts)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			redisDepl := newDeploymentWithSuffix("redis", "redis", cr)
+			err = r.triggerRollout(redisDepl, "redis.tls.cert.changed")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Trigger rollout of API server
+		apiDepl := newDeploymentWithSuffix("server", "server", cr)
+		err = r.triggerRollout(apiDepl, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of repository server
+		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+		err = r.triggerRollout(repoDepl, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of application controller
+		controllerSts := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+		err = r.triggerRollout(controllerSts, "redis.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

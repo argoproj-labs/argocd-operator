@@ -6,10 +6,27 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client) (string, error) {
+	var sha256sum string
+
+	tlsSecret, err := workloads.GetSecret(secretRef.Name, secretRef.Namespace, client)
+	if err != nil {
+		return "", err
+	}
+
+	if tlsSecret.Type != corev1.SecretTypeTLS {
+		// We only process secrets of type kubernetes.io/tls
+		return "", nil
+	}
+
+	return sha256sum, nil
+}
 
 // FindSecretOwnerInstance finds the Argo CD instance that indirectly owns the given secret. It looks up a given secret, checks if it is owned by an Argo CD service or not. If yes, finds the Argo CD instance that owns the service and returns a reference to that instance
 func FindSecretOwnerInstance(secretRef types.NamespacedName, client cntrlClient.Client) (types.NamespacedName, error) {

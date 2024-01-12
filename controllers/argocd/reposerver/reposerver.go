@@ -20,3 +20,8 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 	// controller logic goes here
 	return nil
 }
+
+// TO DO: fix this
+func (acr *RepoServerReconciler) TriggerRollout(key string) error {
+	return acr.TriggerDeploymentRollout("", "", key)
+}

@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -20,14 +19,16 @@ type RedisReconciler struct {
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 
-	Appcontroller AppController
-	Server        Server
-	RepoServer    RepoServer
-	TLSEnabled    bool
+	Appcontroller  AppController
+	Server         Server
+	RepoServer     RepoServer
+	TLSEnabled     bool
+	IsOpenShiftEnv bool
 }
 
 var (
 	resourceName   string
+	component      string
 	resourceLabels map[string]string
 )
 
@@ -36,9 +37,9 @@ func (rr *RedisReconciler) Reconcile() error {
 	// controller logic goes here
 
 	rr.Logger = cntrlr.Log.WithName(common.RedisController).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
-
-	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisComponent)
-	resourceLabels = common.DefaultResourceLabels(resourceName, rr.Instance.Name, common.RedisComponent)
+	component = common.RedisComponent
+	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, component)
+	resourceLabels = common.DefaultResourceLabels(resourceName, rr.Instance.Name, component)
 
 	// check if TLS needs to be used
 	rr.TLSEnabled = rr.UseTLS()
@@ -52,15 +53,15 @@ func (rr *RedisReconciler) Reconcile() error {
 	return nil
 }
 
-func (rr *RedisReconciler) TriggerRollout() error {
+func (rr *RedisReconciler) TriggerRollout(key string) error {
 
 	if rr.Instance.Spec.HA.Enabled {
-		errs := rr.TriggerHARollout()
+		errs := rr.TriggerHARollout(key)
 		if len(errs) > 0 {
 			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout")
 		}
 	} else {
-		err := rr.TriggerDeploymentRollout(resourceName, rr.Instance.Namespace, TLSCertChangedKey)
+		err := rr.TriggerDeploymentRollout(resourceName, rr.Instance.Namespace, key)
 		if err != nil {
 			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout: %w", err)
 		}
@@ -69,7 +70,3 @@ func (rr *RedisReconciler) TriggerRollout() error {
 }
 
 func (rr *RedisReconciler) DeleteResources() error {}
-
-func (rr *RedisReconciler) UpdateInstanceStatus() error {
-	return rr.Client.Status().Update(context.TODO(), rr.Instance)
-}

@@ -7,6 +7,8 @@ const (
 	// RedisComponentName is the Redis control plane component
 	RedisComponent = "redis"
 
+	HAProxyName = "haproxy"
+
 	// ArgoCDRedisHAConfigMapName is the upstream ArgoCD Redis HA ConfigMap name.
 	ArgoCDRedisHAConfigMapName = "argocd-redis-ha-configmap"
 
@@ -30,6 +32,8 @@ const (
 	RedisHAProxySuffix = "redis-ha-haproxy"
 
 	RedisHAServerSuffix = "redis-ha-server"
+
+	RedisHAAnnouceSuffix = "redis-ha-announce"
 )
 
 // defaults
@@ -79,4 +83,9 @@ const (
 
 	// RedisConfigPathEnvVar is the environment variiable used to get the redis configuration templates
 	RedisConfigPathEnvVar = "REDIS_CONFIG_PATH"
+)
+
+// keys
+const (
+	RedisTLSCertChangedKey = "redis.tls.cert.changed"
 )
