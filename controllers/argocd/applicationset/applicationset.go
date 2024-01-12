@@ -8,6 +8,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
@@ -46,15 +47,17 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 		return err
 	}
 
-	if asr.Instance.Spec.ApplicationSet.WebhookServer.Route.Enabled {
-		if err := asr.reconcileWebhookRoute(); err != nil {
-			asr.Logger.Info("reconciling applicationSet webhook route")
-			return err
-		}
-	} else {
-		if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
-			asr.Logger.Error(err, "deleting applicationSet webhook route: failed to delete webhook route")
-			return err
+	if openshift.IsOpenShiftEnv() {
+		if asr.Instance.Spec.ApplicationSet.WebhookServer.Route.Enabled {
+			if err := asr.reconcileWebhookRoute(); err != nil {
+				asr.Logger.Info("reconciling applicationSet webhook route")
+				return err
+			}
+		} else {
+			if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
+				asr.Logger.Error(err, "deleting applicationSet webhook route: failed to delete webhook route")
+				return err
+			}
 		}
 	}
 
@@ -85,9 +88,11 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 		deletionError = err
 	}
 
-	if err := asr.deleteWebhookRoute(resourceName, asr.Instance.Namespace); err != nil {
-		asr.Logger.Error(err, "DeleteResources: failed to delete webhook service")
-		deletionError = err
+	if openshift.IsOpenShiftEnv() {
+		if err := asr.deleteWebhookRoute(resourceName, asr.Instance.Namespace); err != nil {
+			asr.Logger.Error(err, "DeleteResources: failed to delete webhook service")
+			deletionError = err
+		}
 	}
 
 	if err := asr.deleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
