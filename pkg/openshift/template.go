@@ -1,4 +1,4 @@
-package workloads
+package openshift
 
 import (
 	templatev1 "github.com/openshift/api/template/v1"

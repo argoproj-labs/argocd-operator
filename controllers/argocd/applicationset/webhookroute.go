@@ -6,7 +6,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,7 +21,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 	desiredWebhookRoute := asr.getDesiredWebhookRoute()
 	webhookRouteRequest := asr.getWebhookRouteRequest(*desiredWebhookRoute)
 
-	desiredWebhookRoute, err := networking.RequestRoute(webhookRouteRequest)
+	desiredWebhookRoute, err := openshift.RequestRoute(webhookRouteRequest)
 
 	if err != nil {
 		asr.Logger.Error(err, "reconcileRoute: failed to request route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
@@ -40,7 +40,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 		return err
 	}
 
-	existingRoute, err := networking.GetRoute(desiredWebhookRoute.Name, desiredWebhookRoute.Namespace, asr.Client)
+	existingRoute, err := openshift.GetRoute(desiredWebhookRoute.Name, desiredWebhookRoute.Namespace, asr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			asr.Logger.Error(err, "reconcileRoute: failed to retrieve route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
@@ -51,7 +51,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 			asr.Logger.Error(err, "reconcileRoute: failed to set owner reference for route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 		}
 
-		if err = networking.CreateRoute(desiredWebhookRoute, asr.Client); err != nil {
+		if err = openshift.CreateRoute(desiredWebhookRoute, asr.Client); err != nil {
 			asr.Logger.Error(err, "reconcileRoute: failed to create route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 			return err
 		}
@@ -79,7 +79,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 	}
 
 	if webhookRouteChanged {
-		if err = networking.UpdateRoute(existingRoute, asr.Client); err != nil {
+		if err = openshift.UpdateRoute(existingRoute, asr.Client); err != nil {
 			asr.Logger.Error(err, "reconcileWebhookRoute: failed to update webhook route", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
 			return err
 		}
@@ -91,7 +91,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 }
 
 func (asr *ApplicationSetReconciler) deleteWebhookRoute(name, namespace string) error {
-	if err := networking.DeleteRoute(name, namespace, asr.Client); err != nil {
+	if err := openshift.DeleteRoute(name, namespace, asr.Client); err != nil {
 		asr.Logger.Error(err, "DeleteRoute: failed to delete route", "name", name, "namespace", namespace)
 		return err
 	}
@@ -130,8 +130,8 @@ func (asr *ApplicationSetReconciler) getWebhookRouteSpec() routev1.RouteSpec {
 	return routeSpec
 }
 
-func (asr *ApplicationSetReconciler) getWebhookRouteRequest(route routev1.Route) networking.RouteRequest {
-	webhookRouteReq := networking.RouteRequest{
+func (asr *ApplicationSetReconciler) getWebhookRouteRequest(route routev1.Route) openshift.RouteRequest {
+	webhookRouteReq := openshift.RouteRequest{
 		ObjectMeta: route.ObjectMeta,
 		Spec:       route.Spec,
 		Client:     asr.Client,

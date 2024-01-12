@@ -42,10 +42,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -205,7 +203,7 @@ func main() {
 	}
 
 	// Setup Scheme for OpenShift Routes if available.
-	if networking.IsRouteAPIAvailable() {
+	if openshift.IsRouteAPIAvailable() {
 		if err := routev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
@@ -213,7 +211,7 @@ func main() {
 	}
 
 	// Set up the scheme for openshift config if available
-	if cluster.IsVersionAPIAvailable() {
+	if openshift.IsVersionAPIAvailable() {
 		if err := configv1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
@@ -221,7 +219,7 @@ func main() {
 	}
 
 	// Setup Schemes for SSO if template instance is available.
-	if workloads.IsTemplateAPIAvailable() {
+	if openshift.IsTemplateAPIAvailable() {
 		if err := templatev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
