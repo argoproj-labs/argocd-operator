@@ -3,7 +3,9 @@ package redis
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -60,4 +62,15 @@ func (rr *RedisReconciler) reconcileTLSSecret() []error {
 		}
 	}
 	return reconErrs
+}
+
+func (rr *RedisReconciler) deleteSecret(name, namespace string) error {
+	if err := workloads.DeleteSecret(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s", name)
+	}
+	rr.Logger.V(0).Info("deleteSecret: secret deleted", "name", name, "namespace", namespace)
+	return nil
 }

@@ -263,3 +263,14 @@ func (rr *RedisReconciler) reconcileHAAnnourceServices() []error {
 
 	return reconcileErrs
 }
+
+func (rr *RedisReconciler) deleteService(name, namespace string) error {
+	if err := networking.DeleteService(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteService: failed to delete service %s", name)
+	}
+	rr.Logger.V(0).Info("deleteService: service deleted", "name", name, "namespace", namespace)
+	return nil
+}

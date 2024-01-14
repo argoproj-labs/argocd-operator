@@ -134,8 +134,8 @@ func (rr *RedisReconciler) deleteConfigMap(name, namespace string) error {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		return errors.Wrapf(err, "deleteConfigMap: failed to delete configMap %s in namespace %s", name, namespace)
+		return errors.Wrapf(err, "deleteConfigMap: failed to delete config map %s", name)
 	}
-	rr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("deleteConfigMap: config map deleted", "name", name, "namespace", namespace)
 	return nil
 }

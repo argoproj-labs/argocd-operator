@@ -3,7 +3,9 @@ package redis
 import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/pkg/errors"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (rr *RedisReconciler) TriggerStatefulSetRollout(name, namespace, key string) error {
@@ -12,12 +14,11 @@ func (rr *RedisReconciler) TriggerStatefulSetRollout(name, namespace, key string
 
 func (rr *RedisReconciler) deleteStatefulSet(name, namespace string) error {
 	if err := workloads.DeleteStatefulSet(name, namespace, rr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rr.Logger.Error(err, "DeleteStatefulSet: failed to delete StatefulSet", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteStatefulSet: failed to delete stateful set %s", name)
 	}
-	rr.Logger.V(0).Info("DeleteStatefulSet: StatefulSet deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("deleteStatefulSet: stateful set deleted", "name", name, "namespace", namespace)
 	return nil
 }

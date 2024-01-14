@@ -33,3 +33,14 @@ func (rr *RedisReconciler) reconcileServiceAccount() error {
 	rr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
 	return nil
 }
+
+func (rr *RedisReconciler) deleteServiceAccount(name, namespace string) error {
+	if err := permissions.DeleteServiceAccount(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteServiceAccount: failed to delete service account %s", name)
+	}
+	rr.Logger.V(0).Info("deleteServiceAccount: service account deleted", "name", name, "namespace", namespace)
+	return nil
+}

@@ -3086,30 +3086,3 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 
 	return rules
 }
-
-// newServiceAccount returns a new ServiceAccount instance.
-func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
-	return &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
-		},
-	}
-}
-
-// newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
-func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
-	sa := newServiceAccount(cr)
-	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
-
-	lbls := sa.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	sa.ObjectMeta.Labels = lbls
-
-	return sa
-}
-
-func getServiceAccountName(crName, name string) string {
-	return fmt.Sprintf("%s-%s", crName, name)
-}

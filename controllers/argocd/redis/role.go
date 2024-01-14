@@ -120,6 +120,17 @@ func (rr *RedisReconciler) reconcileHARole() error {
 	return nil
 }
 
+func (rr *RedisReconciler) deleteRole(name, namespace string) error {
+	if err := permissions.DeleteRole(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteRole: failed to delete role %s", name)
+	}
+	rr.Logger.V(0).Info("deleteRole: role deleted", "name", name, "namespace", namespace)
+	return nil
+}
+
 func getPolicyRules() []rbacv1.PolicyRule {
 	rules := []rbacv1.PolicyRule{}
 	return rules
