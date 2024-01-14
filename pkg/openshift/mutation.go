@@ -23,7 +23,7 @@ func init() {
 // TO DO: Add dedicated e2e tests for all these mutations
 
 // AddAutoTLSAnnotationForOpenShift adds the OpenShift Service CA TLS cert request annotaiton to the provided service object, using the provided secret name as the value
-func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
+func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
 	if !IsOpenShiftEnv() {
 		return nil
 	}
@@ -40,8 +40,8 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 
 		// there should only be one extra parameter of type string, which would be the name of the TLS secret to be used in the annotation.
 		// Check to make sure length and type of extra argument match before using this as the secret name
-		if len(extra) == 1 {
-			for _, arg := range extra {
+		if len(args) == 1 {
+			for _, arg := range args {
 				switch val := arg.(type) {
 				case string:
 					obj.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = val
@@ -52,7 +52,7 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 	return nil
 }
 
-func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
+func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
 	if !IsOpenShiftEnv() {
 		return nil
 	}
@@ -80,7 +80,7 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 	return nil
 }
 
-func AddNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
+func AddNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
 	if !IsOpenShiftEnv() {
 		return nil
 	}

@@ -23,11 +23,11 @@ func Register(m ...MutateFunc) {
 	mutateFuncs = append(mutateFuncs, m...)
 }
 
-func ApplyReconcilerMutation(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
+func ApplyReconcilerMutation(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, mutateFunc := range mutateFuncs {
-		if err := mutateFunc(cr, resource, client, extra); err != nil {
+		if err := mutateFunc(cr, resource, client, args); err != nil {
 			return err
 		}
 	}

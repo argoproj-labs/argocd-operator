@@ -33,11 +33,11 @@ var (
 	}
 )
 
-func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, extra ...interface{}) error {
+func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
 	return errors.New("test-mutation-error")
 }
 
-func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, extra ...interface{}) error {
+func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
 	switch obj := resource.(type) {
 	case *appsv1.Deployment:
 		obj.Name = testNameMutated
