@@ -1,12 +1,11 @@
 package permissions
 
 import (
-	"context"
+	"errors"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,57 +30,49 @@ func RequestRoleBinding(request RoleBindingRequest) *rbacv1.RoleBinding {
 	return newRoleBinding(request.ObjectMeta, request.RoleRef, request.Subjects)
 }
 
-// CreateRoleBinding creates a RoleBinding resource using the provided client.
+// CreateRoleBinding creates the specified RoleBinding using the provided client.
 func CreateRoleBinding(rb *rbacv1.RoleBinding, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), rb)
+	return resource.CreateObject(rb, client)
 }
 
-// GetRoleBinding retrieves an existing RoleBinding resource specified by its name and namespace.
+// GetRoleBinding retrieves the RoleBinding with the given name and namespace using the provided client.
 func GetRoleBinding(name, namespace string, client cntrlClient.Client) (*rbacv1.RoleBinding, error) {
-	existingRB := &rbacv1.RoleBinding{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRB)
+	rb := &rbacv1.RoleBinding{}
+	obj, err := resource.GetObject(name, namespace, rb, client)
 	if err != nil {
 		return nil, err
 	}
-	return existingRB, nil
+	// Assert the object as an rbacv1.RoleBinding
+	roleBinding, ok := obj.(*rbacv1.RoleBinding)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.RoleBinding")
+	}
+	return roleBinding, nil
 }
 
-// ListRoleBindings lists all RoleBinding resources in a given namespace.
+// ListRoleBindings returns a list of RoleBinding objects in the specified namespace using the provided client and list options.
 func ListRoleBindings(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.RoleBindingList, error) {
-	existingRBs := &rbacv1.RoleBindingList{}
-	err := client.List(context.TODO(), existingRBs, listOptions...)
+	roleBindingList := &rbacv1.RoleBindingList{}
+	obj, err := resource.ListObjects(namespace, roleBindingList, client, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return existingRBs, nil
+	// Assert the object as an rbacv1.RoleBindingList
+	roleBindingList, ok := obj.(*rbacv1.RoleBindingList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.RoleBindingList")
+	}
+	return roleBindingList, nil
 }
 
-// UpdateRoleBinding updates an existing RoleBinding resource.
+// UpdateRoleBinding updates the specified RoleBinding using the provided client.
 func UpdateRoleBinding(rb *rbacv1.RoleBinding, client cntrlClient.Client) error {
-	_, err := GetRoleBinding(rb.Name, rb.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), rb); err != nil {
-		return err
-	}
-
-	return nil
+	return resource.UpdateObject(rb, client)
 }
 
-// DeleteRoleBinding deletes an existing RoleBinding resource specified by its name and namespace.
+// DeleteRoleBinding deletes the RoleBinding with the given name and namespace using the provided client.
+// It ignores the "not found" error if the RoleBinding does not exist.
 func DeleteRoleBinding(name, namespace string, client cntrlClient.Client) error {
-	existingRB, err := GetRoleBinding(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingRB); err != nil {
-		return err
-	}
-	return nil
+	roleBinding := &rbacv1.RoleBinding{}
+	return resource.DeleteObject(name, namespace, roleBinding, client)
 }

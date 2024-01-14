@@ -1,16 +1,15 @@
 package networking
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // IngressRequest objects contain all the required information to produce a ingress object in return
@@ -29,56 +28,6 @@ func newIngress(objectMeta metav1.ObjectMeta, spec networkingv1.IngressSpec) *ne
 		ObjectMeta: objectMeta,
 		Spec:       spec,
 	}
-}
-
-func CreateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), ingress)
-}
-
-// UpdateIngress updates the specified Ingress using the provided client.
-func UpdateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
-	_, err := GetIngress(ingress.Name, ingress.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), ingress); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteIngress(name, namespace string, client cntrlClient.Client) error {
-	existingIngress, err := GetIngress(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingIngress); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetIngress(name, namespace string, client cntrlClient.Client) (*networkingv1.Ingress, error) {
-	existingIngress := &networkingv1.Ingress{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingIngress)
-	if err != nil {
-		return nil, err
-	}
-	return existingIngress, nil
-}
-
-func ListIngresss(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*networkingv1.IngressList, error) {
-	existingIngresss := &networkingv1.IngressList{}
-	err := client.List(context.TODO(), existingIngresss, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingIngresss, nil
 }
 
 func RequestIngress(request IngressRequest) (*networkingv1.Ingress, error) {
@@ -100,4 +49,51 @@ func RequestIngress(request IngressRequest) (*networkingv1.Ingress, error) {
 	}
 
 	return ingress, nil
+}
+
+// CreateIngress creates the specified Ingress using the provided client.
+func CreateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
+	return resource.CreateObject(ingress, client)
+}
+
+// UpdateIngress updates the specified Ingress using the provided client.
+func UpdateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) error {
+	return resource.UpdateObject(ingress, client)
+}
+
+// DeleteIngress deletes the Ingress with the given name and namespace using the provided client.
+// It ignores the "not found" error if the Ingress does not exist.
+func DeleteIngress(name, namespace string, client cntrlClient.Client) error {
+	ingress := &networkingv1.Ingress{}
+	return resource.DeleteObject(name, namespace, ingress, client)
+}
+
+// GetIngress retrieves the Ingress with the given name and namespace using the provided client.
+func GetIngress(name, namespace string, client cntrlClient.Client) (*networkingv1.Ingress, error) {
+	ingress := &networkingv1.Ingress{}
+	obj, err := resource.GetObject(name, namespace, ingress, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a networkingv1.Ingress
+	ingress, ok := obj.(*networkingv1.Ingress)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a networkingv1.Ingress")
+	}
+	return ingress, nil
+}
+
+// ListIngresss returns a list of Ingress objects in the specified namespace using the provided client and list options.
+func ListIngresss(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*networkingv1.IngressList, error) {
+	ingressList := &networkingv1.IngressList{}
+	obj, err := resource.ListObjects(namespace, ingressList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a networkingv1.IngressList
+	ingressList, ok := obj.(*networkingv1.IngressList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a networkingv1.IngressList")
+	}
+	return ingressList, nil
 }

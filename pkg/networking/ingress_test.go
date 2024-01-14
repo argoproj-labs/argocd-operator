@@ -8,7 +8,7 @@ import (
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -304,7 +304,7 @@ func TestGetIngress(t *testing.T) {
 
 	_, err = GetIngress(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListIngresss(t *testing.T) {
@@ -395,13 +395,12 @@ func TestUpdateIngress(t *testing.T) {
 }
 
 func TestDeleteIngress(t *testing.T) {
-	s := scheme.Scheme
-	assert.NoError(t, networkingv1.AddToScheme(s))
-
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestIngress(func(i *networkingv1.Ingress) {
+	testIngress := getTestIngress(func(i *networkingv1.Ingress) {
 		i.Name = testName
 		i.Namespace = testNamespace
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testIngress).Build()
 
 	err := DeleteIngress(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -413,9 +412,5 @@ func TestDeleteIngress(t *testing.T) {
 	}, existingIngress)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	err = DeleteIngress(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

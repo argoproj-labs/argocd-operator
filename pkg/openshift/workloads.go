@@ -1,16 +1,15 @@
 package openshift
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // DeploymentConfigRequest objects contain all the required information to produce a deploymentConfig object in return
@@ -31,56 +30,6 @@ func newDeploymentConfig(objMeta metav1.ObjectMeta, spec oappsv1.DeploymentConfi
 	}
 }
 
-func CreateDeploymentConfig(deploymentConfig *oappsv1.DeploymentConfig, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), deploymentConfig)
-}
-
-// UpdateDeploymentConfig updates the specified DeploymentConfig using the provided client.
-func UpdateDeploymentConfig(deploymentConfig *oappsv1.DeploymentConfig, client cntrlClient.Client) error {
-	_, err := GetDeploymentConfig(deploymentConfig.Name, deploymentConfig.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), deploymentConfig); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteDeploymentConfig(name, namespace string, client cntrlClient.Client) error {
-	existingDeploymentConfig, err := GetDeploymentConfig(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingDeploymentConfig); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetDeploymentConfig(name, namespace string, client cntrlClient.Client) (*oappsv1.DeploymentConfig, error) {
-	existingDeploymentConfig := &oappsv1.DeploymentConfig{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingDeploymentConfig)
-	if err != nil {
-		return nil, err
-	}
-	return existingDeploymentConfig, nil
-}
-
-func ListDeploymentConfigs(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*oappsv1.DeploymentConfigList, error) {
-	existingDeploymentConfigs := &oappsv1.DeploymentConfigList{}
-	err := client.List(context.TODO(), existingDeploymentConfigs, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingDeploymentConfigs, nil
-}
-
 func RequestDeploymentConfig(request DeploymentConfigRequest) (*oappsv1.DeploymentConfig, error) {
 	var (
 		mutationErr error
@@ -99,4 +48,51 @@ func RequestDeploymentConfig(request DeploymentConfigRequest) (*oappsv1.Deployme
 	}
 
 	return deploymentConfig, nil
+}
+
+// CreateDeploymentConfig creates the specified DeploymentConfig using the provided client.
+func CreateDeploymentConfig(deploymentConfig *oappsv1.DeploymentConfig, client cntrlClient.Client) error {
+	return resource.CreateObject(deploymentConfig, client)
+}
+
+// UpdateDeploymentConfig updates the specified DeploymentConfig using the provided client.
+func UpdateDeploymentConfig(deploymentConfig *oappsv1.DeploymentConfig, client cntrlClient.Client) error {
+	return resource.UpdateObject(deploymentConfig, client)
+}
+
+// DeleteDeploymentConfig deletes the DeploymentConfig with the given name and namespace using the provided client.
+// It ignores the "not found" error if the DeploymentConfig does not exist.
+func DeleteDeploymentConfig(name, namespace string, client cntrlClient.Client) error {
+	deploymentConfig := &oappsv1.DeploymentConfig{}
+	return resource.DeleteObject(name, namespace, deploymentConfig, client)
+}
+
+// GetDeploymentConfig retrieves the DeploymentConfig with the given name and namespace using the provided client.
+func GetDeploymentConfig(name, namespace string, client cntrlClient.Client) (*oappsv1.DeploymentConfig, error) {
+	deploymentConfig := &oappsv1.DeploymentConfig{}
+	obj, err := resource.GetObject(name, namespace, deploymentConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a oappsv1.DeploymentConfig
+	deploymentConfig, ok := obj.(*oappsv1.DeploymentConfig)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a oappsv1.DeploymentConfig")
+	}
+	return deploymentConfig, nil
+}
+
+// ListDeploymentConfigs returns a list of DeploymentConfig objects in the specified namespace using the provided client and list options.
+func ListDeploymentConfigs(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*oappsv1.DeploymentConfigList, error) {
+	deploymentConfigList := &oappsv1.DeploymentConfigList{}
+	obj, err := resource.ListObjects(namespace, deploymentConfigList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a oappsv1.DeploymentConfigList
+	deploymentConfigList, ok := obj.(*oappsv1.DeploymentConfigList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a oappsv1.DeploymentConfigList")
+	}
+	return deploymentConfigList, nil
 }

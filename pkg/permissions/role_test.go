@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -171,7 +171,7 @@ func TestGetRole(t *testing.T) {
 
 	_, err = GetRole(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListRoles(t *testing.T) {
@@ -244,9 +244,12 @@ func TestUpdateRole(t *testing.T) {
 }
 
 func TestDeleteRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRole(func(r *rbacv1.Role) {
+	testRole := getTestRole(func(r *rbacv1.Role) {
 		r.Name = testName
-	})).Build()
+		r.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testRole).Build()
 
 	err := DeleteRole(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -258,9 +261,5 @@ func TestDeleteRole(t *testing.T) {
 	}, existingRole)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteRole(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

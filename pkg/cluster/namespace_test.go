@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -174,7 +174,7 @@ func TestGetNamespace(t *testing.T) {
 
 	_, err = GetNamespace(testName, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListNamespaces(t *testing.T) {
@@ -249,9 +249,11 @@ func TestUpdateNamespace(t *testing.T) {
 }
 
 func TestDeleteNamespace(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestNamespace(func(ns *corev1.Namespace) {
+	testNamespace := getTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = testName
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testNamespace).Build()
 
 	err := DeleteNamespace(testName, testClient)
 	assert.NoError(t, err)
@@ -262,9 +264,5 @@ func TestDeleteNamespace(t *testing.T) {
 	}, existingNamespace)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteNamespace(testName, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

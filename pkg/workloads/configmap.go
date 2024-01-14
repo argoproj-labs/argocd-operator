@@ -1,16 +1,15 @@
 package workloads
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // ConfigMapRequest objects contain all the required information to produce a configMap object in return
@@ -29,56 +28,6 @@ func newConfigMap(objMeta metav1.ObjectMeta, data map[string]string) *corev1.Con
 		ObjectMeta: objMeta,
 		Data:       data,
 	}
-}
-
-func CreateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), configMap)
-}
-
-// UpdateConfigMap updates the specified ConfigMap using the provided client.
-func UpdateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
-	_, err := GetConfigMap(configMap.Name, configMap.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), configMap); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteConfigMap(name, namespace string, client cntrlClient.Client) error {
-	existingConfigMap, err := GetConfigMap(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingConfigMap); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetConfigMap(name, namespace string, client cntrlClient.Client) (*corev1.ConfigMap, error) {
-	existingConfigMap := &corev1.ConfigMap{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingConfigMap)
-	if err != nil {
-		return nil, err
-	}
-	return existingConfigMap, nil
-}
-
-func ListConfigMaps(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.ConfigMapList, error) {
-	existingConfigMaps := &corev1.ConfigMapList{}
-	err := client.List(context.TODO(), existingConfigMaps, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingConfigMaps, nil
 }
 
 func RequestConfigMap(request ConfigMapRequest) (*corev1.ConfigMap, error) {
@@ -100,4 +49,51 @@ func RequestConfigMap(request ConfigMapRequest) (*corev1.ConfigMap, error) {
 	}
 
 	return configMap, nil
+}
+
+// CreateConfigMap creates the specified ConfigMap using the provided client.
+func CreateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
+	return resource.CreateObject(configMap, client)
+}
+
+// UpdateConfigMap updates the specified ConfigMap using the provided client.
+func UpdateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) error {
+	return resource.UpdateObject(configMap, client)
+}
+
+// DeleteConfigMap deletes the ConfigMap with the given name and namespace using the provided client.
+// It ignores the "not found" error if the ConfigMap does not exist.
+func DeleteConfigMap(name, namespace string, client cntrlClient.Client) error {
+	configMap := &corev1.ConfigMap{}
+	return resource.DeleteObject(name, namespace, configMap, client)
+}
+
+// GetConfigMap retrieves the ConfigMap with the given name and namespace using the provided client.
+func GetConfigMap(name, namespace string, client cntrlClient.Client) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	obj, err := resource.GetObject(name, namespace, configMap, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a corev1.ConfigMap
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.ConfigMap")
+	}
+	return configMap, nil
+}
+
+// ListConfigMaps returns a list of ConfigMap objects in the specified namespace using the provided client and list options.
+func ListConfigMaps(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.ConfigMapList, error) {
+	configMapList := &corev1.ConfigMapList{}
+	obj, err := resource.ListObjects(namespace, configMapList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a corev1.ConfigMapList
+	configMapList, ok := obj.(*corev1.ConfigMapList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.ConfigMapList")
+	}
+	return configMapList, nil
 }
