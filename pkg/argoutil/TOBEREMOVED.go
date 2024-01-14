@@ -18,10 +18,13 @@ import (
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // NewPrivateKey returns randomly generated RSA private key.
@@ -261,4 +264,20 @@ func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 		annotations[key] = val
 	}
 	return annotations
+}
+
+// IsObjectFound will perform a basic check that the given object exists via the Kubernetes API.
+// If an error occurs as part of the check, the function will return false.
+func IsObjectFound(client client.Client, namespace string, name string, obj client.Object) bool {
+	return !apierrors.IsNotFound(FetchObject(client, namespace, name, obj))
+}
+
+func FilterObjectsBySelector(c client.Client, objectList client.ObjectList, selector labels.Selector) error {
+	return c.List(context.TODO(), objectList, client.MatchingLabelsSelector{Selector: selector})
+}
+
+// FetchObject will retrieve the object with the given namespace and name using the Kubernetes API.
+// The result will be stored in the given object.
+func FetchObject(client client.Client, namespace string, name string, obj client.Object) error {
+	return client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, obj)
 }

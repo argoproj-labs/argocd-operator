@@ -1,15 +1,14 @@
 package workloads
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,56 +34,6 @@ func newSecret(objMeta metav1.ObjectMeta, data map[string][]byte, stringData map
 	}
 }
 
-func CreateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), secret)
-}
-
-// UpdateSecret updates the specified Secret using the provided client.
-func UpdateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
-	_, err := GetSecret(secret.Name, secret.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), secret); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteSecret(name, namespace string, client cntrlClient.Client) error {
-	existingSecret, err := GetSecret(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingSecret); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetSecret(name, namespace string, client cntrlClient.Client) (*corev1.Secret, error) {
-	existingSecret := &corev1.Secret{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingSecret)
-	if err != nil {
-		return nil, err
-	}
-	return existingSecret, nil
-}
-
-func ListSecrets(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.SecretList, error) {
-	existingSecrets := &corev1.SecretList{}
-	err := client.List(context.TODO(), existingSecrets, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingSecrets, nil
-}
-
 func RequestSecret(request SecretRequest) (*corev1.Secret, error) {
 	var (
 		mutationErr error
@@ -104,4 +53,51 @@ func RequestSecret(request SecretRequest) (*corev1.Secret, error) {
 	}
 
 	return secret, nil
+}
+
+// CreateSecret creates the specified Secret using the provided client.
+func CreateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
+	return resource.CreateObject(secret, client)
+}
+
+// UpdateSecret updates the specified Secret using the provided client.
+func UpdateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
+	return resource.UpdateObject(secret, client)
+}
+
+// DeleteSecret deletes the Secret with the given name and namespace using the provided client.
+// It ignores the "not found" error if the Secret does not exist.
+func DeleteSecret(name, namespace string, client cntrlClient.Client) error {
+	secret := &corev1.Secret{}
+	return resource.DeleteObject(name, namespace, secret, client)
+}
+
+// GetSecret retrieves the Secret with the given name and namespace using the provided client.
+func GetSecret(name, namespace string, client cntrlClient.Client) (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	obj, err := resource.GetObject(name, namespace, secret, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a corev1.Secret
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.Secret")
+	}
+	return secret, nil
+}
+
+// ListSecrets returns a list of Secret objects in the specified namespace using the provided client and list options.
+func ListSecrets(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.SecretList, error) {
+	secretList := &corev1.SecretList{}
+	obj, err := resource.ListObjects(namespace, secretList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a corev1.SecretList
+	secretList, ok := obj.(*corev1.SecretList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.SecretList")
+	}
+	return secretList, nil
 }

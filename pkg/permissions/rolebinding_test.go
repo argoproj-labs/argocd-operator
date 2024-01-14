@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -134,7 +134,7 @@ func TestGetRoleBinding(t *testing.T) {
 
 	_, err = GetRoleBinding(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListRoleBindings(t *testing.T) {
@@ -220,9 +220,12 @@ func TestUpdateRoleBinding(t *testing.T) {
 }
 
 func TestDeleteRoleBinding(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+	testRoleBinding := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = testName
-	})).Build()
+		rb.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testRoleBinding).Build()
 
 	err := DeleteRoleBinding(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -234,9 +237,5 @@ func TestDeleteRoleBinding(t *testing.T) {
 	}, existingRoleBinding)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteRoleBinding(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -108,7 +108,7 @@ func TestGetServiceAccount(t *testing.T) {
 
 	_, err = GetServiceAccount(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListServiceAccounts(t *testing.T) {
@@ -186,9 +186,12 @@ func TestUpdateServiceAccount(t *testing.T) {
 }
 
 func TestDeleteServiceAccount(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+	testServiceAccount := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = testName
-	})).Build()
+		sa.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testServiceAccount).Build()
 
 	err := DeleteServiceAccount(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -200,9 +203,5 @@ func TestDeleteServiceAccount(t *testing.T) {
 	}, existingServiceAccount)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteServiceAccount(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

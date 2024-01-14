@@ -1,16 +1,15 @@
 package monitoring
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // ServiceMonitorRequest objects contain all the required information to produce a serviceMonitor object in return
@@ -29,56 +28,6 @@ func newServiceMonitor(objectMeta metav1.ObjectMeta, spec monitoringv1.ServiceMo
 		ObjectMeta: objectMeta,
 		Spec:       spec,
 	}
-}
-
-func CreateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), serviceMonitor)
-}
-
-// UpdateServiceMonitor updates the specified ServiceMonitor using the provided client.
-func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
-	_, err := GetServiceMonitor(serviceMonitor.Name, serviceMonitor.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), serviceMonitor); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteServiceMonitor(name, namespace string, client cntrlClient.Client) error {
-	existingServiceMonitor, err := GetServiceMonitor(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingServiceMonitor); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetServiceMonitor(name, namespace string, client cntrlClient.Client) (*monitoringv1.ServiceMonitor, error) {
-	existingServiceMonitor := &monitoringv1.ServiceMonitor{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingServiceMonitor)
-	if err != nil {
-		return nil, err
-	}
-	return existingServiceMonitor, nil
-}
-
-func ListServiceMonitors(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*monitoringv1.ServiceMonitorList, error) {
-	existingServiceMonitors := &monitoringv1.ServiceMonitorList{}
-	err := client.List(context.TODO(), existingServiceMonitors, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingServiceMonitors, nil
 }
 
 func RequestServiceMonitor(request ServiceMonitorRequest) (*monitoringv1.ServiceMonitor, error) {
@@ -100,4 +49,51 @@ func RequestServiceMonitor(request ServiceMonitorRequest) (*monitoringv1.Service
 	}
 
 	return serviceMonitor, nil
+}
+
+// CreateServiceMonitor creates the specified ServiceMonitor using the provided client.
+func CreateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
+	return resource.CreateObject(serviceMonitor, client)
+}
+
+// UpdateServiceMonitor updates the specified ServiceMonitor using the provided client.
+func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cntrlClient.Client) error {
+	return resource.UpdateObject(serviceMonitor, client)
+}
+
+// DeleteServiceMonitor deletes the ServiceMonitor with the given name and namespace using the provided client.
+// It ignores the "not found" error if the ServiceMonitor does not exist.
+func DeleteServiceMonitor(name, namespace string, client cntrlClient.Client) error {
+	serviceMonitor := &monitoringv1.ServiceMonitor{}
+	return resource.DeleteObject(name, namespace, serviceMonitor, client)
+}
+
+// GetServiceMonitor retrieves the ServiceMonitor with the given name and namespace using the provided client.
+func GetServiceMonitor(name, namespace string, client cntrlClient.Client) (*monitoringv1.ServiceMonitor, error) {
+	serviceMonitor := &monitoringv1.ServiceMonitor{}
+	obj, err := resource.GetObject(name, namespace, serviceMonitor, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a monitoringv1.ServiceMonitor
+	serviceMonitor, ok := obj.(*monitoringv1.ServiceMonitor)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a monitoringv1.ServiceMonitor")
+	}
+	return serviceMonitor, nil
+}
+
+// ListServiceMonitors returns a list of ServiceMonitor objects in the specified namespace using the provided client and list options.
+func ListServiceMonitors(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*monitoringv1.ServiceMonitorList, error) {
+	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
+	obj, err := resource.ListObjects(namespace, serviceMonitorList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as a monitoringv1.ServiceMonitorList
+	serviceMonitorList, ok := obj.(*monitoringv1.ServiceMonitorList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a monitoringv1.ServiceMonitorList")
+	}
+	return serviceMonitorList, nil
 }

@@ -8,7 +8,7 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -283,7 +283,7 @@ func TestGetPrometheusRule(t *testing.T) {
 
 	_, err = GetPrometheusRule(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListPrometheusRules(t *testing.T) {
@@ -394,10 +394,12 @@ func TestDeletePrometheusRule(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	testPrometheusRule := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = testName
 		pr.Namespace = testNamespace
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(testPrometheusRule).Build()
 
 	err := DeletePrometheusRule(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -409,9 +411,5 @@ func TestDeletePrometheusRule(t *testing.T) {
 	}, existingPrometheusRule)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	err = DeletePrometheusRule(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

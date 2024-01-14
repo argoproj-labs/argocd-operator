@@ -1,16 +1,15 @@
 package permissions
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // RoleRequest objects contain all the required information to produce a role object in return
@@ -56,56 +55,47 @@ func RequestRole(request RoleRequest) (*rbacv1.Role, error) {
 
 // CreateRole creates the specified Role using the provided client.
 func CreateRole(role *rbacv1.Role, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), role)
+	return resource.CreateObject(role, client)
 }
 
 // GetRole retrieves the Role with the given name and namespace using the provided client.
 func GetRole(name, namespace string, client cntrlClient.Client) (*rbacv1.Role, error) {
-	existingRole := &rbacv1.Role{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingRole)
+	role := &rbacv1.Role{}
+	obj, err := resource.GetObject(name, namespace, role, client)
 	if err != nil {
 		return nil, err
 	}
-	return existingRole, nil
+	// Assert the object as an rbacv1.Role
+	role, ok := obj.(*rbacv1.Role)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.Role")
+	}
+	return role, nil
 }
 
 // ListRoles returns a list of Role objects in the specified namespace using the provided client and list options.
 func ListRoles(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.RoleList, error) {
-	existingRoles := &rbacv1.RoleList{}
-	err := client.List(context.TODO(), existingRoles, listOptions...)
+	roleList := &rbacv1.RoleList{}
+	obj, err := resource.ListObjects(namespace, roleList, client, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return existingRoles, nil
+	// Assert the object as an rbacv1.Role
+	roleList, ok := obj.(*rbacv1.RoleList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.RoleList")
+	}
+	return roleList, nil
 }
 
 // UpdateRole updates the specified Role using the provided client.
 func UpdateRole(role *rbacv1.Role, client cntrlClient.Client) error {
-	_, err := GetRole(role.Name, role.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), role); err != nil {
-		return err
-	}
-
-	return nil
+	return resource.UpdateObject(role, client)
 }
 
 // DeleteRole deletes the Role with the given name and namespace using the provided client.
 // It ignores the "not found" error if the Role does not exist.
 func DeleteRole(name, namespace string, client cntrlClient.Client) error {
-	existingRole, err := GetRole(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingRole); err != nil {
-		return err
-	}
-	return nil
+	role := &rbacv1.Role{}
+	return resource.DeleteObject(name, namespace, role, client)
 }
