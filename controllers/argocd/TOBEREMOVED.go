@@ -34,6 +34,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -2967,4 +2968,148 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 	}
 
 	return nil
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
+}
+
+func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if err := r.Client.Delete(context.TODO(), cm); err != nil {
+			return err
+		}
+	}
+	return r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis)
+}
+
+// reconcileStatusRedis will ensure that the Redis status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	if !cr.Spec.HA.Enabled {
+		deploy := newDeploymentWithSuffix("redis", "redis", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+			status = "Pending"
+
+			if deploy.Spec.Replicas != nil {
+				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+					status = "Running"
+				}
+			}
+		}
+	} else {
+		ss := newStatefulSetWithSuffix("redis-ha-server", "redis-ha-server", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+			status = "Pending"
+
+			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
+				status = "Running"
+			}
+		}
+		// TODO: Add check for HA proxy deployment here as well?
+	}
+
+	if cr.Status.Redis != status {
+		cr.Status.Redis = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
+
+func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
+	if IsVersionAPIAvailable() {
+		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
+		resourceName := "nonroot"
+		version, err := getClusterVersion(client)
+		if err != nil {
+			log.Error(err, "couldn't get OpenShift version")
+		}
+		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
+			resourceName = "nonroot-v2"
+		}
+		orules := v1.PolicyRule{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				resourceName,
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		}
+		rules = append(rules, orules)
+	}
+	return rules
+}
+
+func policyRuleForRedis(client client.Client) []v1.PolicyRule {
+	rules := []v1.PolicyRule{}
+
+	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
+	// permissions to start
+	rules = appendOpenShiftNonRootSCC(rules, client)
+
+	return rules
+}
+
+func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
+
+	rules := []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"endpoints",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+	}
+
+	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
+	// permissions to start
+	rules = appendOpenShiftNonRootSCC(rules, client)
+
+	return rules
+}
+
+// newServiceAccount returns a new ServiceAccount instance.
+func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
+func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+	sa := newServiceAccount(cr)
+	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
+
+	lbls := sa.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	sa.ObjectMeta.Labels = lbls
+
+	return sa
+}
+
+func getServiceAccountName(crName, name string) string {
+	return fmt.Sprintf("%s-%s", crName, name)
 }

@@ -608,26 +608,6 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	return nil // ConfigMap exists and nothing to do, move along...
 }
 
-func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if err := r.Client.Delete(context.TODO(), cm); err != nil {
-			return err
-		}
-	}
-	return r.reconcileRedisHAConfigMap(cr, useTLSForRedis)
-}
-
-func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if err := r.Client.Delete(context.TODO(), cm); err != nil {
-			return err
-		}
-	}
-	return r.reconcileRedisHAHealthConfigMap(cr, useTLSForRedis)
-}
-
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
 func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDKnownHostsConfigMapName, cr)

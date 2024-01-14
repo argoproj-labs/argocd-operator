@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -22,6 +22,11 @@ func (rr *RedisReconciler) reconcileHA() []error {
 	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
 	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
 	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
+
+	// reconcile ha role
+	if err := rr.reconcileHARole(); err != nil {
+		reconciliationErrors = append(reconciliationErrors, errors.Wrapf(err, "reconcileHA: failed to reconcile role"))
+	}
 
 	// reconcile ha configmaps
 	if errs := rr.reconcileHAConfigMaps(); len(errs) > 0 {
@@ -77,6 +82,7 @@ func (rr *RedisReconciler) reconcileHAServices() []error {
 func (rr *RedisReconciler) TriggerHARollout(key string) []error {
 	var rolloutErrors []error
 
+	// delete and recreate HA config maps as part of rollout
 	err := rr.deleteConfigMap(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace)
 	if err != nil {
 		rolloutErrors = append(rolloutErrors, err)
@@ -87,6 +93,15 @@ func (rr *RedisReconciler) TriggerHARollout(key string) []error {
 		rolloutErrors = append(rolloutErrors, err)
 	}
 
+	errs := rr.reconcileHAConfigMaps()
+	if len(errs) > 0 {
+		for _, err := range errs {
+			rr.Logger.Error(err, "TriggerHARollout")
+		}
+		rolloutErrors = append(rolloutErrors, errors.New("TriggerHARollout: failed to reconcile ha config maps"))
+	}
+
+	// rollout deployment
 	err = rr.TriggerDeploymentRollout(HAProxyResourceName, rr.Instance.Namespace, key)
 	if err != nil {
 		rolloutErrors = append(rolloutErrors, err)

@@ -39,21 +39,21 @@ func (rr *RedisReconciler) reconcileService() error {
 
 	desiredSvc, err := networking.RequestService(svcRequest)
 	if err != nil {
-		return errors.Wrap(err, "reconcileService: failed to request service")
+		return errors.Wrapf(err, "failed to request service %s", desiredSvc.Name)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileService: failed to set owner reference for service")
+		rr.Logger.Error(err, "failed to set owner reference for service", "name", desiredSvc.Name)
 	}
 
 	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "reconcileService: failed to retrieve service")
+			return errors.Wrapf(err, "failed to retrieve service %s", desiredSvc.Name)
 		}
 
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrap(err, "reconcileService: failed to create service")
+			return errors.Wrapf(err, "failed to create service %s", desiredSvc.Name)
 		}
 		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
@@ -78,7 +78,7 @@ func (rr *RedisReconciler) reconcileService() error {
 	}
 
 	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
-		return errors.Wrap(err, "reconcileService: failed to update service")
+		return errors.Wrapf(err, "failed to update service %s", existingSvc.Name)
 	}
 
 	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
@@ -110,21 +110,21 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 
 	desiredSvc, err := networking.RequestService(svcRequest)
 	if err != nil {
-		return errors.Wrap(err, "reconcileHAProxyService: failed to request service")
+		return errors.Wrapf(err, "failed to request service %s", desiredSvc.Name)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAProxyService: failed to set owner reference for service")
+		rr.Logger.Error(err, "failed to set owner reference for service", "name", desiredSvc.Name)
 	}
 
 	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "reconcileHAProxyService: failed to retrieve service")
+			return errors.Wrapf(err, "failed to retrieve service %s", desiredSvc.Name)
 		}
 
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrap(err, "reconcileHAProxyService: failed to create service")
+			return errors.Wrapf(err, "failed to create service %s", desiredSvc.Name)
 		}
 		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
@@ -149,7 +149,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 	}
 
 	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
-		return errors.Wrap(err, "reconcileHAProxyService: failed to update service")
+		return errors.Wrapf(err, "failed to update service %s", existingSvc.Name)
 	}
 
 	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
@@ -181,21 +181,21 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 
 	desiredSvc, err := networking.RequestService(svcRequest)
 	if err != nil {
-		return errors.Wrap(err, "reconcileHAMasterService: failed to request service")
+		return errors.Wrapf(err, "failed to request service %s", desiredSvc.Name)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAMasterService: failed to set owner reference for service")
+		rr.Logger.Error(err, "failed to set owner reference for service", "name", desiredSvc.Name)
 	}
 
 	_, err = networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrap(err, "reconcileHAMasterService: failed to retrieve service")
+			return errors.Wrapf(err, "failed to retrieve service %s", desiredSvc.Name)
 		}
 
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrap(err, "reconcileHAMasterService: failed to create service")
+			return errors.Wrapf(err, "failed to create service %s", desiredSvc.Name)
 		}
 		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
@@ -237,23 +237,23 @@ func (rr *RedisReconciler) reconcileHAAnnourceServices() []error {
 
 		desiredSvc, err := networking.RequestService(svcRequest)
 		if err != nil {
-			reconcileErrs = append(reconcileErrs, errors.Wrap(err, fmt.Sprintf("reconcileHAAnnourceServices: failed to request service %s", desiredSvc.Name)))
+			reconcileErrs = append(reconcileErrs, errors.Wrapf(err, "failed to request service %s", desiredSvc.Name))
 			continue
 		}
 
 		if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-			rr.Logger.Error(err, fmt.Sprintf("reconcileHAAnnourceServices: failed to set owner reference for service %s", desiredSvc.Name))
+			rr.Logger.Error(err, "failed to set owner reference for service", "name", desiredSvc.Name)
 		}
 
 		_, err = networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
-				reconcileErrs = append(reconcileErrs, errors.Wrap(err, fmt.Sprintf("reconcileHAAnnourceServices: failed to retrieve service %s", desiredSvc.Name)))
+				reconcileErrs = append(reconcileErrs, errors.Wrapf(err, "failed to retrieve service %s", desiredSvc.Name))
 				continue
 			}
 
 			if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-				reconcileErrs = append(reconcileErrs, errors.Wrap(err, fmt.Sprintf("reconcileHAAnnourceServices: failed to create service %s", desiredSvc.Name)))
+				reconcileErrs = append(reconcileErrs, errors.Wrapf(err, "failed to create service %s", desiredSvc.Name))
 				continue
 			}
 			rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)

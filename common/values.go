@@ -41,6 +41,14 @@ const (
 
 	// ArgoCDMetrics is the resource metrics key for labels.
 	ArgoCDMetrics = "metrics"
+
+	ArgoCDStatusUnknown = "Unknown"
+
+	ArgoCDStatusPending = "Pending"
+
+	ArgoCDStatusRunning = "Running"
+
+	ArgoCDStatusAvailable = "Available"
 )
 
 // general values

@@ -1,13 +1,10 @@
 package redis
 
 import (
-	"crypto/sha256"
-	"fmt"
-
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // reconcileTLSSecret checks whether the argocd-operator-redis-tls secret
@@ -18,26 +15,15 @@ func (rr *RedisReconciler) reconcileTLSSecret() []error {
 	var reconErrs []error
 	var sha256sum string
 
-	tlsSecret, err := workloads.GetSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client)
+	sha256sum, err := argocdcommon.TLSSecretChecksum(types.NamespacedName{Name: common.ArgoCDRedisServerTLSSecretName, Namespace: rr.Instance.Namespace}, rr.Client)
 	if err != nil {
-		reconErrs = append(reconErrs, errors.Wrap(err, fmt.Sprintf("reconcileTLSSecret: failed to retrieve secret %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace)))
+		reconErrs = append(reconErrs, errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace))
 		return reconErrs
 	}
 
-	if tlsSecret.Type != corev1.SecretTypeTLS {
-		// We only process secrets of type kubernetes.io/tls
-		rr.Logger.V(1).Info("reconcileTLSSecret: skipping secret of type other than kubernetes.io/tls")
-		return nil
-	}
-
-	// We do the checksum over a concatenated byte stream of cert + key
-	crt, crtOk := tlsSecret.Data[corev1.TLSCertKey]
-	key, keyOk := tlsSecret.Data[corev1.TLSPrivateKeyKey]
-	if crtOk && keyOk {
-		var sumBytes []byte
-		sumBytes = append(sumBytes, crt...)
-		sumBytes = append(sumBytes, key...)
-		sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+	if sha256sum == "" {
+		rr.Logger.V(1).Info("reconcileTLSSecret: received empty checksum; secret of type other than kubernetes.io/tls encountered")
+		return reconErrs
 	}
 
 	// The content of the TLS secret has changed since we last looked if the
@@ -49,7 +35,7 @@ func (rr *RedisReconciler) reconcileTLSSecret() []error {
 		rr.Instance.Status.RedisTLSChecksum = sha256sum
 		err = rr.UpdateInstanceStatus()
 		if err != nil {
-			reconErrs = append(reconErrs, errors.Wrap(err, "reconcileTLSSecret: failed to update instance status"))
+			reconErrs = append(reconErrs, errors.Wrapf(err, "reconcileTLSSecret: failed to update instance status"))
 			return reconErrs
 		}
 
@@ -72,7 +58,6 @@ func (rr *RedisReconciler) reconcileTLSSecret() []error {
 		if err := rr.Appcontroller.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
 			reconErrs = append(reconErrs, err)
 		}
-
 	}
 	return reconErrs
 }

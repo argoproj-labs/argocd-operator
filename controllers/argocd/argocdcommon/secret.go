@@ -1,6 +1,8 @@
 package argocdcommon
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -12,6 +14,7 @@ import (
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TLSSecretChecksum retrieves a specified TLS secret and calculates its checksum value and returns it. If a secret is determined to be of type other than TLS it returns an empty string
 func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client) (string, error) {
 	var sha256sum string
 
@@ -25,6 +28,14 @@ func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client
 		return "", nil
 	}
 
+	crt, crtOk := tlsSecret.Data[corev1.TLSCertKey]
+	key, keyOk := tlsSecret.Data[corev1.TLSPrivateKeyKey]
+	if crtOk && keyOk {
+		var sumBytes []byte
+		sumBytes = append(sumBytes, crt...)
+		sumBytes = append(sumBytes, key...)
+		sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+	}
 	return sha256sum, nil
 }
 

@@ -1,16 +1,14 @@
 package redis
 
 import (
-	"fmt"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	cntrlr "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/go-logr/logr"
+	errors "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	cntrlr "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type RedisReconciler struct {
@@ -45,7 +43,12 @@ func (rr *RedisReconciler) Reconcile() error {
 	rr.TLSEnabled = rr.UseTLS()
 
 	if rr.Instance.Spec.HA.Enabled {
-
+		if errs := rr.reconcileHA(); len(errs) > 0 {
+			for _, err := range errs {
+				rr.Logger.Error(err, "")
+			}
+			return errors.New("failed to reconcile redis in HA mode")
+		}
 	} else {
 
 	}
@@ -58,12 +61,15 @@ func (rr *RedisReconciler) TriggerRollout(key string) error {
 	if rr.Instance.Spec.HA.Enabled {
 		errs := rr.TriggerHARollout(key)
 		if len(errs) > 0 {
-			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout")
+			for _, err := range errs {
+				rr.Logger.Error(err, "TriggerRollout")
+			}
 		}
+		return errors.New("TriggerRollout: failed to trigger HA rollout")
 	} else {
 		err := rr.TriggerDeploymentRollout(resourceName, rr.Instance.Namespace, key)
 		if err != nil {
-			return fmt.Errorf("TriggerRollout: failed to trigger HA rollout: %w", err)
+			return errors.Wrapf(err, "TriggerRollout: failed to roll out deployment")
 		}
 	}
 	return nil

@@ -223,40 +223,6 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcileStatusRedis will ensure that the Redis status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusRedis(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	if !cr.Spec.HA.Enabled {
-		deploy := newDeploymentWithSuffix("redis", "redis", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-			status = "Pending"
-
-			if deploy.Spec.Replicas != nil {
-				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-					status = "Running"
-				}
-			}
-		}
-	} else {
-		ss := newStatefulSetWithSuffix("redis-ha-server", "redis-ha-server", cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
-			status = "Pending"
-
-			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
-				status = "Running"
-			}
-		}
-		// TODO: Add check for HA proxy deployment here as well?
-	}
-
-	if cr.Status.Redis != status {
-		cr.Status.Redis = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
 // reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
