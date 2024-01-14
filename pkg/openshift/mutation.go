@@ -16,10 +16,43 @@ import (
 
 func init() {
 	mutation.Register(AddSeccompProfileForOpenShift)
-	mutation.Register(AppendNonRootSCCForOpenShift)
+	mutation.Register(AddNonRootSCCForOpenShift)
+	mutation.Register(AddAutoTLSAnnotationForOpenShift)
 }
 
-func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client) error {
+// TO DO: Add dedicated e2e tests for all these mutations
+
+// AddAutoTLSAnnotationForOpenShift adds the OpenShift Service CA TLS cert request annotaiton to the provided service object, using the provided secret name as the value
+func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
+	if !IsOpenShiftEnv() {
+		return nil
+	}
+	switch obj := resource.(type) {
+	case *corev1.Service:
+		// return if autoTLS is not requested
+		if !cr.Spec.Redis.WantsAutoTLS() {
+			return nil
+		}
+
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+
+		// there should only be one extra parameter of type string, which would be the name of the TLS secret to be used in the annotation.
+		// Check to make sure length and type of extra argument match before using this as the secret name
+		if len(extra) == 1 {
+			for _, arg := range extra {
+				switch val := arg.(type) {
+				case string:
+					obj.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = val
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
 	if !IsOpenShiftEnv() {
 		return nil
 	}
@@ -47,7 +80,7 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 	return nil
 }
 
-func AppendNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client) error {
+func AddNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, extra ...interface{}) error {
 	if !IsOpenShiftEnv() {
 		return nil
 	}

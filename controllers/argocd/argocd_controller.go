@@ -632,7 +632,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.RedisController.Appcontroller = appController
 	r.RedisController.Server = serverController
 	r.RedisController.RepoServer = reposerverController
-	r.RedisController.IsOpenShiftEnv = openshift.IsOpenShiftEnv()
 
 	r.NotificationsController = notificationsController
 

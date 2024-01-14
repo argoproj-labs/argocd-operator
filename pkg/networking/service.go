@@ -18,9 +18,11 @@ type ServiceRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       corev1.ServiceSpec
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newService returns a new Service instance for the given ArgoCD.
@@ -89,7 +91,7 @@ func RequestService(request ServiceRequest) (*corev1.Service, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, service, request.Client)
+			err := mutation(nil, service, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

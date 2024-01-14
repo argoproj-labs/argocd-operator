@@ -17,11 +17,10 @@ type RedisReconciler struct {
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 
-	Appcontroller  AppController
-	Server         Server
-	RepoServer     RepoServer
-	TLSEnabled     bool
-	IsOpenShiftEnv bool
+	Appcontroller AppController
+	Server        Server
+	RepoServer    RepoServer
+	TLSEnabled    bool
 }
 
 var (

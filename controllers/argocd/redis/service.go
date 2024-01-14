@@ -6,8 +6,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
-	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,10 +32,9 @@ func (rr *RedisReconciler) reconcileService() error {
 				},
 			},
 		},
-	}
-
-	if rr.IsOpenShiftEnv && rr.Instance.Spec.Redis.WantsAutoTLS() {
-		svcRequest = openshift.AddAutoTLSAnnotation(svcRequest, common.ArgoCDRedisServerTLSSecretName)
+		Mutations:    []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		MutationArgs: util.ConvertStringsToInterfaces([]string{common.ArgoCDRedisServerTLSSecretName}),
+		Client:       rr.Client,
 	}
 
 	desiredSvc, err := networking.RequestService(svcRequest)
@@ -102,10 +102,9 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 				},
 			},
 		},
-	}
-
-	if rr.IsOpenShiftEnv && rr.Instance.Spec.Redis.WantsAutoTLS() {
-		svcRequest = openshift.AddAutoTLSAnnotation(svcRequest, common.ArgoCDRedisServerTLSSecretName)
+		Mutations:    []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		MutationArgs: util.ConvertStringsToInterfaces([]string{common.ArgoCDRedisServerTLSSecretName}),
+		Client:       rr.Client,
 	}
 
 	desiredSvc, err := networking.RequestService(svcRequest)
