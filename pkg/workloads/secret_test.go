@@ -180,11 +180,16 @@ func TestListSecrets(t *testing.T) {
 	secret1 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-1"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		s.Namespace = testNamespace
 	})
-	secret2 := getTestSecret(func(s *corev1.Secret) { s.Name = "secret-2" })
+	secret2 := getTestSecret(func(s *corev1.Secret) {
+		s.Name = "secret-2"
+		s.Namespace = testNamespace
+	})
 	secret3 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		s.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

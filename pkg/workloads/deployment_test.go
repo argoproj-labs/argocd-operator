@@ -197,10 +197,15 @@ func TestListDeployments(t *testing.T) {
 		d.Namespace = testNamespace
 		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	deployment2 := getTestDeployment(func(d *appsv1.Deployment) { d.Name = "deployment-2" })
+	deployment2 := getTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = "deployment-2"
+		d.Namespace = testNamespace
+
+	})
 	deployment3 := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-3"
 		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		d.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

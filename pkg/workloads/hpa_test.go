@@ -186,10 +186,14 @@ func TestListHorizontalPodAutoscalers(t *testing.T) {
 		hpa.Namespace = testNamespace
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) { hpa.Name = "horizontalPodAutoscaler-2" })
+	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = "horizontalPodAutoscaler-2"
+		hpa.Namespace = testNamespace
+	})
 	horizontalPodAutoscaler3 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-3"
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		hpa.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

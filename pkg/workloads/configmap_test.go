@@ -185,11 +185,15 @@ func TestListConfigMaps(t *testing.T) {
 		cm.Data = testKVP
 
 	})
-	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) { cm.Name = "configMap-2" })
+	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = "configMap-2"
+		cm.Namespace = testNamespace
+	})
 	configMap3 := getTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-3"
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		cm.Data = testKVP
+		cm.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

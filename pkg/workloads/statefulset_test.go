@@ -197,6 +197,7 @@ func TestListStatefulSets(t *testing.T) {
 	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-3"
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		ss.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
