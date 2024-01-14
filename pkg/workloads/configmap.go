@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
@@ -17,10 +18,13 @@ import (
 type ConfigMapRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Data       map[string]string
+	Instance   *argoproj.ArgoCD
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newConfigMap returns a new ConfigMap instance for the given ArgoCD.
@@ -89,7 +93,7 @@ func RequestConfigMap(request ConfigMapRequest) (*corev1.ConfigMap, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, configMap, request.Client)
+			err := mutation(request.Instance, configMap, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

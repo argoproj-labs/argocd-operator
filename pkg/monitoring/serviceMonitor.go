@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
@@ -17,10 +18,13 @@ import (
 type ServiceMonitorRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       monitoringv1.ServiceMonitorSpec
+	Instance   *argoproj.ArgoCD
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newServiceMonitor returns a new ServiceMonitor instance for the given ArgoCD.
@@ -89,7 +93,7 @@ func RequestServiceMonitor(request ServiceMonitorRequest) (*monitoringv1.Service
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, serviceMonitor, request.Client)
+			err := mutation(request.Instance, serviceMonitor, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

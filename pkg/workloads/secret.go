@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,10 +20,13 @@ type SecretRequest struct {
 	Data       map[string][]byte
 	StringData map[string]string
 	Type       corev1.SecretType
+	Instance   *argoproj.ArgoCD
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newSecret returns a new Secret instance for the given ArgoCD.
@@ -93,7 +97,7 @@ func RequestSecret(request SecretRequest) (*corev1.Secret, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, secret, request.Client)
+			err := mutation(request.Instance, secret, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
@@ -16,10 +17,13 @@ import (
 type ClusterRoleRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Rules      []rbacv1.PolicyRule
+	Instance   *argoproj.ArgoCD
 
 	// array of functions to mutate clusterRole before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newClusterRole returns a new clusterRole instance.
@@ -41,7 +45,7 @@ func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error)
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, clusterRole, request.Client)
+			err := mutation(request.Instance, clusterRole, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

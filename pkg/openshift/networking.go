@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
@@ -40,10 +41,13 @@ func VerifyRouteAPI() error {
 type RouteRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       routev1.RouteSpec
+	Instance   *argoproj.ArgoCD
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newRoute returns a new Route instance for the given ArgoCD.
@@ -112,7 +116,7 @@ func RequestRoute(request RouteRequest) (*routev1.Route, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, route, request.Client)
+			err := mutation(request.Instance, route, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

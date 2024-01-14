@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 )
 
@@ -18,9 +19,13 @@ type PrometheusRuleRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       monitoringv1.PrometheusRuleSpec
 
-	// array of functions to mutate role before returning to requester
+	Instance *argoproj.ArgoCD
+
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newPrometheusRule returns a new PrometheusRule instance for the given ArgoCD.
@@ -89,7 +94,7 @@ func RequestPrometheusRule(request PrometheusRuleRequest) (*monitoringv1.Prometh
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, prometheusRule, request.Client)
+			err := mutation(request.Instance, prometheusRule, request.Client, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}
