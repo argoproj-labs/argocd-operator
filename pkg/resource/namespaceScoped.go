@@ -25,6 +25,7 @@ func GetObject(name, namespace string, obj cntrlClient.Object, client cntrlClien
 // ListObjects returns a list of objects in the specified namespace using the provided client and list options.
 func ListObjects(namespace string, objList cntrlClient.ObjectList, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (cntrlClient.ObjectList, error) {
 	existingObjs := objList.DeepCopyObject().(cntrlClient.ObjectList)
+	listOptions = append(listOptions, cntrlClient.InNamespace(namespace))
 	err := client.List(context.TODO(), existingObjs, listOptions...)
 	if err != nil {
 		return nil, err
