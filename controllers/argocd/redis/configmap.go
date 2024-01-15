@@ -2,7 +2,6 @@ package redis
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,11 +30,11 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 			Annotations: rr.Instance.Annotations,
 		},
 		Data: map[string]string{
-			haproxyCfgKey:    rr.GetHAProxyConfig(),
-			haproxyScriptKey: rr.GetHAProxyScript(),
-			initScriptKey:    rr.GetInitScript(),
-			redisConfKey:     rr.GetConf(),
-			sentinelConfKey:  rr.GetSentinelConf(),
+			haproxyCfgKey:    rr.getHAProxyConfig(),
+			haproxyScriptKey: rr.getHAProxyScript(),
+			initScriptKey:    rr.getInitScript(),
+			redisConfKey:     rr.getConf(),
+			sentinelConfKey:  rr.getSentinelConf(),
 		},
 	}
 
@@ -45,24 +44,14 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		return errors.Wrapf(err, "reconcileHAConfigMap: failed to request configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
 	}
 
-	namespace, err := cluster.GetNamespace(rr.Instance.Namespace, rr.Client)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileHAConfigMap: failed to retrieve namespace %s", rr.Instance.Namespace)
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := rr.deleteConfigMap(desiredCM.Name, desiredCM.Namespace); err != nil {
-			return errors.Wrapf(err, "reconcileHAConfigMap: failed to delete configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
-		}
+	if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 	}
 
 	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileHAConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
-		}
-
-		if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
-			rr.Logger.Error(err, "reconcileHAConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		}
 
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
@@ -85,38 +74,26 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 			Annotations: rr.Instance.Annotations,
 		},
 		Data: map[string]string{
-			livenessScriptKey:         rr.GetLivenessScript(),
-			readinessScriptKey:        rr.GetReadinessScript(),
-			sentinelLivenessScriptKey: rr.GetSentinelLivenessScript(),
+			livenessScriptKey:         rr.getLivenessScript(),
+			readinessScriptKey:        rr.getReadinessScript(),
+			sentinelLivenessScriptKey: rr.getSentinelLivenessScript(),
 		},
 	}
 
 	desiredCM, err := workloads.RequestConfigMap(cmRequest)
 	if err != nil {
-		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to request configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		rr.Logger.V(1).Info("reconcileHAHealthConfigMap: one or more mutations could not be applied")
-		return err
+		return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to request configMap %s", desiredCM.Namespace)
 	}
 
-	namespace, err := cluster.GetNamespace(rr.Instance.Namespace, rr.Client)
-	if err != nil {
-		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to retrieve namespace", "name", rr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := rr.deleteConfigMap(desiredCM.Name, desiredCM.Namespace); err != nil {
-			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to delete configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
-		}
+	if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 	}
 
 	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
-		}
-
-		if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
-			rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		}
 
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {

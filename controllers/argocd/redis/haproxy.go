@@ -21,17 +21,17 @@ func (rr *RedisReconciler) GetHAProxyAddress() string {
 	return argoutil.FqdnServiceRef(HAProxyResourceName, rr.Instance.Namespace, common.DefaultRedisPort)
 }
 
-// GetHAProxyContainerImage will return the container image for the Redis HA Proxy.
-func (rr *RedisReconciler) GetHAProxyContainerImage() string {
+// getHAProxyContainerImage will return the container image for the Redis HA Proxy.
+func (rr *RedisReconciler) getHAProxyContainerImage() string {
 	fn := func(cr *argoproj.ArgoCD) (string, string) {
 		return cr.Spec.HA.RedisProxyImage, cr.Spec.HA.RedisProxyVersion
 	}
 	return argocdcommon.GetContainerImage(fn, rr.Instance, common.RedisHAProxyImageEnvVar, common.DefaultRedisHAProxyImage, common.DefaultRedisHAProxyVersion)
 }
 
-// GetHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
+// getHAProxyConfig will load the Redis HA Proxy configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetHAProxyConfig() string {
+func (rr *RedisReconciler) getHAProxyConfig() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), haproxyCfgTpl)
 	params := map[string]string{
 		ServiceNameKey: HAResourceName,
@@ -46,9 +46,9 @@ func (rr *RedisReconciler) GetHAProxyConfig() string {
 	return script
 }
 
-// GetHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
+// getHAProxyScript will load the Redis HA Proxy init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetHAProxyScript() string {
+func (rr *RedisReconciler) getHAProxyScript() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), haproxyInitTpl)
 	params := map[string]string{
 		ServiceNameKey: HAResourceName,

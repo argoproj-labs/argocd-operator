@@ -11,6 +11,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -57,7 +58,8 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 		return nil
 	}
 	switch obj := resource.(type) {
-	case *corev1.PodSpec:
+	case *appsv1.StatefulSet:
+	case *appsv1.Deployment:
 		if !IsVersionAPIAvailable() {
 			return nil
 		}
@@ -65,15 +67,18 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 		if err != nil {
 			return errors.Wrapf(err, "AddSeccompProfileForOpenShift: failed to retrieve OpenShift cluster version")
 		}
+
+		podSpec := obj.Spec.Template.Spec
+
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
-			if obj.SecurityContext == nil {
-				obj.SecurityContext = &corev1.PodSecurityContext{}
+			if podSpec.SecurityContext == nil {
+				podSpec.SecurityContext = &corev1.PodSecurityContext{}
 			}
-			if obj.SecurityContext.SeccompProfile == nil {
-				obj.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+			if podSpec.SecurityContext.SeccompProfile == nil {
+				podSpec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
 			}
-			if len(obj.SecurityContext.SeccompProfile.Type) == 0 {
-				obj.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+			if len(podSpec.SecurityContext.SeccompProfile.Type) == 0 {
+				podSpec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
 			}
 		}
 	}

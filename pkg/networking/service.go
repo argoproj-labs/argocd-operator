@@ -9,6 +9,7 @@ import (
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
@@ -42,11 +43,7 @@ func RequestService(request ServiceRequest) (*corev1.Service, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-<<<<<<< HEAD
-			err := mutation(nil, service, request.Client, request.MutationArgs)
-=======
 			err := mutation(request.Instance, service, request.Client, request.MutationArgs)
->>>>>>> cffcbf284677d811ee33c31bb5904c2fcf89ecc7
 			if err != nil {
 				mutationErr = err
 			}

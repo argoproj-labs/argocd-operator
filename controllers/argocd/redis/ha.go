@@ -3,11 +3,8 @@ package redis
 import (
 	"github.com/pkg/errors"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -120,22 +117,3 @@ func (rr *RedisReconciler) TriggerHARollout(key string) []error {
 }
 
 func (rr *RedisReconciler) DeleteHAResources() error {}
-
-// GetHAContainerImage will return the container image for the Redis server in HA mode.
-func (rr *RedisReconciler) GetHAContainerImage() string {
-	fn := func(cr *argoproj.ArgoCD) (string, string) {
-		return cr.Spec.Redis.Image, cr.Spec.Redis.Version
-	}
-	return argocdcommon.GetContainerImage(fn, rr.Instance, common.RedisHAImageEnvVar, common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersionHA)
-}
-
-// GetHAResources will return the ResourceRequirements for the Redis container in HA mode
-func (rr *RedisReconciler) GetHAResources() corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if rr.Instance.Spec.HA.Resources != nil {
-		resources = *rr.Instance.Spec.HA.Resources
-	}
-	return resources
-}

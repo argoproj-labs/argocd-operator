@@ -23,6 +23,7 @@ const (
 	readinessShTpl        = "redis_readiness.sh.tpl"
 	sentinelLivenessShTpl = "sentinel_liveness.sh.tpl"
 
+	TLSPath     = "/app/config/redis/tls"
 	TLSCertPath = "/app/config/redis/tls/tls.crt"
 	TLSKeyPath  = "/app/config/redis/tls/tls.key"
 )
@@ -54,7 +55,7 @@ func (rr *RedisReconciler) UseTLS() bool {
 }
 
 // getRedisServerAddress will return the Redis service address for the given ArgoCD instance
-func (rr *RedisReconciler) GetServerAddress() string {
+func (rr *RedisReconciler) getServerAddress() string {
 	if rr.Instance.Spec.Redis.Remote != nil && *rr.Instance.Spec.Redis.Remote != "" {
 		return *rr.Instance.Spec.Redis.Remote
 	}
@@ -64,16 +65,35 @@ func (rr *RedisReconciler) GetServerAddress() string {
 	return argoutil.FqdnServiceRef(resourceName, rr.Instance.Namespace, common.DefaultRedisPort)
 }
 
-// GetContainerImage will return the container image for the Redis server.
-func (rr *RedisReconciler) GetContainerImage() string {
+// getContainerImage will return the container image for the Redis server.
+func (rr *RedisReconciler) getContainerImage() string {
 	fn := func(cr *argoproj.ArgoCD) (string, string) {
 		return cr.Spec.Redis.Image, cr.Spec.Redis.Version
 	}
 	return argocdcommon.GetContainerImage(fn, rr.Instance, common.RedisImageEnvVar, common.DefaultRedisImage, common.DefaultRedisVersion)
 }
 
-// GetResources will return the ResourceRequirements for the Redis container.
-func (rr *RedisReconciler) GetResources() corev1.ResourceRequirements {
+// getHAContainerImage will return the container image for the Redis server in HA mode.
+func (rr *RedisReconciler) getHAContainerImage() string {
+	fn := func(cr *argoproj.ArgoCD) (string, string) {
+		return cr.Spec.Redis.Image, cr.Spec.Redis.Version
+	}
+	return argocdcommon.GetContainerImage(fn, rr.Instance, common.RedisHAImageEnvVar, common.ArgoCDDefaultRedisImage, common.ArgoCDDefaultRedisVersionHA)
+}
+
+// getHAResources will return the ResourceRequirements for the Redis container in HA mode
+func (rr *RedisReconciler) getHAResources() corev1.ResourceRequirements {
+	resources := corev1.ResourceRequirements{}
+
+	// Allow override of resource requirements from CR
+	if rr.Instance.Spec.HA.Resources != nil {
+		resources = *rr.Instance.Spec.HA.Resources
+	}
+	return resources
+}
+
+// getResources will return the ResourceRequirements for the Redis container.
+func (rr *RedisReconciler) getResources() corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
@@ -83,9 +103,15 @@ func (rr *RedisReconciler) GetResources() corev1.ResourceRequirements {
 	return resources
 }
 
-// GetConf will load the redis configuration from a template on disk for the given ArgoCD.
+func getHAReplicas() *int32 {
+	replicas := common.DefaultRedisHAReplicas
+	// TODO: Allow override of this value through CR?
+	return &replicas
+}
+
+// getConf will load the redis configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetConf() string {
+func (rr *RedisReconciler) getConf() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), redisConfTpl)
 	params := map[string]string{
 		UseTLSKey: strconv.FormatBool(rr.TLSEnabled),
@@ -93,15 +119,15 @@ func (rr *RedisReconciler) GetConf() string {
 
 	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetConf: failed to load redis configuration")
+		rr.Logger.Error(err, "getConf: failed to load redis configuration")
 		return ""
 	}
 	return conf
 }
 
-// GetInitScript will load the redis init script from a template on disk for the given ArgoCD.
+// getInitScript will load the redis init script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetInitScript() string {
+func (rr *RedisReconciler) getInitScript() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), initShTpl)
 	params := map[string]string{
 		ServiceNameKey: HAResourceName,
@@ -110,45 +136,45 @@ func (rr *RedisReconciler) GetInitScript() string {
 
 	script, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetInitScript: failed to load redis init script")
+		rr.Logger.Error(err, "getInitScript: failed to load redis init script")
 		return ""
 	}
 	return script
 }
 
-// GetLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
+// getLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetLivenessScript() string {
+func (rr *RedisReconciler) getLivenessScript() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), livenessShTpl)
 	params := map[string]string{
 		UseTLSKey: strconv.FormatBool(rr.TLSEnabled),
 	}
 	script, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetLivenessScript: failed to load redis liveness script")
+		rr.Logger.Error(err, "getLivenessScript: failed to load redis liveness script")
 		return ""
 	}
 	return script
 }
 
-// GetReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
+// getReadinessScript will load the redis readiness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetReadinessScript() string {
+func (rr *RedisReconciler) getReadinessScript() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), readinessShTpl)
 	params := map[string]string{
 		UseTLSKey: strconv.FormatBool(rr.TLSEnabled),
 	}
 	script, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetLivenessScript: failed to load redis readiness script")
+		rr.Logger.Error(err, "getLivenessScript: failed to load redis readiness script")
 		return ""
 	}
 	return script
 }
 
-// GetSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
+// getSentinelConf will load the redis sentinel configuration from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetSentinelConf() string {
+func (rr *RedisReconciler) getSentinelConf() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), sentinelConfTpl)
 	params := map[string]string{
 		UseTLSKey: strconv.FormatBool(rr.TLSEnabled),
@@ -156,15 +182,15 @@ func (rr *RedisReconciler) GetSentinelConf() string {
 
 	conf, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetSentinelConf: failed to load redis sentinel configuration")
+		rr.Logger.Error(err, "getSentinelConf: failed to load redis sentinel configuration")
 		return ""
 	}
 	return conf
 }
 
-// GetSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
+// getSentinelLivenessScript will load the redis liveness script from a template on disk for the given ArgoCD.
 // If an error occurs, an empty string value will be returned.
-func (rr *RedisReconciler) GetSentinelLivenessScript() string {
+func (rr *RedisReconciler) getSentinelLivenessScript() string {
 	path := fmt.Sprintf("%s/%s", getConfigPath(), sentinelLivenessShTpl)
 	params := map[string]string{
 		UseTLSKey: strconv.FormatBool(rr.TLSEnabled),
@@ -172,7 +198,7 @@ func (rr *RedisReconciler) GetSentinelLivenessScript() string {
 
 	script, err := util.LoadTemplateFile(path, params)
 	if err != nil {
-		rr.Logger.Error(err, "GetSentinelConf: failed to load sentinel liveness script")
+		rr.Logger.Error(err, "getSentinelConf: failed to load sentinel liveness script")
 		return ""
 	}
 	return script
