@@ -3440,3 +3440,113 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	}
 	return r.Client.Create(context.TODO(), ss)
 }
+
+// reconcileRedisDeployment will ensure the Deployment resource is present for the ArgoCD Redis component.
+func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
+	deploy := newDeploymentWithSuffix("redis", "redis", cr)
+
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Args:            getArgoRedisArgs(useTLS),
+		Image:           getRedisContainerImage(cr),
+		ImagePullPolicy: corev1.PullAlways,
+		Name:            "redis",
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+			},
+		},
+		Resources: getRedisResources(cr),
+		Env:       proxyEnvVars(),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+			RunAsUser:    int64Ptr(999),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/redis/tls",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis")
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		return err
+	}
+
+	existing := newDeploymentWithSuffix("redis", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.Redis.IsEnabled() {
+			// Deployment exists but component enabled flag has been set to false, delete the Deployment
+			log.Info("Redis exists but should be disabled. Deleting existing redis.")
+			return r.Client.Delete(context.TODO(), deploy)
+		}
+		if cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			return r.Client.Delete(context.TODO(), deploy)
+		}
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisContainerImage(cr)
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed)
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
+			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
+			deploy.Spec.Template.Spec.Containers[0].Env) {
+			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
+			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if !cr.Spec.Redis.IsEnabled() {
+		log.Info("Redis disabled. Skipping starting redis.")
+		return nil
+	}
+
+	if cr.Spec.HA.Enabled {
+		return nil // HA enabled, do nothing.
+	}
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}

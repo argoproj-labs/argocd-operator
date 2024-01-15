@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"time"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
@@ -12,9 +14,65 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (rr *RedisReconciler) reconcileDeployment() error {
+	deployReq := rr.getDeploymentRequest()
+
+	desiredDeploy, err := workloads.RequestDeployment(deployReq)
+	if err != nil {
+		return errors.Wrapf(err, "reconcileDeployment: failed to reconcile deployment %s", desiredDeploy.Name)
+	}
+
+	if err = controllerutil.SetControllerReference(rr.Instance, desiredDeploy, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+	}
+
+	existingDeploy, err := workloads.GetDeployment(desiredDeploy.Name, desiredDeploy.Namespace, rr.Client)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s", desiredDeploy.Name)
+		}
+
+		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
+		}
+		rr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		return nil
+	}
+
+	deployChanged := false
+
+	fieldsToCompare := []struct {
+		existing, desired interface{}
+		extraAction       func()
+	}{
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Image, &desiredDeploy.Spec.Template.Spec.Containers[0].Image,
+			func() {
+				existingDeploy.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			},
+		},
+		{&existingDeploy.Spec.Template.Spec, &desiredDeploy.Spec.Template.Spec, nil},
+	}
+
+	for _, field := range fieldsToCompare {
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deployChanged)
+	}
+
+	if !deployChanged {
+		return nil
+	}
+
+	if err = workloads.UpdateDeployment(existingDeploy, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileDeployment: failed to update statefulset %s", existingDeploy.Name)
+	}
+
+	rr.Logger.V(0).Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
+	return nil
+}
+
+func (rr *RedisReconciler) reconcileHADeployment() error {
 
 }
 
@@ -95,10 +153,9 @@ func (rr *RedisReconciler) getDeploymentContainers() []corev1.Container {
 	return containers
 }
 
-func (rr *RedisReconciler) getDesiredHAProxyDeployment() *appsv1.Deployment {
-	desiredDeployment := &appsv1.Deployment{}
-
-	return desiredDeployment
+func (rr *RedisReconciler) getHAProxyDeploymentRequest() workloads.DeploymentRequest {
+	depReq := workloads.DeploymentRequest{}
+	return depReq
 }
 
 // TriggerDeploymentRollout starts redis deployment rollout by updating the given key
