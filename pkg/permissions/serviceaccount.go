@@ -67,7 +67,6 @@ func UpdateServiceAccount(sa *corev1.ServiceAccount, client cntrlClient.Client) 
 }
 
 // DeleteServiceAccount deletes the ServiceAccount with the given name and namespace using the provided client.
-// It ignores the "not found" error if the ServiceAccount does not exist.
 func DeleteServiceAccount(name, namespace string, client cntrlClient.Client) error {
 	serviceAccount := &corev1.ServiceAccount{}
 	return resource.DeleteObject(name, namespace, serviceAccount, client)

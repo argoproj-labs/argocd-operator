@@ -5,6 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -60,6 +61,9 @@ func (asr *ApplicationSetReconciler) reconcileServiceAccount() error {
 
 func (nr *ApplicationSetReconciler) deleteServiceAccount(name, namespace string) error {
 	if err := permissions.DeleteServiceAccount(name, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
 	}

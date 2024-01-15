@@ -67,7 +67,6 @@ func UpdateHorizontalPodAutoscaler(hpa *autoscaling.HorizontalPodAutoscaler, cli
 }
 
 // DeleteHorizontalPodAutoscaler deletes the HorizontalPodAutoscaler with the given name and namespace using the provided client.
-// It ignores the "not found" error if the HorizontalPodAutoscaler does not exist.
 func DeleteHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) error {
 	hpa := &autoscaling.HorizontalPodAutoscaler{}
 	return resource.DeleteObject(name, namespace, hpa, client)

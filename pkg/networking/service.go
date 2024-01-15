@@ -10,8 +10,11 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
+<<<<<<< HEAD
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+=======
+>>>>>>> f9485c08fb59817ba8fd10cd5fb693f5dbb08376
 )
 
 // ServiceRequest objects contain all the required information to produce a service object in return
@@ -67,7 +70,6 @@ func UpdateService(service *corev1.Service, client cntrlClient.Client) error {
 }
 
 // DeleteService deletes the Service with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Service does not exist.
 func DeleteService(name, namespace string, client cntrlClient.Client) error {
 	service := &corev1.Service{}
 	return resource.DeleteObject(name, namespace, service, client)

@@ -115,11 +115,16 @@ func TestListServiceAccounts(t *testing.T) {
 	sa1 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-1"
 		sa.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		sa.Namespace = testNamespace
 	})
-	sa2 := getTestServiceAccount(func(sa *corev1.ServiceAccount) { sa.Name = "sa-2" })
+	sa2 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = "sa-2"
+		sa.Namespace = testNamespace
+	})
 	sa3 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-3"
 		sa.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		sa.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

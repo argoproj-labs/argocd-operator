@@ -98,7 +98,6 @@ func UpdateClusterRole(clusterRole *rbacv1.ClusterRole, client cntrlClient.Clien
 }
 
 // DeleteClusterRole deletes the ClusterRole with the given name using the provided client.
-// It ignores the "not found" error if the ClusterRole does not exist.
 func DeleteClusterRole(name string, client cntrlClient.Client) error {
 	clusterRole := &rbacv1.ClusterRole{}
 	return resource.DeleteClusterObject(name, clusterRole, client)

@@ -66,7 +66,6 @@ func UpdateConfigMap(configMap *corev1.ConfigMap, client cntrlClient.Client) err
 }
 
 // DeleteConfigMap deletes the ConfigMap with the given name and namespace using the provided client.
-// It ignores the "not found" error if the ConfigMap does not exist.
 func DeleteConfigMap(name, namespace string, client cntrlClient.Client) error {
 	configMap := &corev1.ConfigMap{}
 	return resource.DeleteObject(name, namespace, configMap, client)

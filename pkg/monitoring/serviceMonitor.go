@@ -66,7 +66,6 @@ func UpdateServiceMonitor(serviceMonitor *monitoringv1.ServiceMonitor, client cn
 }
 
 // DeleteServiceMonitor deletes the ServiceMonitor with the given name and namespace using the provided client.
-// It ignores the "not found" error if the ServiceMonitor does not exist.
 func DeleteServiceMonitor(name, namespace string, client cntrlClient.Client) error {
 	serviceMonitor := &monitoringv1.ServiceMonitor{}
 	return resource.DeleteObject(name, namespace, serviceMonitor, client)

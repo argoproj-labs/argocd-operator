@@ -66,7 +66,6 @@ func UpdateIngress(ingress *networkingv1.Ingress, client cntrlClient.Client) err
 }
 
 // DeleteIngress deletes the Ingress with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Ingress does not exist.
 func DeleteIngress(name, namespace string, client cntrlClient.Client) error {
 	ingress := &networkingv1.Ingress{}
 	return resource.DeleteObject(name, namespace, ingress, client)

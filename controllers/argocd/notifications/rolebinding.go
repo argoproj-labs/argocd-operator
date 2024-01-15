@@ -8,6 +8,7 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -109,6 +110,9 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
 func (nr *NotificationsReconciler) deleteRoleBinding(name, namespace string) error {
 	if err := permissions.DeleteRoleBinding(name, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}

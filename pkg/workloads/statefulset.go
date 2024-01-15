@@ -67,7 +67,6 @@ func UpdateStatefulSet(statefulSet *appsv1.StatefulSet, client cntrlClient.Clien
 }
 
 // DeleteStatefulSet deletes the StatefulSet with the given name and namespace using the provided client.
-// It ignores the "not found" error if the StatefulSet does not exist.
 func DeleteStatefulSet(name, namespace string, client cntrlClient.Client) error {
 	statefulSet := &appsv1.StatefulSet{}
 	return resource.DeleteObject(name, namespace, statefulSet, client)

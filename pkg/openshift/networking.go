@@ -89,7 +89,6 @@ func UpdateRoute(route *routev1.Route, client cntrlClient.Client) error {
 }
 
 // DeleteRoute deletes the Route with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Route does not exist.
 func DeleteRoute(name, namespace string, client cntrlClient.Client) error {
 	route := &routev1.Route{}
 	return resource.DeleteObject(name, namespace, route, client)

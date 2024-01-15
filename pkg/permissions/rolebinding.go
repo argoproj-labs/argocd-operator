@@ -71,7 +71,6 @@ func UpdateRoleBinding(rb *rbacv1.RoleBinding, client cntrlClient.Client) error 
 }
 
 // DeleteRoleBinding deletes the RoleBinding with the given name and namespace using the provided client.
-// It ignores the "not found" error if the RoleBinding does not exist.
 func DeleteRoleBinding(name, namespace string, client cntrlClient.Client) error {
 	roleBinding := &rbacv1.RoleBinding{}
 	return resource.DeleteObject(name, namespace, roleBinding, client)

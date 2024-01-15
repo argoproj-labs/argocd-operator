@@ -44,6 +44,7 @@ func GenerateUniqueResourceName(instanceName, instanceNamespace, suffix string) 
 	return fmt.Sprintf("%s-%s-%s", instanceName, instanceNamespace, suffix)
 }
 
+<<<<<<< HEAD
 func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:        resName,
@@ -53,6 +54,8 @@ func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) meta
 	}
 }
 
+=======
+>>>>>>> f9485c08fb59817ba8fd10cd5fb693f5dbb08376
 // FetchStorageSecretName will return the name of the Secret to use for the export process.
 func FetchStorageSecretName(export *argoprojv1alpha1.ArgoCDExport) string {
 	name := NameWithSuffix(export.ObjectMeta.Name, "export")

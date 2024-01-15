@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -104,6 +105,9 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 
 func (nr *NotificationsReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}

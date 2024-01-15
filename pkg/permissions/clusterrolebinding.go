@@ -72,7 +72,6 @@ func UpdateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client cntrlClient
 }
 
 // DeleteClusterRoleBinding deletes the ClusterRoleBinding with the given name using the provided client.
-// It ignores the "not found" error if the ClusterRoleBinding does not exist.
 func DeleteClusterRoleBinding(name string, client cntrlClient.Client) error {
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	return resource.DeleteClusterObject(name, clusterRoleBinding, client)
