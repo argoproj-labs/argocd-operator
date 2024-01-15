@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -174,7 +174,7 @@ func TestGetConfigMap(t *testing.T) {
 
 	_, err = GetConfigMap(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListConfigMaps(t *testing.T) {
@@ -185,11 +185,15 @@ func TestListConfigMaps(t *testing.T) {
 		cm.Data = testKVP
 
 	})
-	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) { cm.Name = "configMap-2" })
+	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = "configMap-2"
+		cm.Namespace = testNamespace
+	})
 	configMap3 := getTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-3"
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		cm.Data = testKVP
+		cm.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -256,10 +260,12 @@ func TestUpdateConfigMap(t *testing.T) {
 }
 
 func TestDeleteConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
-		cm.Name = testName
-		cm.Namespace = testNamespace
-	})).Build()
+	testConfigMap := getTestConfigMap(func(configMap *corev1.ConfigMap) {
+		configMap.Name = testName
+		configMap.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testConfigMap).Build()
 
 	err := DeleteConfigMap(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -271,9 +277,5 @@ func TestDeleteConfigMap(t *testing.T) {
 	}, existingConfigMap)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteConfigMap(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

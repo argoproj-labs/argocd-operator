@@ -1,14 +1,14 @@
 package cluster
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -52,57 +52,48 @@ func RequestNamespace(request NamespaceRequest) (*corev1.Namespace, error) {
 	return namespace, nil
 }
 
-// CreateNamespace creates a provided namespace on the cluster
+// CreateNamespace creates the specified Namespace using the provided client.
 func CreateNamespace(namespace *corev1.Namespace, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), namespace)
+	return resource.CreateObject(namespace, client)
 }
 
-// GetNamespace retrieves a specified namespace from the cluster
+// GetNamespace retrieves the Namespace with the given name using the provided client.
 func GetNamespace(name string, client cntrlClient.Client) (*corev1.Namespace, error) {
-	existingNamespace := &corev1.Namespace{}
-	err := client.Get(context.TODO(), cntrlClient.ObjectKey{Name: name}, existingNamespace)
+	namespace := &corev1.Namespace{}
+	obj, err := resource.GetObject(name, "", namespace, client)
 	if err != nil {
 		return nil, err
 	}
-	return existingNamespace, nil
+	// Assert the object as a corev1.Namespace
+	namespace, ok := obj.(*corev1.Namespace)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.Namespace")
+	}
+	return namespace, nil
 }
 
-// ListNamespace returns a list of namespaces from the cluster after applying specified listOptions
+// ListNamespaces returns a list of Namespace objects using the provided client and list options.
 func ListNamespaces(client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*corev1.NamespaceList, error) {
-	existingNamespaces := &corev1.NamespaceList{}
-	err := client.List(context.TODO(), existingNamespaces, listOptions...)
+	namespaceList := &corev1.NamespaceList{}
+	obj, err := resource.ListObjects("", namespaceList, client, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return existingNamespaces, nil
+	// Assert the object as a corev1.NamespaceList
+	namespaceList, ok := obj.(*corev1.NamespaceList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as a corev1.NamespaceList")
+	}
+	return namespaceList, nil
 }
 
-// UpdateNamespace updates a provided namespace on the cluster
+// UpdateNamespace updates the specified Namespace using the provided client.
 func UpdateNamespace(namespace *corev1.Namespace, client cntrlClient.Client) error {
-	_, err := GetNamespace(namespace.Name, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), namespace); err != nil {
-		return err
-	}
-
-	return nil
+	return resource.UpdateObject(namespace, client)
 }
 
-// DeleteNamespace deletes a specified namespace from the cluster
+// DeleteNamespace deletes the Namespace with the given name using the provided client.
 func DeleteNamespace(name string, client cntrlClient.Client) error {
-	existingNamespace, err := GetNamespace(name, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingNamespace); err != nil {
-		return err
-	}
-	return nil
+	namespace := &corev1.Namespace{}
+	return resource.DeleteObject(name, "", namespace, client)
 }

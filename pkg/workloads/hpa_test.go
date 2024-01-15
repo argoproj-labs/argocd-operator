@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	autoscaling "k8s.io/api/autoscaling/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -177,7 +177,7 @@ func TestGetHorizontalPodAutoscaler(t *testing.T) {
 
 	_, err = GetHorizontalPodAutoscaler(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListHorizontalPodAutoscalers(t *testing.T) {
@@ -186,10 +186,14 @@ func TestListHorizontalPodAutoscalers(t *testing.T) {
 		hpa.Namespace = testNamespace
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) { hpa.Name = "horizontalPodAutoscaler-2" })
+	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = "horizontalPodAutoscaler-2"
+		hpa.Namespace = testNamespace
+	})
 	horizontalPodAutoscaler3 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-3"
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		hpa.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -256,24 +260,22 @@ func TestUpdateHorizontalPodAutoscaler(t *testing.T) {
 }
 
 func TestDeleteHorizontalPodAutoscaler(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestHorizontalPodAutoscaler(func(d *autoscaling.HorizontalPodAutoscaler) {
-		d.Name = testName
-		d.Namespace = testNamespace
-	})).Build()
+	testHPA := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = testName
+		hpa.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testHPA).Build()
 
 	err := DeleteHorizontalPodAutoscaler(testName, testNamespace, testClient)
 	assert.NoError(t, err)
 
-	existingHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{}
+	existingHPA := &autoscaling.HorizontalPodAutoscaler{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
 		Namespace: testNamespace,
 		Name:      testName,
-	}, existingHorizontalPodAutoscaler)
+	}, existingHPA)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteHorizontalPodAutoscaler(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

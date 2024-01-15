@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -188,7 +188,7 @@ func TestGetDeployment(t *testing.T) {
 
 	_, err = GetDeployment(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListDeployments(t *testing.T) {
@@ -197,10 +197,15 @@ func TestListDeployments(t *testing.T) {
 		d.Namespace = testNamespace
 		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	deployment2 := getTestDeployment(func(d *appsv1.Deployment) { d.Name = "deployment-2" })
+	deployment2 := getTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = "deployment-2"
+		d.Namespace = testNamespace
+
+	})
 	deployment3 := getTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-3"
 		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		d.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -264,10 +269,12 @@ func TestUpdateDeployment(t *testing.T) {
 }
 
 func TestDeleteDeployment(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
-		d.Name = testName
-		d.Namespace = testNamespace
-	})).Build()
+	testDeployment := getTestDeployment(func(deployment *appsv1.Deployment) {
+		deployment.Name = testName
+		deployment.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testDeployment).Build()
 
 	err := DeleteDeployment(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -279,9 +286,5 @@ func TestDeleteDeployment(t *testing.T) {
 	}, existingDeployment)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteDeployment(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

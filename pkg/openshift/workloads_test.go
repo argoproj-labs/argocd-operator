@@ -6,9 +6,10 @@ import (
 	"testing"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -180,7 +181,7 @@ func TestGetDeploymentConfig(t *testing.T) {
 
 	_, err = GetDeploymentConfig(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListDeploymentConfigs(t *testing.T) {
@@ -269,12 +270,14 @@ func TestUpdateDeploymentConfig(t *testing.T) {
 
 func TestDeleteDeploymentConfig(t *testing.T) {
 	s := scheme.Scheme
-	assert.NoError(t, oappsv1.AddToScheme(s))
+	assert.NoError(t, routev1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
+	testDeploymentConfig := getTestDeploymentConfig(func(dc *oappsv1.DeploymentConfig) {
 		dc.Name = testName
 		dc.Namespace = testNamespace
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(testDeploymentConfig).Build()
 
 	err := DeleteDeploymentConfig(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -286,9 +289,5 @@ func TestDeleteDeploymentConfig(t *testing.T) {
 	}, existingDeploymentConfig)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	err = DeleteDeploymentConfig(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

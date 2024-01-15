@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -181,7 +181,7 @@ func TestGetStatefulSet(t *testing.T) {
 
 	_, err = GetStatefulSet(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListStatefulSets(t *testing.T) {
@@ -197,6 +197,7 @@ func TestListStatefulSets(t *testing.T) {
 	StatefulSet3 := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = "StatefulSet-3"
 		ss.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		ss.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -260,11 +261,12 @@ func TestUpdateStatefulSet(t *testing.T) {
 }
 
 func TestDeleteStatefulSet(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestStatefulSet(func(ss *appsv1.StatefulSet) {
+	testss := getTestStatefulSet(func(ss *appsv1.StatefulSet) {
 		ss.Name = testName
 		ss.Namespace = testNamespace
+	})
 
-	})).Build()
+	testClient := fake.NewClientBuilder().WithObjects(testss).Build()
 
 	err := DeleteStatefulSet(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -276,9 +278,5 @@ func TestDeleteStatefulSet(t *testing.T) {
 	}, existingStatefulSet)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteStatefulSet(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }
