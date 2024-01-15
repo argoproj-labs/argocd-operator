@@ -141,11 +141,16 @@ func TestListRoleBindings(t *testing.T) {
 	rb1 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-1"
 		rb.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		rb.Namespace = testNamespace
 	})
-	rb2 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) { rb.Name = "rb-2" })
+	rb2 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+		rb.Name = "rb-2"
+		rb.Namespace = testNamespace
+	})
 	rb3 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-3"
 		rb.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		rb.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(

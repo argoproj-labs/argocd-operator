@@ -178,11 +178,16 @@ func TestListRoles(t *testing.T) {
 	role1 := getTestRole(func(r *rbacv1.Role) {
 		r.Name = "role-1"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		r.Namespace = testNamespace
 	})
-	role2 := getTestRole(func(r *rbacv1.Role) { r.Name = "role-2" })
+	role2 := getTestRole(func(r *rbacv1.Role) {
+		r.Name = "role-2"
+		r.Namespace = testNamespace
+	})
 	role3 := getTestRole(func(r *rbacv1.Role) {
 		r.Name = "role-3"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		r.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
