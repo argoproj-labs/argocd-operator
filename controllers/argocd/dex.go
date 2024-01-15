@@ -101,8 +101,8 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 
-	// Append the default OpenShift dex config if the dex config is not provided or the openShiftOAuth is requested through `.spec.sso.dex`.
-	if len(desired) <= 0 || (cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
+	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
 			return err
