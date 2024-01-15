@@ -1,10 +1,11 @@
 package permissions
 
 import (
-	"context"
+	"errors"
 
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -32,56 +33,46 @@ func RequestClusterRoleBinding(request ClusterRoleBindingRequest) *rbacv1.Cluste
 
 // CreateClusterRoleBinding creates the specified ClusterRoleBinding using the provided client.
 func CreateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), crb)
+	return resource.CreateClusterObject(crb, client)
 }
 
 // GetClusterRoleBinding retrieves the ClusterRoleBinding with the given name using the provided client.
 func GetClusterRoleBinding(name string, client cntrlClient.Client) (*rbacv1.ClusterRoleBinding, error) {
-	existingCRB := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(context.TODO(), cntrlClient.ObjectKey{Name: name}, existingCRB)
+	crb := &rbacv1.ClusterRoleBinding{}
+	obj, err := resource.GetClusterObject(name, crb, client)
 	if err != nil {
 		return nil, err
 	}
-	return existingCRB, nil
+	// Assert the object as an rbacv1.ClusterRoleBinding
+	clusterRoleBinding, ok := obj.(*rbacv1.ClusterRoleBinding)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.ClusterRoleBinding")
+	}
+	return clusterRoleBinding, nil
 }
 
 // ListClusterRoleBindings returns a list of ClusterRoleBinding objects using the provided client and list options.
 func ListClusterRoleBindings(client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.ClusterRoleBindingList, error) {
-	existingCRBs := &rbacv1.ClusterRoleBindingList{}
-	err := client.List(context.TODO(), existingCRBs, listOptions...)
+	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
+	obj, err := resource.ListClusterObjects(clusterRoleBindingList, client, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return existingCRBs, nil
+	// Assert the object as an rbacv1.ClusterRoleBindingList
+	clusterRoleBindingList, ok := obj.(*rbacv1.ClusterRoleBindingList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.ClusterRoleBindingList")
+	}
+	return clusterRoleBindingList, nil
 }
 
 // UpdateClusterRoleBinding updates the specified ClusterRoleBinding using the provided client.
 func UpdateClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, client cntrlClient.Client) error {
-	_, err := GetClusterRoleBinding(crb.Name, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), crb); err != nil {
-		return err
-	}
-
-	return nil
+	return resource.UpdateClusterObject(crb, client)
 }
 
 // DeleteClusterRoleBinding deletes the ClusterRoleBinding with the given name using the provided client.
-// It ignores the "not found" error if the ClusterRoleBinding does not exist.
 func DeleteClusterRoleBinding(name string, client cntrlClient.Client) error {
-	existingCRB, err := GetClusterRoleBinding(name, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingCRB); err != nil {
-		return err
-	}
-	return nil
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	return resource.DeleteClusterObject(name, clusterRoleBinding, client)
 }
