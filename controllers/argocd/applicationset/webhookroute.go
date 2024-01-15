@@ -10,6 +10,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -92,6 +93,9 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 
 func (asr *ApplicationSetReconciler) deleteWebhookRoute(name, namespace string) error {
 	if err := openshift.DeleteRoute(name, namespace, asr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		asr.Logger.Error(err, "DeleteRoute: failed to delete route", "name", name, "namespace", namespace)
 		return err
 	}
