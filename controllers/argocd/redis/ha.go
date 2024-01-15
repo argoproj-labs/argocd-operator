@@ -5,6 +5,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 var (
@@ -44,26 +45,26 @@ func (rr *RedisReconciler) reconcileHA() []error {
 	return reconciliationErrors
 }
 
-func (rr *RedisReconciler) reconcileHAConfigMaps() []error {
-	var reconciliationErrors []error
+func (rr *RedisReconciler) reconcileHAConfigMaps() error {
+	var reconciliationErrors util.MultiError
 	if err := rr.reconcileHAConfigMap(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconciliationErrors.Append(err)
 	}
 
 	if err := rr.reconcileHAHealthConfigMap(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconciliationErrors.Append(err)
 	}
 	return reconciliationErrors
 }
 
-func (rr *RedisReconciler) reconcileHAServices() []error {
-	var reconciliationErrors []error
+func (rr *RedisReconciler) reconcileHAServices() error {
+	var reconciliationErrors util.MultiError
 	if err := rr.reconcileHAMasterService(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconciliationErrors.Append(err)
 	}
 
 	if err := rr.reconcileHAProxyService(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconciliationErrors.Append(err)
 	}
 
 	if errs := rr.reconcileHAAnnourceServices(); len(errs) > 0 {
@@ -76,18 +77,18 @@ func (rr *RedisReconciler) reconcileHAServices() []error {
 }
 
 // TriggerHARollout deletes HA configmaps and statefulset to be recreated automatically during reconciliation, and triggers rollout for deployments
-func (rr *RedisReconciler) TriggerHARollout(key string) []error {
-	var rolloutErrors []error
+func (rr *RedisReconciler) TriggerHARollout(key string) error {
+	var rolloutErrors util.MultiError
 
 	// delete and recreate HA config maps as part of rollout
 	err := rr.deleteConfigMap(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace)
 	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
+		rolloutErrors.Append(err)
 	}
 
 	err = rr.deleteConfigMap(common.ArgoCDRedisHAHealthConfigMapName, rr.Instance.Namespace)
 	if err != nil {
-		rolloutErrors = append(rolloutErrors, err)
+		rolloutErrors.Append(err)
 	}
 
 	errs := rr.reconcileHAConfigMaps()
