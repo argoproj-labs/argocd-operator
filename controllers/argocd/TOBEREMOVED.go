@@ -3550,3 +3550,209 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	}
 	return r.Client.Create(context.TODO(), deploy)
 }
+
+// reconcileRedisHAProxyDeployment will ensure the Deployment resource is present for the Redis HA Proxy component.
+func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) error {
+	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+
+	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+							},
+						},
+						TopologyKey: common.ArgoCDKeyFailureDomainZone,
+					},
+					Weight: int32(100),
+				},
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
+						},
+					},
+					TopologyKey: common.ArgoCDKeyHostname,
+				},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
+		Image:           getRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "haproxy",
+		Env:             proxyEnvVars(),
+		LivenessProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt(8888),
+				},
+			},
+			InitialDelaySeconds: int32(5),
+			PeriodSeconds:       int32(3),
+		},
+		Ports: []corev1.ContainerPort{
+			{
+				ContainerPort: common.ArgoCDDefaultRedisPort,
+				Name:          "redis",
+			},
+		},
+		Resources: getRedisHAResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			RunAsNonRoot: boolPtr(true),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "data",
+				MountPath: "/usr/local/etc/haproxy",
+			},
+			{
+				Name:      "shared-socket",
+				MountPath: "/run/haproxy",
+			},
+			{
+				Name:      common.ArgoCDRedisServerTLSSecretName,
+				MountPath: "/app/config/redis/tls",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
+		Args: []string{
+			"/readonly/haproxy_init.sh",
+		},
+		Command: []string{
+			"sh",
+		},
+		Image:           getRedisHAProxyContainerImage(cr),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Name:            "config-init",
+		Env:             proxyEnvVars(),
+		Resources:       getRedisHAResources(cr),
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: boolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config-volume",
+				MountPath: "/readonly",
+				ReadOnly:  true,
+			},
+			{
+				Name:      "data",
+				MountPath: "/data",
+			},
+		},
+	}}
+
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "config-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDRedisHAConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "shared-socket",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "data",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: common.ArgoCDRedisServerTLSSecretName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+	}
+
+	deploy.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
+		RunAsNonRoot: boolPtr(true),
+		RunAsUser:    int64Ptr(1000),
+		FSGroup:      int64Ptr(1000),
+	}
+	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
+
+	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-redis-ha")
+
+	version, err := getClusterVersion(r.Client)
+	if err != nil {
+		log.Error(err, "error getting cluster version")
+	}
+	if err := applyReconcilerHook(cr, deploy, version); err != nil {
+		return err
+	}
+
+	existing := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		if !cr.Spec.HA.Enabled {
+			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
+			return r.Client.Delete(context.TODO(), existing)
+		}
+		changed := false
+		actualImage := existing.Spec.Template.Spec.Containers[0].Image
+		desiredImage := getRedisHAProxyContainerImage(cr)
+
+		if actualImage != desiredImage {
+			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
+			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			changed = true
+		}
+		updateNodePlacement(existing, deploy, &changed)
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
+			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
+			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+			changed = true
+		}
+
+		if changed {
+			return r.Client.Update(context.TODO(), existing)
+		}
+		return nil // Deployment found, do nothing
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
+	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), deploy)
+}
