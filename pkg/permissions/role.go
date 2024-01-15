@@ -94,7 +94,6 @@ func UpdateRole(role *rbacv1.Role, client cntrlClient.Client) error {
 }
 
 // DeleteRole deletes the Role with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Role does not exist.
 func DeleteRole(name, namespace string, client cntrlClient.Client) error {
 	role := &rbacv1.Role{}
 	return resource.DeleteObject(name, namespace, role, client)

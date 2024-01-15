@@ -61,7 +61,6 @@ func UpdateDeploymentConfig(deploymentConfig *oappsv1.DeploymentConfig, client c
 }
 
 // DeleteDeploymentConfig deletes the DeploymentConfig with the given name and namespace using the provided client.
-// It ignores the "not found" error if the DeploymentConfig does not exist.
 func DeleteDeploymentConfig(name, namespace string, client cntrlClient.Client) error {
 	deploymentConfig := &oappsv1.DeploymentConfig{}
 	return resource.DeleteObject(name, namespace, deploymentConfig, client)

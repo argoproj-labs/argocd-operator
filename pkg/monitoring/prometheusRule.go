@@ -62,7 +62,6 @@ func UpdatePrometheusRule(prometheusRule *monitoringv1.PrometheusRule, client cn
 }
 
 // DeletePrometheusRule deletes the PrometheusRule with the given name and namespace using the provided client.
-// It ignores the "not found" error if the PrometheusRule does not exist.
 func DeletePrometheusRule(name, namespace string, client cntrlClient.Client) error {
 	prometheusRule := &monitoringv1.PrometheusRule{}
 	return resource.DeleteObject(name, namespace, prometheusRule, client)

@@ -66,7 +66,6 @@ func UpdateSecret(secret *corev1.Secret, client cntrlClient.Client) error {
 }
 
 // DeleteSecret deletes the Secret with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Secret does not exist.
 func DeleteSecret(name, namespace string, client cntrlClient.Client) error {
 	secret := &corev1.Secret{}
 	return resource.DeleteObject(name, namespace, secret, client)

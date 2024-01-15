@@ -62,7 +62,6 @@ func UpdateService(service *corev1.Service, client cntrlClient.Client) error {
 }
 
 // DeleteService deletes the Service with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Service does not exist.
 func DeleteService(name, namespace string, client cntrlClient.Client) error {
 	service := &corev1.Service{}
 	return resource.DeleteObject(name, namespace, service, client)

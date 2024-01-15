@@ -93,7 +93,6 @@ func UpdateNamespace(namespace *corev1.Namespace, client cntrlClient.Client) err
 }
 
 // DeleteNamespace deletes the Namespace with the given name using the provided client.
-// It ignores the "not found" error if the Namespace does not exist.
 func DeleteNamespace(name string, client cntrlClient.Client) error {
 	namespace := &corev1.Namespace{}
 	return resource.DeleteObject(name, "", namespace, client)

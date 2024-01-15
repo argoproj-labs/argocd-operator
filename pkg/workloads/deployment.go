@@ -63,7 +63,6 @@ func UpdateDeployment(deployment *appsv1.Deployment, client cntrlClient.Client) 
 }
 
 // DeleteDeployment deletes the Deployment with the given name and namespace using the provided client.
-// It ignores the "not found" error if the Deployment does not exist.
 func DeleteDeployment(name, namespace string, client cntrlClient.Client) error {
 	deployment := &appsv1.Deployment{}
 	return resource.DeleteObject(name, namespace, deployment, client)
