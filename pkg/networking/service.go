@@ -10,11 +10,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
-<<<<<<< HEAD
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-=======
->>>>>>> f9485c08fb59817ba8fd10cd5fb693f5dbb08376
 )
 
 // ServiceRequest objects contain all the required information to produce a service object in return
