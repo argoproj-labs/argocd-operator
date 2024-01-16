@@ -28,6 +28,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
@@ -168,6 +169,14 @@ func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.A
 		if deploy.Spec.Replicas != nil {
 			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
 				status = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						status = "Failed"
+						break
+					}
+				}
 			}
 		}
 	}
