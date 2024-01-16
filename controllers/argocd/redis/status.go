@@ -48,5 +48,8 @@ func (rr *RedisReconciler) reconcileStatus() error {
 }
 
 func (rr *RedisReconciler) UpdateInstanceStatus() error {
-	return rr.Client.Status().Update(context.TODO(), rr.Instance)
+	if err := rr.Client.Status().Update(context.TODO(), rr.Instance); err != nil {
+		return errors.Wrap(err, "UpdateInstanceStatus: failed to update instance status")
+	}
+	return nil
 }

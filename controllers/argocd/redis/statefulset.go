@@ -71,16 +71,30 @@ func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 
 	ssChanged := false
 
+	for i, _ := range existingSS.Spec.Template.Spec.Containers {
+
+		fieldsToCompare := []struct {
+			existing, desired interface{}
+			extraAction       func()
+		}{
+			{&existingSS.Spec.Template.Spec.Containers[i].Image, &existingSS.Spec.Template.Spec.Containers[i].Image,
+				func() {
+					existingSS.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				},
+			},
+			{&existingSS.Spec.Template.Spec.Containers[i].Resources, &desiredSS.Spec.Template.Spec.Containers[i].Resources, nil},
+		}
+
+		for _, field := range fieldsToCompare {
+			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &ssChanged)
+		}
+	}
+
 	fieldsToCompare := []struct {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{&existingSS.Spec.Template.Spec.Containers[0].Image, &existingSS.Spec.Template.Spec.Containers[0].Image,
-			func() {
-				existingSS.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-			},
-		},
-		{&existingSS.Spec.Template.Spec, &desiredSS.Spec.Template.Spec, nil},
+		{&existingSS.Spec.Template.Spec.InitContainers[0].Resources, &desiredSS.Spec.Template.Spec.InitContainers[0].Resources, nil},
 	}
 
 	for _, field := range fieldsToCompare {

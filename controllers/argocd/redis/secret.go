@@ -3,6 +3,7 @@ package redis
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,19 +14,24 @@ import (
 // has changed since our last reconciliation loop. It does so by comparing the
 // checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
 // values calculated from the live state in the cluster.
-func (rr *RedisReconciler) reconcileTLSSecret() []error {
-	var reconErrs []error
+func (rr *RedisReconciler) reconcileTLSSecret() error {
+	var reconErrs util.MultiError
 	var sha256sum string
+
+	// return if not using TLS
+	if !rr.UseTLS() {
+		return nil
+	}
 
 	sha256sum, err := argocdcommon.TLSSecretChecksum(types.NamespacedName{Name: common.ArgoCDRedisServerTLSSecretName, Namespace: rr.Instance.Namespace}, rr.Client)
 	if err != nil {
-		reconErrs = append(reconErrs, errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace))
+		reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace))
 		return reconErrs
 	}
 
 	if sha256sum == "" {
 		rr.Logger.V(1).Info("reconcileTLSSecret: received empty checksum; secret of type other than kubernetes.io/tls encountered")
-		return reconErrs
+		return nil
 	}
 
 	// The content of the TLS secret has changed since we last looked if the
@@ -37,31 +43,30 @@ func (rr *RedisReconciler) reconcileTLSSecret() []error {
 		rr.Instance.Status.RedisTLSChecksum = sha256sum
 		err = rr.UpdateInstanceStatus()
 		if err != nil {
-			reconErrs = append(reconErrs, errors.Wrapf(err, "reconcileTLSSecret: failed to update instance status"))
-			return reconErrs
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
 		// trigger redis rollout
 		if err := rr.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
-			reconErrs = append(reconErrs, err)
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
 		// trigger server rollout
 		if err := rr.Server.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
-			reconErrs = append(reconErrs, err)
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
 		// trigger repo-server rollout
 		if err := rr.RepoServer.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
-			reconErrs = append(reconErrs, err)
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
 		// trigger app-controller rollout
 		if err := rr.Appcontroller.TriggerRollout(common.RedisTLSCertChangedKey); err != nil {
-			reconErrs = append(reconErrs, err)
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 	}
-	return reconErrs
+	return reconErrs.ErrOrNil()
 }
 
 func (rr *RedisReconciler) deleteSecret(name, namespace string) error {

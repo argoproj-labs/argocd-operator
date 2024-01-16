@@ -47,7 +47,7 @@ func (rr *RedisReconciler) reconcileRole() error {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{existingRole.Rules, desiredRole.Rules, nil},
+		{&existingRole.Rules, &desiredRole.Rules, nil},
 	}
 
 	for _, field := range fieldsToCompare {

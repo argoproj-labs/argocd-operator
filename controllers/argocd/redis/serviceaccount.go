@@ -29,8 +29,9 @@ func (rr *RedisReconciler) reconcileServiceAccount() error {
 		if err = permissions.CreateServiceAccount(desiredSa, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount")
 		}
+		rr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
+		return nil
 	}
-	rr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
 	return nil
 }
 

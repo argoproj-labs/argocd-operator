@@ -12,6 +12,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -36,10 +37,15 @@ func (rr *RedisReconciler) TLSVerificationDisabled() bool {
 func (rr *RedisReconciler) UseTLS() bool {
 	tlsSecret, err := workloads.GetSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			rr.Logger.V(0).Info("useTLS: skipping TLS enforcement")
+			return false
+		}
 		rr.Logger.Error(err, "UseTLS: failed to retrieve tls secret", "name", common.ArgoCDRedisServerTLSSecretName, "namespace", rr.Instance.Namespace)
-		rr.Logger.V(1).Info("useTLS: skipping TLS enforcement")
 		return false
 	}
+
+	rr.Logger.V(0).Info("useTLS: skipping TLS enforcement")
 
 	secretOwner, err := argocdcommon.FindSecretOwnerInstance(types.NamespacedName{Name: tlsSecret.Name, Namespace: tlsSecret.Namespace}, rr.Client)
 	if err != nil {
@@ -54,8 +60,8 @@ func (rr *RedisReconciler) UseTLS() bool {
 	return false
 }
 
-// getRedisServerAddress will return the Redis service address for the given ArgoCD instance
-func (rr *RedisReconciler) getServerAddress() string {
+// GetServerAddress will return the Redis service address for the given ArgoCD instance
+func (rr *RedisReconciler) GetServerAddress() string {
 	if rr.Instance.Spec.Redis.Remote != nil && *rr.Instance.Spec.Redis.Remote != "" {
 		return *rr.Instance.Spec.Redis.Remote
 	}

@@ -53,8 +53,8 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{existingRb.RoleRef, existingRb.RoleRef, nil},
-		{existingRb.Subjects, existingRb.Subjects, nil},
+		{&existingRb.RoleRef, &desiredRb.RoleRef, nil},
+		{&existingRb.Subjects, &desiredRb.Subjects, nil},
 	}
 
 	for _, field := range fieldsToCompare {

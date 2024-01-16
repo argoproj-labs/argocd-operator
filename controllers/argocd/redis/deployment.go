@@ -58,7 +58,9 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 				existingDeploy.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
-		{&existingDeploy.Spec.Template.Spec, &desiredDeploy.Spec.Template.Spec, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Args, &desiredDeploy.Spec.Template.Spec.Containers[0].Args, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Env, &desiredDeploy.Spec.Template.Spec.Containers[0].Env, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -77,28 +79,28 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 	return nil
 }
 
-func (rr *RedisReconciler) reconcileHADeployment() error {
+func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 	deployReq := rr.getHAProxyDeploymentRequest()
 
 	desiredDeploy, err := workloads.RequestDeployment(deployReq)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHADeployment: failed to reconcile deployment %s", desiredDeploy.Name)
+		return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to reconcile deployment %s", desiredDeploy.Name)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desiredDeploy, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHADeployment: failed to set owner reference for deployment", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.Error(err, "reconcileHAProxyDeployment: failed to set owner reference for deployment", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 	}
 
 	existingDeploy, err := workloads.GetDeployment(desiredDeploy.Name, desiredDeploy.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHADeployment: failed to retrieve deployment %s", desiredDeploy.Name)
+			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to retrieve deployment %s", desiredDeploy.Name)
 		}
 
 		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHADeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
+			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileHADeployment: deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.V(0).Info("reconcileHAProxyDeployment: deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -113,7 +115,8 @@ func (rr *RedisReconciler) reconcileHADeployment() error {
 				existingDeploy.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
-		{&existingDeploy.Spec.Template.Spec, &desiredDeploy.Spec.Template.Spec, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
+		{&existingDeploy.Spec.Template.Spec.InitContainers[0].Resources, &desiredDeploy.Spec.Template.Spec.InitContainers[0].Resources, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -404,7 +407,11 @@ func (rr *RedisReconciler) getHAProxyDeploymentInitContainers() []corev1.Contain
 
 // TriggerDeploymentRollout starts redis deployment rollout by updating the given key
 func (rr *RedisReconciler) TriggerDeploymentRollout(name, namespace, key string) error {
-	return argocdcommon.TriggerDeploymentRollout(name, namespace, key, rr.Client)
+	err := argocdcommon.TriggerDeploymentRollout(name, namespace, key, rr.Client)
+	if err != nil {
+		return errors.Wrapf(err, "TriggerDeploymentRollout: failed to rollout deployment %s in namespace %s", name, namespace)
+	}
+	return nil
 }
 
 func (rr *RedisReconciler) deleteDeployment(name, namespace string) error {
