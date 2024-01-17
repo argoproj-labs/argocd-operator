@@ -21,10 +21,16 @@ func ConvertStringMapToInterfaces(val ...map[string]string) []interface{} {
 
 // IsPtr tells us if a provided interface is a pointer or not
 func IsPtr(i interface{}) bool {
+	if i == nil {
+		return false
+	}
 	return reflect.ValueOf(i).Type().Kind() == reflect.Ptr
 }
 
 // IsSlice tells us if a provided interface is a slice or not
 func IsSlice(i interface{}) bool {
+	if i == nil {
+		return false
+	}
 	return reflect.ValueOf(i).Type().Kind() == reflect.Slice
 }
