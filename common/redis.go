@@ -22,9 +22,6 @@ const (
 
 	// ArgoCDRedisServerTLSSecretName is the name of the TLS secret for the redis-server
 	ArgoCDRedisServerTLSSecretName = "argocd-operator-redis-tls"
-
-	RedisControllerComponent = "redis"
-	RedisHAProxyServiceName  = "redis-ha-haproxy"
 )
 
 // deafults
@@ -56,12 +53,4 @@ const (
 
 	// ArgoCDDefaultRedisVersionHA is the Redis container image tag to use when not specified in HA mode.
 	ArgoCDDefaultRedisVersionHA = "sha256:8061ca607db2a0c80010aeb5fc9bed0253448bc68711eaa14253a392f6c48280" // 6.2.4-alpine
-)
-
-// commands
-const (
-	Redis                      = "--redis"
-	RedisUseTLS                = "--redis-use-tls"
-	RedisInsecureSkipTLSVerify = "--redis-insecure-skip-tls-verify"
-	RedisCACertificate         = "--redis-ca-certificate"
 )

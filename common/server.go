@@ -7,8 +7,6 @@ const (
 
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"
-
-	ServerControllerComponent = "server"
 )
 
 // defaults

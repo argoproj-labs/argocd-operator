@@ -129,8 +129,6 @@ const (
 
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
-
-	ArgoCDRepoTLSCertChangedKey = "repo.tls.cert.changed"
 )
 
 // openshift.io keys

@@ -45,29 +45,21 @@ const (
 
 // general values
 const (
-	TimeFormatMST                     = "01022006-150406-MST"
-	TLSCerts                          = "tls-certs"
-	CapabilityDropAll                 = "ALL"
-	VolumeMountPathRepoServerTLSRedis = "/app/config/reposerver/tls/redis"
-	VolumeMountPathTLS                = "/app/config/tls"
-	VolumeMountPlugins                = "plugins"
-	VolumeMountPathPlugins            = "/home/argocd/cmp-server/plugins"
-	VolumeVarFiles                    = "var-files"
-	VolumeMountPathVarRunArgocd       = "/var/run/argocd"
-	PortWebhook                       = "webhook"
-	VolumeMountPathRepoServerTLS      = "/app/config/reposerver/tls"
-	WorkingDirApp                     = "/app"
-	Webhook                           = "webhook"
-	SSHKnownHosts                     = "ssh-known-hosts"
-	VolumeMountPathSSH                = "/app/config/ssh"
-	GPGKeys                           = "gpg-keys"
-	VolumeMountPathGPG                = "/app/config/gpg/source"
-	GPGKeyRing                        = "gpg-keyring"
-	VolumeMountPathGPGKeyring         = "/app/config/gpg/keys"
-	VolumeTmp                         = "tmp"
-	VolumeMountPathTmp                = "/tmp"
-	Server                            = "server"
-	OpenShift                         = "openshift"
+	TimeFormatMST                = "01022006-150406-MST"
+	TLSCerts                     = "tls-certs"
+	CapabilityDropAll            = "ALL"
+	VolumeMountPathTLS           = "/app/config/tls"
+	VolumeMountPathRepoServerTLS = "/app/config/reposerver/tls"
+	WorkingDirApp                = "/app"
+	Webhook                      = "webhook"
+	SSHKnownHosts                = "ssh-known-hosts"
+	VolumeMountPathSSH           = "/app/config/ssh"
+	GPGKeys                      = "gpg-keys"
+	VolumeMountPathGPG           = "/app/config/gpg/source"
+	GPGKeyRing                   = "gpg-keyring"
+	VolumeMountPathGPGKeyring    = "/app/config/gpg/keys"
+	VolumeTmp                    = "tmp"
+	VolumeMountPathTmp           = "/tmp"
 )
 
 // API group versions and resource kinds
@@ -83,11 +75,9 @@ const (
 	SecretKind         = "Secret"
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
-	StatefulSetKind    = "StatefulSet"
 )
 
 // Commnds
 const (
-	LogLevel  = "--loglevel"
-	LogFormat = "--logformat"
+	LogLevel = "--loglevel"
 )

@@ -44,8 +44,6 @@ const (
 	// instances
 	ArgoCDClusterConfigNamespacesEnvVar = "ARGOCD_CLUSTER_CONFIG_NAMESPACES"
 
-	ArgoCDExecTimeoutEnvVar = "ARGOCD_EXEC_TIMEOUT"
-
 	// ArgoCDLabelSelectorEnvVar is an environment variable that contains the labels used for selective instance reconilliation.
 	ArgoCDLabelSelectorEnvVar = "ARGOCD_LABEL_SELECTOR"
 )

@@ -7,15 +7,4 @@ const (
 
 	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
 	ApplicationSetServiceNameSuffix = "applicationset-controller"
-
-	AppSetControllerComponent  = "applicationset-controller"
-	AppSetController           = "argocd-applicationset-controller"
-	AppSetGitlabSCMTlsCert     = "appset-gitlab-scm-tls-cert"
-	AppSetGitlabSCMTlsCertPath = "/app/tls/scm/cert"
-	AppSetWebhookRouteName     = "applicationset-controller-webhook"
-)
-
-// commands
-const (
-	EntryPointSh = "entrypoint.sh"
 )
