@@ -1,16 +1,16 @@
 package permissions
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // ClusterRoleRequest objects contain all the required information to produce a clusterRole object in return
@@ -58,57 +58,47 @@ func RequestClusterRole(request ClusterRoleRequest) (*rbacv1.ClusterRole, error)
 }
 
 // CreateClusterRole creates the specified ClusterRole using the provided client.
-func CreateClusterRole(role *rbacv1.ClusterRole, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), role)
+func CreateClusterRole(clusterRole *rbacv1.ClusterRole, client cntrlClient.Client) error {
+	return resource.CreateClusterObject(clusterRole, client)
 }
 
 // GetClusterRole retrieves the ClusterRole with the given name using the provided client.
 func GetClusterRole(name string, client cntrlClient.Client) (*rbacv1.ClusterRole, error) {
-	existingRole := &rbacv1.ClusterRole{}
-	err := client.Get(context.TODO(), cntrlClient.ObjectKey{Name: name}, existingRole)
+	clusterRole := &rbacv1.ClusterRole{}
+	obj, err := resource.GetClusterObject(name, clusterRole, client)
 	if err != nil {
 		return nil, err
 	}
-	return existingRole, nil
+	// Assert the object as an rbacv1.ClusterRole
+	clusterRole, ok := obj.(*rbacv1.ClusterRole)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.ClusterRole")
+	}
+	return clusterRole, nil
 }
 
 // ListClusterRoles returns a list of ClusterRole objects using the provided client and list options.
 func ListClusterRoles(client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*rbacv1.ClusterRoleList, error) {
-	existingRoles := &rbacv1.ClusterRoleList{}
-	err := client.List(context.TODO(), existingRoles, listOptions...)
+	clusterRoleList := &rbacv1.ClusterRoleList{}
+	obj, err := resource.ListClusterObjects(clusterRoleList, client, listOptions)
 	if err != nil {
 		return nil, err
 	}
-	return existingRoles, nil
+	// Assert the object as an rbacv1.ClusterRoleList
+	clusterRoleList, ok := obj.(*rbacv1.ClusterRoleList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an rbacv1.ClusterRoleList")
+	}
+	return clusterRoleList, nil
 }
 
 // UpdateClusterRole updates the specified ClusterRole using the provided client.
-func UpdateClusterRole(role *rbacv1.ClusterRole, client cntrlClient.Client) error {
-	_, err := GetClusterRole(role.Name, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), role); err != nil {
-		return err
-	}
-
-	return nil
+func UpdateClusterRole(clusterRole *rbacv1.ClusterRole, client cntrlClient.Client) error {
+	return resource.UpdateClusterObject(clusterRole, client)
 }
 
 // DeleteClusterRole deletes the ClusterRole with the given name using the provided client.
-// It ignores the "not found" error if the ClusterRole does not exist.
 func DeleteClusterRole(name string, client cntrlClient.Client) error {
-	existingRole, err := GetClusterRole(name, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingRole); err != nil {
-		return err
-	}
-	return nil
+	clusterRole := &rbacv1.ClusterRole{}
+	return resource.DeleteClusterObject(name, clusterRole, client)
 }

@@ -1,17 +1,16 @@
 package workloads
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
 	autoscaling "k8s.io/api/autoscaling/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
 // HorizontalPodAutoscalerRequest objects contain all the required information to produce a horizontalPodAutoscaler object in return
@@ -36,56 +35,6 @@ func newHorizontalPodAutoscaler(objMeta metav1.ObjectMeta, spec autoscaling.Hori
 	}
 }
 
-func CreateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
-	return client.Create(context.TODO(), horizontalPodAutoscaler)
-}
-
-// UpdateHorizontalPodAutoscaler updates the specified HorizontalPodAutoscaler using the provided client.
-func UpdateHorizontalPodAutoscaler(horizontalPodAutoscaler *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
-	_, err := GetHorizontalPodAutoscaler(horizontalPodAutoscaler.Name, horizontalPodAutoscaler.Namespace, client)
-	if err != nil {
-		return err
-	}
-
-	if err = client.Update(context.TODO(), horizontalPodAutoscaler); err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) error {
-	existingHorizontalPodAutoscaler, err := GetHorizontalPodAutoscaler(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	if err := client.Delete(context.TODO(), existingHorizontalPodAutoscaler); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) (*autoscaling.HorizontalPodAutoscaler, error) {
-	existingHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, existingHorizontalPodAutoscaler)
-	if err != nil {
-		return nil, err
-	}
-	return existingHorizontalPodAutoscaler, nil
-}
-
-func ListHorizontalPodAutoscalers(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*autoscaling.HorizontalPodAutoscalerList, error) {
-	existingHorizontalPodAutoscalers := &autoscaling.HorizontalPodAutoscalerList{}
-	err := client.List(context.TODO(), existingHorizontalPodAutoscalers, listOptions...)
-	if err != nil {
-		return nil, err
-	}
-	return existingHorizontalPodAutoscalers, nil
-}
-
 func RequestHorizontalPodAutoscaler(request HorizontalPodAutoscalerRequest) (*autoscaling.HorizontalPodAutoscaler, error) {
 	var (
 		mutationErr error
@@ -105,4 +54,50 @@ func RequestHorizontalPodAutoscaler(request HorizontalPodAutoscalerRequest) (*au
 	}
 
 	return horizontalPodAutoscaler, nil
+}
+
+// CreateHorizontalPodAutoscaler creates the specified HorizontalPodAutoscaler using the provided client.
+func CreateHorizontalPodAutoscaler(hpa *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
+	return resource.CreateObject(hpa, client)
+}
+
+// UpdateHorizontalPodAutoscaler updates the specified HorizontalPodAutoscaler using the provided client.
+func UpdateHorizontalPodAutoscaler(hpa *autoscaling.HorizontalPodAutoscaler, client cntrlClient.Client) error {
+	return resource.UpdateObject(hpa, client)
+}
+
+// DeleteHorizontalPodAutoscaler deletes the HorizontalPodAutoscaler with the given name and namespace using the provided client.
+func DeleteHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) error {
+	hpa := &autoscaling.HorizontalPodAutoscaler{}
+	return resource.DeleteObject(name, namespace, hpa, client)
+}
+
+// GetHorizontalPodAutoscaler retrieves the HorizontalPodAutoscaler with the given name and namespace using the provided client.
+func GetHorizontalPodAutoscaler(name, namespace string, client cntrlClient.Client) (*autoscaling.HorizontalPodAutoscaler, error) {
+	hpa := &autoscaling.HorizontalPodAutoscaler{}
+	obj, err := resource.GetObject(name, namespace, hpa, client)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as an autoscaling.HorizontalPodAutoscaler
+	hpa, ok := obj.(*autoscaling.HorizontalPodAutoscaler)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an autoscaling.HorizontalPodAutoscaler")
+	}
+	return hpa, nil
+}
+
+// ListHorizontalPodAutoscalers returns a list of HorizontalPodAutoscaler objects in the specified namespace using the provided client and list options.
+func ListHorizontalPodAutoscalers(namespace string, client cntrlClient.Client, listOptions []cntrlClient.ListOption) (*autoscaling.HorizontalPodAutoscalerList, error) {
+	hpaList := &autoscaling.HorizontalPodAutoscalerList{}
+	obj, err := resource.ListObjects(namespace, hpaList, client, listOptions)
+	if err != nil {
+		return nil, err
+	}
+	// Assert the object as an autoscaling.HorizontalPodAutoscalerList
+	hpaList, ok := obj.(*autoscaling.HorizontalPodAutoscalerList)
+	if !ok {
+		return nil, errors.New("failed to assert the object as an autoscaling.HorizontalPodAutoscalerList")
+	}
+	return hpaList, nil
 }

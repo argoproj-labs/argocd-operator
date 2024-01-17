@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -72,6 +73,9 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 
 func (asr *ApplicationSetReconciler) deleteService(name, namespace string) error {
 	if err := networking.DeleteService(name, namespace, asr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		asr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err
 	}
