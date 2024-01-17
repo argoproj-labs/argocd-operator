@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"reflect"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
@@ -17,7 +19,7 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     common.RoleKind,
-			Name:     resourceName,
+			Name:     rr.getRoleRefName(),
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -47,13 +49,21 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		return nil
 	}
 
+	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
+	if !reflect.DeepEqual(existingRb.RoleRef, desiredRb.RoleRef) {
+		rr.Logger.V(0).Info("detected drift in roleRef for rolebinding", "name", existingRb.Name, "namespace", existingRb.Namespace)
+		if err := rr.deleteRoleBinding(resourceName, rr.Instance.Namespace); err != nil {
+			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existingRb.Name)
+		}
+		return nil
+	}
+
 	rbChanged := false
 
 	fieldsToCompare := []struct {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{&existingRb.RoleRef, &desiredRb.RoleRef, nil},
 		{&existingRb.Subjects, &desiredRb.Subjects, nil},
 	}
 
@@ -82,4 +92,11 @@ func (rr *RedisReconciler) deleteRoleBinding(name, namespace string) error {
 	}
 	rr.Logger.V(0).Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+func (rr *RedisReconciler) getRoleRefName() string {
+	if rr.Instance.Spec.HA.Enabled {
+		return HAResourceName
+	}
+	return resourceName
 }

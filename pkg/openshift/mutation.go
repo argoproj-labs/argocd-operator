@@ -61,9 +61,8 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 	if !IsOpenShiftEnv() {
 		return nil
 	}
-	switch obj := resource.(type) {
-	case *appsv1.StatefulSet:
-	case *appsv1.Deployment:
+
+	addSeccompProfile := func(podSpec *corev1.PodSpec) error {
 		if !IsVersionAPIAvailable() {
 			return nil
 		}
@@ -71,8 +70,6 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 		if err != nil {
 			return errors.Wrapf(err, "AddSeccompProfileForOpenShift: failed to retrieve OpenShift cluster version")
 		}
-
-		podSpec := &obj.Spec.Template.Spec
 
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
 			if podSpec.SecurityContext == nil {
@@ -84,7 +81,40 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 			if len(podSpec.SecurityContext.SeccompProfile.Type) == 0 {
 				podSpec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
 			}
+
+			containers := []corev1.Container{}
+			for _, container := range podSpec.Containers {
+				if container.SecurityContext.SeccompProfile == nil {
+					container.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+				}
+				if len(container.SecurityContext.SeccompProfile.Type) == 0 {
+					container.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+				}
+				containers = append(containers, container)
+			}
+			podSpec.Containers = containers
+
+			initContainers := []corev1.Container{}
+			for _, initc := range podSpec.InitContainers {
+				if initc.SecurityContext.SeccompProfile == nil {
+					initc.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+				}
+				if len(initc.SecurityContext.SeccompProfile.Type) == 0 {
+					initc.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+				}
+				initContainers = append(initContainers, initc)
+			}
+			podSpec.InitContainers = initContainers
+
 		}
+		return nil
+	}
+
+	switch obj := resource.(type) {
+	case *appsv1.StatefulSet:
+		return addSeccompProfile(&obj.Spec.Template.Spec)
+	case *appsv1.Deployment:
+		return addSeccompProfile(&obj.Spec.Template.Spec)
 	}
 	return nil
 }
@@ -103,29 +133,32 @@ func AddNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client
 		if !IsVersionAPIAvailable() {
 			return nil
 		}
+		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
+		resourceName := "nonroot"
 		version, err := GetClusterVersion(client)
 		if err != nil {
 			return errors.Wrapf(err, "AppendNonRootSCCForOpenShift: failed to retrieve OpenShift cluster version")
 		}
-		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
-		resourceName := "nonroot"
+
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
-			orules := rbacv1.PolicyRule{
-				APIGroups: []string{
-					"security.openshift.io",
-				},
-				ResourceNames: []string{
-					resourceName,
-				},
-				Resources: []string{
-					"securitycontextconstraints",
-				},
-				Verbs: []string{
-					"use",
-				},
-			}
-			obj.Rules = append(obj.Rules, orules)
+			resourceName = "nonroot-v2"
 		}
+
+		orules := rbacv1.PolicyRule{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				resourceName,
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		}
+		obj.Rules = append(obj.Rules, orules)
 	}
 
 	return nil
