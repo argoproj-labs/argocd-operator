@@ -15,7 +15,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, common.AppSetControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
@@ -24,7 +24,7 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(common.AppSetControllerComponent)
+	logger := ctrl.Log.WithName(AppSetControllerComponent)
 
 	return &ApplicationSetReconciler{
 		Client: cl,

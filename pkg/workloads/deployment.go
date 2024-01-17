@@ -52,18 +52,6 @@ func RequestDeployment(request DeploymentRequest) (*appsv1.Deployment, error) {
 	return deployment, nil
 }
 
-// TriggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
-func TriggerDeploymentRollout(client cntrlClient.Client, name, namespace string, updateChangedTime func(name, namespace string)) error {
-	currentDeployment, err := GetDeployment(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-
-	updateChangedTime(currentDeployment.Name, currentDeployment.Namespace)
-	return UpdateDeployment(currentDeployment, client)
 // CreateDeployment creates the specified Deployment using the provided client.
 func CreateDeployment(deployment *appsv1.Deployment, client cntrlClient.Client) error {
 	return resource.CreateObject(deployment, client)

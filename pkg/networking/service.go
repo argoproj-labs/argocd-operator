@@ -8,9 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/go-logr/logr"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
@@ -53,36 +51,6 @@ func RequestService(request ServiceRequest) (*corev1.Service, error) {
 	return service, nil
 }
 
-func EnsureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled bool, log logr.Logger) bool {
-	var autoTLSAnnotationName, autoTLSAnnotationValue string
-
-	// We currently only support OpenShift for automatic TLS
-	if IsRouteAPIAvailable() {
-		autoTLSAnnotationName = common.ServiceBetaOpenshiftKeyCertSecret
-		if svc.Annotations == nil {
-			svc.Annotations = make(map[string]string)
-		}
-		autoTLSAnnotationValue = secretName
-	}
-
-	if autoTLSAnnotationName != "" {
-		val, ok := svc.Annotations[autoTLSAnnotationName]
-		if enabled {
-			if !ok || val != secretName {
-				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
-				svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
-				return true
-			}
-		} else {
-			if ok {
-				log.Info(fmt.Sprintf("removing AutoTLS from service %s", svc.ObjectMeta.Name))
-				delete(svc.Annotations, autoTLSAnnotationName)
-				return true
-			}
-		}
-	}
-
-	return false
 // CreateService creates the specified Service using the provided client.
 func CreateService(service *corev1.Service, client cntrlClient.Client) error {
 	return resource.CreateObject(service, client)

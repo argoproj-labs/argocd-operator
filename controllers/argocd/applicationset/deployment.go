@@ -71,9 +71,6 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
-				if existingDeployment.Spec.Template.ObjectMeta.Labels == nil {
-					existingDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{}
-				}
 				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
@@ -180,13 +177,13 @@ func (asr *ApplicationSetReconciler) getDeploymentRequest(dep appsv1.Deployment)
 	return deploymentReq
 }
 
-func (asr *ApplicationSetReconciler) getApplicationSetCommand() []string {
+func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 	cmd := make([]string, 0)
 
-	cmd = append(cmd, common.EntryPointSh)
-	cmd = append(cmd, common.AppSetController)
+	cmd = append(cmd, EntryPointSh)
+	cmd = append(cmd, AppSetController)
 
-	cmd = append(cmd, common.ArgoCDRepoServer)
+	cmd = append(cmd, ArgoCDRepoServer)
 	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
 
 	cmd = append(cmd, common.LogLevel)
@@ -208,10 +205,10 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 	appSetEnv := asr.Instance.Spec.ApplicationSet.Env
 	appSetEnv = util.EnvMerge(appSetEnv, util.ProxyEnvVars(), false)
 	container := &corev1.Container{
-		Command:         asr.getApplicationSetCommand(),
+		Command:         asr.getArgoApplicationSetCommand(),
 		Image:           argocdcommon.GetArgoContainerImage(asr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
-		Name:            resourceName,
+		Name:            AppSetController,
 		Env:             appSetEnv,
 		Resources:       asr.getApplicationSetResources(),
 		SecurityContext: &corev1.SecurityContext{
@@ -260,8 +257,8 @@ func (asr *ApplicationSetReconciler) getApplicationSetContainer(addSCMGitlabVolu
 
 	if addSCMGitlabVolumeMount {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      common.AppSetGitlabSCMTlsCert,
-			MountPath: common.AppSetGitlabSCMTlsCertPath,
+			Name:      AppSetGitlabSCMTlsCert,
+			MountPath: AppSetGitlabSCMTlsCertPath,
 		})
 	}
 
@@ -315,7 +312,7 @@ func (asr *ApplicationSetReconciler) getApplicationSetPodVolumes(addSCMGitlabVol
 	}
 	if addSCMGitlabVolumeMount {
 		volumes = append(volumes, corev1.Volume{
-			Name: common.AppSetGitlabSCMTlsCert,
+			Name: AppSetGitlabSCMTlsCert,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{

@@ -114,7 +114,7 @@ func (asr *ApplicationSetReconciler) getWebhookRouteSpec() routev1.RouteSpec {
 		},
 		To: routev1.RouteTargetReference{
 			Kind: common.ServiceKind,
-			Name: argoutil.NameWithSuffix(asr.Instance.Name, common.AppSetControllerComponent),
+			Name: argoutil.NameWithSuffix(asr.Instance.Name, AppSetControllerComponent),
 		},
 	}
 
@@ -147,7 +147,7 @@ func (asr *ApplicationSetReconciler) getWebhookRouteRequest(route routev1.Route)
 func (asr *ApplicationSetReconciler) getDesiredWebhookRoute() *routev1.Route {
 	desiredWebhook := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        common.AppSetWebhookRouteName,
+			Name:        AppSetWebhookRouteName,
 			Namespace:   asr.Instance.Namespace,
 			Labels:      resourceLabels,
 			Annotations: asr.Instance.Annotations,

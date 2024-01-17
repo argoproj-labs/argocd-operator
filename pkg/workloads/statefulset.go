@@ -51,17 +51,6 @@ func RequestStatefulSet(request StatefulSetRequest) (*appsv1.StatefulSet, error)
 	return StatefulSet, nil
 }
 
-// TriggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
-func TriggerStatefulSetRollout(client cntrlClient.Client, name, namespace string, updateChangedTime func(name, namespace string)) error {
-	currentStatefulSet, err := GetStatefulSet(name, namespace, client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
-	updateChangedTime(currentStatefulSet.Name, currentStatefulSet.Namespace)
-	return UpdateStatefulSet(currentStatefulSet, client)
 // CreateStatefulSet creates the specified StatefulSet using the provided client.
 func CreateStatefulSet(statefulSet *appsv1.StatefulSet, client cntrlClient.Client) error {
 	return resource.CreateObject(statefulSet, client)
