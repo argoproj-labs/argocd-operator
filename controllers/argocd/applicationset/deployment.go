@@ -14,7 +14,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -47,7 +47,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 
 	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, asr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			asr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
@@ -108,6 +108,9 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 
 func (asr *ApplicationSetReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, asr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		asr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}

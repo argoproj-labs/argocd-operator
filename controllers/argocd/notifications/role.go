@@ -9,6 +9,7 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -79,6 +80,9 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 
 func (nr *NotificationsReconciler) deleteRole(name, namespace string) error {
 	if err := permissions.DeleteRole(name, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err
 	}

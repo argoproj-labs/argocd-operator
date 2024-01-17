@@ -8,7 +8,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -263,7 +263,7 @@ func TestGetRoute(t *testing.T) {
 
 	_, err = GetRoute(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListRoutes(t *testing.T) {
@@ -359,10 +359,12 @@ func TestDeleteRoute(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, routev1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestRoute(func(r *routev1.Route) {
+	testRoute := getTestRoute(func(r *routev1.Route) {
 		r.Name = testName
 		r.Namespace = testNamespace
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(testRoute).Build()
 
 	err := DeleteRoute(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -374,9 +376,5 @@ func TestDeleteRoute(t *testing.T) {
 	}, existingRoute)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	err = DeleteRoute(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

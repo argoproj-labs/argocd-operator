@@ -5,7 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -45,7 +45,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 	_, err = workloads.GetConfigMap(desiredConfigMap.Name, desiredConfigMap.Namespace, nr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to retrieve configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 			return err
 		}
@@ -67,6 +67,9 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 
 func (nr *NotificationsReconciler) deleteConfigMap(namespace string) error {
 	if err := workloads.DeleteConfigMap(common.NotificationsConfigMapName, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", common.NotificationsConfigMapName, "namespace", namespace)
 		return err
 	}

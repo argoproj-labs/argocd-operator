@@ -7,6 +7,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -68,6 +69,9 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 
 func (nr *NotificationsReconciler) deleteSecret(namespace string) error {
 	if err := workloads.DeleteSecret(common.NotificationsSecretName, namespace, nr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", common.NotificationsSecretName, "namespace", namespace)
 		return err
 	}

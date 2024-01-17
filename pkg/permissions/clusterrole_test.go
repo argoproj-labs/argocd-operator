@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	rbacv1 "k8s.io/api/rbac/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -163,7 +163,7 @@ func TestGetClusterRole(t *testing.T) {
 
 	_, err = GetClusterRole(testName, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListClusterRoles(t *testing.T) {
@@ -232,9 +232,11 @@ func TestUpdateClusterRole(t *testing.T) {
 }
 
 func TestDeleteClusterRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestClusterRole(func(r *rbacv1.ClusterRole) {
+	testClusterRole := getTestClusterRole(func(r *rbacv1.ClusterRole) {
 		r.Name = testName
-	})).Build()
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testClusterRole).Build()
 
 	err := DeleteClusterRole(testName, testClient)
 	assert.NoError(t, err)
@@ -245,9 +247,5 @@ func TestDeleteClusterRole(t *testing.T) {
 	}, existingClusterRole)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteClusterRole(testName, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -173,18 +173,23 @@ func TestGetSecret(t *testing.T) {
 
 	_, err = GetSecret(testName, testNamespace, testClient)
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListSecrets(t *testing.T) {
 	secret1 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-1"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
+		s.Namespace = testNamespace
 	})
-	secret2 := getTestSecret(func(s *corev1.Secret) { s.Name = "secret-2" })
+	secret2 := getTestSecret(func(s *corev1.Secret) {
+		s.Name = "secret-2"
+		s.Namespace = testNamespace
+	})
 	secret3 := getTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
+		s.Namespace = testNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -247,9 +252,12 @@ func TestUpdateSecret(t *testing.T) {
 }
 
 func TestDeleteSecret(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestSecret(func(s *corev1.Secret) {
+	testSecret := getTestSecret(func(s *corev1.Secret) {
 		s.Name = testName
-	})).Build()
+		s.Namespace = testNamespace
+	})
+
+	testClient := fake.NewClientBuilder().WithObjects(testSecret).Build()
 
 	err := DeleteSecret(testName, testNamespace, testClient)
 	assert.NoError(t, err)
@@ -261,9 +269,5 @@ func TestDeleteSecret(t *testing.T) {
 	}, existingSecret)
 
 	assert.Error(t, err)
-	assert.True(t, k8serrors.IsNotFound(err))
-
-	testClient = fake.NewClientBuilder().Build()
-	err = DeleteSecret(testName, testNamespace, testClient)
-	assert.NoError(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }
