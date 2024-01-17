@@ -9,7 +9,7 @@ import (
 )
 
 type AppControllerReconciler struct {
-	Client            *client.Client
+	Client            client.Client
 	Scheme            *runtime.Scheme
 	Instance          *argoproj.ArgoCD
 	ClusterScoped     bool
