@@ -4,6 +4,8 @@ package common
 const (
 	// ArgoCDRepoServerTLSSecretName is the name of the TLS secret for the repo-server
 	ArgoCDRepoServerTLSSecretName = "argocd-repo-server-tls"
+
+	RepoServerSuffix = "-repo-server"
 )
 
 // values

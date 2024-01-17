@@ -208,3 +208,8 @@ const (
 	// ArgoCDArgoprojKeyManagedByClusterArgoCD is needed to identify namespace mentioned as sourceNamespace on ArgoCD
 	ArgoCDArgoprojKeyManagedByClusterArgoCD = "argocd.argoproj.io/managed-by-cluster-argocd"
 )
+
+// misc
+const (
+	TLSSecretNameKey = "tls-secret-name"
+)
