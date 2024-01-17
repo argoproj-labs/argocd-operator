@@ -27,7 +27,7 @@ func ApplyReconcilerMutation(cr *argoproj.ArgoCD, resource interface{}, client c
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, mutateFunc := range mutateFuncs {
-		if err := mutateFunc(cr, resource, client, args); err != nil {
+		if err := mutateFunc(cr, resource, client, args...); err != nil {
 			return err
 		}
 	}

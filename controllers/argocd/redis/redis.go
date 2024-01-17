@@ -127,7 +127,7 @@ func (rr *RedisReconciler) DeleteNonHAResources() error {
 	deletionErr.Append(err)
 
 	// delete role
-	err = rr.deleteRole(HAResourceName, rr.Instance.Namespace)
+	err = rr.deleteRole(resourceName, rr.Instance.Namespace)
 	deletionErr.Append(err)
 
 	return deletionErr.ErrOrNil()

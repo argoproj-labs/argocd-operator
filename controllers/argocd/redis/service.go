@@ -32,9 +32,12 @@ func (rr *RedisReconciler) reconcileService() error {
 				},
 			},
 		},
-		Mutations:    []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-		MutationArgs: util.ConvertStringsToInterfaces([]string{common.ArgoCDRedisServerTLSSecretName}),
-		Client:       rr.Client,
+		Instance:  rr.Instance,
+		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		MutationArgs: util.ConvertStringMapToInterfaces(map[string]string{
+			common.TLSSecretNameKey: common.ArgoCDRedisServerTLSSecretName,
+		}),
+		Client: rr.Client,
 	}
 
 	desiredSvc, err := networking.RequestService(svcRequest)
@@ -46,7 +49,7 @@ func (rr *RedisReconciler) reconcileService() error {
 		rr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desiredSvc.Name)
 	}
 
-	_, err = networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
+	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileService: failed to retrieve service %s", desiredSvc.Name)
@@ -58,6 +61,29 @@ func (rr *RedisReconciler) reconcileService() error {
 		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
 	}
+
+	svcChanged := false
+
+	fieldsToCompare := []struct {
+		existing, desired interface{}
+		extraAction       func()
+	}{
+		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
+	}
+
+	for _, field := range fieldsToCompare {
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &svcChanged)
+	}
+
+	if !svcChanged {
+		return nil
+	}
+
+	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileService: failed to update service %s", existingSvc.Name)
+	}
+
+	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
 	return nil
 }
 
@@ -78,9 +104,12 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 				},
 			},
 		},
-		Mutations:    []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-		MutationArgs: util.ConvertStringsToInterfaces([]string{common.ArgoCDRedisServerTLSSecretName}),
-		Client:       rr.Client,
+		Instance:  rr.Instance,
+		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		MutationArgs: util.ConvertStringMapToInterfaces(map[string]string{
+			common.TLSSecretNameKey: common.ArgoCDRedisServerTLSSecretName,
+		}),
+		Client: rr.Client,
 	}
 
 	desiredSvc, err := networking.RequestService(svcRequest)
@@ -111,8 +140,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{existingSvc.ObjectMeta, desiredSvc.ObjectMeta, nil},
-		{existingSvc.Spec, desiredSvc.Spec, nil},
+		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -124,7 +152,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 	}
 
 	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
-		return errors.Wrapf(err, "failed to update service %s", existingSvc.Name)
+		return errors.Wrapf(err, "reconcileHAProxyService: failed to update service %s", existingSvc.Name)
 	}
 
 	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
@@ -246,6 +274,6 @@ func (rr *RedisReconciler) deleteService(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteService: failed to delete service %s", name)
 	}
-	rr.Logger.V(0).Info("deleteService: service deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("service deleted", "name", name, "namespace", namespace)
 	return nil
 }

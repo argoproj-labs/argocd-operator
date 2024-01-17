@@ -127,7 +127,7 @@ func (rr *RedisReconciler) DeleteHAResources() error {
 	var deletionErr util.MultiError
 
 	// delete statefulset
-	err := rr.deleteStatefulSet(HAResourceName, rr.Instance.Namespace)
+	err := rr.deleteStatefulSet(HAServerResourceName, rr.Instance.Namespace)
 	deletionErr.Append(err)
 
 	// delete deployment

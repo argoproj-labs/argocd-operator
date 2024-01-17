@@ -57,7 +57,7 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileHAConfigMap: configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+		rr.Logger.V(0).Info("config map created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileHAHealthConfigMap: configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+		rr.Logger.V(0).Info("configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
 		return nil
 	}
 
@@ -113,6 +113,6 @@ func (rr *RedisReconciler) deleteConfigMap(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteConfigMap: failed to delete config map %s", name)
 	}
-	rr.Logger.V(0).Info("deleteConfigMap: config map deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("config map deleted", "name", name, "namespace", namespace)
 	return nil
 }

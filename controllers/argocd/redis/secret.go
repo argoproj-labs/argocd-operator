@@ -76,6 +76,6 @@ func (rr *RedisReconciler) deleteSecret(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s", name)
 	}
-	rr.Logger.V(0).Info("deleteSecret: secret deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("secret deleted", "name", name, "namespace", namespace)
 	return nil
 }

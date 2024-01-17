@@ -80,6 +80,6 @@ func (rr *RedisReconciler) deleteRoleBinding(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteRoleBinding: failed to delete rolebinding %s", name)
 	}
-	rr.Logger.V(0).Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }

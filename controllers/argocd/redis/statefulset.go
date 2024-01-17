@@ -65,7 +65,7 @@ func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 		if err = workloads.CreateStatefulSet(desiredSS, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to create statefulset %s in namespace %s", desiredSS.Name, desiredSS.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileHAStatefulSet: statefulset created", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
+		rr.Logger.V(0).Info("statefulset created", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
 		return nil
 	}
 
@@ -77,12 +77,13 @@ func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 			existing, desired interface{}
 			extraAction       func()
 		}{
-			{&existingSS.Spec.Template.Spec.Containers[i].Image, &existingSS.Spec.Template.Spec.Containers[i].Image,
+			{&existingSS.Spec.Template.Spec.Containers[i].Image, &desiredSS.Spec.Template.Spec.Containers[i].Image,
 				func() {
 					existingSS.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 				},
 			},
 			{&existingSS.Spec.Template.Spec.Containers[i].Resources, &desiredSS.Spec.Template.Spec.Containers[i].Resources, nil},
+			{&existingSS.Spec.Template.Spec.SecurityContext, &desiredSS.Spec.Template.Spec.SecurityContext, nil},
 		}
 
 		for _, field := range fieldsToCompare {
@@ -124,7 +125,7 @@ func (rr *RedisReconciler) deleteStatefulSet(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteStatefulSet: failed to delete stateful set %s", name)
 	}
-	rr.Logger.V(0).Info("deleteStatefulSet: stateful set deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("stateful set deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
@@ -147,7 +148,7 @@ func (rr *RedisReconciler) getStatefulSetRequest() workloads.StatefulSetRequest 
 						checksumInitConfigKey: "7128bfbb51eafaffe3c33b1b463e15f0cf6514cec570f9d9c4f2396f28c724ac",
 					},
 					Labels: map[string]string{
-						common.AppK8sKeyName: HAResourceName,
+						common.AppK8sKeyName: HAServerResourceName,
 					},
 				},
 				Spec: rr.getStatefulSetPodSpec(),

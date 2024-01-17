@@ -3756,3 +3756,11 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	}
 	return r.Client.Create(context.TODO(), deploy)
 }
+
+func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
+}

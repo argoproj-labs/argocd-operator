@@ -3,9 +3,17 @@ package util
 import "reflect"
 
 // ConvertStringsToInterfaces accepts a slice to strings and converts it into a slice to interfaces
-func ConvertStringsToInterfaces(str []string) []interface{} {
+func ConvertStringsToInterfaces(str ...string) []interface{} {
 	s := make([]interface{}, len(str))
 	for i, v := range str {
+		s[i] = v
+	}
+	return s
+}
+
+func ConvertStringMapToInterfaces(val ...map[string]string) []interface{} {
+	s := make([]interface{}, len(val))
+	for i, v := range val {
 		s[i] = v
 	}
 	return s

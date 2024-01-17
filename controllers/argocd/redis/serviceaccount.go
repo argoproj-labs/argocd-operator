@@ -42,6 +42,6 @@ func (rr *RedisReconciler) deleteServiceAccount(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteServiceAccount: failed to delete service account %s", name)
 	}
-	rr.Logger.V(0).Info("deleteServiceAccount: service account deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("service account deleted", "name", name, "namespace", namespace)
 	return nil
 }

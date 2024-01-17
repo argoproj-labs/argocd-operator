@@ -30,6 +30,9 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 	}
 	switch obj := resource.(type) {
 	case *corev1.Service:
+		if cr == nil {
+			return nil
+		}
 		// return if autoTLS is not requested
 		if !cr.Spec.Redis.WantsAutoTLS() {
 			return nil
@@ -39,12 +42,13 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 			obj.Annotations = make(map[string]string)
 		}
 
-		// there should only be one extra parameter of type string, which would be the name of the TLS secret to be used in the annotation.
-		// Check to make sure length and type of extra argument match before using this as the secret name
+		// Ensure that args carries only one argument, which is a map of type map[string]string
+		// containing the key "tls-secret-name". If this is the case, the associated value
+		// can be used within the service annotation
 		if len(args) == 1 {
 			for _, arg := range args {
-				switch val := arg.(type) {
-				case string:
+				argMap := arg.(map[string]string)
+				if val, ok := argMap[common.TLSSecretNameKey]; ok {
 					obj.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = val
 				}
 			}
@@ -68,7 +72,7 @@ func AddSeccompProfileForOpenShift(cr *argoproj.ArgoCD, resource interface{}, cl
 			return errors.Wrapf(err, "AddSeccompProfileForOpenShift: failed to retrieve OpenShift cluster version")
 		}
 
-		podSpec := obj.Spec.Template.Spec
+		podSpec := &obj.Spec.Template.Spec
 
 		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
 			if podSpec.SecurityContext == nil {
@@ -92,7 +96,7 @@ func AddNonRootSCCForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client
 	switch obj := resource.(type) {
 	case *rbacv1.Role:
 		// This mutation only applies to redis and redis-ha roles
-		if component, ok := obj.Annotations[common.AppK8sKeyComponent]; !ok || (ok && component != common.RedisComponent) {
+		if component, ok := obj.Labels[common.AppK8sKeyComponent]; !ok || (ok && component != common.RedisComponent) {
 			return nil
 		}
 

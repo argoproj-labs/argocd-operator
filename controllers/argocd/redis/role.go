@@ -17,6 +17,7 @@ func (rr *RedisReconciler) reconcileRole() error {
 		Rules:      getPolicyRules(),
 		Client:     rr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		Instance:   rr.Instance,
 	}
 
 	desiredRole, err := permissions.RequestRole(permissions.RoleRequest(roleReq))
@@ -72,6 +73,7 @@ func (rr *RedisReconciler) reconcileHARole() error {
 		Rules:      getHAPolicyRules(),
 		Client:     rr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		Instance:   rr.Instance,
 	}
 
 	desiredRole, err := permissions.RequestRole(permissions.RoleRequest(roleReq))
@@ -102,7 +104,7 @@ func (rr *RedisReconciler) reconcileHARole() error {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{existingRole.Rules, desiredRole.Rules, nil},
+		{&existingRole.Rules, &desiredRole.Rules, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -127,7 +129,7 @@ func (rr *RedisReconciler) deleteRole(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteRole: failed to delete role %s", name)
 	}
-	rr.Logger.V(0).Info("deleteRole: role deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

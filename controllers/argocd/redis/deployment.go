@@ -43,7 +43,7 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -61,6 +61,7 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 		{&existingDeploy.Spec.Template.Spec.Containers[0].Args, &desiredDeploy.Spec.Template.Spec.Containers[0].Args, nil},
 		{&existingDeploy.Spec.Template.Spec.Containers[0].Env, &desiredDeploy.Spec.Template.Spec.Containers[0].Env, nil},
 		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
+		{&existingDeploy.Spec.Template.Spec.SecurityContext, &desiredDeploy.Spec.Template.Spec.SecurityContext, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -100,7 +101,7 @@ func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rr.Logger.V(0).Info("reconcileHAProxyDeployment: deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -117,6 +118,7 @@ func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 		},
 		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
 		{&existingDeploy.Spec.Template.Spec.InitContainers[0].Resources, &desiredDeploy.Spec.Template.Spec.InitContainers[0].Resources, nil},
+		{&existingDeploy.Spec.Template.Spec.SecurityContext, &desiredDeploy.Spec.Template.Spec.SecurityContext, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -170,6 +172,7 @@ func (rr *RedisReconciler) getDeploymentRequest() workloads.DeploymentRequest {
 		},
 		Instance:  rr.Instance,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		Client:    rr.Client,
 	}
 
 	return depReq
@@ -236,6 +239,7 @@ func (rr *RedisReconciler) getHAProxyDeploymentRequest() workloads.DeploymentReq
 		},
 		Instance:  rr.Instance,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		Client:    rr.Client,
 	}
 
 	depReq.Spec.Template.Spec.Affinity = &corev1.Affinity{
@@ -421,6 +425,6 @@ func (rr *RedisReconciler) deleteDeployment(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s", name)
 	}
-	rr.Logger.V(0).Info("deleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	rr.Logger.V(0).Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }

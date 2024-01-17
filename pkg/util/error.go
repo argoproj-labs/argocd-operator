@@ -1,6 +1,8 @@
 package util
 
-import "errors"
+import (
+	"errors"
+)
 
 // MultiError employs the generic error interface but allows storage of a slice of errors
 type MultiError struct {

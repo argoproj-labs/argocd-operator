@@ -506,14 +506,6 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error
 	return nil
 }
 
-func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
-	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
-		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
-	}
-	return nil
-}
-
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
 

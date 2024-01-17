@@ -53,7 +53,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -213,11 +215,11 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// 	return reconcile.Result{}, nil
 	// }
 
-	// if !r.Instance.IsDeletionFinalizerPresent() {
-	// 	if err := r.addDeletionFinalizer(r.Instance); err != nil {
-	// 		return reconcile.Result{}, err
-	// 	}
-	// }
+	if !r.Instance.IsDeletionFinalizerPresent() {
+		if err := r.addDeletionFinalizer(r.Instance); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 
 	if err = r.setResourceManagedNamespaces(); err != nil {
 		return reconcile.Result{}, err
@@ -654,6 +656,7 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr)
+	bldr.WithEventFilter(ignoreDeletionPredicate())
 	return bldr.Complete(r)
 }
 
@@ -703,4 +706,25 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 
 	}
 	return bldr
+}
+
+func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
+}
+
+func ignoreDeletionPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to CR status in which case metadata.Generation does not change
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return !e.DeleteStateUnknown
+		},
+	}
 }
