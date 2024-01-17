@@ -4,6 +4,7 @@ import (
 	"context"
 
 	types "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -35,17 +36,24 @@ func ListObjects(namespace string, objList cntrlClient.ObjectList, client cntrlC
 
 // UpdateObject updates the specified object using the provided client.
 func UpdateObject(obj cntrlClient.Object, client cntrlClient.Client) error {
-	existingObj, err := GetObject(obj.GetName(), obj.GetNamespace(), obj, client)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		existingObj, err := GetObject(obj.GetName(), obj.GetNamespace(), obj, client)
+		if err != nil {
+			return err
+		}
+
+		obj.SetResourceVersion(existingObj.GetResourceVersion())
+
+		if err = client.Update(context.TODO(), obj); err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
+		// May be conflict if max retries were hit, or may be something unrelated
+		// like permissions or a network error
 		return err
 	}
-
-	obj.SetResourceVersion(existingObj.GetResourceVersion())
-
-	if err = client.Update(context.TODO(), obj); err != nil {
-		return err
-	}
-
 	return nil
 }
 
