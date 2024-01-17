@@ -43,7 +43,7 @@ func RequestService(request ServiceRequest) (*corev1.Service, error) {
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(request.Instance, service, request.Client, request.MutationArgs)
+			err := mutation(request.Instance, service, request.Client, request.MutationArgs...)
 			if err != nil {
 				mutationErr = err
 			}
