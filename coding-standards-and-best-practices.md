@@ -25,9 +25,20 @@
 	- If a function needs to be accessed from outside the package (i.e by other controllers etc) then it should accept parameters, and not specify a receiver. This allows anyone with the correct parameters to access this function without needing an instance of that controller's reconciler. Functions like `GetClusterSecrets` in the secret controller, are good candidates for such public facing functions and should accept parameters.
 
 
+# Helper functions
+
+- `controllers/argocd/argocdcommon` is a package containing generic functions that need to be accessed across all controllers. These functions are NOT utility functions that belong to either `pkg/util` or `pkg/argoutil`
+packages. These functions form a core part of the operator's logic. They have only been isolated to this package so they can be written once and accessed by whoever needs to. Examples of such functions are:
+	- `UpdateIfChanged` to check and update any resources that have drifted
+	- `GetContainerImage` to get container images for any component based on first checking the CR, then env vars and then resorting to defaults 
+	- `TriggerRollout` for deployments and statefulsets etc
+
+Use this package to store core logic function that need to be accessed by all components 
+
 # Utility functions
 
 - Utility functions are generic go functions that perform low level tasks that are not project specific. These functions likely deal with go data structures or perform generic functions that can be used in any go project.
+- Utility functions should not be aware of kubernetes or Argo CD in anyway 
 - Some common examples are string manipulation, merging 2 maps etc.
 - All utility functions should not be dumped into a single `util.go` file. Each utility function will have a specific domain that it belongs to, and utility functions of the same domain should be grouped together into a single file
 that is representative of this domain, and placed in the existing `util` package. Examples of this are:
@@ -36,6 +47,10 @@ that is representative of this domain, and placed in the existing `util` package
 	- `map.go` containing map manipulation functions
 - When adding a new function to `util` package, check if this function fits into any of the existing files. If not, create a new file that will contain this and similar functions moving forward. The goal is to have a flat file structure that has files that group similar utility functions together by domain
 - Main rule of thumb to keep in mind when deciding if a given function should be considered a 'utility' function or not is - Does this function care about Argo CD or Argo CD Operator in any way or not. If the answer is yes, it should likely not be in the utility package, as it is operator specific.
+- If there are helper functions that are kubernetes/argo-cd/operator specific, put them under the `pkg/argoutil` package. Examples of what should be in this package are:
+  - `client.go` - A file to compose clients to talk to different API groups
+  - `log.go` - For Argo CD specific logging levels
+  - `auth.go` - For Argo CD authentication helper functions
 
 # Constants
 
@@ -78,80 +93,62 @@ Follow general golang conventions when it comes to naming your files. Some of th
 - filenames can (and should) repeat for files dealing with similar responsibilities across different packages, so that a predictable and intuitive file structure is maintained.
 
 
-
-# Constants
-
-All existing constants can be broken down into the following categories and sub-categories:
-- defaults: constants that define fall back values and only get activated if user has not explicitly set a value for a given field 
-  - No specific sub categories; defaults can be grouped by function - image/resource constraints etc
-- env var: constants that store environment variable values
-  - No specific sub categories
-- keys: constants that are used as keys as part of key-value pairs in various maps across the operator 
-  - General ArgoCD Keys: Keys that are used for Argo CD wide settings
-  - Component specific Keys: Keys used in constants that are specific to a given Argo CD component
-  - Domain specific keys: Keys that are mostly used in labels/annotations, and typically follow a `group.domain/label-name` format. We can group all such constants
-	together for ease of access
-- names: constants that represent fixed names for resources
-  - names: constants that represent fixed names for resources
-  - suffixes: constants that represent suffixes used to make unique/ component specific resources
-- values: constants that represent standardized field values in maps and other structs, as well as states
-  - no specific sub categories
-
-This structure of constants can be applied to a project wide level, as well as individual component levels. For the project level these constants are defined in separate files in the `common` folder. For individual components they can all be stored in the same `constants.go` file, separeated out into these sections.
-
-## Naming convention
-
-- General Argo CD constant names should start with "ArgoCD.." eg: `ArgoCDDefaultLogLevel`
-- Component specific constants should start with the component name, e.g: `GrafanaDefaultVersion`
-- Domain specific Keys should be named to represent the key itself. For eg:
-  - `app.kubernetes.io/name` should be stored in a const named `AppK8sKeyName`
-  - `argocd.argoproj.io/test` => `ArgoCDArgoprojKeyTest`
-- Environment variable constants should end in `EnvVar`. Eg: `DexImageEnvVar`
-
-General rule of thumb is to make constant names as descriptive as possible (without making them too long) so that it easy to understand what it represents without needing to go to its definition
 # Error handling
+
+- Each error should either be logged or returned. Rarely ever both
+- If handling an error in a function that is performing a specific action, annotate the error with context and the name of the function for tracability. eg:
+
+```
+	if err != nil {
+		errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace)
+	}
+```
+  
+- If handling an error in a function that just delegates to other functions, no need to add context, as the ground level fn would already have added the required context. Eg:
+
+```
+	...
+
+	// reconcile ha role
+	if err := rr.reconcileHARole(); err != nil {
+		return err
+	}
+
+	// reconcile serviceaccount
+	if err := rr.reconcileServiceAccount(); err != nil {
+		return err
+	}
+
+	...
+```
 
 - If a function is reconciling a single resource in a single namespace, return errors immediately, as that resource is critical to the component
 
 ```
 if err = permissions.CreateClusterRole(desiredClusterRole, *acr.Client); err != nil {
-			acr.Logger.Error(err, "reconcileClusterRole: failed to create clusterRole")
 			return err
 		}
 ```
 
-- If a function is reconciling many instances of a resource across multiple namespaces, or if currently running in a loop, store error but don't break the loop. Return the latest error at the end of the loop (If there are multiple errors, user must solve them one by one from latest to oldest)
+- If a function generates a list of independant errors, use the custom defined `util.MultiError` type. Examples for such situations are :
+  - A function calls multiple other functions that are independently operating, and each is capable of returning errors. In such cases we should collect errors from each function without blocking subsequent functions by returning at first encountered error
+  - A function may run a loop to perform independent actions. In this case as well we want to report all errors back without blocking reconciliation on other resources
  
 ``` 
- var mutationErr error
-	...
-	if len(request.Mutations) > 0 {
-		for _, mutation := range request.Mutations {
-			err := mutation(nil, role, request.Client)
-			if err != nil {
-				mutationErr = err
-			}
-		}
-		if mutationErr != nil {
-			return role, fmt.Errorf("RequestRole: one or more mutation functions could not be applied: %s", mutationErr)
-		}
-	}
+func (rr *RedisReconciler) reconcileHAConfigMaps() error {
+	var reconErrs util.MultiError
+
+	err := rr.reconcileHAConfigMap()
+	reconErrs.Append(err)
+
+	err = rr.reconcileHAHealthConfigMap()
+	reconErrs.Append(err)
+
+	return reconErrs.ErrOrNil()
+}
 ```
 
-- If logging the error, then just return error directly
-```
-if err = permissions.CreateClusterRole(desiredClusterRole, *acr.Client); err != nil {
-			acr.Logger.Error(err, "reconcileClusterRole: failed to create clusterRole")
-			return err
-		}
-```
 
-- If not logging the error, return error with context for better tracking. If using `fmt.Errorf` use `%w` format specifier for error (see https://stackoverflow.com/questions/61283248/format-errors-in-go-s-v-or-w). e.g:
-
-```
-return role, fmt.Errorf("RequestRole: one or more mutation functions could not be applied: %s", mutationErr)
-
-```
 
 - At every level decide if encountered error is important enough to return (thereby blocking further execution) :
 
@@ -193,12 +190,30 @@ acr.Logger = ctrl.Log.WithName(ArgoCDApplicationControllerComponent).WithValues(
 
 ```
 
-- Anytime error is encountered, use `Logger.Error` to record error
-- Include function name in error message for improved tracking.  e.g:
+- Log errors ONLY at the component controller's reconciliation level, or for functions that may be called by external packages 
+- Logging and returning erros at each stage spams the output with the same error message logged over and over as it propogates up the call stack
+
+```
+if rr.Instance.Spec.HA.Enabled {
+		// clean up regular redis resources first
+		if err := rr.DeleteNonHAResources(); err != nil {
+			rr.Logger.Error(err, "failed to delete non HA redis resources")
+		}
+
+		// reconcile HA resources
+		if err := rr.reconcileHA(); err != nil {
+			rr.Logger.Error(err, "failed to reconcile resources in HA mode")
+			return err
+		}
+	} 
+```
+
+- Include function name in error message for improved tracking ONLY when logging errors.  e.g:
 
 ```
 acr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
 ```
+
 - Use debug level (`Logger.V(1).Info`) when recording non-essential information. i.e, information on events that don't block happy path execution, but can provide hints if troubleshooting is needed e.g:
 
 ```
@@ -206,10 +221,11 @@ acr.Logger.V(1).Info("reconcileManagedRoles: one or more mutations could not be 
 acr.Logger.V(1).Info("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
 ```
 
-- Use Info level (`Logger.Info` or `Logger.V(0).Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning. e.g:
+- Use Info level (`Logger.Info` or `Logger.V(0).Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
+- - No need to mention function names when logging at `info` level. eg:
 
 ```
-acr.Logger.V(0).Info("reconcileManagedRoles: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+acr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 ```
 
 - Only use log statements to log success/error if the function belongs to a controller package and is invoked by the controller. No need to log statements from utility/helper packages. e.g:
@@ -217,7 +233,7 @@ acr.Logger.V(0).Info("reconcileManagedRoles: role created", "name", desiredRole.
 ```
 // app-controller package
 if err = permissions.CreateRole(desiredRole, *acr.Client); err != nil {
-				acr.Logger.Error(err, "reconcileManagedRoles: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+				acr.Logger.Error(err, "failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			}
 
 // permissions package 
