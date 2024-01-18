@@ -555,6 +555,14 @@ func (nr *NotificationsReconciler) GetNotificationsCommand() []string {
 	cmd = append(cmd, "--loglevel")
 	cmd = append(cmd, argoutil.GetLogLevel(nr.Instance.Spec.Notifications.LogLevel))
 
+	// TO DO: fix this after repo-server is implemented w/ interfaces
+
+	// if nr.Instance.Spec.Repo.IsEnabled() {
+	// 	cmd = append(cmd, "--argocd-repo-server", getRepoServerAddress(cr))
+	// } else {
+	// 	log.Info("Repo Server is disabled. This would affect the functioning of Notification Controller.")
+	// }
+
 	return cmd
 }
 
