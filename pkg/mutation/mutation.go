@@ -14,7 +14,7 @@ var (
 )
 
 // MutateFunc defines the function signature for any mutation functions that need to be executed by this package
-type MutateFunc func(*argoproj.ArgoCD, interface{}, client.Client) error
+type MutateFunc func(*argoproj.ArgoCD, interface{}, client.Client, ...interface{}) error
 
 // Register adds a modifier for updating resources during reconciliation.
 func Register(m ...MutateFunc) {
@@ -23,11 +23,11 @@ func Register(m ...MutateFunc) {
 	mutateFuncs = append(mutateFuncs, m...)
 }
 
-func ApplyReconcilerMutation(cr *argoproj.ArgoCD, resource interface{}, client client.Client) error {
+func ApplyReconcilerMutation(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 	for _, mutateFunc := range mutateFuncs {
-		if err := mutateFunc(cr, resource, client); err != nil {
+		if err := mutateFunc(cr, resource, client, args...); err != nil {
 			return err
 		}
 	}
