@@ -2,12 +2,16 @@ package util
 
 import (
 	"encoding/base64"
+	"slices"
 	"sort"
 	"strings"
 )
 
 // SplitList accepts a string input containing a list of comma separated values, and returns a slice containing those values as separate elements
 func SplitList(s string) []string {
+	if s == "" {
+		return []string{}
+	}
 	elems := strings.Split(s, ",")
 	for i := range elems {
 		elems[i] = strings.TrimSpace(elems[i])
@@ -18,6 +22,10 @@ func SplitList(s string) []string {
 // RemoveString removes the given string from the given slice
 func RemoveString(slice []string, s string) []string {
 	var result []string
+	if len(slice) == 0 {
+		return []string{}
+	}
+
 	for _, item := range slice {
 		if item == s {
 			continue
@@ -38,13 +46,15 @@ func ContainsString(arr []string, s string) bool {
 }
 
 func Equal(a, b []string) bool {
-	sort.Strings(a)
-	sort.Strings(b)
-	if len(a) != len(b) {
+	s1 := append([]string{}, a...)
+	s2 := append([]string{}, b...)
+	slices.Sort(s1)
+	sort.Strings(s2)
+	if len(s1) != len(s2) {
 		return false
 	}
-	for i := range a {
-		if a[i] != b[i] {
+	for i := range s1 {
+		if s1[i] != s2[i] {
 			return false
 		}
 	}
