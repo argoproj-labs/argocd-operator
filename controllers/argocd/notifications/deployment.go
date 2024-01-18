@@ -71,9 +71,6 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	}{
 		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
 			func() {
-				if existingDeployment.Spec.Template.ObjectMeta.Labels == nil {
-					existingDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{}
-				}
 				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
@@ -156,7 +153,7 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 			Command:         nr.GetNotificationsCommand(),
 			Image:           argocdcommon.GetArgoContainerImage(nr.Instance),
 			ImagePullPolicy: corev1.PullAlways,
-			Name:            resourceName,
+			Name:            common.NotificationsControllerComponent,
 			Env:             notificationEnv,
 			Resources:       nr.GetNotificationsResources(),
 			LivenessProbe: &corev1.Probe{

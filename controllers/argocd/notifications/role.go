@@ -33,6 +33,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 	desiredRole, err := permissions.RequestRole(roleRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileRole: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		nr.Logger.V(1).Info("reconcileRole: one or more mutations could not be applied")
 		return err
 	}
 

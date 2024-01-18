@@ -2,20 +2,10 @@ package argoutil
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"errors"
 	"fmt"
-	"math"
-	"math/big"
 	"sort"
 	"strings"
-	"time"
 
-	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -26,105 +16,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
-
-// NewPrivateKey returns randomly generated RSA private key.
-func NewPrivateKey() (*rsa.PrivateKey, error) {
-	return rsa.GenerateKey(rand.Reader, common.ArgoCDDefaultRSAKeySize)
-}
-
-// EncodePrivateKeyPEM encodes the given private key pem and returns bytes (base64).
-func EncodePrivateKeyPEM(key *rsa.PrivateKey) []byte {
-	return pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(key),
-	})
-}
-
-// EncodeCertificatePEM encodes the given certificate pem and returns bytes (base64).
-func EncodeCertificatePEM(cert *x509.Certificate) []byte {
-	return pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: cert.Raw,
-	})
-}
-
-// ParsePEMEncodedCert parses a certificate from the given pemdata
-func ParsePEMEncodedCert(pemdata []byte) (*x509.Certificate, error) {
-	decoded, _ := pem.Decode(pemdata)
-	if decoded == nil {
-		return nil, errors.New("no PEM data found")
-	}
-	return x509.ParseCertificate(decoded.Bytes)
-}
-
-// ParsePEMEncodedPrivateKey parses a private key from given pemdata
-func ParsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
-	decoded, _ := pem.Decode(pemdata)
-	if decoded == nil {
-		return nil, errors.New("no PEM data found")
-	}
-	return x509.ParsePKCS1PrivateKey(decoded.Bytes)
-}
-
-// NewSelfSignedCACertificate returns a self-signed CA certificate based on given configuration and private key.
-// The certificate has one-year lease.
-func NewSelfSignedCACertificate(name string, key *rsa.PrivateKey) (*x509.Certificate, error) {
-	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
-	if err != nil {
-		return nil, err
-	}
-	now := time.Now()
-	tmpl := x509.Certificate{
-		SerialNumber:          serial,
-		NotBefore:             now.UTC(),
-		NotAfter:              now.Add(common.ArgoCDDuration365Days).UTC(),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-		Subject:               pkix.Name{CommonName: fmt.Sprintf("argocd-operator@%s", name)},
-	}
-	certDERBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, key.Public(), key)
-	if err != nil {
-		return nil, err
-	}
-	return x509.ParseCertificate(certDERBytes)
-}
-
-// NewSignedCertificate signs a certificate using the given private key, CA and returns a signed certificate.
-// The certificate could be used for both client and server auth.
-// The certificate has one-year lease.
-func NewSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.PrivateKey, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
-	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
-	if err != nil {
-		return nil, err
-	}
-	eku := []x509.ExtKeyUsage{}
-	switch cfg.CertType {
-	case tlsutil.ClientCert:
-		eku = append(eku, x509.ExtKeyUsageClientAuth)
-	case tlsutil.ServingCert:
-		eku = append(eku, x509.ExtKeyUsageServerAuth)
-	case tlsutil.ClientAndServingCert:
-		eku = append(eku, x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth)
-	}
-	certTmpl := x509.Certificate{
-		Subject: pkix.Name{
-			CommonName:   cfg.CommonName,
-			Organization: cfg.Organization,
-		},
-		DNSNames:     dnsNames,
-		SerialNumber: serial,
-		NotBefore:    caCert.NotBefore,
-		NotAfter:     time.Now().Add(common.ArgoCDDuration365Days).UTC(),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  eku,
-	}
-	certDERBytes, err := x509.CreateCertificate(rand.Reader, &certTmpl, caCert, key.Public(), caKey)
-	if err != nil {
-		return nil, err
-	}
-	return x509.ParseCertificate(certDERBytes)
-}
 
 // EnvMerge merges two slices of EnvVar entries into a single one. If existing
 // has an EnvVar with same Name attribute as one in merge, the EnvVar is not
