@@ -5,6 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -65,7 +66,7 @@ func (sr *ServerReconciler) reconcileService() error {
 	}
 
 	// update service annotations if auto TLS is enabled
-	networking.EnsureAutoTLSAnnotation(desiredSvc, common.ArgoCDServerTLSSecretName, sr.Instance.Spec.Server.WantsAutoTLS())
+	openshift.EnsureAutoTLSAnnotation(desiredSvc, common.ArgoCDServerTLSSecretName, sr.Instance.Spec.Server.WantsAutoTLS())
 
 	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, sr.Client)
 	if err != nil {

@@ -1,11 +1,51 @@
-package networking
+package openshift
 
 import (
 	"testing"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+type serviceOpt func(*corev1.Service)
+
+func getTestService(opts ...serviceOpt) *corev1.Service {
+	desiredService := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testName,
+			Namespace: testNamespace,
+			Labels: map[string]string{
+				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
+				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
+				common.AppK8sKeyComponent: testComponent,
+			},
+			Annotations: map[string]string{
+				common.ArgoCDArgoprojKeyName:      testInstance,
+				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Protocol:   corev1.ProtocolTCP,
+					Port:       80,
+					TargetPort: intstr.FromInt(8080),
+				},
+			},
+		},
+	}
+
+	for _, opt := range opts {
+		opt(desiredService)
+	}
+	return desiredService
+}
 
 func TestEnsureAutoTLSAnnotation(t *testing.T) {
 
@@ -23,7 +63,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	}
 
 	t.Run("Ensure annotation will be set & unset for OpenShift", func(t *testing.T) {
-		routeAPIFound = true
+		SetRouteAPIFound(true)
 		svc := getTestService()
 
 		// Annotation should be injected
@@ -40,7 +80,7 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 	})
 
 	t.Run("Ensure annotation will not be set for non-OpenShift", func(t *testing.T) {
-		routeAPIFound = false
+		SetRouteAPIFound(false)
 		svc := getTestService()
 
 		// Annotation should be not be injected

@@ -4,7 +4,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 		return sr.deleteRoute(routeName, sr.Instance.Namespace)
 	}
 
-	routeRequest := networking.RouteRequest{
+	routeRequest := openshift.RouteRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        routeName,
 			Labels:      routeLabels,
@@ -88,7 +89,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 		routeRequest.Spec.WildcardPolicy = *sr.Instance.Spec.Server.Route.WildcardPolicy
 	}
 
-	desiredRoute, err := networking.RequestRoute(routeRequest)
+	desiredRoute, err := openshift.RequestRoute(routeRequest)
 	if err != nil {
 		sr.Logger.Error(err, "reconcileRoute: failed to request route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 		sr.Logger.V(1).Info("reconcileRoute: one or more mutations could not be applied")
@@ -96,7 +97,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 	}
 
 	// route doesn't exist in the namespace, create it
-	existingRoute, err := networking.GetRoute(desiredRoute.Name, desiredRoute.Namespace, sr.Client)
+	existingRoute, err := openshift.GetRoute(desiredRoute.Name, desiredRoute.Namespace, sr.Client)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			sr.Logger.Error(err, "reconcileRoute: failed to retrieve route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
@@ -107,7 +108,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 			sr.Logger.Error(err, "reconcileRoute: failed to set owner reference for route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 		}
 
-		if err = networking.CreateRoute(desiredRoute, sr.Client); err != nil {
+		if err = openshift.CreateRoute(desiredRoute, sr.Client); err != nil {
 			sr.Logger.Error(err, "reconcileRoute: failed to create route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 			return err
 		}
@@ -133,7 +134,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 	}
 
 	if changed {
-		if err = networking.UpdateRoute(existingRoute, sr.Client); err != nil {
+		if err = openshift.UpdateRoute(existingRoute, sr.Client); err != nil {
 			sr.Logger.Error(err, "reconcileRoute: failed to update route", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
 			return err
 		}
@@ -146,7 +147,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 
 // deleteRoute will delete route with given name.
 func (sr *ServerReconciler) deleteRoute(name, namespace string) error {
-	if err := networking.DeleteRoute(name, namespace, sr.Client); err != nil {
+	if err := openshift.DeleteRoute(name, namespace, sr.Client); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}

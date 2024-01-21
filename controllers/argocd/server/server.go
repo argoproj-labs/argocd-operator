@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -75,7 +75,7 @@ func (sr *ServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if networking.IsRouteAPIAvailable() {
+	if openshift.IsRouteAPIAvailable() {
 		if err := sr.reconcileRoute(); err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (sr *ServerReconciler) DeleteResources() error {
 	name := sr.Instance.Name
 	ns := sr.Instance.Namespace
 
-	if networking.IsRouteAPIAvailable() {
+	if openshift.IsRouteAPIAvailable() {
 		if err := sr.deleteRoute(getRouteName(name), ns); err != nil {
 			return err
 		}
