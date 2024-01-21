@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	"github.com/go-logr/logr"
@@ -25,18 +24,6 @@ type ServerReconciler struct {
 func (sr *ServerReconciler) Reconcile() error {
 
 	sr.Logger = ctrl.Log.WithName(ServerControllerComponent).WithValues("instance", sr.Instance.Name, "instance-namespace", sr.Instance.Namespace)
-
-	// namespace doesn't exist, break reconciliation
-	ns, err := cluster.GetNamespace(sr.Instance.Namespace, sr.Client)
-	if err != nil {
-		sr.Logger.Error(err, "Reconcile: failed to retrieve namespace", "name", sr.Instance.Namespace)
-		return err
-	}
-
-	// namespace is deleting, delete the resources
-	if ns.DeletionTimestamp != nil {
-		return sr.DeleteResources()
-	}
 
 	// perform resource reconciliation
 	if err := sr.reconcileServiceAccount(); err != nil {

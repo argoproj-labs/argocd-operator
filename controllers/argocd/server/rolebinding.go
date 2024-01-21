@@ -4,7 +4,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	appctrl "github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
 	v1 "k8s.io/api/core/v1"
@@ -73,19 +72,6 @@ func (sr *ServerReconciler) reconcileManagedRoleBindings(sa *v1.ServiceAccount) 
 
 		rbName := getRoleBindingName(sr.Instance.Name)
 		rbLabels := common.DefaultResourceLabels(rbName, sr.Instance.Name, ServerControllerComponent)
-
-		ns, err := cluster.GetNamespace(nsName, sr.Client)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileManagedRoleBindings: failed to retrieve namespace", "name", nsName)
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
-			continue
-		}
-		if ns.DeletionTimestamp != nil {
-			sr.Logger.V(1).Info("reconcileManagedRoleBindings: skipping namespace in terminating state", "name", ns.Name)
-			continue
-		}
 
 		roleBindingRequest := permissions.RoleBindingRequest{
 			ObjectMeta: metav1.ObjectMeta{
@@ -196,19 +182,6 @@ func (sr *ServerReconciler) reconcileSourceRoleBindings(serverSA, appControllerS
 
 		rbName := getRoleBindingNameForSourceNamespace(sr.Instance.Name, nsName)
 		rbLabels := common.DefaultResourceLabels(rbName, sr.Instance.Name, ServerControllerComponent)
-
-		ns, err := cluster.GetNamespace(nsName, sr.Client)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoleBindings: failed to retrieve namespace", "name", nsName)
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
-			continue
-		}
-		if ns.DeletionTimestamp != nil {
-			sr.Logger.V(1).Info("reconcileSourceRoleBindings: skipping namespace in terminating state", "name", ns.Name)
-			continue
-		}
 
 		roleBindingRequest := permissions.RoleBindingRequest{
 			ObjectMeta: metav1.ObjectMeta{

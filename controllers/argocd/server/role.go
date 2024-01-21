@@ -4,7 +4,6 @@ import (
 	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -42,20 +41,6 @@ func (sr *ServerReconciler) reconcileManagedRoles() error {
 
 		roleName := getRoleName(sr.Instance.Name)
 		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
-
-		ns, err := cluster.GetNamespace(nsName, sr.Client)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve namespace", "name", nsName)
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
-			continue
-		}
-
-		if ns.DeletionTimestamp != nil {
-			sr.Logger.V(1).Info("reconcileManagedRoles: skipping namespace in terminating state", "name", ns.Name)
-			continue
-		}
 
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
@@ -152,20 +137,6 @@ func (sr *ServerReconciler) reconcileSourceRoles() error {
 
 		roleName := getRoleNameForSourceNamespace(sr.Instance.Name, nsName)
 		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
-
-		ns, err := cluster.GetNamespace(nsName, sr.Client)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoles: failed to retrieve namespace", "name", nsName)
-				reconciliationErrors = append(reconciliationErrors, err)
-			}
-			continue
-		}
-
-		if ns.DeletionTimestamp != nil {
-			sr.Logger.V(1).Info("reconcileSourceRoles: skipping namespace in terminating state", "name", ns.Name)
-			continue
-		}
 
 		roleRequest := permissions.RoleRequest{
 			ObjectMeta: metav1.ObjectMeta{
