@@ -53,7 +53,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -213,11 +215,11 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	// 	return reconcile.Result{}, nil
 	// }
 
-	// if !r.Instance.IsDeletionFinalizerPresent() {
-	// 	if err := r.addDeletionFinalizer(r.Instance); err != nil {
-	// 		return reconcile.Result{}, err
-	// 	}
-	// }
+	if !r.Instance.IsDeletionFinalizerPresent() {
+		if err := r.addDeletionFinalizer(r.Instance); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 
 	if err = r.setResourceManagedNamespaces(); err != nil {
 		return reconcile.Result{}, err
@@ -270,7 +272,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
 		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
-		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
+		return reconcile.Result{}, fmt.Errorf("Error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
 	newPhase := argocd.Status.Phase
@@ -466,7 +468,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 	}
 
 	// check if any of the exisiting namespaces are carrying the label when they should not be. If yes, remove it
-	for existingNs := range existingManagedNsMap {
+	for existingNs, _ := range existingManagedNsMap {
 		if _, ok := desiredManagedNsMap[existingNs]; !ok {
 			ns, err := cluster.GetNamespace(existingNs, r.Client)
 			if err != nil {
@@ -550,7 +552,8 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 }
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
-	r.SecretController = &secret.SecretReconciler{
+
+	secretController := &secret.SecretReconciler{
 		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
@@ -558,26 +561,26 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		ManagedNamespaces: r.ResourceManagedNamespaces,
 	}
 
-	r.ConfigMapController = &configmap.ConfigMapReconciler{
+	configMapController := &configmap.ConfigMapReconciler{
 		Client:   &r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.RedisController = &redis.RedisReconciler{
-		Client:   &r.Client,
+	redisController := &redis.RedisReconciler{
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.ReposerverController = &reposerver.RepoServerReconciler{
-		Client:   &r.Client,
+	reposerverController := &reposerver.RepoServerReconciler{
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.ServerController = &server.ServerReconciler{
-		Client:            &r.Client,
+	serverController := &server.ServerReconciler{
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
@@ -585,14 +588,14 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		SourceNamespaces:  r.AppManagedNamespaces,
 	}
 
-	r.NotificationsController = &notifications.NotificationsReconciler{
+	notificationsController := &notifications.NotificationsReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.AppController = &appcontroller.AppControllerReconciler{
-		Client:            &r.Client,
+	appController := &appcontroller.AppControllerReconciler{
+		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
@@ -600,17 +603,36 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		SourceNamespaces:  r.AppManagedNamespaces,
 	}
 
-	r.AppsetController = &applicationset.ApplicationSetReconciler{
+	appsetController := &applicationset.ApplicationSetReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
 
-	r.SSOController = &sso.SSOReconciler{
+	ssoController := &sso.SSOReconciler{
 		Client:   &r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
+
+	r.AppController = appController
+
+	r.ServerController = serverController
+
+	r.ReposerverController = reposerverController
+
+	r.AppsetController = appsetController
+
+	r.RedisController = redisController
+
+	r.NotificationsController = notificationsController
+
+	r.SSOController = ssoController
+
+	r.ConfigMapController = configMapController
+
+	r.SecretController = secretController
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -624,6 +646,7 @@ func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr)
+	bldr.WithEventFilter(ignoreDeletionPredicate())
 	return bldr.Complete(r)
 }
 
@@ -673,4 +696,25 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 
 	}
 	return bldr
+}
+
+func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
+}
+
+func ignoreDeletionPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to CR status in which case metadata.Generation does not change
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return !e.DeleteStateUnknown
+		},
+	}
 }
