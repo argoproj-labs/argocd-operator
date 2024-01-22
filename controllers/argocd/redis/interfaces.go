@@ -4,10 +4,10 @@ type AppController interface {
 	TriggerRollout(string) error
 }
 
-type Server interface {
+type ServerController interface {
 	TriggerRollout(string) error
 }
 
-type RepoServer interface {
+type RepoServerController interface {
 	TriggerRollout(string) error
 }

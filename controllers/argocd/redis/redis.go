@@ -18,8 +18,8 @@ type RedisReconciler struct {
 	Logger   logr.Logger
 
 	Appcontroller AppController
-	Server        Server
-	RepoServer    RepoServer
+	Server        ServerController
+	RepoServer    RepoServerController
 	TLSEnabled    bool
 }
 

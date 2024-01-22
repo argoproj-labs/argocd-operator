@@ -19,8 +19,6 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
-
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -219,9 +217,9 @@ func initialCerts(t *testing.T, host string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		key, err := argoutil.NewPrivateKey()
 		assert.NoError(t, err)
-		cert, err := util.NewSelfSignedCACertificate(a.Name, key)
+		cert, err := argoutil.NewSelfSignedCACertificate(a.Name, key)
 		assert.NoError(t, err)
-		encoded := util.EncodeCertificatePEM(cert)
+		encoded := argoutil.EncodeCertificatePEM(cert)
 
 		a.Spec.TLS.InitialCerts = map[string]string{
 			host: string(encoded),
