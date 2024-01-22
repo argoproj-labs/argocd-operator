@@ -51,6 +51,7 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 						return errors.Wrapf(err, "AddAutoTLSAnnotationForOpenShift: failed to parse mutation args for resource")
 					}
 
+					// return if autoTLS is not requested
 					if !wantTLS {
 						return nil
 					}
