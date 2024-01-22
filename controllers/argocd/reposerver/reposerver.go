@@ -9,15 +9,8 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
-
-type AppController interface {
-	TriggerAppControllerStatefulSetRollout() error
-}
-
-type Server interface {
-	TriggerServerDeploymentRollout() error
-}
 
 type RepoServerReconciler struct {
 	Client   client.Client
@@ -25,21 +18,20 @@ type RepoServerReconciler struct {
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
 
-	AppController    AppController
-	ServerController Server
+	Appcontroller AppController
+	Server        ServerController
+	Redis         RedisController
 }
 
 var (
-	resourceName   string
-	resourceLabels map[string]string
-	useTLSForRedis bool
+	resourceName string
+	component    string
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
-	rsr.Logger = ctrl.Log.WithName(common.RepoServerControllerComponent).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
-	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerControllerComponent)
-	resourceLabels = common.DefaultResourceLabels(resourceName, rsr.Instance.Name, common.RepoServerControllerComponent)
-	useTLSForRedis = rsr.Instance.Spec.Repo.WantsAutoTLS()
+	rsr.Logger = ctrl.Log.WithName(common.RepoServerController).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
+	component = common.RepoServerComponent
+	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, component)
 
 	if err := rsr.reconcileService(); err != nil {
 		rsr.Logger.Info("reconciling repo server service")
@@ -72,28 +64,35 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 }
 
 func (rsr *RepoServerReconciler) DeleteResources() error {
+	var deletionErr util.MultiError
 
-	var deletionError error = nil
+	// delete deployment
+	err := rsr.deleteDeployment(resourceName, rsr.Instance.Namespace)
+	deletionErr.Append(err)
 
-	if err := rsr.deleteDeployment(resourceName, rsr.Instance.Namespace); err != nil {
-		rsr.Logger.Error(err, "DeleteResources: failed to delete deployment")
-		deletionError = err
+	// delete service monitor
+	err = rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	// delete service
+	err = rsr.deleteService(resourceName, rsr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	// delete serviceaccount
+	err = rsr.deleteServiceAccount(resourceName, rsr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	// delete TLS secret
+	err = rsr.deleteSecret(common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	return deletionErr.ErrOrNil()
+}
+
+func (rsr *RepoServerReconciler) TriggerRollout(key string) error {
+	if err := rsr.TriggerDeploymentRollout(resourceName, rsr.Instance.Namespace, key); err != nil {
+		rsr.Logger.Error(err, "TriggerRollout: failed to rollout repo-server deployment")
+		return err
 	}
-
-	if err := rsr.deleteTLSSecret(rsr.Instance.Namespace); err != nil {
-		rsr.Logger.Error(err, "DeleteResources: failed to delete secret")
-		deletionError = err
-	}
-
-	if err := rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace); err != nil {
-		rsr.Logger.Error(err, "DeleteResources: failed to delete serviceMonitor")
-		deletionError = err
-	}
-
-	if err := rsr.deleteService(resourceName, rsr.Instance.Namespace); err != nil {
-		rsr.Logger.Error(err, "DeleteResources: failed to delete service")
-		deletionError = err
-	}
-
-	return deletionError
+	return nil
 }

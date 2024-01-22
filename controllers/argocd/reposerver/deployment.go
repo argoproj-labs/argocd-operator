@@ -395,3 +395,8 @@ func (rsr *RepoServerReconciler) getRepoServerPodVolumes() []corev1.Volume {
 	}
 	return volumes
 }
+
+// TriggerDeploymentRollout starts server deployment rollout by updating the given key
+func (rsr *RepoServerReconciler) TriggerDeploymentRollout(name, namespace, key string) error {
+	return argocdcommon.TriggerDeploymentRollout(name, namespace, key, rsr.Client)
+}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -2213,4 +2214,94 @@ func newRouteWithName(name string, cr *argoproj.ArgoCD) *routev1.Route {
 // newRouteWithSuffix returns a new Route with the given name suffix for the ArgoCD.
 func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
 	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+}
+
+// reconcileStatusRepo will ensure that the Repo status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusRepo(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	deploy := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			}
+		}
+	}
+
+	if cr.Status.Repo != status {
+		cr.Status.Repo = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
+
+// reconcileRepoServerTLSSecret checks whether the argocd-repo-server-tls secret
+// has changed since our last reconciliation loop. It does so by comparing the
+// checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
+// values calculated from the live state in the cluster.
+func (r *ReconcileArgoCD) reconcileRepoServerTLSSecret(cr *argoproj.ArgoCD) error {
+	var tlsSecretObj corev1.Secret
+	var sha256sum string
+
+	log.Info("reconciling repo-server TLS secret")
+
+	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRepoServerTLSSecretName}
+	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	} else if tlsSecretObj.Type != corev1.SecretTypeTLS {
+		// We only process secrets of type kubernetes.io/tls
+		return nil
+	} else {
+		// We do the checksum over a concatenated byte stream of cert + key
+		crt, crtOk := tlsSecretObj.Data[corev1.TLSCertKey]
+		key, keyOk := tlsSecretObj.Data[corev1.TLSPrivateKeyKey]
+		if crtOk && keyOk {
+			var sumBytes []byte
+			sumBytes = append(sumBytes, crt...)
+			sumBytes = append(sumBytes, key...)
+			sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
+		}
+	}
+
+	// The content of the TLS secret has changed since we last looked if the
+	// calculated checksum doesn't match the one stored in the status.
+	if cr.Status.RepoTLSChecksum != sha256sum {
+		// We store the value early to prevent a possible restart loop, for the
+		// cost of a possibly missed restart when we cannot update the status
+		// field of the resource.
+		cr.Status.RepoTLSChecksum = sha256sum
+		err = r.Client.Status().Update(context.TODO(), cr)
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of API server
+		apiDepl := newDeploymentWithSuffix("server", "server", cr)
+		err = r.triggerRollout(apiDepl, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of repository server
+		repoDepl := newDeploymentWithSuffix("repo-server", "repo-server", cr)
+		err = r.triggerRollout(repoDepl, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+
+		// Trigger rollout of application controller
+		controllerSts := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+		err = r.triggerRollout(controllerSts, "repo.tls.cert.changed")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

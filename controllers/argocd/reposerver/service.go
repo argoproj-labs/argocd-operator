@@ -2,13 +2,13 @@ package reposerver
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -18,13 +18,26 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 	rsr.Logger.Info("reconciling service")
 
 	serviceRequest := networking.ServiceRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        resourceName,
-			Namespace:   rsr.Instance.Namespace,
-			Labels:      resourceLabels,
-			Annotations: rsr.Instance.Annotations,
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "server",
+					Port:       common.DefaultRepoServerPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(common.DefaultRepoServerPort),
+				},
+				{
+					Name:       common.ArgoCDMetrics,
+					Port:       common.ArgoCDDefaultRepoMetricsPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(common.DefaultRepoServerMetricsPort),
+				},
+			},
+			Selector: map[string]string{
+				common.AppK8sKeyName: resourceName,
+			},
 		},
-		Spec:      GetServiceSpec(),
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    rsr.Client,
 	}
@@ -87,23 +100,5 @@ func (rsr *RepoServerReconciler) deleteService(name, namespace string) error {
 }
 
 func GetServiceSpec() corev1.ServiceSpec {
-	return corev1.ServiceSpec{
-		Ports: []corev1.ServicePort{
-			{
-				Name:       common.Server,
-				Port:       common.ArgoCDDefaultRepoServerPort,
-				Protocol:   corev1.ProtocolTCP,
-				TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
-			},
-			{
-				Name:       common.ArgoCDMetrics,
-				Port:       common.ArgoCDDefaultRepoMetricsPort,
-				Protocol:   corev1.ProtocolTCP,
-				TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
-			},
-		},
-		Selector: map[string]string{
-			common.AppK8sKeyName: resourceName,
-		},
-	}
+	return
 }

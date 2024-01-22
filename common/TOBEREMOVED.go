@@ -160,6 +160,12 @@ const (
 	// ArgoCDRedisHAImageEnvVar is the environment variable used to get the image
 	// to used for the the Redis container in HA mode.
 	ArgoCDRedisHAImageEnvVar = "ARGOCD_REDIS_HA_IMAGE"
+
+	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
+	ArgoCDDefaultRepoMetricsPort = 8084
+
+	// ArgoCDDefaultRepoServerPort is the default listen port for the Argo CD repo server.
+	ArgoCDDefaultRepoServerPort = 8081
 )
 
 // DefaultLabels returns the default set of labels for controllers.

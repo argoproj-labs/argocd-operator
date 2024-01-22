@@ -1,90 +1,73 @@
 package reposerver
 
 import (
-	"context"
-	"crypto/sha256"
-	"fmt"
-
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/pkg/errors"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
+// reconcileRepoServerTLSSecret checks whether the argocd-repo-server-tls secret
+// has changed since our last reconciliation loop. It does so by comparing the
+// checksum of tls.crt and tls.key in the status of the ArgoCD CR against the
+// values calculated from the live state in the cluster.
 func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
+	var reconErrs util.MultiError
 	var sha256sum string
-	rsr.Logger.Info("reconciling TLS secrets")
 
-	namespace, err := cluster.GetNamespace(rsr.Instance.Namespace, rsr.Client)
+	sha256sum, err := argocdcommon.TLSSecretChecksum(types.NamespacedName{Name: common.ArgoCDRepoServerTLSSecretName, Namespace: rsr.Instance.Namespace}, rsr.Client)
 	if err != nil {
-		rsr.Logger.Error(err, "reconcileSecret: failed to retrieve namespace", "name", rsr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := rsr.deleteTLSSecret(rsr.Instance.Namespace); err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to delete secret", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
-		}
-		return err
+		reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Namespace))
+		return reconErrs
 	}
 
-	existingSecret, err := workloads.GetSecret(common.RepoServerTLSSecretName, rsr.Instance.Namespace, rsr.Client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			rsr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
-			return err
-		}
-	} else if existingSecret.Type != corev1.SecretTypeTLS {
+	if sha256sum == "" {
+		rsr.Logger.V(1).Info("reconcileTLSSecret: received empty checksum; secret of type other than kubernetes.io/tls encountered")
 		return nil
-	} else {
-		crt, crtOk := existingSecret.Data[corev1.TLSCertKey]
-		key, keyOk := existingSecret.Data[corev1.TLSPrivateKeyKey]
-		if crtOk && keyOk {
-			var sumBytes []byte
-			sumBytes = append(sumBytes, crt...)
-			sumBytes = append(sumBytes, key...)
-			sha256sum = fmt.Sprintf("%x", sha256.Sum256(sumBytes))
-		}
 	}
 
+	// The content of the TLS secret has changed since we last looked if the
+	// calculated checksum doesn't match the one stored in the status.
 	if rsr.Instance.Status.RepoTLSChecksum != sha256sum {
+		// We store the value early to prevent a possible restart loop, for the
+		// cost of a possibly missed restart when we cannot update the status
+		// field of the resource.
 		rsr.Instance.Status.RepoTLSChecksum = sha256sum
-		err = rsr.Client.Status().Update(context.TODO(), rsr.Instance)
-		// err = workloads.UpdateSecret(desiredSecret, rsr.Client)
+		err = rsr.UpdateInstanceStatus()
 		if err != nil {
-			rsr.Logger.Error(err, "reconcileSecret: failed to update status", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
-			return err
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
-		// Trigger rollout of API components
-		err = rsr.TriggerRepoServerDeploymentRollout()
-		if err != nil {
-			return err
+		// trigger server rollout
+		if err := rsr.Server.TriggerRollout(common.RepoTLSCertChangedKey); err != nil {
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
-		err = rsr.ServerController.TriggerServerDeploymentRollout()
-		if err != nil {
-			return err
+		// trigger repo-server rollout
+		if err := rsr.TriggerRollout(common.RepoTLSCertChangedKey); err != nil {
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
 
-		err = rsr.AppController.TriggerAppControllerStatefulSetRollout()
-		if err != nil {
-			return err
+		// trigger app-controller rollout
+		if err := rsr.Appcontroller.TriggerRollout(common.RepoTLSCertChangedKey); err != nil {
+			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}
-
-		rsr.Logger.V(0).Info("reconcileSecret: argocd client status updated", "name", common.RepoServerTLSSecretName, "namespace", rsr.Instance.Namespace)
-		return nil
 	}
+	return reconErrs.ErrOrNil()
 
-	return nil
 }
 
-func (rsr *RepoServerReconciler) deleteTLSSecret(namespace string) error {
-	if err := workloads.DeleteSecret(common.RepoServerTLSSecretName, namespace, rsr.Client); err != nil {
-		rsr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", common.RepoServerTLSSecretName, "namespace", namespace)
-		return err
+func (rr *RepoServerReconciler) deleteSecret(name, namespace string) error {
+	if err := workloads.DeleteSecret(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s", name)
 	}
-	rsr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", common.RepoServerTLSSecretName, "namespace", namespace)
+	rr.Logger.V(0).Info("secret deleted", "name", name, "namespace", namespace)
 	return nil
 }
