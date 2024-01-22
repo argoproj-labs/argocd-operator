@@ -2,6 +2,7 @@ package openshift
 
 import (
 	"fmt"
+	"strconv"
 
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -30,24 +31,31 @@ func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{},
 	}
 	switch obj := resource.(type) {
 	case *corev1.Service:
-		if cr == nil {
-			return nil
-		}
-		// return if autoTLS is not requested
-		if !cr.Spec.Redis.WantsAutoTLS() {
-			return nil
-		}
 
 		if obj.Annotations == nil {
 			obj.Annotations = make(map[string]string)
 		}
 
 		// Ensure that args carries only one argument, which is a map of type map[string]string
-		// containing the key "tls-secret-name". If this is the case, the associated value
-		// can be used within the service annotation
+		// containing the keys "wantAutoTLS" and "tls-secret-name". If this is the case, the associated value
+		// can be used within the service annotation if auto TLS is requested
 		if len(args) == 1 {
 			for _, arg := range args {
 				argMap := arg.(map[string]string)
+
+				if val, ok := argMap[common.WantAutoTLSKey]; !ok {
+					return nil
+				} else {
+					wantTLS, err := strconv.ParseBool(val)
+					if err != nil {
+						return errors.Wrapf(err, "AddAutoTLSAnnotationForOpenShift: failed to parse mutation args for resource")
+					}
+
+					if !wantTLS {
+						return nil
+					}
+				}
+
 				if val, ok := argMap[common.TLSSecretNameKey]; ok {
 					obj.Annotations[common.ServiceBetaOpenshiftKeyCertSecret] = val
 				}
