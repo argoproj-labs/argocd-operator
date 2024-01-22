@@ -2,6 +2,7 @@ package redis
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
@@ -36,6 +37,7 @@ func (rr *RedisReconciler) reconcileService() error {
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		MutationArgs: util.ConvertStringMapToInterfaces(map[string]string{
 			common.TLSSecretNameKey: common.ArgoCDRedisServerTLSSecretName,
+			common.WantAutoTLSKey:   strconv.FormatBool(rr.Instance.Spec.Redis.WantsAutoTLS()),
 		}),
 		Client: rr.Client,
 	}
