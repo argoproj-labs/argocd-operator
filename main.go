@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	goruntime "runtime"
-	"strconv"
 	"strings"
 
 	"github.com/argoproj/argo-cd/v2/util/env"
@@ -34,6 +33,8 @@ import (
 	templatev1 "github.com/openshift/api/template/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -44,6 +45,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
@@ -57,7 +59,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	ctrlzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -103,17 +105,13 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the metrics and webhook servers.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", secureMetrics, "If the metrics endpoint should be served securely.")
-	flag.StringVar(&logLevel, "loglevel", "0", "The desired logr verbosity level")
+	flag.StringVar(&logLevel, "loglevel", "info", "The desired logger level")
 
-	loglevelInt, err := strconv.Atoi(logLevel)
-	if err != nil {
-		setupLog.Error(err, "could not set desired log level, defaulting to 0")
-	}
-
-	opts := zap.Options{
+	opts := ctrlzap.Options{
 		Development: true,
+		Encoder:     zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
 		TimeEncoder: zapcore.RFC3339TimeEncoder,
-		Level:       zapcore.Level(-1 * loglevelInt),
+		Level:       zapcore.Level(util.GetLogLevel(logLevel)),
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -136,7 +134,7 @@ func main() {
 		TLSOpts:       []func(*tls.Config){disableHTTP2},
 	}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	ctrl.SetLogger(ctrlzap.New(ctrlzap.UseFlagOptions(&opts)))
 
 	printVersion()
 
@@ -148,7 +146,7 @@ func main() {
 	setupLog.Info(fmt.Sprintf("Watching labelselector \"%s\"", labelSelectorFlag))
 
 	// Inspect cluster to verify availability of extra features
-	err = argocd.InspectCluster()
+	err := argocd.InspectCluster()
 	if err != nil {
 		setupLog.Error(err, "error verifying one or more APIs on the cluster")
 	}
@@ -192,6 +190,10 @@ func main() {
 	if err := argoproj.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
+	}
+
+	if err := argocd.VerifyClusterAPIs(); err != nil {
+		setupLog.Error(err, "unable to verify certain APIs")
 	}
 
 	// Setup Scheme for Prometheus if available.
