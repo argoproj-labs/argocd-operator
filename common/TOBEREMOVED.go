@@ -166,6 +166,9 @@ const (
 
 	// ArgoCDDefaultRepoServerPort is the default listen port for the Argo CD repo server.
 	ArgoCDDefaultRepoServerPort = 8081
+
+	// ArgoCDKeyRelease is the prometheus release key for labels.
+	ArgoCDKeyRelease = "release"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

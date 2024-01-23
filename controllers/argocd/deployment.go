@@ -35,17 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// getArgoCDRepoServerReplicas will return the size value for the argocd-repo-server replica count if it
-// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0.
-func getArgoCDRepoServerReplicas(cr *argoproj.ArgoCD) *int32 {
-	if cr.Spec.Repo.Replicas != nil && *cr.Spec.Repo.Replicas >= 0 {
-		return cr.Spec.Repo.Replicas
-	}
-
-	return nil
-}
-
 // getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
 // has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
 // replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
@@ -224,45 +213,6 @@ func getArgoRedisArgs(useTLS bool) []string {
 	return args
 }
 
-// getArgoRepoCommand will return the command for the ArgoCD Repo component.
-func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-	cmd := make([]string, 0)
-
-	cmd = append(cmd, "uid_entrypoint.sh")
-	cmd = append(cmd, "argocd-repo-server")
-
-	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
-	} else {
-		log.Info("Redis is Disabled. Skipping adding Redis configuration to Repo Server.")
-	}
-	if useTLSForRedis {
-		cmd = append(cmd, "--redis-use-tls")
-		if isRedisTLSVerificationDisabled(cr) {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt")
-		}
-	}
-
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Repo.LogLevel))
-
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Repo.LogFormat))
-
-	// *** NOTE ***
-	// Do Not add any new default command line arguments below this.
-	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-
-	cmd = append(cmd, extraArgs...)
-	return cmd
-}
-
 // getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
 func getArgoCmpServerInitCommand() []string {
 	cmd := make([]string, 0)
@@ -335,14 +285,6 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
-}
-
-// getRepoServerAddress will return the Argo CD repo server address.
-func getRepoServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
-		return *cr.Spec.Repo.Remote
-	}
-	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
 }
 
 // newDeployment returns a new Deployment instance for the given ArgoCD.

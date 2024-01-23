@@ -10,4 +10,5 @@ type ServerController interface {
 
 type RedisController interface {
 	UseTLS() bool
+	GetServerAddress() string
 }

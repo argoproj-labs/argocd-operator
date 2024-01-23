@@ -24,14 +24,16 @@ type RepoServerReconciler struct {
 }
 
 var (
-	resourceName string
-	component    string
+	resourceName        string
+	resourceMetricsName string
+	component           string
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
 	rsr.Logger = ctrl.Log.WithName(common.RepoServerController).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
 	component = common.RepoServerComponent
-	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, component)
+	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
+	resourceMetricsName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetricsSuffix)
 
 	if err := rsr.reconcileService(); err != nil {
 		rsr.Logger.Info("reconciling repo server service")

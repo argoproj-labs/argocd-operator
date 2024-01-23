@@ -9,8 +9,13 @@ const (
 
 	// ArgoCDRepoServerTLSSecretName is the name of the TLS secret for the repo-server
 	ArgoCDRepoServerTLSSecretName = "argocd-repo-server-tls"
+)
 
-	RepoServerSuffix = "-repo-server"
+// suffixes
+const (
+	RepoServerSuffix = "repo-server"
+
+	RepoServerMetricsSuffix = "repo-server-metrics"
 )
 
 // values
@@ -31,4 +36,9 @@ const (
 // keys
 const (
 	RepoTLSCertChangedKey = "repo.tls.cert.changed"
+)
+
+// commands
+const (
+	RepoServerCmd = "argocd-repo-server"
 )

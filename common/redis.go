@@ -89,3 +89,11 @@ const (
 const (
 	RedisTLSCertChangedKey = "redis.tls.cert.changed"
 )
+
+// commands
+const (
+	RedisCmd                      = "--redis"
+	RedisUseTLSCmd                = "--redis-use-tls"
+	RedisInsecureSkipTLSVerifyCmd = "--redis-insecure-skip-tls-verify"
+	RedisCACertificate            = "--redis-ca-certificate"
+)
