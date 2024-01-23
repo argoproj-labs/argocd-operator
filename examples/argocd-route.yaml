@@ -5,6 +5,8 @@ metadata:
   labels:
     example: route
 spec:
+  notifications:
+   enabled: true
   grafana:
     enabled: true
     route:

@@ -499,11 +499,7 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 				InitContainers: []corev1.Container{
 					{
 						Name:  "copyutil",
-<<<<<<< HEAD
 						Image: "quay.io/argoproj/argocd@sha256:8576d347f30fa4c56a0129d1c0a0f5ed1e75662f0499f1ed7e917c405fd909dc",
-=======
-						Image: "quay.io/argoproj/argocd@sha256:829643e07dd938a97bef2496131d11598c9385a06030579365a6b313f9b878cf",
->>>>>>> 0455df9 (feat: upgrade Argo CD for release v.9.0)
 						Command: []string{
 							"cp",
 							"-n",

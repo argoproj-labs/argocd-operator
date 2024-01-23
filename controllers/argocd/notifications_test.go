@@ -2,12 +2,14 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -250,6 +252,41 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 		Namespace: a.Namespace,
 	}, deployment)
 	assert.True(t, errors.IsNotFound(err))
+}
+
+func TestReconcileNotifications_CreateService(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileNotificationsService(a)
+	assert.NoError(t, err)
+
+	testService := &corev1.Service{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller"),
+		Namespace: a.Namespace,
+	}, testService))
+
+	assert.Equal(t, testService.ObjectMeta.Labels["app.kubernetes.io/name"],
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
+
+	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
+		fmt.Sprintf("%s-%s", a.Name, "notificatiosn-controller"))
+
+	assert.Equal(t, testService.Spec.Ports[0].Port, int32(9001))
+	assert.Equal(t, testService.Spec.Ports[0].TargetPort, intstr.IntOrString{
+		IntVal: int32(9001),
+	})
+	assert.Equal(t, testService.Spec.Ports[0].Protocol, v1.Protocol("TCP"))
+	assert.Equal(t, testService.Spec.Ports[0].Name, "notification")
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {
