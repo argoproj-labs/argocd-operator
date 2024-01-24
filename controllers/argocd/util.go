@@ -1434,7 +1434,7 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
-			for _, namespace := range cr.Spec.SourceNamespaces {
+			for _, namespace := range r.SourceNamespaces {
 				if namespace == ns {
 					managedNamespace = true
 					break
