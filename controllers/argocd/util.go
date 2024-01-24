@@ -1388,6 +1388,26 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+// ADDMANGAAL
+func (r *ReconcileArgoCD) setSourceNamespaces(cr *argoproj.ArgoCD) error {
+
+	if containsWildcard(cr.Spec.SourceNamespaces) {
+		// If '*' is present, retrieve all namespaces
+		namespaces := &corev1.NamespaceList{}
+		if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+			return err
+		}
+		for _, ns := range namespaces.Items {
+			r.SourceNamespaces = append(r.SourceNamespaces, ns.Name)
+		}
+	} else {
+		// Otherwise, use the specified namespaces
+		r.SourceNamespaces = cr.Spec.SourceNamespaces
+	}
+
+	return nil
+}
+
 func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
 	r.ManagedSourceNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
