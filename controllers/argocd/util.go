@@ -1608,3 +1608,14 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
 	}
 	return host
 }
+
+// ADDMANGAAL
+// containsWildcard checks if '*' is present in the given array
+func containsWildcard(arr []string) bool {
+	for _, item := range arr {
+		if item == "*" {
+			return true
+		}
+	}
+	return false
+}
