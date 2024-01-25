@@ -26,7 +26,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	}
 
 	if sha256sum == "" {
-		rsr.Logger.V(1).Info("reconcileTLSSecret: received empty checksum; secret of type other than kubernetes.io/tls encountered")
+		rsr.Logger.Debug("reconcileTLSSecret: received empty checksum; secret either not found, or is of type other than kubernetes.io/tls", "name", common.ArgoCDRepoServerTLSSecretName)
 		return nil
 	}
 
@@ -61,13 +61,14 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 
 }
 
-func (rr *RepoServerReconciler) deleteSecret(name, namespace string) error {
-	if err := workloads.DeleteSecret(name, namespace, rr.Client); err != nil {
+func (rsr *RepoServerReconciler) deleteSecret(name, namespace string) error {
+	if err := workloads.DeleteSecret(name, namespace, rsr.Client); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s", name)
+		rsr.Logger.Error(err, "deleteSecret: failed to delete secret", "name", name, "namespace", namespace)
+		return err
 	}
-	rr.Logger.V(0).Info("secret deleted", "name", name, "namespace", namespace)
+	rsr.Logger.Info("secret deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -29,7 +29,7 @@ func (rsr *RepoServerReconciler) reconcileServiceAccount() error {
 		if err = permissions.CreateServiceAccount(desiredSa, rsr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount")
 		}
-		rsr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
+		rsr.Logger.Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
 		return nil
 	}
 	return nil
@@ -40,8 +40,9 @@ func (rsr *RepoServerReconciler) deleteServiceAccount(name, namespace string) er
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		return errors.Wrapf(err, "deleteServiceAccount: failed to delete service account %s", name)
+		rsr.Logger.Error(err, "deleteServiceAccount: failed to delete serviceaccount", "name", name, "namespace", namespace)
+		return err
 	}
-	rsr.Logger.V(0).Info("service account deleted", "name", name, "namespace", namespace)
+	rsr.Logger.Info("service account deleted", "name", name, "namespace", namespace)
 	return nil
 }

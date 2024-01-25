@@ -18,9 +18,6 @@ import (
 )
 
 func (rsr *RepoServerReconciler) reconcileService() error {
-
-	rsr.Logger.Info("reconciling service")
-
 	svcRequest := networking.ServiceRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
 		Spec: corev1.ServiceSpec{
@@ -69,7 +66,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		if err = networking.CreateService(desiredSvc, rsr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileService: failed to create service %s", desiredSvc.Name)
 		}
-		rsr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rsr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
 	}
 
@@ -94,15 +91,18 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		return errors.Wrapf(err, "reconcileService: failed to update service %s", existingSvc.Name)
 	}
 
-	rsr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rsr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
 	return nil
 }
 
 func (rsr *RepoServerReconciler) deleteService(name, namespace string) error {
 	if err := networking.DeleteService(name, namespace, rsr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
 		rsr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err
 	}
-	rsr.Logger.V(0).Info("DeleteService: service deleted", "name", name, "namespace", namespace)
+	rsr.Logger.Info("service deleted", "name", name, "namespace", namespace)
 	return nil
 }

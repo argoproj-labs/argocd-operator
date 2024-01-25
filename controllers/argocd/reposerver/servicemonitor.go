@@ -56,7 +56,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 		if err = monitoring.CreateServiceMonitor(desiredSM, rsr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileServiceMonitor: failed to create service monitor %s", desiredSM.Name)
 		}
-		rsr.Logger.V(0).Info("service monitor created", "name", desiredSM.Name, "namespace", desiredSM.Namespace)
+		rsr.Logger.Info("service monitor created", "name", desiredSM.Name, "namespace", desiredSM.Namespace)
 		return nil
 	}
 
@@ -73,8 +73,9 @@ func (rsr *RepoServerReconciler) deleteServiceMonitor(name, namespace string) er
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		return errors.Wrapf(err, "deleteServiceMonitor: failed to delete service %s", name)
+		rsr.Logger.Error(err, "DeleteServiceMonitor: failed to delete servicemonitor", "name", name, "namespace", namespace)
+		return err
 	}
-	rsr.Logger.V(0).Info("service monitor deleted", "name", name, "namespace", namespace)
+	rsr.Logger.Info("service monitor deleted", "name", name, "namespace", namespace)
 	return nil
 }

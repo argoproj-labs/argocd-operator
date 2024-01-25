@@ -64,7 +64,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 			nr.Logger.Error(err, "reconcileRole: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileRole: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		nr.Logger.Info("reconcileRole: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 			return err
 		}
 	}
-	nr.Logger.V(0).Info("reconcileRole: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+	nr.Logger.Info("reconcileRole: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (nr *NotificationsReconciler) deleteRole(name, namespace string) error {
 		nr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteRole: role deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("DeleteRole: role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

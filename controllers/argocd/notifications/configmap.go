@@ -59,7 +59,7 @@ func (nr *NotificationsReconciler) reconcileConfigMap() error {
 			nr.Logger.Error(err, "reconcileConfigMap: failed to create configMap", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileConfigMap: configMap created", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
+		nr.Logger.Info("reconcileConfigMap: configMap created", "name", desiredConfigMap.Name, "namespace", desiredConfigMap.Namespace)
 		return nil
 	}
 
@@ -74,6 +74,6 @@ func (nr *NotificationsReconciler) deleteConfigMap(namespace string) error {
 		nr.Logger.Error(err, "DeleteConfigMap: failed to delete configMap", "name", common.NotificationsConfigMapName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteConfigMap: configMap deleted", "name", common.NotificationsConfigMapName, "namespace", namespace)
+	nr.Logger.Info("DeleteConfigMap: configMap deleted", "name", common.NotificationsConfigMapName, "namespace", namespace)
 	return nil
 }

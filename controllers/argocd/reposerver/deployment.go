@@ -49,7 +49,7 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 		if err = workloads.CreateDeployment(desiredDeploy, rsr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rsr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rsr.Logger.Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -364,9 +364,10 @@ func (rsr *RepoServerReconciler) deleteDeployment(name, namespace string) error 
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s", name)
+		rsr.Logger.Error(err, "deleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
+		return err
 	}
-	rsr.Logger.V(0).Info("deployment deleted", "name", name, "namespace", namespace)
+	rsr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

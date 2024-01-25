@@ -64,7 +64,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 			asr.Logger.Error(err, "reconcileService: failed to create service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileService: service created", "name", desiredService.Name, "namespace", desiredService.Namespace)
+		asr.Logger.Info("reconcileService: service created", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func (asr *ApplicationSetReconciler) deleteService(name, namespace string) error
 		asr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.V(0).Info("DeleteService: service deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("DeleteService: service deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

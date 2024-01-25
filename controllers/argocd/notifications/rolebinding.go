@@ -74,7 +74,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileRoleBinding: roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		nr.Logger.Info("reconcileRoleBinding: roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		return nil
 	}
 
@@ -103,7 +103,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		}
 	}
 
-	nr.Logger.V(0).Info("reconcileRoleBinding: roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
+	nr.Logger.Info("reconcileRoleBinding: roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
 
 	return nil
 }
@@ -116,6 +116,6 @@ func (nr *NotificationsReconciler) deleteRoleBinding(name, namespace string) err
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -221,11 +221,11 @@ acr.Logger.V(1).Info("reconcileManagedRoles: one or more mutations could not be 
 acr.Logger.V(1).Info("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
 ```
 
-- Use Info level (`Logger.Info` or `Logger.V(0).Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
+- Use Info level (`Logger.Info` or `Logger.Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
 - - No need to mention function names when logging at `info` level. eg:
 
 ```
-acr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+acr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 ```
 
 - Only use log statements to log success/error if the function belongs to a controller package and is invoked by the controller. No need to log statements from utility/helper packages. e.g:
