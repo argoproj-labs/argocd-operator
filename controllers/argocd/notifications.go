@@ -55,16 +55,14 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 		return err
 	}
 
-	log.Info("reconciling notifications service")
+	log.Info("reconciling notifications metrics service")
 	if err := r.reconcileNotificationsService(cr); err != nil {
 		return err
 	}
 
-	if cr.Spec.Notifications.CreateServiceMonitor {
-		log.Info("reconciling notifications service monitor")
-		if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
-			return err
-		}
+	log.Info("reconciling notifications metrics service monitor")
+	if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
+		return err
 	}
 
 	return nil

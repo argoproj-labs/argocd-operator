@@ -6,6 +6,27 @@ status:
   phase: Available
   notificationsController: Running
 ---
+kind: Service
+apiVersion: v1
+metadata:
+  name: example-argocd-notifications-controller
+---
+kind: ServiceMonitor
+apiVersion: v1
+metadata:
+  name: example-argocd-notifications-controller
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: example-argocd-notifications-controller
+status:
+  conditions:
+    - type: Available
+      status: 'True'
+    - type: Progressing
+      status: 'True'
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:

@@ -336,9 +336,6 @@ type ArgoCDNotifications struct {
 
 	// LogLevel describes the log level that should be used by the argocd-notifications. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
-
-	// ServiceMonitor defines the service monitor configuration required for the notifications controller.
-	CreateServiceMonitor bool `json:"createServiceMonitor,omitempty"`
 }
 
 // ArgoCDPrometheusSpec defines the desired state for the Prometheus component.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -266,7 +267,10 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	err := r.reconcileNotificationsService(a)
+	err := monitoringv1.AddToScheme(r.Scheme)
+	assert.NoError(t, err)
+
+	err = r.reconcileNotificationsService(a)
 	assert.NoError(t, err)
 
 	testService := &corev1.Service{}
@@ -279,7 +283,7 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
 
 	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
-		fmt.Sprintf("%s-%s", a.Name, "notificatiosn-controller"))
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
 
 	assert.Equal(t, testService.Spec.Ports[0].Port, int32(9001))
 	assert.Equal(t, testService.Spec.Ports[0].TargetPort, intstr.IntOrString{
@@ -287,6 +291,35 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 	})
 	assert.Equal(t, testService.Spec.Ports[0].Protocol, v1.Protocol("TCP"))
 	assert.Equal(t, testService.Spec.Ports[0].Name, "notification")
+}
+
+func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Notifications.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileNotificationsServiceMonitor(a)
+	assert.NoError(t, err)
+
+	testServiceMonitor := &monitoringv1.ServiceMonitor{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller"),
+		Namespace: a.Namespace,
+	}, testServiceMonitor))
+
+	assert.Equal(t, testServiceMonitor.ObjectMeta.Labels["release"], "prometheus-operator")
+
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "notification")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "30s")
+	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {

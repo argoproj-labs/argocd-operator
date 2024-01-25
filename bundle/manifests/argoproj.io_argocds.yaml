@@ -1122,10 +1122,6 @@ spec:
                 description: Notifications defines whether the Argo CD Notifications
                   controller should be installed.
                 properties:
-                  createServiceMonitor:
-                    description: ServiceMonitor defines the service monitor configuration
-                      required for the notifications controller.
-                    type: boolean
                   enabled:
                     description: Enabled defines whether argocd-notifications controller
                       should be deployed or not
@@ -7998,10 +7994,6 @@ spec:
                 description: Notifications defines whether the Argo CD Notifications
                   controller should be installed.
                 properties:
-                  createServiceMonitor:
-                    description: ServiceMonitor defines the service monitor configuration
-                      required for the notifications controller.
-                    type: boolean
                   enabled:
                     description: Enabled defines whether argocd-notifications controller
                       should be deployed or not
