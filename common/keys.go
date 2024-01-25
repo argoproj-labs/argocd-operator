@@ -212,4 +212,5 @@ const (
 // misc
 const (
 	TLSSecretNameKey = "tls-secret-name"
+	WantAutoTLSKey   = "wantAutoTLS"
 )
