@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
@@ -16,10 +17,13 @@ import (
 type HorizontalPodAutoscalerRequest struct {
 	ObjectMeta metav1.ObjectMeta
 	Spec       autoscaling.HorizontalPodAutoscalerSpec
+	Instance   *argoproj.ArgoCD
 
-	// array of functions to mutate role before returning to requester
+	// array of functions to mutate obj before returning to requester
 	Mutations []mutation.MutateFunc
-	Client    cntrlClient.Client
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newHorizontalPodAutoscaler returns a new HorizontalPodAutoscaler instance for the given ArgoCD.
@@ -39,7 +43,7 @@ func RequestHorizontalPodAutoscaler(request HorizontalPodAutoscalerRequest) (*au
 
 	if len(request.Mutations) > 0 {
 		for _, mutation := range request.Mutations {
-			err := mutation(nil, horizontalPodAutoscaler, request.Client)
+			err := mutation(request.Instance, horizontalPodAutoscaler, request.Client, request.MutationArgs, request.MutationArgs)
 			if err != nil {
 				mutationErr = err
 			}

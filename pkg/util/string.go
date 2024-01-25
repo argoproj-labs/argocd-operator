@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/base64"
-	"slices"
 	"sort"
 	"strings"
 )
@@ -48,7 +47,7 @@ func ContainsString(arr []string, s string) bool {
 func Equal(a, b []string) bool {
 	s1 := append([]string{}, a...)
 	s2 := append([]string{}, b...)
-	slices.Sort(s1)
+	sort.Strings(s1)
 	sort.Strings(s2)
 	if len(s1) != len(s2) {
 		return false
