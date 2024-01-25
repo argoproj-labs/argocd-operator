@@ -102,6 +102,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
+		log.Info("Warning: grafana field is deprecated from ArgoCD")
 		return nil // Route found, do nothing
 	}
 
@@ -109,51 +110,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
-	// Allow override of the Annotations for the Route.
-	if len(cr.Spec.Grafana.Route.Annotations) > 0 {
-		route.Annotations = cr.Spec.Grafana.Route.Annotations
-	}
+	log.Info("Warning: grafana field is deprecated from ArgoCD")
 
-	// Allow override of the Labels for the Route.
-	if len(cr.Spec.Grafana.Route.Labels) > 0 {
-		labels := route.Labels
-		for key, val := range cr.Spec.Grafana.Route.Labels {
-			labels[key] = val
-		}
-		route.Labels = labels
-	}
-
-	// Allow override of the Host for the Route.
-	if len(cr.Spec.Grafana.Host) > 0 {
-		route.Spec.Host = cr.Spec.Grafana.Host // TODO: What additional role needed for this?
-	}
-
-	// Allow override of the Path for the Route
-	if len(cr.Spec.Grafana.Route.Path) > 0 {
-		route.Spec.Path = cr.Spec.Grafana.Route.Path
-	}
-
-	route.Spec.Port = &routev1.RoutePort{
-		TargetPort: intstr.FromString("http"),
-	}
-
-	// Allow override of TLS options for the Route
-	if cr.Spec.Grafana.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Grafana.Route.TLS
-	}
-
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("grafana", cr)
-
-	// Allow override of the WildcardPolicy for the Route
-	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
-		route.Spec.WildcardPolicy = *cr.Spec.Grafana.Route.WildcardPolicy
-	}
-
-	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), route)
+	return nil
 }
 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.

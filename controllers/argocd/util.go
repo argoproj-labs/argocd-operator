@@ -47,7 +47,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -669,7 +669,7 @@ func (r *ReconcileArgoCD) redisShouldUseTLS(cr *argoproj.ArgoCD) bool {
 	tlsSecretName := types.NamespacedName{Namespace: cr.Namespace, Name: common.ArgoCDRedisServerTLSSecretName}
 	err := r.Client.Get(context.TODO(), tlsSecretName, &tlsSecretObj)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
+		if !errors.IsNotFound(err) {
 			log.Error(err, "error looking up redis tls secret")
 		}
 		return false
@@ -1566,7 +1566,7 @@ func getClusterVersion(client client.Client) (string, error) {
 	clusterVersion := &configv1.ClusterVersion{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: "version"}, clusterVersion)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			return "", nil
 		}
 		return "", err
