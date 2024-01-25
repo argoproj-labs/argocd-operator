@@ -317,7 +317,8 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.Equal(t, testServiceMonitor.ObjectMeta.Labels["release"], "prometheus-operator")
 
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "notification")
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "30s")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, "30s")
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
 }
