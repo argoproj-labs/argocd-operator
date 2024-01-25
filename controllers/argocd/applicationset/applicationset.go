@@ -18,6 +18,8 @@ type ApplicationSetReconciler struct {
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
 	Logger   logr.Logger
+
+	RepoServer RepoServerController
 }
 
 var (

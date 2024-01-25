@@ -213,16 +213,6 @@ func getArgoRedisArgs(useTLS bool) []string {
 	return args
 }
 
-// getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
-func getArgoCmpServerInitCommand() []string {
-	cmd := make([]string, 0)
-	cmd = append(cmd, "cp")
-	cmd = append(cmd, "-n")
-	cmd = append(cmd, "/usr/local/bin/argocd")
-	cmd = append(cmd, "/var/run/argocd/argocd-cmp-server")
-	return cmd
-}
-
 // getArgoServerCommand will return the command for the ArgoCD server component.
 func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	cmd := make([]string, 0)

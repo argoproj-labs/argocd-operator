@@ -1,9 +1,7 @@
 package reposerver
 
 import (
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -16,7 +14,7 @@ type RepoServerReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
-	Logger   logr.Logger
+	Logger   *util.Logger
 
 	Appcontroller AppController
 	Server        ServerController
@@ -30,19 +28,24 @@ var (
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
-	rsr.Logger = ctrl.Log.WithName(common.RepoServerController).WithValues("instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
+	rsr.Logger = util.NewLogger(common.RepoServerController, "instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
 	component = common.RepoServerComponent
 	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
 	resourceMetricsName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetricsSuffix)
 
+	if err := rsr.reconcileServiceAccount(); err != nil {
+		rsr.Logger.Error(err, "failed to reconcile serviceaccount")
+		return err
+	}
+
 	if err := rsr.reconcileService(); err != nil {
-		rsr.Logger.Info("reconciling repo server service")
+		rsr.Logger.Error(err, "failed to reconcile service")
 		return err
 	}
 
 	if rsr.Instance.Spec.Prometheus.Enabled {
 		if err := rsr.reconcileServiceMonitor(); err != nil {
-			rsr.Logger.Info("reconciling repo server serviceMonitor")
+			rsr.Logger.Error(err, "failed to reconcile service monitor")
 			return err
 		}
 	} else {
@@ -53,12 +56,12 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 	}
 
 	if err := rsr.reconcileTLSSecret(); err != nil {
-		rsr.Logger.Info("reconciling repo server tls secret")
+		rsr.Logger.Error(err, "failed to reconcile TLS secret")
 		return err
 	}
 
 	if err := rsr.reconcileDeployment(); err != nil {
-		rsr.Logger.Info("reconciling repo server deployment")
+		rsr.Logger.Error(err, "failed to reconcile deployment")
 		return err
 	}
 

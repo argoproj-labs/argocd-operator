@@ -14,10 +14,6 @@ const (
 	// to used for the Keycloak container.
 	ArgoCDKeycloakImageEnvVar = "ARGOCD_KEYCLOAK_IMAGE"
 
-	// ArgoCDRepoImageEnvVar is the environment variable used to get the image
-	// to used for the Dex container.
-	ArgoCDRepoImageEnvVar = "ARGOCD_REPOSERVER_IMAGE"
-
 	// ArgoCDGrafanaImageEnvVar is the environment variable used to get the image
 	// to used for the Grafana container.
 	ArgoCDGrafanaImageEnvVar = "ARGOCD_GRAFANA_IMAGE"
@@ -34,4 +30,6 @@ const (
 
 	// ArgoCDLabelSelectorEnvVar is an environment variable that contains the labels used for selective instance reconilliation.
 	ArgoCDLabelSelectorEnvVar = "ARGOCD_LABEL_SELECTOR"
+
+	ArgoCDExecTimeoutEnvVar = "ARGOCD_EXEC_TIMEOUT"
 )

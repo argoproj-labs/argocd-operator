@@ -625,6 +625,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.ReposerverController.Redis = redisController
 
 	r.AppsetController = appsetController
+	r.AppsetController.RepoServer = reposerverController
 
 	r.RedisController = redisController
 

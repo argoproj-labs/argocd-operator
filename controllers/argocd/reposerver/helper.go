@@ -66,10 +66,9 @@ func (rsr *RepoServerReconciler) getArgs() []string {
 
 	if rsr.Instance.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, common.RedisCmd, rsr.Redis.GetServerAddress())
+	} else {
+		rsr.Logger.Info("redis is disabled, skipping redis configuration")
 	}
-
-	// TO DO: make this a WARN instead
-	rsr.Logger.Info("redis is disabled, skipping redis configuration")
 
 	if rsr.Redis.UseTLS() {
 		cmd = append(cmd, common.RedisUseTLSCmd)

@@ -2485,3 +2485,13 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	}
 	return r.Client.Create(context.TODO(), sm)
 }
+
+// getArgoCmpServerInitCommand will return the command for the ArgoCD CMP Server init container
+func getArgoCmpServerInitCommand() []string {
+	cmd := make([]string, 0)
+	cmd = append(cmd, "cp")
+	cmd = append(cmd, "-n")
+	cmd = append(cmd, "/usr/local/bin/argocd")
+	cmd = append(cmd, "/var/run/argocd/argocd-cmp-server")
+	return cmd
+}
