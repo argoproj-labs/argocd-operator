@@ -1,65 +1,54 @@
 package server
 
 import (
-	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // reconcileServiceAccount ensures ArgoCD server service account is present
 func (sr *ServerReconciler) reconcileServiceAccount() error {
-	sr.Logger.V(0).Info("reconciling serviceAccount")
 
-	saName := getServiceAccountName(sr.Instance.Name)
-	saLabels := common.DefaultResourceLabels(saName, sr.Instance.Name, ServerControllerComponent)
-
-	saRequest := permissions.ServiceAccountRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        saName,
-			Namespace:   sr.Instance.Namespace,
-			Labels:      saLabels,
-			Annotations: sr.Instance.Annotations,
-		},
+	saReq := permissions.ServiceAccountRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component),
 	}
 
-	desiredSA := permissions.RequestServiceAccount(saRequest)
+	desiredSa := permissions.RequestServiceAccount(saReq)
+
+	if err := controllerutil.SetControllerReference(sr.Instance, desiredSa, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileServiceAccount: failed to set owner reference for serviceaccount", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
+	}
 
 	// service account doesn't exist in the namespace, create it
-	_, err := permissions.GetServiceAccount(desiredSA.Name, desiredSA.Namespace, sr.Client)
+	_, err := permissions.GetServiceAccount(desiredSa.Name, desiredSa.Namespace, sr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			sr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileServiceAccount: failed to retrieve serviceaccount %s in namespace %s", desiredSa.Name, desiredSa.Namespace)
 		}
 
-		if err = controllerutil.SetControllerReference(sr.Instance, desiredSA, sr.Scheme); err != nil {
-			sr.Logger.Error(err, "reconcileServiceAccount: failed to set owner reference for serviceAccount", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
+		if err = permissions.CreateServiceAccount(desiredSa, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount %s in namespace %s", desiredSa.Name, desiredSa.Namespace)
 		}
 
-		if err = permissions.CreateServiceAccount(desiredSA, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileServiceAccount: failed to create serviceAccount", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
-			return err
-		}
-
-		sr.Logger.V(0).Info("reconcileServiceAccount: serviceAccount created", "name", desiredSA.Name, "namespace", desiredSA.Namespace)
+		sr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
 		return nil
 	}
 
+	// serviceaccount exist, do nothing
 	return nil
 }
 
 // deleteServiceAccount will delete service account with given name.
 func (sr *ServerReconciler) deleteServiceAccount(name, namespace string) error {
 	if err := permissions.DeleteServiceAccount(name, namespace, sr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		sr.Logger.Error(err, "deleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteServiceAccount: failed to delete serviceaccount %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("deleteServiceAccount: serviceAccount deleted", "name", name, "namespace", namespace)
+	sr.Logger.V(0).Info("serviceaccount deleted", "name", name, "namespace", namespace)
 	return nil
 }

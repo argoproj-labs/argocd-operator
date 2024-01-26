@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -25,6 +27,12 @@ func makeTestServerReconciler(t *testing.T, objs ...runtime.Object) *ServerRecon
 		Instance: argocdcommon.MakeTestArgoCD(),
 		Logger:   logger,
 	}
+}
+
+func setTestResourceNameAndLabels(sr *ServerReconciler) {
+	component = common.ArgoCDServerComponent
+	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, component)
+	uniqueResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, component)
 }
 
 func TestServerReconciler_Reconcile(t *testing.T) {

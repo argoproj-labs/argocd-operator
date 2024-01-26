@@ -16,6 +16,8 @@ func TestServerReconciler_createAndDeleteClusterRole(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
 
+	setTestResourceNameAndLabels(sr)
+
 	err := sr.reconcileClusterRole()
 	assert.NoError(t, err)
 

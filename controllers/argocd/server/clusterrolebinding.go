@@ -3,112 +3,98 @@ package server
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
 
-	crbName := getClusterRoleBindingName(sr.Instance.Name, sr.Instance.Namespace)
-	crbLables := common.DefaultResourceLabels(crbName, sr.Instance.Name, ServerControllerComponent)
-
-	// ArgoCD instance is not cluster scoped, cleanup any existing cluster rolebindings & exit
+	// ArgoCD instance is not cluster scoped, cleanup any existing clusterrolebindings & exit
 	if !sr.ClusterScoped {
-		return sr.deleteClusterRoleBinding(crbName)
+		return sr.deleteClusterRoleBinding(uniqueResourceName)
 	}
 
-	sr.Logger.Info("reconciling clusterRoleBinding")
-
-	// get server service account
-	saName := getServiceAccountName(sr.Instance.Name)
-	saNS := sr.Instance.Namespace
-	sa, err := permissions.GetServiceAccount(saName, saNS, sr.Client)
-	if err != nil {
-		sr.Logger.Error(err, "reconcileClusterRoleBinding: failed to get serviceaccount", "name", saName, "namespace", saNS)
-		return err
-	}
-
-	crbRequest := permissions.ClusterRoleBindingRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        crbName,
-			Labels:      crbLables,
-			Annotations: sr.Instance.Annotations,
+	crbReq := permissions.ClusterRoleBindingRequest{
+		ObjectMeta: argoutil.GetObjMeta(uniqueResourceName, "", sr.Instance.Name, sr.Instance.Namespace, component),
+		Subjects: []v1.Subject{
+			{
+				Kind:      v1.ServiceAccountKind,
+				Name:      resourceName,	// argocd server sa
+				Namespace: sr.Instance.Namespace,
+			},
+		},
+		RoleRef: v1.RoleRef{
+			APIGroup: v1.GroupName,
+			Kind:     common.ClusterRoleKind,
+			Name:     uniqueResourceName,	// clusterrole as same name as clusterrolebinding
 		},
 	}
 
-	crbRequest.Subjects = []v1.Subject{
-		{
-			Kind:      v1.ServiceAccountKind,
-			Name:      sa.Name,
-			Namespace: sa.Namespace,
-		},
-	}
-	crbRequest.RoleRef = v1.RoleRef{
-		APIGroup: v1.GroupName,
-		Kind:     common.ClusterRoleKind,
-		Name:     getClusterRoleName(sr.Instance.Name, sr.Instance.Namespace),
-	}
+	desiredCrb := permissions.RequestClusterRoleBinding(crbReq)
 
-	desiredCRB := permissions.RequestClusterRoleBinding(crbRequest)
-
-	// cluster rolebinding doesn't exist in the namespace, create it
-	existingCRB, err := permissions.GetClusterRoleBinding(desiredCRB.Name, sr.Client)
+	// clusterrolebinding doesn't exist in the namespace, create it
+	existingCrb, err := permissions.GetClusterRoleBinding(desiredCrb.Name, sr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			sr.Logger.Error(err, "reconcileClusterRoleBinding: failed to retrieve cluster rolebinding", "name", desiredCRB.Name, "namespace", desiredCRB.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to retrieve clusterrolebinding %s", desiredCrb.Name)
 		}
 
-		if err = permissions.CreateClusterRoleBinding(desiredCRB, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileClusterRoleBinding: failed to create cluster rolebinding", "name", desiredCRB.Name, "namespace", desiredCRB.Namespace)
-			return err
+		if err = permissions.CreateClusterRoleBinding(desiredCrb, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to create clusterrolebinding %s", desiredCrb.Name)
 		}
-		sr.Logger.V(0).Info("reconcileClusterRoleBinding: cluster rolebinding created", "name", desiredCRB.Name, "namespace", desiredCRB.Namespace)
+
+		sr.Logger.V(0).Info("clusterrolebinding created", "name", desiredCrb.Name, "namespace", desiredCrb.Namespace)
 		return nil
 	}
 
-	// difference in existing & desired cluster rolebinding, reset it
-	rbChanged := false
+	// difference in existing & desired clusterrolebinding, update it
+	changed := false
+
 	fieldsToCompare := []struct {
 		existing, desired interface{}
+		extraAction       func()
 	}{
 		{
-			&existingCRB.RoleRef,
-			&desiredCRB.RoleRef,
+			&existingCrb.RoleRef,
+			&desiredCrb.RoleRef,
+			nil,
 		},
 		{
-			&existingCRB.Subjects,
-			&desiredCRB.Subjects,
+			&existingCrb.Subjects,
+			&desiredCrb.Subjects,
+			nil,
 		},
 	}
 
 	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, nil, &rbChanged)
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
 	}
 
-	if rbChanged {
-		if err = permissions.UpdateClusterRoleBinding(existingCRB, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileClusterRoleBinding: failed to update cluster rolebinding", "name", existingCRB.Name, "namespace", existingCRB.Namespace)
-			return err
-		}
-		sr.Logger.V(0).Info("reconcileClusterRoleBinding: cluster rolebinding updated", "name", existingCRB.Name, "namespace", existingCRB.Namespace)
+	// nothing changed, exit reconciliation
+	if !changed {
+		return nil
 	}
 
-	// cluster rolebinding found, no changes detected
+	if err = permissions.UpdateClusterRoleBinding(existingCrb, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to update clusterrolebinding %s", existingCrb.Name)
+	}
+
+	sr.Logger.V(0).Info("clusterrolebinding updated", "name", existingCrb.Name)
 	return nil
 }
 
-// deleteClusterRole will delete cluster rolebinding with given name.
+// deleteClusterRoleBinding will delete clusterrolebinding with given name.
 func (sr *ServerReconciler) deleteClusterRoleBinding(name string) error {
 	if err := permissions.DeleteClusterRoleBinding(name, sr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		sr.Logger.Error(err, "reconcileClusterRoleBinding: failed to delete role", "name", name)
-		return err
+		return errors.Wrapf(err, "deleteClusterRoleBinding: failed to delete clusterrolebinding %s", name)
 	}
-	sr.Logger.V(0).Info("reconcileClusterRoleBinding: role deleted", "name", name)
+	sr.Logger.V(0).Info("clusterrolebinding deleted", "name", name)
 	return nil
 }

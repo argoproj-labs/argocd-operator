@@ -1,6 +1,8 @@
 package server
 
 import (
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	"github.com/go-logr/logr"
@@ -15,15 +17,27 @@ type ServerReconciler struct {
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	Instance          *argoproj.ArgoCD
-	ClusterScoped     bool
 	Logger            logr.Logger
+	ClusterScoped     bool
 	ManagedNamespaces map[string]string
 	SourceNamespaces  map[string]string
 }
 
+var (
+	resourceName   				string
+	uniqueResourceName 			string
+	component      				string
+	appcontrollerResourceName 	string
+)
+
 func (sr *ServerReconciler) Reconcile() error {
 
-	sr.Logger = ctrl.Log.WithName(ServerControllerComponent).WithValues("instance", sr.Instance.Name, "instance-namespace", sr.Instance.Namespace)
+	sr.Logger = ctrl.Log.WithName(common.ArgoCDServerController).WithValues("instance", sr.Instance.Name, "instance-namespace", sr.Instance.Namespace)
+
+	component = common.ArgoCDServerComponent
+	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, component)
+	uniqueResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, component)
+	appcontrollerResourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ArgoCDApplicationControllerComponent)
 
 	// perform resource reconciliation
 	if err := sr.reconcileServiceAccount(); err != nil {
@@ -103,23 +117,23 @@ func (sr *ServerReconciler) DeleteResources() error {
 		return err
 	}
 
-	if err := sr.deleteRoleBindings(name, ns); err != nil {
+	if err := sr.deleteRoleBindings(resourceName, uniqueResourceName); err != nil {
 		return err
 	}
 
-	if err := sr.deleteRoles(name, ns); err != nil {
+	if err := sr.deleteRoles(resourceName, uniqueResourceName); err != nil {
 		return err
 	}
 
-	if err := sr.deleteClusterRoleBinding(getClusterRoleBindingName(name, ns)); err != nil {
+	if err := sr.deleteClusterRoleBinding(uniqueResourceName); err != nil {
 		return err
 	}
 
-	if err := sr.deleteClusterRole(getClusterRoleName(name, ns)); err != nil {
+	if err := sr.deleteClusterRole(uniqueResourceName); err != nil {
 		return err
 	}
 
-	if err := sr.deleteServiceAccount(getServiceAccountName(name), ns); err != nil {
+	if err := sr.deleteServiceAccount(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 

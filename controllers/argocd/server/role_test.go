@@ -15,8 +15,9 @@ import (
 
 func TestServerReconciler_sourceNamespaceRoles(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
+
 	if sr.SourceNamespaces == nil {
 		sr.SourceNamespaces = make(map[string]string)
 	}
@@ -31,7 +32,7 @@ func TestServerReconciler_sourceNamespaceRoles(t *testing.T) {
 
 	// role should be created in source namespace
 	srcNSRole := &rbacv1.Role{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd_test", Namespace: srcNS.Name}, srcNSRole)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-argocd-server", Namespace: srcNS.Name}, srcNSRole)
 	assert.NoError(t, err)
 	assert.Equal(t, getPolicyRulesForSourceNamespace(), srcNSRole.Rules)
 }
@@ -39,6 +40,8 @@ func TestServerReconciler_sourceNamespaceRoles(t *testing.T) {
 func TestServerReconciler_managedNamespaceRoles(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
+
 	if sr.ManagedNamespaces == nil {
 		sr.ManagedNamespaces = make(map[string]string)
 	}
@@ -51,17 +54,12 @@ func TestServerReconciler_managedNamespaceRoles(t *testing.T) {
 
 	// role should be created in ArgoCD's namespace
 	argoCDNSRole := &rbacv1.Role{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, argoCDNSRole)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: sr.Instance.Namespace}, argoCDNSRole)
 	assert.NoError(t, err)
 	assert.Equal(t, getPolicyRulesForArgoCDNamespace(), argoCDNSRole.Rules)
 
 	// create a new namespace for ArgoCD to manage
-	mngNS := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "test",
-			Labels: map[string]string{"argocd.argoproj.io/managed-by": "argocd"},
-		},
-	}
+	mngNS := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name:   "test-mgn"}}
 	err = sr.Client.Create(context.TODO(), mngNS)
 	assert.NoError(t, err)
 	// manually add new ns to managed namespaces
@@ -78,8 +76,8 @@ func TestServerReconciler_managedNamespaceRoles(t *testing.T) {
 
 func TestServerReconciler_deleteRoles(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 
 	// create new namespaces for argocd to manage
 	if sr.SourceNamespaces == nil {
@@ -93,12 +91,7 @@ func TestServerReconciler_deleteRoles(t *testing.T) {
 	err := sr.Client.Create(context.TODO(), srcNS)
 	assert.NoError(t, err)
 
-	mngNS := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "test-mgn",
-			Labels: map[string]string{"argocd.argoproj.io/managed-by": "argocd"},
-		},
-	}
+	mngNS := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name:   "test-mgn"}}
 	err = sr.Client.Create(context.TODO(), mngNS)
 	assert.NoError(t, err)
 
@@ -110,13 +103,12 @@ func TestServerReconciler_deleteRoles(t *testing.T) {
 	assert.NoError(t, err)
 
 	// delete roles from source & managed ns
-	err = sr.deleteRoles(sr.Instance.Name, sr.Instance.Namespace)
+	err = sr.deleteRoles(resourceName, uniqueResourceName)
 	assert.NoError(t, err)
 
 	// role shouldn't exist in source & managed namespace
-
 	srcNSRole := &rbacv1.Role{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd_test-src", Namespace: srcNS.Name}, srcNSRole)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-argocd-server", Namespace: srcNS.Name}, srcNSRole)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 
@@ -128,8 +120,8 @@ func TestServerReconciler_deleteRoles(t *testing.T) {
 
 func TestServerReconciler_customRole(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
-
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 
 	if sr.ManagedNamespaces == nil {
 		sr.ManagedNamespaces = make(map[string]string)
@@ -142,7 +134,7 @@ func TestServerReconciler_customRole(t *testing.T) {
 	err := sr.reconcileRoles()
 	assert.NoError(t, err)
 
-	// argocd default role should be created in argoCD ns
+	// argocd default role should be created in ArgoCD's ns
 	argoCDRole := &rbacv1.Role{}
 	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: sr.Instance.Namespace}, argoCDRole)
 	assert.NoError(t, err)
@@ -160,5 +152,4 @@ func TestServerReconciler_customRole(t *testing.T) {
 	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: sr.Instance.Namespace}, argoCDRole)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
-
 }

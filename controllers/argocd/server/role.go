@@ -1,241 +1,242 @@
 package server
 
 import (
-	"reflect"
-
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+
+	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	amerr "k8s.io/apimachinery/pkg/util/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // reconcileRoles will ensure all ArgoCD Server roles are present
 func (sr *ServerReconciler) reconcileRoles() error {
-	sr.Logger.V(0).Info("reconciling role")
 
-	var reconciliationErrors []error
+	var reconErrs util.MultiError
 
 	// reconcile Roles for managed namespaces
 	if err := sr.reconcileManagedRoles(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconErrs.Append(err)
 	}
 
 	// reconcile Roles for source namespaces
 	if err := sr.reconcileSourceRoles(); err != nil {
-		reconciliationErrors = append(reconciliationErrors, err)
+		reconErrs.Append(err)
 	}
 
-	return amerr.NewAggregate(reconciliationErrors)
+	return reconErrs.ErrOrNil()
 }
 
 // reconcileManagedRoles manages roles in ArgoCD managed namespaces
 func (sr *ServerReconciler) reconcileManagedRoles() error {
-	var reconciliationErrors []error
+	var reconErrs util.MultiError
 
 	for nsName := range sr.ManagedNamespaces {
 
-		roleName := getRoleName(sr.Instance.Name)
-		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
-
-		roleRequest := permissions.RoleRequest{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        roleName,
-				Namespace:   nsName,
-				Labels:      roleLabels,
-				Annotations: sr.Instance.Annotations,
-			},
+		roleReq := permissions.RoleRequest{
+			ObjectMeta: argoutil.GetObjMeta(resourceName, nsName, sr.Instance.Name, sr.Instance.Namespace, component),
+			Rules: getPolicyRulesForArgoCDNamespace(),
+			Instance:   sr.Instance,
 			Client:    sr.Client,
 			Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		}
 
-		roleRequest.Rules = getPolicyRulesForArgoCDNamespace()
-
 		// managing non control-plane/ArgoCD namespace, use stricter rules & special resource management label
 		if nsName != sr.Instance.Namespace {
-			roleRequest.Rules = getPolicyRulesForManagedNamespace()
-
-			if len(roleRequest.ObjectMeta.Labels) == 0 {
-				roleRequest.ObjectMeta.Labels = make(map[string]string)
+			roleReq.Rules = getPolicyRulesForManagedNamespace()
+			if len(roleReq.ObjectMeta.Labels) == 0 {
+				roleReq.ObjectMeta.Labels = make(map[string]string)
 			}
-			roleRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeResourceMananagement
+			roleReq.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeResourceMananagement
 		}
 
-		desiredRole, err := permissions.RequestRole(roleRequest)
+		desiredRole, err := permissions.RequestRole(roleReq)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileManagedRoles: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-			sr.Logger.V(1).Info("reconcileManagedRoles: one or more mutations could not be applied")
-			reconciliationErrors = append(reconciliationErrors, err)
+			reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoles: failed to request role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
 			continue
 		}
 
-		// custom role in use, cleanup default role & continue
+		// custom role in use, cleanup default role
 		if getCustomRoleName() != "" {
 			err := sr.deleteRole(desiredRole.Name, desiredRole.Namespace)
 			if err != nil {
-				reconciliationErrors = append(reconciliationErrors, err)
+				reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoles: failed to delete role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
 			}
 			continue
+		}
+
+		// Only set ownerReferences for roles in same namespace as ArgoCD CR
+		if sr.Instance.Namespace == desiredRole.Namespace {
+			if err = controllerutil.SetControllerReference(sr.Instance, desiredRole, sr.Scheme); err != nil {
+				sr.Logger.Error(err, "reconcileManagedRoles: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+			}
 		}
 
 		// if custom role is not set & default role doesn't exist in the namespace, create it
 		existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, sr.Client)
 		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
+			if !apierrors.IsNotFound(err) {
+				reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoles: failed to retrieve role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
 				continue
-			}
-
-			// Only set ownerReferences for roles in same namespace as ArgoCD CR
-			if sr.Instance.Namespace == desiredRole.Namespace {
-				if err = controllerutil.SetControllerReference(sr.Instance, desiredRole, sr.Scheme); err != nil {
-					sr.Logger.Error(err, "reconcileManagedRoles: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-					reconciliationErrors = append(reconciliationErrors, err)
-				}
 			}
 
 			if err = permissions.CreateRole(desiredRole, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileManagedRoles: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
+				reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoles: failed to create role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
 				continue
 			}
 
-			sr.Logger.V(0).Info("reconcileManagedRoles: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+			sr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			continue
 		}
 
-		// difference in existing & desired role, reset it
-		if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
-			existingRole.Rules = desiredRole.Rules
-			if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileManagedRoles: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
-				continue
-			}
+		// difference in existing & desired role, update it
+		changed := false
 
-			sr.Logger.V(0).Info("reconcileManagedRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+		fieldsToCompare := []struct {
+			existing, desired interface{}
+			extraAction       func()
+		}{
+			{&existingRole.Rules, &desiredRole.Rules, nil},
 		}
 
-		// role found, no changes detected
+		for _, field := range fieldsToCompare {
+			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
+		}
+	
+
+		// nothing changed
+		if !changed {
+			continue
+		}
+	
+		if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
+			reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoles: failed to update role %s in namespace %s", existingRole.Name, existingRole.Namespace))
+			continue
+		}
+
+		sr.Logger.V(0).Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 		continue
 
 	}
 
-	return amerr.NewAggregate(reconciliationErrors)
+	return reconErrs.ErrOrNil()
 }
 
 // reconcileSourceRoles manages roles for app in any namespaces feature
 func (sr *ServerReconciler) reconcileSourceRoles() error {
-	var reconciliationErrors []error
+	var reconErrs util.MultiError
 
 	for nsName := range sr.SourceNamespaces {
 
-		roleName := getRoleNameForSourceNamespace(sr.Instance.Name, nsName)
-		roleLabels := common.DefaultResourceLabels(roleName, sr.Instance.Name, ServerControllerComponent)
-
-		roleRequest := permissions.RoleRequest{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        roleName,
-				Labels:      roleLabels,
-				Annotations: sr.Instance.Annotations,
-				Namespace:   nsName,
-			},
+		roleReq := permissions.RoleRequest{
+			ObjectMeta: argoutil.GetObjMeta(uniqueResourceName, nsName, sr.Instance.Name, sr.Instance.Namespace, component),
+			Rules: getPolicyRulesForSourceNamespace(),
+			Instance:   sr.Instance,
 			Client:    sr.Client,
 			Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		}
 
-		roleRequest.Rules = getPolicyRulesForSourceNamespace()
-
 		// for non control-plane namespace, add special app management label to role
 		if nsName != sr.Instance.Namespace {
-			if len(roleRequest.ObjectMeta.Labels) == 0 {
-				roleRequest.ObjectMeta.Labels = make(map[string]string)
+			if len(roleReq.ObjectMeta.Labels) == 0 {
+				roleReq.ObjectMeta.Labels = make(map[string]string)
 			}
-			roleRequest.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeAppManagement
+			roleReq.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeAppManagement
 		}
 
-		desiredRole, err := permissions.RequestRole(roleRequest)
+		desiredRole, err := permissions.RequestRole(roleReq)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileSourceRoles: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-			sr.Logger.V(1).Info("reconcileSourceRoles: one or more mutations could not be applied")
-			reconciliationErrors = append(reconciliationErrors, err)
-			continue
+			reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoles: failed to request role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
+            continue
 		}
 
 		// role doesn't exist in the namespace, create it
 		existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, sr.Client)
 		if err != nil {
-			if !errors.IsNotFound(err) {
-				sr.Logger.Error(err, "reconcileSourceRoles: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
-				continue
+			if !apierrors.IsNotFound(err) {
+				reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoles: failed to retrieve role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
+                continue
 			}
 
 			if err = permissions.CreateRole(desiredRole, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileSourceRoles: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
-				continue
+				reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoles: failed to create role %s in namespace %s", desiredRole.Name, desiredRole.Namespace))
+                continue
 			}
-			sr.Logger.V(0).Info("reconcileSourceRoles: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+
+			sr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			continue
 		}
 
-		// difference in existing & desired role, reset it
-		if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
-			existingRole.Rules = desiredRole.Rules
-			if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
-				sr.Logger.Error(err, "reconcileSourceRoles: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
-				reconciliationErrors = append(reconciliationErrors, err)
-				continue
-			}
-			sr.Logger.V(0).Info("reconcileSourceRoles: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+		// difference in existing & desired role, update it
+		changed := false
+
+		fieldsToCompare := []struct {
+			existing, desired interface{}
+			extraAction       func()
+		}{
+			{&existingRole.Rules, &desiredRole.Rules, nil},
 		}
 
-		// role found, no changes detected
+		for _, field := range fieldsToCompare {
+			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
+		}
+	
+		// nothing changed
+		if !changed {
+			continue
+		}
+	
+		if err = permissions.UpdateRole(existingRole, sr.Client); err != nil {
+			reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoles: failed to update role %s in namespace %s", existingRole.Name, existingRole.Namespace))
+			continue
+		}
+
+		sr.Logger.V(0).Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 		continue
+
 	}
 
-	return amerr.NewAggregate(reconciliationErrors)
+	return reconErrs.ErrOrNil()
 }
 
 // deleteRoles will delete all ArgoCD Server roles
-func (sr *ServerReconciler) deleteRoles(argoCDName, namespace string) error {
-	var reconciliationErrors []error
+func (sr *ServerReconciler) deleteRoles(mngNsRoleName, srcNsRoleName string) error {
+	var reconErrs util.MultiError
 
 	// delete managed ns roles
 	for nsName := range sr.ManagedNamespaces {
-		err := sr.deleteRole(getRoleName(argoCDName), nsName)
+		err := sr.deleteRole(mngNsRoleName, nsName)
 		if err != nil {
-			reconciliationErrors = append(reconciliationErrors, err)
+			reconErrs.Append(err)
 		}
 	}
 
 	// delete source ns roles
 	for nsName := range sr.SourceNamespaces {
-		err := sr.deleteRole(getRoleNameForSourceNamespace(argoCDName, nsName), nsName)
+		err := sr.deleteRole(srcNsRoleName, nsName)
 		if err != nil {
-			reconciliationErrors = append(reconciliationErrors, err)
+			reconErrs.Append(err)
 		}
 	}
 
-	return amerr.NewAggregate(reconciliationErrors)
+	return reconErrs.ErrOrNil()
 }
 
 // deleteRole will delete role with given name.
 func (sr *ServerReconciler) deleteRole(name, namespace string) error {
 	if err := permissions.DeleteRole(name, namespace, sr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		sr.Logger.Error(err, "deleteRole: failed to delete role", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteRole: failed to delete role %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("deleteRole: role deleted", "name", name, "namespace", namespace)
+	sr.Logger.V(0).Info("role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

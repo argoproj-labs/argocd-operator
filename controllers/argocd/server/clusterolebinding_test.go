@@ -16,9 +16,9 @@ func TestServerReconciler_createAndDeleteClusterRoleBinding(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
 
-	err := sr.reconcileServiceAccount()
-	assert.NoError(t, err)
-	err = sr.reconcileClusterRoleBinding()
+	setTestResourceNameAndLabels(sr)
+
+	err := sr.reconcileClusterRoleBinding()
 	assert.NoError(t, err)
 
 	// cluster rolebinding should not be created as ArgoCD in not cluster scoped

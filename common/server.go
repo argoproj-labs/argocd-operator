@@ -5,6 +5,9 @@ const (
 	// ArgoCDServerComponent is the name of the Argo CD server control plane component
 	ArgoCDServerComponent = "argocd-server"
 
+	// ArgoCDServerController is the name of the Argo CD server logger
+	ArgoCDServerController = "argocd-server-controller"
+
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"
 )
