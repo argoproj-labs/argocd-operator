@@ -3,12 +3,13 @@ package server
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 
 	routev1 "github.com/openshift/api/route/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -16,61 +17,51 @@ import (
 // reconcileRoute will ensure that ArgoCD .Spec.Server.Route resource is present.
 func (sr *ServerReconciler) reconcileRoute() error {
 
-	sr.Logger.Info("reconciling route")
-
-	routeName := getRouteName(sr.Instance.Name)
-	routeLabels := common.DefaultResourceLabels(routeName, sr.Instance.Name, ServerControllerComponent)
-
-	// route disabled, cleanup and exit
+	// route disabled, cleanup any existing route and exit
 	if !sr.Instance.Spec.Server.Route.Enabled {
-		return sr.deleteRoute(routeName, sr.Instance.Namespace)
+		return sr.deleteRoute(resourceName, sr.Instance.Namespace)
 	}
 
-	routeRequest := openshift.RouteRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        routeName,
-			Labels:      routeLabels,
-			Annotations: sr.Instance.Annotations,
-			Namespace:   sr.Instance.Namespace,
-		},
+	routeReq := openshift.RouteRequest{
+		ObjectMeta:  argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component),
 		Client:    sr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
 	// Allow override of the Annotations for the Route.
 	if len(sr.Instance.Spec.Server.Route.Annotations) > 0 {
-		routeRequest.ObjectMeta.Annotations = sr.Instance.Spec.Server.Route.Annotations
+		routeReq.ObjectMeta.Annotations = sr.Instance.Spec.Server.Route.Annotations
 	}
 
 	// Allow override of the Labels for the Route.
 	if len(sr.Instance.Spec.Server.Route.Labels) > 0 {
-		labels := routeRequest.ObjectMeta.Labels
+		labels := routeReq.ObjectMeta.Labels
 		for key, val := range sr.Instance.Spec.Server.Route.Labels {
 			labels[key] = val
 		}
-		routeRequest.ObjectMeta.Labels = labels
+		routeReq.ObjectMeta.Labels = labels
 	}
 
 	// Allow override of the Host for the Route.
 	if len(sr.Instance.Spec.Server.Host) > 0 {
-		routeRequest.Spec.Host = sr.Instance.Spec.Server.Host // TODO: What additional role needed for this?
+		routeReq.Spec.Host = sr.Instance.Spec.Server.Host // TODO: What additional role needed for this?
 	}
 
 	if sr.Instance.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
-		routeRequest.Spec.Port = &routev1.RoutePort{
+		routeReq.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("http"),
 		}
-		routeRequest.Spec.TLS = &routev1.TLSConfig{
+		routeReq.Spec.TLS = &routev1.TLSConfig{
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationEdge,
 		}
 	} else {
 		// Server is using TLS configure passthrough.
-		routeRequest.Spec.Port = &routev1.RoutePort{
+		routeReq.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("https"),
 		}
-		routeRequest.Spec.TLS = &routev1.TLSConfig{
+		routeReq.Spec.TLS = &routev1.TLSConfig{
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationPassthrough,
 		}
@@ -78,42 +69,38 @@ func (sr *ServerReconciler) reconcileRoute() error {
 
 	// Allow override of TLS options for the Route
 	if sr.Instance.Spec.Server.Route.TLS != nil {
-		routeRequest.Spec.TLS = sr.Instance.Spec.Server.Route.TLS
+		routeReq.Spec.TLS = sr.Instance.Spec.Server.Route.TLS
 	}
 
-	routeRequest.Spec.To.Kind = common.ServiceKind
-	routeRequest.Spec.To.Name = getServiceName(sr.Instance.Name)
+	routeReq.Spec.To.Kind = common.ServiceKind
+	routeReq.Spec.To.Name = resourceName
 
 	// Allow override of the WildcardPolicy for the Route
 	if sr.Instance.Spec.Server.Route.WildcardPolicy != nil && len(*sr.Instance.Spec.Server.Route.WildcardPolicy) > 0 {
-		routeRequest.Spec.WildcardPolicy = *sr.Instance.Spec.Server.Route.WildcardPolicy
+		routeReq.Spec.WildcardPolicy = *sr.Instance.Spec.Server.Route.WildcardPolicy
 	}
 
-	desiredRoute, err := openshift.RequestRoute(routeRequest)
+	desiredRoute, err := openshift.RequestRoute(routeReq)
 	if err != nil {
-		sr.Logger.Error(err, "reconcileRoute: failed to request route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
-		sr.Logger.V(1).Info("reconcileRoute: one or more mutations could not be applied")
-		return err
+		return errors.Wrapf(err, "reconcileRoute: failed to request route %s in namespace %s", desiredRoute.Name, desiredRoute.Namespace)
+	}
+
+	if err := controllerutil.SetControllerReference(sr.Instance, desiredRoute, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileRoute: failed to set owner reference for route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 	}
 
 	// route doesn't exist in the namespace, create it
 	existingRoute, err := openshift.GetRoute(desiredRoute.Name, desiredRoute.Namespace, sr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			sr.Logger.Error(err, "reconcileRoute: failed to retrieve route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
-			return err
-		}
-
-		if err = controllerutil.SetControllerReference(sr.Instance, desiredRoute, sr.Scheme); err != nil {
-			sr.Logger.Error(err, "reconcileRoute: failed to set owner reference for route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileRoute: failed to retrieve route %s in namespace %s", desiredRoute.Name, desiredRoute.Namespace)
 		}
 
 		if err = openshift.CreateRoute(desiredRoute, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileRoute: failed to create route", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
-			return err
+			return errors.Wrapf(err, "reconcileRoute: failed to create route %s in namespace %s", desiredRoute.Name, desiredRoute.Namespace)
 		}
 
-		sr.Logger.V(0).Info("reconcileRoute: route created", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
+		sr.Logger.V(0).Info("route created", "name", desiredRoute.Name, "namespace", desiredRoute.Namespace)
 		return nil
 	}
 
@@ -133,27 +120,27 @@ func (sr *ServerReconciler) reconcileRoute() error {
 		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
 	}
 
-	if changed {
-		if err = openshift.UpdateRoute(existingRoute, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileRoute: failed to update route", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
-			return err
-		}
-		sr.Logger.V(0).Info("reconcileRoute: route updated", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
+	// nothing changed, exit reconciliation
+	if !changed {
+		return nil
 	}
 
-	// route found, no changes detected
+	if err = openshift.UpdateRoute(existingRoute, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileRoute: failed to update route %s in namespace %s", existingRoute.Name, existingRoute.Namespace)
+	}
+
+	sr.Logger.V(0).Info("route updated", "name", existingRoute.Name, "namespace", existingRoute.Namespace)
 	return nil
 }
 
 // deleteRoute will delete route with given name.
 func (sr *ServerReconciler) deleteRoute(name, namespace string) error {
 	if err := openshift.DeleteRoute(name, namespace, sr.Client); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		sr.Logger.Error(err, "reconcileRoute: failed to delete route", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteRoute: failed to delete rpute %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("reconcileRoute: route deleted", "name", name, "namespace", namespace)
+	sr.Logger.V(0).Info("route deleted", "name", name, "namespace", namespace)
 	return nil
 }

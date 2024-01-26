@@ -16,6 +16,7 @@ import (
 func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 
 	nginx := "nginx"
 
@@ -32,7 +33,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
@@ -47,7 +48,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -59,7 +60,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
@@ -67,6 +68,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 
 	nginx := "nginx"
 
@@ -81,7 +83,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
@@ -96,7 +98,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -108,7 +110,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }

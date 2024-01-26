@@ -96,7 +96,7 @@ func (sr *ServerReconciler) DeleteResources() error {
 	ns := sr.Instance.Namespace
 
 	if openshift.IsRouteAPIAvailable() {
-		if err := sr.deleteRoute(getRouteName(name), ns); err != nil {
+		if err := sr.deleteRoute(resourceName, sr.Instance.Namespace); err != nil {
 			return err
 		}
 	}
@@ -109,7 +109,7 @@ func (sr *ServerReconciler) DeleteResources() error {
 		return err
 	}
 
-	if err := sr.deleteService(getServiceName(name), ns); err != nil {
+	if err := sr.deleteService(resourceName,  sr.Instance.Namespace); err != nil {
 		return err
 	}
 

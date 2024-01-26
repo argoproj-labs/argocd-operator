@@ -17,6 +17,7 @@ import (
 func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 	routev1.Install(sr.Scheme)
 
 	ann := map[string]string{"example.com": "test"}
@@ -32,7 +33,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be created
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, ann, route.ObjectMeta.Annotations)
 
@@ -44,7 +45,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be updated
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, policy, route.Spec.WildcardPolicy)
 
@@ -55,7 +56,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be deleted
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
@@ -63,6 +64,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 func TestServerReconciler_routeTLS(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 	routev1.Install(sr.Scheme)
 
 	secureTLSConfig := &routev1.TLSConfig{
@@ -91,7 +93,7 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 
 	// route resource should be created with default tls config
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, secureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, secureRoutePort, route.Spec.Port)
@@ -103,7 +105,7 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 
 	// route resource should be updated to use insecure tls configs
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, insecureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, insecureRoutePort, route.Spec.Port)
