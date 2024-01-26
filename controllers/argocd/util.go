@@ -318,7 +318,7 @@ func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
 func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 	sp := common.ArgoCDDefaultServerStatusProcessors
-	if cr.Spec.Controller.Processors.Status > sp {
+	if cr.Spec.Controller.Processors.Status > 0 {
 		sp = cr.Spec.Controller.Processors.Status
 	}
 	return sp
