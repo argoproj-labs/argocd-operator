@@ -17,9 +17,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,101 +34,96 @@ func (sr *ServerReconciler) TriggerDeploymentRollout(name, namespace, key string
 // reconcileDeployment will ensure all ArgoCD Server deployment is present
 func (sr *ServerReconciler) reconcileDeployment() error {
 
-	sr.Logger.Info("reconciling deployment")
+	deployTpl := sr.getServerDeploymentTpl()
 
-	serverDeploymentTmpl := sr.getServerDeploymentTmpl()
-
-	deploymentRequest := workloads.DeploymentRequest{
-		ObjectMeta: serverDeploymentTmpl.ObjectMeta,
-		Spec:       serverDeploymentTmpl.Spec,
+	deployReq := workloads.DeploymentRequest{
+		ObjectMeta: deployTpl.ObjectMeta,
+		Spec:       deployTpl.Spec,
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
-	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
+	desiredDeploy, err := workloads.RequestDeployment(deployReq)
 	if err != nil {
-		sr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		sr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
-		return err
+		return errors.Wrapf(err, "reconcileDeployment: failed to request deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
+	}
+
+	if err := controllerutil.SetControllerReference(sr.Instance, desiredDeploy, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 	}
 
 	// deployment doesn't exist in the namespace, create it
-	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, sr.Client)
+	existingDeploy, err := workloads.GetDeployment(desiredDeploy.Name, desiredDeploy.Namespace, sr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			sr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
 
-		if err = controllerutil.SetControllerReference(sr.Instance, desiredDeployment, sr.Scheme); err != nil {
-			sr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		if err = workloads.CreateDeployment(desiredDeploy, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
 
-		if err = workloads.CreateDeployment(desiredDeployment, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-			return err
-		}
-		sr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		sr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
 	// difference in existing & desired deployment, update it
-	deploymentChanged := false
+	changed := false
 
 	fieldsToCompare := []struct {
 		existing, desired interface{}
 		extraAction       func()
 	}{
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Image, &desiredDeploy.Spec.Template.Spec.Containers[0].Image,
 			func() {
-				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				existingDeploy.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, nil},
-		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},
-		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
-		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
-		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},
-		{&existingDeployment.Spec.Template.Labels, &desiredDeployment.Spec.Template.Labels, nil},
-		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},
-		{&existingDeployment.Spec.Selector, &desiredDeployment.Spec.Selector, nil},
-		{&existingDeployment.Labels, &desiredDeployment.Labels, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Command, &desiredDeploy.Spec.Template.Spec.Containers[0].Command, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Env, &desiredDeploy.Spec.Template.Spec.Containers[0].Env, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
+		{&existingDeploy.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeploy.Spec.Template.Spec.Containers[0].VolumeMounts, nil},
+		{&existingDeploy.Spec.Template.Spec.Volumes, &desiredDeploy.Spec.Template.Spec.Volumes, nil},
+		{&existingDeploy.Spec.Template.Spec.NodeSelector, &desiredDeploy.Spec.Template.Spec.NodeSelector, nil},
+		{&existingDeploy.Spec.Template.Spec.Tolerations, &desiredDeploy.Spec.Template.Spec.Tolerations, nil},
+		{&existingDeploy.Spec.Template.Spec.ServiceAccountName, &desiredDeploy.Spec.Template.Spec.ServiceAccountName, nil},
+		{&existingDeploy.Spec.Template.Labels, &desiredDeploy.Spec.Template.Labels, nil},
+		{&existingDeploy.Spec.Replicas, &desiredDeploy.Spec.Replicas, nil},
+		{&existingDeploy.Spec.Selector, &desiredDeploy.Spec.Selector, nil},
+		{&existingDeploy.Labels, &desiredDeploy.Labels, nil},
 	}
 
 	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
+		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
 	}
 
-	if deploymentChanged {
-		if err = workloads.UpdateDeployment(existingDeployment, sr.Client); err != nil {
-			sr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
-			return err
-		}
-		sr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	// nothing changed, exit reconciliation
+	if !changed {
+		return nil
 	}
 
-	// deployment found, no changes detected
+	if err = workloads.UpdateDeployment(existingDeploy, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s in namespace %s", existingDeploy.Name, existingDeploy.Namespace)
+	}
+	
+	sr.Logger.V(0).Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
 	return nil
 }
 
 // deleteDeployment will delete deployment with given name.
 func (sr *ServerReconciler) deleteDeployment(name, namespace string) error {
 	if err := workloads.DeleteDeployment(name, namespace, sr.Client); err != nil {
-		sr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	sr.Logger.V(0).Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
 // getServerDeploymentTmpl returns server deployment object
-func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
+func (sr *ServerReconciler) getServerDeploymentTpl() *appsv1.Deployment {
 
-	deploymentName := getDeploymentName(sr.Instance.Name)
-	deploymentLabels := common.DefaultResourceLabels(deploymentName, sr.Instance.Name, ServerControllerComponent)
+	// deployment metadata
+	objMeta := argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component)
 
 	// set deployment params
 	env := sr.Instance.Spec.Server.Env
@@ -144,15 +140,8 @@ func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
 		replicas = sr.Instance.Spec.Server.Replicas
 	}
 
-	// create deployment
-	objMeta := metav1.ObjectMeta{
-		Name:      deploymentName,
-		Namespace: sr.Instance.Namespace,
-		Labels:    deploymentLabels,
-	}
-
 	podSpec := corev1.PodSpec{
-		ServiceAccountName: getServiceAccountName(sr.Instance.Name),
+		ServiceAccountName: resourceName,
 		Volumes: []corev1.Volume{
 			{
 				Name: common.SSHKnownHosts,
@@ -264,13 +253,13 @@ func (sr *ServerReconciler) getServerDeploymentTmpl() *appsv1.Deployment {
 			Spec: podSpec,
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					common.AppK8sKeyName: deploymentName,
+					common.AppK8sKeyName: resourceName,
 				},
 			},
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				common.AppK8sKeyName: deploymentName,
+				common.AppK8sKeyName: resourceName,
 			},
 		},
 		Replicas: replicas,

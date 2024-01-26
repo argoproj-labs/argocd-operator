@@ -16,6 +16,7 @@ import (
 func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 	ns := argocdcommon.MakeTestNamespace()
 	sr := makeTestServerReconciler(t, ns)
+	setTestResourceNameAndLabels(sr)
 
 	// configure autoscale in ArgoCD
 	sr.Instance.Spec.Server.Autoscale = argoproj.ArgoCDServerAutoscaleSpec{
@@ -27,7 +28,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be created with default values
 	hpa := &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(3), hpa.Spec.MaxReplicas)
 
@@ -44,7 +45,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be updated
 	hpa = &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(2), hpa.Spec.MaxReplicas)
 
@@ -55,7 +56,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be deleted
 	hpa = &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }

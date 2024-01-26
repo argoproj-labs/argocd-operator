@@ -92,20 +92,17 @@ func (acr *ServerReconciler) TriggerRollout(key string) error {
 
 func (sr *ServerReconciler) DeleteResources() error {
 
-	name := sr.Instance.Name
-	ns := sr.Instance.Namespace
-
 	if openshift.IsRouteAPIAvailable() {
 		if err := sr.deleteRoute(resourceName, sr.Instance.Namespace); err != nil {
 			return err
 		}
 	}
 
-	if err := sr.deleteIngresses(name, ns); err != nil {
+	if err := sr.deleteIngresses(resourceName,  sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteHorizontalPodAutoscaler(getHPAName(name), ns); err != nil {
+	if err := sr.deleteHorizontalPodAutoscaler(resourceName,  sr.Instance.Namespace); err != nil {
 		return err
 	}
 
@@ -113,7 +110,7 @@ func (sr *ServerReconciler) DeleteResources() error {
 		return err
 	}
 
-	if err := sr.deleteDeployment(getDeploymentName(name), ns); err != nil {
+	if err := sr.deleteDeployment(resourceName,  sr.Instance.Namespace); err != nil {
 		return err
 	}
 

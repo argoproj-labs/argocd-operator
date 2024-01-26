@@ -225,16 +225,16 @@ func (sr *ServerReconciler) reconcileIngress(ingressReq networking.IngressReques
 }
 
 // deleteIngresses will delete all ArgoCD Server Ingress resources
-func (sr *ServerReconciler) deleteIngresses(argoCDName, namespace string) error {
+func (sr *ServerReconciler) deleteIngresses(name, namespace string) error {
 	var reconErrs util.MultiError
 
 	// delete server ingress
-	if err := sr.deleteIngress(getIngressName(argoCDName), namespace); err != nil {
+	if err := sr.deleteIngress(name, namespace); err != nil {
 		reconErrs.Append(err)
 	}
 
 	// delete server grpc ingress
-	if err := sr.deleteIngress(getGRPCIngressName(argoCDName), namespace); err != nil {
+	if err := sr.deleteIngress(name+"-grpc", namespace); err != nil {
 		reconErrs.Append(err)
 	}
 
