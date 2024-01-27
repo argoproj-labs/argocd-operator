@@ -5,18 +5,21 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
 func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sa := argocdcommon.MakeTestServiceAccount()
-	resourceName = argocdcommon.TestArgoCDName
+	resourceName = test.TestArgoCDName
+	ns := test.MakeTestNamespace()
+	sa := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = resourceName
+	})
 
 	tests := []struct {
 		name        string
@@ -39,8 +42,8 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 						APIVersion: common.APIGroupVersionRbacV1,
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      argocdcommon.TestArgoCDName,
-						Namespace: argocdcommon.TestNamespace,
+						Name:      test.TestArgoCDName,
+						Namespace: test.TestNamespace,
 					},
 					RoleRef:  rbacv1.RoleRef{},
 					Subjects: []rbacv1.Subject{},
@@ -62,20 +65,20 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 				}
 			}
 			updatedRoleBinding := &rbacv1.RoleBinding{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRoleBinding)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: test.TestArgoCDName, Namespace: test.TestNamespace}, updatedRoleBinding)
 			if err != nil {
 				t.Fatalf("Could not get updated RoleBinding: %v", err)
 			}
-			assert.Equal(t, argocdcommon.TestRoleRef, updatedRoleBinding.RoleRef)
-			assert.Equal(t, argocdcommon.TestSubjects, updatedRoleBinding.Subjects)
+			assert.Equal(t, test.MakeTestRoleRef(resourceName), updatedRoleBinding.RoleRef)
+			assert.Equal(t, test.MakeTestSubjects(types.NamespacedName{Name: resourceName, Namespace: test.TestNamespace}), updatedRoleBinding.Subjects)
 		})
 	}
 }
 
 func TestApplicationSetReconciler_DeleteRoleBinding(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sa := argocdcommon.MakeTestServiceAccount()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace()
+	sa := test.MakeTestServiceAccount()
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *ApplicationSetReconciler

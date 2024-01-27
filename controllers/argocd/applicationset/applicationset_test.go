@@ -12,10 +12,10 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(test.TestArgoCDName, test.TestNamespace, AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
@@ -29,7 +29,7 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	return &ApplicationSetReconciler{
 		Client: cl,
 		Scheme: s,
-		Instance: argocdcommon.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
+		Instance: test.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
 			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 				WebhookServer: argoproj.WebhookServerSpec{
 					Route: argoproj.ArgoCDRouteSpec{

@@ -6,16 +6,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
-	resourceName = argocdcommon.TestArgoCDName
+	resourceName = test.TestArgoCDName
 	resourceLabels = testExpectedLabels
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace()
 	nr := makeTestNotificationsReconciler(t, ns)
 
 	existingDeployment := nr.getDesiredDeployment()
@@ -36,7 +36,7 @@ func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 			name: "update a deployment",
 			setupClient: func() *NotificationsReconciler {
 				outdatedDeployment := existingDeployment
-				outdatedDeployment.ObjectMeta.Labels = argocdcommon.TestKVP
+				outdatedDeployment.ObjectMeta.Labels = test.TestKVP
 				return makeTestNotificationsReconciler(t, outdatedDeployment, ns)
 			},
 			wantErr: false,
@@ -55,7 +55,7 @@ func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 			}
 
 			updatedDeployment := &appsv1.Deployment{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: resourceName, Namespace: argocdcommon.TestNamespace}, updatedDeployment)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: resourceName, Namespace: test.TestNamespace}, updatedDeployment)
 			if err != nil {
 				t.Fatalf("Could not get updated Deployment: %v", err)
 			}
@@ -65,8 +65,8 @@ func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteDeployment(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace()
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

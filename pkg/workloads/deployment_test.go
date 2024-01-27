@@ -17,26 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type deploymentOpt func(*appsv1.Deployment)
-
-func getTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
-	desiredDeployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{},
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredDeployment)
-	}
-	return desiredDeployment
-}
 
 func TestRequestDeployment(t *testing.T) {
 
@@ -49,26 +31,26 @@ func TestRequestDeployment(t *testing.T) {
 		wantErr           bool
 	}{
 		{
-			name: "request deployment, no mutation, custom name, labels, annotations",
+			name: "request deployment",
 			deployReq: DeploymentRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
-						MatchLabels: testKVP,
+						MatchLabels: test.TestKVP,
 					},
 				},
 			},
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
-				d.Name = testName
-				d.Namespace = testNamespace
-				d.Labels = testKVP
-				d.Annotations = testKVP
-				d.Spec.Selector.MatchLabels = testKVP
+			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+				d.Name = test.TestName
+				d.Namespace = test.TestNamespace
+				d.Labels = test.TestKVP
+				d.Annotations = test.TestKVP
+				d.Spec.Selector.MatchLabels = test.TestKVP
 			}),
 			wantErr: false,
 		},
@@ -76,14 +58,14 @@ func TestRequestDeployment(t *testing.T) {
 			name: "request deployment, successful mutation",
 			deployReq: DeploymentRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
-						MatchLabels: testKVP,
+						MatchLabels: test.TestKVP,
 					},
 				},
 				Mutations: []mutation.MutateFunc{
@@ -91,12 +73,12 @@ func TestRequestDeployment(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
-				d.Name = testNameMutated
-				d.Namespace = testNamespace
-				d.Labels = testKVP
-				d.Annotations = testKVP
-				d.Spec.Selector.MatchLabels = testKVP
+			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+				d.Name = test.TestNameMutated
+				d.Namespace = test.TestNamespace
+				d.Labels = test.TestKVP
+				d.Annotations = test.TestKVP
+				d.Spec.Selector.MatchLabels = test.TestKVP
 				d.Spec.Replicas = &testReplicasMutated
 			}),
 			wantErr: false,
@@ -105,27 +87,27 @@ func TestRequestDeployment(t *testing.T) {
 			name: "request deployment, failed mutation",
 			deployReq: DeploymentRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
-						MatchLabels: testKVP,
+						MatchLabels: test.TestKVP,
 					},
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredDeployment: getTestDeployment(func(d *appsv1.Deployment) {
-				d.Name = testNameMutated
-				d.Namespace = testNamespace
-				d.Labels = testKVP
-				d.Annotations = testKVP
-				d.Spec.Selector.MatchLabels = testKVP
+			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+				d.Name = test.TestNameMutated
+				d.Namespace = test.TestNamespace
+				d.Labels = test.TestKVP
+				d.Annotations = test.TestKVP
+				d.Spec.Selector.MatchLabels = test.TestKVP
 			}),
 			wantErr: true,
 		},
@@ -150,23 +132,23 @@ func TestRequestDeployment(t *testing.T) {
 func TestCreateDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredDeployment := getTestDeployment(func(d *appsv1.Deployment) {
+	desiredDeployment := test.MakeTestDeployment(func(d *appsv1.Deployment) {
 		d.TypeMeta = metav1.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1",
 		}
-		d.Name = testName
-		d.Namespace = testNamespace
-		d.Labels = testKVP
-		d.Annotations = testKVP
+		d.Name = test.TestName
+		d.Namespace = test.TestNamespace
+		d.Labels = test.TestKVP
+		d.Annotations = test.TestKVP
 	})
 	err := CreateDeployment(desiredDeployment, testClient)
 	assert.NoError(t, err)
 
 	createdDeployment := &appsv1.Deployment{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdDeployment)
 
 	assert.NoError(t, err)
@@ -174,38 +156,38 @@ func TestCreateDeployment(t *testing.T) {
 }
 
 func TestGetDeployment(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
-		d.Name = testName
-		d.Namespace = testNamespace
-		d.Labels = testKVP
-		d.Annotations = testKVP
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = test.TestName
+		d.Namespace = test.TestNamespace
+		d.Labels = test.TestKVP
+		d.Annotations = test.TestKVP
 	})).Build()
 
-	_, err := GetDeployment(testName, testNamespace, testClient)
+	_, err := GetDeployment(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetDeployment(testName, testNamespace, testClient)
+	_, err = GetDeployment(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListDeployments(t *testing.T) {
-	deployment1 := getTestDeployment(func(d *appsv1.Deployment) {
+	deployment1 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-1"
-		d.Namespace = testNamespace
+		d.Namespace = test.TestNamespace
 		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	deployment2 := getTestDeployment(func(d *appsv1.Deployment) {
+	deployment2 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-2"
-		d.Namespace = testNamespace
+		d.Namespace = test.TestNamespace
 
 	})
-	deployment3 := getTestDeployment(func(d *appsv1.Deployment) {
+	deployment3 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
 		d.Name = "deployment-3"
 		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		d.Namespace = testNamespace
+		d.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -222,7 +204,7 @@ func TestListDeployments(t *testing.T) {
 
 	desiredDeployments := []string{"deployment-1", "deployment-3"}
 
-	existingDeploymentList, err := ListDeployments(testNamespace, testClient, listOpts)
+	existingDeploymentList, err := ListDeployments(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingDeployments := []string{}
@@ -235,14 +217,14 @@ func TestListDeployments(t *testing.T) {
 }
 
 func TestUpdateDeployment(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestDeployment(func(d *appsv1.Deployment) {
-		d.Name = testName
-		d.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = test.TestName
+		d.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredDeployment := getTestDeployment(func(d *appsv1.Deployment) {
-		d.Name = testName
-		d.Namespace = testNamespace
+	desiredDeployment := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = test.TestName
+		d.Namespace = test.TestNamespace
 		d.Labels = map[string]string{
 			"control-plane": "argocd-operator",
 		}
@@ -252,37 +234,37 @@ func TestUpdateDeployment(t *testing.T) {
 
 	existingDeployment := &appsv1.Deployment{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingDeployment)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredDeployment.Labels, existingDeployment.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingDeployment = getTestDeployment(func(d *appsv1.Deployment) {
-		d.Name = testName
-		d.Namespace = testNamespace
+	existingDeployment = test.MakeTestDeployment(func(d *appsv1.Deployment) {
+		d.Name = test.TestName
+		d.Namespace = test.TestNamespace
 	})
 	err = UpdateDeployment(existingDeployment, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteDeployment(t *testing.T) {
-	testDeployment := getTestDeployment(func(deployment *appsv1.Deployment) {
-		deployment.Name = testName
-		deployment.Namespace = testNamespace
+	testDeployment := test.MakeTestDeployment(func(deployment *appsv1.Deployment) {
+		deployment.Name = test.TestName
+		deployment.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testDeployment).Build()
 
-	err := DeleteDeployment(testName, testNamespace, testClient)
+	err := DeleteDeployment(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingDeployment := &appsv1.Deployment{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingDeployment)
 
 	assert.Error(t, err)

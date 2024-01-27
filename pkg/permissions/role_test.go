@@ -17,23 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type roleOpt func(*rbacv1.Role)
-
-func getTestRole(opts ...roleOpt) *rbacv1.Role {
-	desiredRole := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredRole)
-	}
-	return desiredRole
-}
 
 func TestRequestRole(t *testing.T) {
 
@@ -46,22 +31,22 @@ func TestRequestRole(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name: "request role, no mutation, custom name, labels, annotations",
+			name: "request role",
 			rolReq: RoleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Rules: testRules,
+				Rules: test.TestRules,
 			},
-			desiredRole: getTestRole(func(r *rbacv1.Role) {
-				r.Name = testName
-				r.Namespace = testNamespace
-				r.Labels = testKVP
-				r.Annotations = testKVP
-				r.Rules = testRules
+			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+				r.Name = test.TestName
+				r.Namespace = test.TestNamespace
+				r.Labels = test.TestKVP
+				r.Annotations = test.TestKVP
+				r.Rules = test.TestRules
 			}),
 			wantErr: false,
 		},
@@ -69,22 +54,22 @@ func TestRequestRole(t *testing.T) {
 			name: "request role, successful mutation",
 			rolReq: RoleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Rules: testRules,
+				Rules: test.TestRules,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			desiredRole: getTestRole(func(r *rbacv1.Role) {
-				r.Name = testName
-				r.Namespace = testNamespace
-				r.Labels = testKVP
-				r.Annotations = testKVP
+			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+				r.Name = test.TestName
+				r.Namespace = test.TestNamespace
+				r.Labels = test.TestKVP
+				r.Annotations = test.TestKVP
 				r.Rules = testRulesMutated
 			}),
 			wantErr: false,
@@ -93,22 +78,22 @@ func TestRequestRole(t *testing.T) {
 			name: "request role, failed mutation",
 			rolReq: RoleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Rules: testRules,
+				Rules: test.TestRules,
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredRole: getTestRole(func(r *rbacv1.Role) {
-				r.Name = testName
-				r.Namespace = testNamespace
-				r.Labels = testKVP
-				r.Annotations = testKVP
+			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+				r.Name = test.TestName
+				r.Namespace = test.TestNamespace
+				r.Labels = test.TestKVP
+				r.Annotations = test.TestKVP
 				r.Rules = testRulesMutated
 
 			}),
@@ -135,23 +120,23 @@ func TestRequestRole(t *testing.T) {
 func TestCreateRole(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredRole := getTestRole(func(r *rbacv1.Role) {
+	desiredRole := test.MakeTestRole(func(r *rbacv1.Role) {
 		r.TypeMeta = metav1.TypeMeta{
 			Kind:       "Role",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
-		r.Name = testName
-		r.Namespace = testNamespace
-		r.Labels = testKVP
-		r.Annotations = testKVP
+		r.Name = test.TestName
+		r.Namespace = test.TestNamespace
+		r.Labels = test.TestKVP
+		r.Annotations = test.TestKVP
 	})
 	err := CreateRole(desiredRole, testClient)
 	assert.NoError(t, err)
 
 	createdRole := &rbacv1.Role{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdRole)
 
 	assert.NoError(t, err)
@@ -159,35 +144,35 @@ func TestCreateRole(t *testing.T) {
 }
 
 func TestGetRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRole(func(r *rbacv1.Role) {
-		r.Name = testName
-		r.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(func(r *rbacv1.Role) {
+		r.Name = test.TestName
+		r.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetRole(testName, testNamespace, testClient)
+	_, err := GetRole(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetRole(testName, testNamespace, testClient)
+	_, err = GetRole(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListRoles(t *testing.T) {
-	role1 := getTestRole(func(r *rbacv1.Role) {
+	role1 := test.MakeTestRole(func(r *rbacv1.Role) {
 		r.Name = "role-1"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
-		r.Namespace = testNamespace
+		r.Namespace = test.TestNamespace
 	})
-	role2 := getTestRole(func(r *rbacv1.Role) {
+	role2 := test.MakeTestRole(func(r *rbacv1.Role) {
 		r.Name = "role-2"
-		r.Namespace = testNamespace
+		r.Namespace = test.TestNamespace
 	})
-	role3 := getTestRole(func(r *rbacv1.Role) {
+	role3 := test.MakeTestRole(func(r *rbacv1.Role) {
 		r.Name = "role-3"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		r.Namespace = testNamespace
+		r.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -204,7 +189,7 @@ func TestListRoles(t *testing.T) {
 
 	desiredRoles := []string{"role-1", "role-3"}
 
-	existingRoleList, err := ListRoles(testNamespace, testClient, listOpts)
+	existingRoleList, err := ListRoles(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingRoles := []string{}
@@ -218,51 +203,51 @@ func TestListRoles(t *testing.T) {
 }
 
 func TestUpdateRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRole(func(r *rbacv1.Role) {
-		r.Name = testName
-		r.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(func(r *rbacv1.Role) {
+		r.Name = test.TestName
+		r.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredRole := getTestRole(func(r *rbacv1.Role) {
-		r.Name = testName
+	desiredRole := test.MakeTestRole(func(r *rbacv1.Role) {
+		r.Name = test.TestName
 		r.Rules = testRulesMutated
-		r.Namespace = testNamespace
+		r.Namespace = test.TestNamespace
 	})
 	err := UpdateRole(desiredRole, testClient)
 	assert.NoError(t, err)
 
 	existingRole := &rbacv1.Role{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingRole)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredRole.Rules, existingRole.Rules)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingRole = getTestRole(func(r *rbacv1.Role) {
-		r.Name = testName
+	existingRole = test.MakeTestRole(func(r *rbacv1.Role) {
+		r.Name = test.TestName
 	})
 	err = UpdateRole(existingRole, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteRole(t *testing.T) {
-	testRole := getTestRole(func(r *rbacv1.Role) {
-		r.Name = testName
-		r.Namespace = testNamespace
+	testRole := test.MakeTestRole(func(r *rbacv1.Role) {
+		r.Name = test.TestName
+		r.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testRole).Build()
 
-	err := DeleteRole(testName, testNamespace, testClient)
+	err := DeleteRole(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingRole := &rbacv1.Role{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingRole)
 
 	assert.Error(t, err)
