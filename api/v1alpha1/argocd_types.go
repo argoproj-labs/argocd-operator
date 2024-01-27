@@ -698,7 +698,7 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Google Analytics Anonymize Users'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:booleanSwitch","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	GAAnonymizeUsers bool `json:"gaAnonymizeUsers,omitempty"`
 
-	// Grafana defines the Grafana server options for ArgoCD.
+	// Deprecated: Grafana defines the Grafana server options for ArgoCD.
 	Grafana ArgoCDGrafanaSpec `json:"grafana,omitempty"`
 
 	// HA options for High Availability support for the Redis component.
