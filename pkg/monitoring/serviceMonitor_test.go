@@ -17,48 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	util "github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type serviceMonitorOpt func(*monitoringv1.ServiceMonitor)
-
-func getTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonitor {
-	desiredServiceMonitor := &monitoringv1.ServiceMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testName,
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
-		},
-		Spec: monitoringv1.ServiceMonitorSpec{
-			Selector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
-				},
-			},
-			Endpoints: []monitoringv1.Endpoint{
-				{
-					Port: common.ArgoCDMetrics,
-				},
-			},
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredServiceMonitor)
-	}
-	return desiredServiceMonitor
-}
 
 func TestRequestServiceMonitor(t *testing.T) {
 
@@ -73,74 +34,44 @@ func TestRequestServiceMonitor(t *testing.T) {
 		wantErr               bool
 	}{
 		{
-			name: "request serviceMonitor, no mutation",
+			name: "request serviceMonitor",
 			serviceMonitorReq: ServiceMonitorRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
-						},
-					},
-					Endpoints: []monitoringv1.Endpoint{
-						{
-							Port: common.ArgoCDMetrics,
-						},
+						MatchLabels: test.TestKVP,
 					},
 				},
 			},
-			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
-			wantErr:               false,
+			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+				sm.Labels = test.TestKVP
+				sm.Annotations = test.TestKVP
+			}),
+			wantErr: false,
 		},
 		{
-			name: "request serviceMonitor, no mutation, custom name, labels, annotations",
+			name: "request serviceMonitor",
 			serviceMonitorReq: ServiceMonitorRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-						testKey:                   testVal,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-						testKey:                           testVal,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
-						},
-					},
-					Endpoints: []monitoringv1.Endpoint{
-						{
-							Port: common.ArgoCDMetrics,
-						},
+						MatchLabels: test.TestKVP,
 					},
 				},
 			},
-			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
-				sm.Name = testName
-				sm.Labels = util.MergeMaps(sm.Labels, testKVP)
-				sm.Annotations = util.MergeMaps(sm.Annotations, testKVP)
+			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+				sm.Labels = test.TestKVP
+				sm.Annotations = test.TestKVP
 			}),
 			wantErr: false,
 		},
@@ -148,29 +79,14 @@ func TestRequestServiceMonitor(t *testing.T) {
 			name: "request serviceMonitor, successful mutation",
 			serviceMonitorReq: ServiceMonitorRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testServiceMonitorNameMutated,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
-						},
-					},
-					Endpoints: []monitoringv1.Endpoint{
-						{
-							Port: common.ArgoCDMetrics,
-						},
+						MatchLabels: test.TestKVP,
 					},
 				},
 				Mutations: []mutation.MutateFunc{
@@ -178,44 +94,33 @@ func TestRequestServiceMonitor(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = testServiceMonitorNameMutated }),
-			wantErr:               false,
+			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+				sm.Name = test.TestNameMutated
+				sm.Labels = test.TestKVP
+				sm.Annotations = test.TestKVP
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request serviceMonitor, failed mutation",
 			serviceMonitorReq: ServiceMonitorRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Selector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							common.AppK8sKeyName: argoutil.GenerateResourceName(testInstance, common.ArgoCDMetrics),
-						},
-					},
-					Endpoints: []monitoringv1.Endpoint{
-						{
-							Port: common.ArgoCDMetrics,
-						},
+						MatchLabels: test.TestKVP,
 					},
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredServiceMonitor: getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
+			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
 			wantErr:               true,
 		},
 	}
@@ -241,21 +146,23 @@ func TestCreateServiceMonitor(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 	testClient := fake.NewClientBuilder().WithScheme(s).Build()
 
-	desiredServiceMonitor := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	desiredServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 		sm.TypeMeta = metav1.TypeMeta{
 			Kind:       "ServiceMonitor",
 			APIVersion: "monitoring.coreos.com/v1",
 		}
-		sm.Name = testName
-		sm.Namespace = testNamespace
+		sm.Name = test.TestName
+		sm.Namespace = test.TestNamespace
+		sm.Labels = test.TestKVP
+		sm.Annotations = test.TestKVP
 	})
 	err := CreateServiceMonitor(desiredServiceMonitor, testClient)
 	assert.NoError(t, err)
 
 	createdServiceMonitor := &monitoringv1.ServiceMonitor{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdServiceMonitor)
 
 	assert.NoError(t, err)
@@ -266,31 +173,31 @@ func TestGetServiceMonitor(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
-		sm.Name = testName
-		sm.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+		sm.Name = test.TestName
+		sm.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetServiceMonitor(testName, testNamespace, testClient)
+	_, err := GetServiceMonitor(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
 
-	_, err = GetServiceMonitor(testName, testNamespace, testClient)
+	_, err = GetServiceMonitor(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListServiceMonitors(t *testing.T) {
-	serviceMonitor1 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	serviceMonitor1 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-1"
-		sm.Namespace = testNamespace
+		sm.Namespace = test.TestNamespace
 		sm.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	serviceMonitor2 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = "serviceMonitor-2" })
-	serviceMonitor3 := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	serviceMonitor2 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = "serviceMonitor-2" })
+	serviceMonitor3 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-3"
-		sm.Namespace = testNamespace
+		sm.Namespace = test.TestNamespace
 		sm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
@@ -311,7 +218,7 @@ func TestListServiceMonitors(t *testing.T) {
 
 	desiredServiceMonitors := []string{"serviceMonitor-1", "serviceMonitor-3"}
 
-	existingServiceMonitorList, err := ListServiceMonitors(testNamespace, testClient, listOpts)
+	existingServiceMonitorList, err := ListServiceMonitors(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingServiceMonitors := []string{}
@@ -328,9 +235,9 @@ func TestUpdateServiceMonitor(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
 	// Create the initial ServiceMonitor
-	initialServiceMonitor := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
-		sm.Name = testName
-		sm.Namespace = testNamespace
+	initialServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+		sm.Name = test.TestName
+		sm.Namespace = test.TestNamespace
 	})
 
 	// Create the client with the initial ServiceMonitor
@@ -338,7 +245,7 @@ func TestUpdateServiceMonitor(t *testing.T) {
 
 	// Fetch the ServiceMonitor from the client
 	desiredServiceMonitor := &monitoringv1.ServiceMonitor{}
-	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredServiceMonitor)
+	err := testClient.Get(context.TODO(), types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}, desiredServiceMonitor)
 	assert.NoError(t, err)
 
 	desiredServiceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{
@@ -352,16 +259,16 @@ func TestUpdateServiceMonitor(t *testing.T) {
 
 	existingServiceMonitor := &monitoringv1.ServiceMonitor{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingServiceMonitor)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredServiceMonitor.Spec.Endpoints, existingServiceMonitor.Spec.Endpoints)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	existingServiceMonitor = getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
-		sm.Name = testName
+	existingServiceMonitor = test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+		sm.Name = test.TestName
 		sm.Labels = nil
 	})
 	err = UpdateServiceMonitor(existingServiceMonitor, testClient)
@@ -372,20 +279,20 @@ func TestDeleteServiceMonitor(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testServiceMonitor := getTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
-		sm.Name = testName
-		sm.Namespace = testNamespace
+	testServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+		sm.Name = test.TestName
+		sm.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(testServiceMonitor).Build()
 
-	err := DeleteServiceMonitor(testName, testNamespace, testClient)
+	err := DeleteServiceMonitor(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingServiceMonitor := &monitoringv1.ServiceMonitor{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingServiceMonitor)
 
 	assert.Error(t, err)

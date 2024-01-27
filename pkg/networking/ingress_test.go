@@ -19,6 +19,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
 type ingressOpt func(*networkingv1.Ingress)
@@ -27,17 +28,17 @@ func getTestIngress(opts ...ingressOpt) *networkingv1.Ingress {
 	nginx := "nginx"
 	desiredIngress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testName,
-			Namespace: testNamespace,
+			Name:      test.TestName,
+			Namespace: test.TestNamespace,
 			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
+				common.AppK8sKeyName:      test.TestInstance,
 				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
 				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
+				common.AppK8sKeyComponent: test.TestComponent,
 			},
 			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+				common.ArgoCDArgoprojKeyName:      test.TestInstance,
+				common.ArgoCDArgoprojKeyNamespace: test.TestInstanceNamespace,
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -82,17 +83,17 @@ func TestRequestIngress(t *testing.T) {
 			name: "request ingress, no mutation",
 			ingressReq: IngressRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
+					Name:      test.TestName,
+					Namespace: test.TestNamespace,
 					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyName:      test.TestInstance,
 						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
 						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
+						common.AppK8sKeyComponent: test.TestComponent,
 					},
 					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      test.TestInstance,
+						common.ArgoCDArgoprojKeyNamespace: test.TestInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -120,19 +121,19 @@ func TestRequestIngress(t *testing.T) {
 			name: "request ingress, no mutation, custom name, labels, annotations",
 			ingressReq: IngressRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
+					Name:      test.TestName,
+					Namespace: test.TestNamespace,
 					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyName:      test.TestInstance,
 						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
 						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-						testKey:                   testVal,
+						common.AppK8sKeyComponent: test.TestComponent,
+						test.TestKey:              test.TestVal,
 					},
 					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-						testKey:                           testVal,
+						common.ArgoCDArgoprojKeyName:      test.TestInstance,
+						common.ArgoCDArgoprojKeyNamespace: test.TestInstanceNamespace,
+						test.TestKey:                      test.TestVal,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -154,9 +155,9 @@ func TestRequestIngress(t *testing.T) {
 			},
 			mutation: false,
 			desiredIngress: getTestIngress(func(i *networkingv1.Ingress) {
-				i.Name = testName
-				i.Labels = util.MergeMaps(i.Labels, testKVP)
-				i.Annotations = util.MergeMaps(i.Annotations, testKVP)
+				i.Name = test.TestName
+				i.Labels = util.MergeMaps(i.Labels, test.TestKVP)
+				i.Annotations = util.MergeMaps(i.Annotations, test.TestKVP)
 			}),
 			wantErr: false,
 		},
@@ -165,16 +166,16 @@ func TestRequestIngress(t *testing.T) {
 			ingressReq: IngressRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testIngressNameMutated,
-					Namespace: testNamespace,
+					Namespace: test.TestNamespace,
 					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyName:      test.TestInstance,
 						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
 						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
+						common.AppK8sKeyComponent: test.TestComponent,
 					},
 					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      test.TestInstance,
+						common.ArgoCDArgoprojKeyNamespace: test.TestInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -206,17 +207,17 @@ func TestRequestIngress(t *testing.T) {
 			name: "request ingress, failed mutation",
 			ingressReq: IngressRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
+					Name:      test.TestName,
+					Namespace: test.TestNamespace,
 					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
+						common.AppK8sKeyName:      test.TestInstance,
 						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
 						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
+						common.AppK8sKeyComponent: test.TestComponent,
 					},
 					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
+						common.ArgoCDArgoprojKeyName:      test.TestInstance,
+						common.ArgoCDArgoprojKeyNamespace: test.TestInstanceNamespace,
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -236,7 +237,7 @@ func TestRequestIngress(t *testing.T) {
 					},
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
@@ -272,16 +273,16 @@ func TestCreateIngress(t *testing.T) {
 			Kind:       "Ingress",
 			APIVersion: "networking.k8s.io/v1",
 		}
-		i.Name = testName
-		i.Namespace = testNamespace
+		i.Name = test.TestName
+		i.Namespace = test.TestNamespace
 	})
 	err := CreateIngress(desiredIngress, testClient)
 	assert.NoError(t, err)
 
 	createdIngress := &networkingv1.Ingress{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdIngress)
 
 	assert.NoError(t, err)
@@ -293,16 +294,16 @@ func TestGetIngress(t *testing.T) {
 	assert.NoError(t, networkingv1.AddToScheme(s))
 
 	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestIngress(func(i *networkingv1.Ingress) {
-		i.Name = testName
-		i.Namespace = testNamespace
+		i.Name = test.TestName
+		i.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetIngress(testName, testNamespace, testClient)
+	_, err := GetIngress(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
 
-	_, err = GetIngress(testName, testNamespace, testClient)
+	_, err = GetIngress(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
@@ -310,13 +311,13 @@ func TestGetIngress(t *testing.T) {
 func TestListIngresss(t *testing.T) {
 	ingress1 := getTestIngress(func(i *networkingv1.Ingress) {
 		i.Name = "ingress-1"
-		i.Namespace = testNamespace
+		i.Namespace = test.TestNamespace
 		i.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
 	ingress2 := getTestIngress(func(i *networkingv1.Ingress) { i.Name = "ingress-2" })
 	ingress3 := getTestIngress(func(i *networkingv1.Ingress) {
 		i.Name = "ingress-3"
-		i.Namespace = testNamespace
+		i.Namespace = test.TestNamespace
 		i.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
@@ -337,7 +338,7 @@ func TestListIngresss(t *testing.T) {
 
 	desiredIngresss := []string{"ingress-1", "ingress-3"}
 
-	existingIngressList, err := ListIngresss(testNamespace, testClient, listOpts)
+	existingIngressList, err := ListIngresss(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingIngresss := []string{}
@@ -355,8 +356,8 @@ func TestUpdateIngress(t *testing.T) {
 
 	// Create the initial Ingress
 	initialIngress := getTestIngress(func(i *networkingv1.Ingress) {
-		i.Name = testName
-		i.Namespace = testNamespace
+		i.Name = test.TestName
+		i.Namespace = test.TestNamespace
 	})
 
 	// Create the client with the initial Ingress
@@ -364,7 +365,7 @@ func TestUpdateIngress(t *testing.T) {
 
 	// Fetch the Ingress from the client
 	desiredIngress := &networkingv1.Ingress{}
-	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredIngress)
+	err := testClient.Get(context.TODO(), types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}, desiredIngress)
 	assert.NoError(t, err)
 
 	desiredIngress.Spec.Rules = []networkingv1.IngressRule{
@@ -378,8 +379,8 @@ func TestUpdateIngress(t *testing.T) {
 
 	existingIngress := &networkingv1.Ingress{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingIngress)
 
 	assert.NoError(t, err)
@@ -387,7 +388,7 @@ func TestUpdateIngress(t *testing.T) {
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
 	existingIngress = getTestIngress(func(i *networkingv1.Ingress) {
-		i.Name = testName
+		i.Name = test.TestName
 		i.Labels = nil
 	})
 	err = UpdateIngress(existingIngress, testClient)
@@ -396,19 +397,19 @@ func TestUpdateIngress(t *testing.T) {
 
 func TestDeleteIngress(t *testing.T) {
 	testIngress := getTestIngress(func(i *networkingv1.Ingress) {
-		i.Name = testName
-		i.Namespace = testNamespace
+		i.Name = test.TestName
+		i.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testIngress).Build()
 
-	err := DeleteIngress(testName, testNamespace, testClient)
+	err := DeleteIngress(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingIngress := &networkingv1.Ingress{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingIngress)
 
 	assert.Error(t, err)

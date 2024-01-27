@@ -17,24 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type configMapOpt func(*corev1.ConfigMap)
-
-func getTestConfigMap(opts ...configMapOpt) *corev1.ConfigMap {
-	desiredConfigMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Data: make(map[string]string),
-	}
-
-	for _, opt := range opts {
-		opt(desiredConfigMap)
-	}
-	return desiredConfigMap
-}
 
 func TestRequestConfigMap(t *testing.T) {
 
@@ -42,75 +26,75 @@ func TestRequestConfigMap(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		deployReq        ConfigMapRequest
+		cmReq            ConfigMapRequest
 		desiredConfigMap *corev1.ConfigMap
 		wantErr          bool
 	}{
 		{
-			name: "request configMap, no mutation, custom name, labels, annotations",
-			deployReq: ConfigMapRequest{
+			name: "request configMap",
+			cmReq: ConfigMapRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Data: testKVP,
+				Data: test.TestKVP,
 			},
-			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
-				cm.Name = testName
-				cm.Namespace = testNamespace
-				cm.Labels = testKVP
-				cm.Annotations = testKVP
-				cm.Data = testKVP
+			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+				cm.Name = test.TestName
+				cm.Namespace = test.TestNamespace
+				cm.Labels = test.TestKVP
+				cm.Annotations = test.TestKVP
+				cm.Data = test.TestKVP
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request configMap, successful mutation",
-			deployReq: ConfigMapRequest{
+			cmReq: ConfigMapRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Data: testKVP,
+				Data: test.TestKVP,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
-				cm.Name = testNameMutated
-				cm.Namespace = testNamespace
-				cm.Labels = testKVP
-				cm.Annotations = testKVP
-				cm.Data = testKVPMutated
+			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+				cm.Name = test.TestNameMutated
+				cm.Namespace = test.TestNamespace
+				cm.Labels = test.TestKVP
+				cm.Annotations = test.TestKVP
+				cm.Data = test.TestKVPMutated
 			}),
 			wantErr: false,
 		},
 		{
 			name: "request configMap, failed mutation",
-			deployReq: ConfigMapRequest{
+			cmReq: ConfigMapRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Data: testKVP,
+				Data: test.TestKVP,
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredConfigMap: getTestConfigMap(func(cm *corev1.ConfigMap) {
-				cm.Name = testName
-				cm.Namespace = testNamespace
-				cm.Labels = testKVP
-				cm.Annotations = testKVP
-				cm.Data = testKVP
+			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+				cm.Name = test.TestName
+				cm.Namespace = test.TestNamespace
+				cm.Labels = test.TestKVP
+				cm.Annotations = test.TestKVP
+				cm.Data = test.TestKVP
 			}),
 			wantErr: true,
 		},
@@ -118,7 +102,7 @@ func TestRequestConfigMap(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gotConfigMap, err := RequestConfigMap(test.deployReq)
+			gotConfigMap, err := RequestConfigMap(test.cmReq)
 
 			if !test.wantErr {
 				assert.NoError(t, err)
@@ -135,24 +119,24 @@ func TestRequestConfigMap(t *testing.T) {
 func TestCreateConfigMap(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredConfigMap := getTestConfigMap(func(cm *corev1.ConfigMap) {
+	desiredConfigMap := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.TypeMeta = metav1.TypeMeta{
 			Kind:       "ConfigMap",
 			APIVersion: "v1",
 		}
-		cm.Name = testName
-		cm.Namespace = testNamespace
-		cm.Labels = testKVP
-		cm.Annotations = testKVP
-		cm.Data = testKVP
+		cm.Name = test.TestName
+		cm.Namespace = test.TestNamespace
+		cm.Labels = test.TestKVP
+		cm.Annotations = test.TestKVP
+		cm.Data = test.TestKVP
 	})
 	err := CreateConfigMap(desiredConfigMap, testClient)
 	assert.NoError(t, err)
 
 	createdConfigMap := &corev1.ConfigMap{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdConfigMap)
 
 	assert.NoError(t, err)
@@ -160,40 +144,40 @@ func TestCreateConfigMap(t *testing.T) {
 }
 
 func TestGetConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
-		cm.Name = testName
-		cm.Namespace = testNamespace
-		cm.Data = testKVP
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = test.TestName
+		cm.Namespace = test.TestNamespace
+		cm.Data = test.TestKVP
 
 	})).Build()
 
-	_, err := GetConfigMap(testName, testNamespace, testClient)
+	_, err := GetConfigMap(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetConfigMap(testName, testNamespace, testClient)
+	_, err = GetConfigMap(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListConfigMaps(t *testing.T) {
-	configMap1 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap1 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-1"
-		cm.Namespace = testNamespace
+		cm.Namespace = test.TestNamespace
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-1"
-		cm.Data = testKVP
+		cm.Data = test.TestKVP
 
 	})
-	configMap2 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap2 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-2"
-		cm.Namespace = testNamespace
+		cm.Namespace = test.TestNamespace
 	})
-	configMap3 := getTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap3 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-3"
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		cm.Data = testKVP
-		cm.Namespace = testNamespace
+		cm.Data = test.TestKVP
+		cm.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -210,7 +194,7 @@ func TestListConfigMaps(t *testing.T) {
 
 	desiredConfigMaps := []string{"configMap-1", "configMap-3"}
 
-	existingConfigMapList, err := ListConfigMaps(testNamespace, testClient, listOpts)
+	existingConfigMapList, err := ListConfigMaps(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingConfigMaps := []string{}
@@ -223,15 +207,15 @@ func TestListConfigMaps(t *testing.T) {
 }
 
 func TestUpdateConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestConfigMap(func(cm *corev1.ConfigMap) {
-		cm.Name = testName
-		cm.Namespace = testNamespace
-		cm.Data = testKVP
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = test.TestName
+		cm.Namespace = test.TestNamespace
+		cm.Data = test.TestKVP
 	})).Build()
 
-	desiredConfigMap := getTestConfigMap(func(cm *corev1.ConfigMap) {
-		cm.Name = testName
-		cm.Namespace = testNamespace
+	desiredConfigMap := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = test.TestName
+		cm.Namespace = test.TestNamespace
 		cm.Data = map[string]string{
 			"application.instanceLabelKey": "mycompany.com/appname",
 			"admin.enabled":                "true",
@@ -242,17 +226,17 @@ func TestUpdateConfigMap(t *testing.T) {
 
 	existingConfigMap := &corev1.ConfigMap{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingConfigMap)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredConfigMap.Data, existingConfigMap.Data)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingConfigMap = getTestConfigMap(func(cm *corev1.ConfigMap) {
-		cm.Name = testName
-		cm.Namespace = testNamespace
+	existingConfigMap = test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+		cm.Name = test.TestName
+		cm.Namespace = test.TestNamespace
 		cm.Data = nil
 	})
 	err = UpdateConfigMap(existingConfigMap, testClient)
@@ -260,20 +244,20 @@ func TestUpdateConfigMap(t *testing.T) {
 }
 
 func TestDeleteConfigMap(t *testing.T) {
-	testConfigMap := getTestConfigMap(func(configMap *corev1.ConfigMap) {
-		configMap.Name = testName
-		configMap.Namespace = testNamespace
+	testConfigMap := test.MakeTestConfigMap(func(configMap *corev1.ConfigMap) {
+		configMap.Name = test.TestName
+		configMap.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testConfigMap).Build()
 
-	err := DeleteConfigMap(testName, testNamespace, testClient)
+	err := DeleteConfigMap(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingConfigMap := &corev1.ConfigMap{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingConfigMap)
 
 	assert.Error(t, err)

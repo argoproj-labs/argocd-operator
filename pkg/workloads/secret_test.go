@@ -17,24 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type secretOpt func(*corev1.Secret)
-
-func getTestSecret(opts ...secretOpt) *corev1.Secret {
-	desiredSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		StringData: map[string]string{},
-	}
-
-	for _, opt := range opts {
-		opt(desiredSecret)
-	}
-	return desiredSecret
-}
 
 func TestRequestSecret(t *testing.T) {
 
@@ -47,23 +31,23 @@ func TestRequestSecret(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "request secret, no mutation, custom name, labels, annotations",
+			name: "request secret",
 			deployReq: SecretRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				StringData: testKVP,
+				StringData: test.TestKVP,
 				Type:       corev1.SecretTypeBasicAuth,
 			},
-			desiredSecret: getTestSecret(func(s *corev1.Secret) {
-				s.Name = testName
-				s.Namespace = testNamespace
-				s.Labels = testKVP
-				s.Annotations = testKVP
-				s.StringData = testKVP
+			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+				s.Name = test.TestName
+				s.Namespace = test.TestNamespace
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
+				s.StringData = test.TestKVP
 				s.Type = corev1.SecretTypeBasicAuth
 			}),
 			wantErr: false,
@@ -72,23 +56,23 @@ func TestRequestSecret(t *testing.T) {
 			name: "request secret, successful mutation",
 			deployReq: SecretRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				StringData: testKVP,
+				StringData: test.TestKVP,
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			desiredSecret: getTestSecret(func(s *corev1.Secret) {
-				s.Name = testNameMutated
-				s.Namespace = testNamespace
-				s.Labels = testKVP
-				s.Annotations = testKVP
-				s.StringData = testKVPMutated
+			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+				s.Name = test.TestNameMutated
+				s.Namespace = test.TestNamespace
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
+				s.StringData = test.TestKVPMutated
 			}),
 			wantErr: false,
 		},
@@ -96,21 +80,21 @@ func TestRequestSecret(t *testing.T) {
 			name: "request secret, failed mutation",
 			deployReq: SecretRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredSecret: getTestSecret(func(s *corev1.Secret) {
-				s.Name = testName
-				s.Namespace = testNamespace
-				s.Labels = testKVP
-				s.Annotations = testKVP
+			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+				s.Name = test.TestName
+				s.Namespace = test.TestNamespace
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
 			}),
 			wantErr: true,
 		},
@@ -135,24 +119,24 @@ func TestRequestSecret(t *testing.T) {
 func TestCreateSecret(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredSecret := getTestSecret(func(s *corev1.Secret) {
+	desiredSecret := test.MakeTestSecret(func(s *corev1.Secret) {
 		s.TypeMeta = metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		}
-		s.Name = testName
-		s.Namespace = testNamespace
-		s.Labels = testKVP
-		s.Annotations = testKVP
-		s.StringData = testKVP
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
+		s.Labels = test.TestKVP
+		s.Annotations = test.TestKVP
+		s.StringData = test.TestKVP
 	})
 	err := CreateSecret(desiredSecret, testClient)
 	assert.NoError(t, err)
 
 	createdSecret := &corev1.Secret{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdSecret)
 
 	assert.NoError(t, err)
@@ -160,36 +144,36 @@ func TestCreateSecret(t *testing.T) {
 }
 
 func TestGetSecret(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestSecret(func(s *corev1.Secret) {
-		s.Name = testName
-		s.Namespace = testNamespace
-		s.StringData = testKVP
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(func(s *corev1.Secret) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
+		s.StringData = test.TestKVP
 	})).Build()
 
-	_, err := GetSecret(testName, testNamespace, testClient)
+	_, err := GetSecret(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetSecret(testName, testNamespace, testClient)
+	_, err = GetSecret(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListSecrets(t *testing.T) {
-	secret1 := getTestSecret(func(s *corev1.Secret) {
+	secret1 := test.MakeTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-1"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
-		s.Namespace = testNamespace
+		s.Namespace = test.TestNamespace
 	})
-	secret2 := getTestSecret(func(s *corev1.Secret) {
+	secret2 := test.MakeTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-2"
-		s.Namespace = testNamespace
+		s.Namespace = test.TestNamespace
 	})
-	secret3 := getTestSecret(func(s *corev1.Secret) {
+	secret3 := test.MakeTestSecret(func(s *corev1.Secret) {
 		s.Name = "secret-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		s.Namespace = testNamespace
+		s.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -206,7 +190,7 @@ func TestListSecrets(t *testing.T) {
 
 	desiredSecrets := []string{"secret-1", "secret-3"}
 
-	existingSecretList, err := ListSecrets(testNamespace, testClient, listOpts)
+	existingSecretList, err := ListSecrets(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingSecrets := []string{}
@@ -219,14 +203,14 @@ func TestListSecrets(t *testing.T) {
 }
 
 func TestUpdateSecret(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestSecret(func(s *corev1.Secret) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(func(s *corev1.Secret) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredSecret := getTestSecret(func(s *corev1.Secret) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	desiredSecret := test.MakeTestSecret(func(s *corev1.Secret) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 		s.Data = map[string][]byte{
 			"admin.password": []byte("testpassword2023"),
 		}
@@ -236,36 +220,36 @@ func TestUpdateSecret(t *testing.T) {
 
 	existingSecret := &corev1.Secret{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingSecret)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredSecret.Data, existingSecret.Data)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingSecret = getTestSecret(func(d *corev1.Secret) {
-		d.Name = testName
+	existingSecret = test.MakeTestSecret(func(d *corev1.Secret) {
+		d.Name = test.TestName
 	})
 	err = UpdateSecret(existingSecret, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteSecret(t *testing.T) {
-	testSecret := getTestSecret(func(s *corev1.Secret) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	testSecret := test.MakeTestSecret(func(s *corev1.Secret) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testSecret).Build()
 
-	err := DeleteSecret(testName, testNamespace, testClient)
+	err := DeleteSecret(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingSecret := &corev1.Secret{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingSecret)
 
 	assert.Error(t, err)

@@ -11,10 +11,10 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, common.ArgoCDNotificationsControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(test.TestArgoCDName, test.TestNamespace, common.ArgoCDNotificationsControllerComponent)
 
 func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *NotificationsReconciler {
 	s := scheme.Scheme
@@ -26,14 +26,14 @@ func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *Noti
 	return &NotificationsReconciler{
 		Client:   cl,
 		Scheme:   s,
-		Instance: argocdcommon.MakeTestArgoCD(),
+		Instance: test.MakeTestArgoCD(),
 		Logger:   logger,
 	}
 }
 
 func TestNotificationsReconciler_Reconcile(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace()
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name         string
 		resourceName string
@@ -42,7 +42,7 @@ func TestNotificationsReconciler_Reconcile(t *testing.T) {
 	}{
 		{
 			name:         "successful reconcile",
-			resourceName: argocdcommon.TestArgoCDName,
+			resourceName: test.TestArgoCDName,
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t, ns)
 			},
@@ -64,7 +64,7 @@ func TestNotificationsReconciler_Reconcile(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteResources(t *testing.T) {
-	resourceName = argocdcommon.TestArgoCDName
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name         string
 		resourceName string
@@ -73,7 +73,7 @@ func TestNotificationsReconciler_DeleteResources(t *testing.T) {
 	}{
 		{
 			name:         "successful delete",
-			resourceName: argocdcommon.TestArgoCDName,
+			resourceName: test.TestArgoCDName,
 			setupClient: func() *NotificationsReconciler {
 				return makeTestNotificationsReconciler(t)
 			},
