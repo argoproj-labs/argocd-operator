@@ -52,7 +52,7 @@ func (asr *ApplicationSetReconciler) reconcileServiceAccount() error {
 			asr.Logger.Error(err, "reconcileServiceAccount: failed to create serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileServiceAccount: serviceAccount created", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
+		asr.Logger.Info("serviceAccount created", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 		return nil
 	}
 
@@ -67,6 +67,6 @@ func (nr *ApplicationSetReconciler) deleteServiceAccount(name, namespace string)
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteServiceAccount: serviceAccount deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("erviceAccount deleted", "name", name, "namespace", namespace)
 	return nil
 }

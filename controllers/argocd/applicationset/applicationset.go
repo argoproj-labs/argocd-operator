@@ -1,14 +1,13 @@
 package applicationset
 
 import (
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
@@ -17,7 +16,7 @@ type ApplicationSetReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
-	Logger   logr.Logger
+	Logger   *util.Logger
 }
 
 var (
@@ -26,9 +25,6 @@ var (
 )
 
 func (asr *ApplicationSetReconciler) Reconcile() error {
-
-	asr.Logger = ctrl.Log.WithName(AppSetControllerComponent).WithValues("instance", asr.Instance.Name, "instance-namespace", asr.Instance.Namespace)
-
 	resourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, AppSetControllerComponent)
 	resourceLabels = common.DefaultResourceLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
 

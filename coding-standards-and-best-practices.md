@@ -214,18 +214,18 @@ if rr.Instance.Spec.HA.Enabled {
 acr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
 ```
 
-- Use debug level (`Logger.V(1).Info`) when recording non-essential information. i.e, information on events that don't block happy path execution, but can provide hints if troubleshooting is needed e.g:
+- Use debug level (`Logger.Debug`) when recording non-essential information. i.e, information on events that don't block happy path execution, but can provide hints if troubleshooting is needed e.g:
 
 ```
-acr.Logger.V(1).Info("reconcileManagedRoles: one or more mutations could not be applied")
-acr.Logger.V(1).Info("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
+acr.Logger.Debug("reconcileManagedRoles: one or more mutations could not be applied")
+acr.Logger.Debug("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
 ```
 
-- Use Info level (`Logger.Info` or `Logger.V(0).Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
+- Use Info level (`Logger.Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
 - - No need to mention function names when logging at `info` level. eg:
 
 ```
-acr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+acr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 ```
 
 - Only use log statements to log success/error if the function belongs to a controller package and is invoked by the controller. No need to log statements from utility/helper packages. e.g:

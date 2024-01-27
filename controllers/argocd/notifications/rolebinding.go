@@ -7,7 +7,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -61,7 +60,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 
 	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, nr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
@@ -74,7 +73,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileRoleBinding: roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		nr.Logger.Info("roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		return nil
 	}
 
@@ -103,7 +102,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 		}
 	}
 
-	nr.Logger.V(0).Info("reconcileRoleBinding: roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
+	nr.Logger.Info("roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
 
 	return nil
 }
@@ -116,6 +115,6 @@ func (nr *NotificationsReconciler) deleteRoleBinding(name, namespace string) err
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }

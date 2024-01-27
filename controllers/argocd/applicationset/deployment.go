@@ -29,7 +29,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		asr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		asr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
+		asr.Logger.Debug("reconcileDeployment: one or more mutations could not be applied")
 		return err
 	}
 
@@ -60,7 +60,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 			asr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		asr.Logger.Info("deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		return nil
 	}
 	deploymentChanged := false
@@ -99,7 +99,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 		}
 	}
 
-	asr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	asr.Logger.Info("deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (asr *ApplicationSetReconciler) deleteDeployment(name, namespace string) er
 		asr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
