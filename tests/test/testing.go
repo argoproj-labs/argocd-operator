@@ -9,10 +9,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -37,6 +41,31 @@ var (
 		TestKey: TestValMutated,
 	}
 )
+
+func MakeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.Object, runtimeObj []runtime.Object) client.Client {
+	client := fake.NewClientBuilder().WithScheme(sch)
+	if len(resObjs) > 0 {
+		client = client.WithObjects(resObjs...)
+	}
+	if len(subresObjs) > 0 {
+		client = client.WithStatusSubresource(subresObjs...)
+	}
+	if len(runtimeObj) > 0 {
+		client = client.WithRuntimeObjects(runtimeObj...)
+	}
+	return client.Build()
+}
+
+type SchemeOpt func(*runtime.Scheme) error
+
+func MakeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
+	s := scheme.Scheme
+	for _, opt := range sOpts {
+		_ = opt(s)
+	}
+
+	return s
+}
 
 func TestMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
 	return errors.New("test-mutation-error")
