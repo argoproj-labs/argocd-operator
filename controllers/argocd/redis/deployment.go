@@ -43,7 +43,7 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -76,7 +76,7 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s", existingDeploy.Name)
 	}
 
-	rr.Logger.V(0).Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
+	rr.Logger.Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
 	return nil
 }
 
@@ -101,7 +101,7 @@ func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 		if err = workloads.CreateDeployment(desiredDeploy, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
 		}
-		rr.Logger.V(0).Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rr.Logger.Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
 		return nil
 	}
 
@@ -133,7 +133,7 @@ func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 		return errors.Wrapf(err, "reconcileHADeployment: failed to update deployment %s", existingDeploy.Name)
 	}
 
-	rr.Logger.V(0).Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
+	rr.Logger.Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
 	return nil
 }
 
@@ -425,6 +425,6 @@ func (rr *RedisReconciler) deleteDeployment(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s", name)
 	}
-	rr.Logger.V(0).Info("deployment deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -60,7 +60,7 @@ func (rr *RedisReconciler) reconcileService() error {
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileService: failed to create service %s", desiredSvc.Name)
 		}
-		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
 	}
 
@@ -85,7 +85,7 @@ func (rr *RedisReconciler) reconcileService() error {
 		return errors.Wrapf(err, "reconcileService: failed to update service %s", existingSvc.Name)
 	}
 
-	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAProxyService: failed to create service %s", desiredSvc.Name)
 		}
-		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 		return errors.Wrapf(err, "reconcileHAProxyService: failed to update service %s", existingSvc.Name)
 	}
 
-	rr.Logger.V(0).Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
 	return nil
 }
 
@@ -202,7 +202,7 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
 			return errors.Wrapf(err, "failed to create service %s", desiredSvc.Name)
 		}
-		rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 		return nil
 	}
 
@@ -261,7 +261,7 @@ func (rr *RedisReconciler) reconcileHAAnnourceServices() error {
 				reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to create service %s", desiredSvc.Name))
 				continue
 			}
-			rr.Logger.V(0).Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+			rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
 			continue
 		}
 	}
@@ -276,6 +276,6 @@ func (rr *RedisReconciler) deleteService(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteService: failed to delete service %s", name)
 	}
-	rr.Logger.V(0).Info("service deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("service deleted", "name", name, "namespace", namespace)
 	return nil
 }

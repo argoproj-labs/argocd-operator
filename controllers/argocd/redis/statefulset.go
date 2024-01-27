@@ -65,7 +65,7 @@ func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 		if err = workloads.CreateStatefulSet(desiredSS, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to create statefulset %s in namespace %s", desiredSS.Name, desiredSS.Namespace)
 		}
-		rr.Logger.V(0).Info("statefulset created", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
+		rr.Logger.Info("statefulset created", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
 		return nil
 	}
 
@@ -110,7 +110,7 @@ func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to update statefulset %s", existingSS.Name)
 	}
 
-	rr.Logger.V(0).Info("statefulset updated", "name", existingSS.Name, "namespace", existingSS.Namespace)
+	rr.Logger.Info("statefulset updated", "name", existingSS.Name, "namespace", existingSS.Namespace)
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (rr *RedisReconciler) deleteStatefulSet(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteStatefulSet: failed to delete stateful set %s", name)
 	}
-	rr.Logger.V(0).Info("stateful set deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("stateful set deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

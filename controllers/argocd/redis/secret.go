@@ -30,7 +30,7 @@ func (rr *RedisReconciler) reconcileTLSSecret() error {
 	}
 
 	if sha256sum == "" {
-		rr.Logger.V(1).Info("reconcileTLSSecret: received empty checksum; secret of type other than kubernetes.io/tls encountered")
+		rr.Logger.Debug("reconcileTLSSecret: received empty checksum; secret either not found, or is of type other than kubernetes.io/tls")
 		return nil
 	}
 
@@ -76,6 +76,6 @@ func (rr *RedisReconciler) deleteSecret(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s", name)
 	}
-	rr.Logger.V(0).Info("secret deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("secret deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -29,7 +29,7 @@ func (rr *RedisReconciler) reconcileServiceAccount() error {
 		if err = permissions.CreateServiceAccount(desiredSa, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount")
 		}
-		rr.Logger.V(0).Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
+		rr.Logger.Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
 		return nil
 	}
 	return nil
@@ -42,6 +42,6 @@ func (rr *RedisReconciler) deleteServiceAccount(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteServiceAccount: failed to delete service account %s", name)
 	}
-	rr.Logger.V(0).Info("service account deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("service account deleted", "name", name, "namespace", namespace)
 	return nil
 }

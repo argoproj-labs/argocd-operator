@@ -38,7 +38,7 @@ func (rr *RedisReconciler) UseTLS() bool {
 	tlsSecret, err := workloads.GetSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			rr.Logger.V(1).Info("skipping TLS enforcement")
+			rr.Logger.Debug("skipping TLS enforcement")
 			return false
 		}
 		rr.Logger.Error(err, "UseTLS: failed to retrieve tls secret", "name", common.ArgoCDRedisServerTLSSecretName, "namespace", rr.Instance.Namespace)

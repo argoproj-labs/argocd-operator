@@ -45,13 +45,13 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		if err = permissions.CreateRoleBinding(desiredRb, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileRoleBinding: failed to create role %s", desiredRb.Name)
 		}
-		rr.Logger.V(0).Info("rolebinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
+		rr.Logger.Info("rolebinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 		return nil
 	}
 
 	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
 	if !reflect.DeepEqual(existingRb.RoleRef, desiredRb.RoleRef) {
-		rr.Logger.V(0).Info("detected drift in roleRef for rolebinding", "name", existingRb.Name, "namespace", existingRb.Namespace)
+		rr.Logger.Info("detected drift in roleRef for rolebinding", "name", existingRb.Name, "namespace", existingRb.Namespace)
 		if err := rr.deleteRoleBinding(resourceName, rr.Instance.Namespace); err != nil {
 			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existingRb.Name)
 		}
@@ -79,7 +79,7 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		return errors.Wrapf(err, "reconcileRoleBinding: failed to update role %s", existingRb.Name)
 	}
 
-	rr.Logger.V(0).Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
+	rr.Logger.Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (rr *RedisReconciler) deleteRoleBinding(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteRoleBinding: failed to delete rolebinding %s", name)
 	}
-	rr.Logger.V(0).Info("roleBinding deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

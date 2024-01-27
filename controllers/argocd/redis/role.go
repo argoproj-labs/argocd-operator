@@ -38,7 +38,7 @@ func (rr *RedisReconciler) reconcileRole() error {
 		if err = permissions.CreateRole(desiredRole, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileRole: failed to create role %s", desiredRole.Name)
 		}
-		rr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		rr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		return nil
 	}
 
@@ -63,7 +63,7 @@ func (rr *RedisReconciler) reconcileRole() error {
 		return errors.Wrapf(err, "reconcileRole: failed to update role %s", existingRole.Name)
 	}
 
-	rr.Logger.V(0).Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+	rr.Logger.Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 	return nil
 }
 
@@ -94,7 +94,7 @@ func (rr *RedisReconciler) reconcileHARole() error {
 		if err = permissions.CreateRole(desiredRole, rr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileHARole: failed to create role %s", desiredRole.Name)
 		}
-		rr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		rr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		return nil
 	}
 
@@ -118,7 +118,7 @@ func (rr *RedisReconciler) reconcileHARole() error {
 	if err = permissions.UpdateRole(existingRole, rr.Client); err != nil {
 		return errors.Wrapf(err, "reconcileHARole: failed to update role %s", existingRole.Name)
 	}
-	rr.Logger.V(0).Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+	rr.Logger.Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 	return nil
 }
 
@@ -129,7 +129,7 @@ func (rr *RedisReconciler) deleteRole(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteRole: failed to delete role %s", name)
 	}
-	rr.Logger.V(0).Info("role deleted", "name", name, "namespace", namespace)
+	rr.Logger.Info("role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
