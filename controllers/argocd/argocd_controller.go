@@ -40,8 +40,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -57,6 +57,10 @@ import (
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	ArgoCDController = "argocd-controller"
 )
 
 // blank assignment to verify that ArgoCDReconciler implements reconcile.Reconciler
@@ -80,7 +84,7 @@ type ArgoCDReconciler struct {
 	Scheme        *runtime.Scheme
 	Instance      *argoproj.ArgoCD
 	ClusterScoped bool
-	Logger        logr.Logger
+	Logger        *util.Logger
 
 	ResourceManagedNamespaces map[string]string
 	AppManagedNamespaces      map[string]string
@@ -134,8 +138,6 @@ var ActiveInstanceMap = make(map[string]string)
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
-
 	reconcileStartTS := time.Now()
 	defer func() {
 		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
@@ -180,7 +182,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	r.Instance = argocd
 	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
-	r.Logger = argocdControllerLog.WithValues("instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
+	r.Logger = util.NewLogger(ArgoCDController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
 
 	// if r.Instance.GetDeletionTimestamp() != nil {
 
@@ -404,7 +406,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 	allowedSourceNamespaces := make(map[string]string)
 
 	if !r.ClusterScoped {
-		r.Logger.V(1).Info("setSourceNamespaces: instance is not cluster scoped, skip processing namespaces for application management")
+		r.Logger.Debug("setSourceNamespaces: instance is not cluster scoped, skip processing namespaces for application management")
 		return nil
 	}
 
@@ -449,7 +451,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 			// check if desired namespace is already being managed by a different cluster scoped Argo CD instance. If yes, skip it
 			// If not, add ArgoCDArgoprojKeyManagedByClusterArgoCD to it and add it to allowedSourceNamespaces
 			if val, ok := ns.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD]; ok && val != r.Instance.Namespace {
-				r.Logger.V(1).Info("setSourceNamespaces: skipping namespace as it is already managed by a different instance", "namespace", ns.Name, "managing-instance-namespace", val)
+				r.Logger.Debug("setSourceNamespaces: skipping namespace as it is already managed by a different instance", "namespace", ns.Name, "managing-instance-namespace", val)
 				continue
 			} else {
 				ns.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD] = r.Instance.Namespace
@@ -460,7 +462,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 				r.Logger.Error(err, "setSourceNamespaces: failed to update namespace", "namespace", ns.Name)
 				continue
 			}
-			r.Logger.V(1).Info("setSourceNamespaces: labeled namespace", "namespace", ns.Name)
+			r.Logger.Debug("setSourceNamespaces: labeled namespace", "namespace", ns.Name)
 			continue
 		}
 		allowedSourceNamespaces[desiredNs] = ""
@@ -481,7 +483,7 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 				r.Logger.Error(err, "setSourceNamespaces: failed to update namespace", "namespace", ns.Name)
 				continue
 			}
-			r.Logger.V(1).Info("setSourceNamespaces: unlabeled namespace", "namespace", ns.Name)
+			r.Logger.Debug("setSourceNamespaces: unlabeled namespace", "namespace", ns.Name)
 			continue
 		}
 	}
@@ -592,6 +594,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.NotificationsController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	appController := &appcontroller.AppControllerReconciler{
@@ -607,6 +610,8 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		// TO DO: update this later
+		Logger: util.NewLogger(applicationset.AppSetControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	ssoController := &sso.SSOReconciler{

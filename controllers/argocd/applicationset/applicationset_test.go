@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -24,7 +23,6 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(AppSetControllerComponent)
 
 	return &ApplicationSetReconciler{
 		Client: cl,
@@ -38,6 +36,5 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 				},
 			}
 		}),
-		Logger: logger,
 	}
 }

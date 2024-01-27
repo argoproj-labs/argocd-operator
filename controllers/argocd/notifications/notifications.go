@@ -1,21 +1,20 @@
 package notifications
 
 import (
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 type NotificationsReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
-	Logger   logr.Logger
+	Logger   *util.Logger
 }
 
 var (
@@ -24,8 +23,6 @@ var (
 )
 
 func (nr *NotificationsReconciler) Reconcile() error {
-
-	nr.Logger = ctrl.Log.WithName(common.NotificationsControllerComponent).WithValues("instance", nr.Instance.Name, "instance-namespace", nr.Instance.Namespace)
 
 	resourceName = argoutil.GenerateUniqueResourceName(nr.Instance.Name, nr.Instance.Namespace, common.NotificationsControllerComponent)
 	resourceLabels = common.DefaultResourceLabels(resourceName, nr.Instance.Name, common.NotificationsControllerComponent)
