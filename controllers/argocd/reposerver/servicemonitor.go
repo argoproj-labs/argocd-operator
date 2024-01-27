@@ -16,7 +16,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 
 	// return if prometheus API is not present on cluster
 	if !monitoring.IsPrometheusAPIAvailable() {
-		rsr.Logger.V(1).Info("prometheus API unavailable, skip reconciling service monitor")
+		rsr.Logger.Debug("prometheus API unavailable, skip reconciling service monitor")
 		return nil
 	}
 
@@ -66,6 +66,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 func (rsr *RepoServerReconciler) deleteServiceMonitor(name, namespace string) error {
 	// return if prometheus API is not present on cluster
 	if !monitoring.IsPrometheusAPIAvailable() {
+		rsr.Logger.Debug("prometheus API unavailable, skip deleting service monitor")
 		return nil
 	}
 
