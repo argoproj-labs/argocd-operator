@@ -56,7 +56,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 			asr.Logger.Error(err, "reconcileRoute: failed to create route", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 			return err
 		}
-		asr.Logger.Info("reconcileRoute: route created", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
+		asr.Logger.Info("route created", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 		return nil
 	}
 
@@ -86,7 +86,7 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 		}
 	}
 
-	asr.Logger.Info("reconcileRoute: webhook route updated", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
+	asr.Logger.Info("webhook route updated", "name", desiredWebhookRoute.Name, "namespace", desiredWebhookRoute.Namespace)
 
 	return nil
 }
@@ -99,7 +99,7 @@ func (asr *ApplicationSetReconciler) deleteWebhookRoute(name, namespace string) 
 		asr.Logger.Error(err, "DeleteRoute: failed to delete route", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.Info("DeleteRoute: route deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("route deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

@@ -33,7 +33,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 	desiredService, err := networking.RequestService(serviceRequest)
 	if err != nil {
 		asr.Logger.Error(err, "reconcileService: failed to request service", "name", desiredService.Name, "namespace", desiredService.Namespace)
-		asr.Logger.V(1).Info("reconcileService: one or more mutations could not be applied")
+		asr.Logger.Debug("reconcileService: one or more mutations could not be applied")
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (asr *ApplicationSetReconciler) reconcileService() error {
 			asr.Logger.Error(err, "reconcileService: failed to create service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 			return err
 		}
-		asr.Logger.Info("reconcileService: service created", "name", desiredService.Name, "namespace", desiredService.Namespace)
+		asr.Logger.Info("service created", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func (asr *ApplicationSetReconciler) deleteService(name, namespace string) error
 		asr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.Info("DeleteService: service deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("service deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
