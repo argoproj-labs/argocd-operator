@@ -42,6 +42,13 @@ import (
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
+func makeTestArgoCDReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
+	return &ArgoCDReconciler{
+		Client: client,
+		Scheme: sch,
+	}
+}
+
 func addFinalizer(finalizer string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Finalizers = append(a.Finalizers, finalizer)
@@ -427,7 +434,7 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeNewTestReconciler(cl, sch)
+	r := makeTestArgoCDReconciler(cl, sch)
 
 	instanceOne := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"
@@ -492,7 +499,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeNewTestReconciler(cl, sch)
+	r := makeTestArgoCDReconciler(cl, sch)
 
 	instance := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"

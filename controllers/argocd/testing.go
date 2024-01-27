@@ -25,14 +25,14 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
+
+type argoCDOpt func(*argoproj.ArgoCD)
 
 const (
 	testNamespace             = "argocd"
@@ -42,28 +42,6 @@ const (
 
 func ZapLogger(development bool) logr.Logger {
 	return zap.New(zap.UseDevMode(development))
-}
-
-func makeNewTestReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
-	return &ArgoCDReconciler{
-		Client: client,
-		Scheme: sch,
-	}
-}
-
-type argoCDOpt func(*argoproj.ArgoCD)
-
-func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
 }
 
 func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
