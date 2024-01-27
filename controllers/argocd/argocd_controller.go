@@ -24,7 +24,6 @@ import (
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -48,14 +47,12 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -233,130 +230,6 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	r.InitializeControllerReconcilers()
 
 	if err = r.reconcileControllers(); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Return and don't requeue
-	return reconcile.Result{}, nil
-}
-
-// old reconcile function - leave as is
-func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-
-	reconcileStartTS := time.Now()
-	defer func() {
-		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
-	}()
-
-	reqLogger := ctrlLog.FromContext(ctx, "namespace", request.Namespace, "name", request.Name)
-	reqLogger.Info("Reconciling ArgoCD")
-
-	argocd := &argoproj.ArgoCD{}
-	err := r.Client.Get(ctx, request.NamespacedName, argocd)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-
-	// Fetch labelSelector from r.LabelSelector (command-line option)
-	labelSelector, err := labels.Parse(r.LabelSelector)
-	if err != nil {
-		reqLogger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
-		return reconcile.Result{}, err
-	}
-	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
-	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
-		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
-		return reconcile.Result{}, fmt.Errorf("Error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
-	}
-
-	newPhase := argocd.Status.Phase
-	// If we discover a new Argo CD instance in a previously un-seen namespace
-	// we add it to the map and increment active instance count by phase
-	// as well as total active instance count
-	if _, ok := ActiveInstanceMap[request.Namespace]; !ok {
-		if newPhase != "" {
-			ActiveInstanceMap[request.Namespace] = newPhase
-			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
-			ActiveInstancesTotal.Inc()
-		}
-	} else {
-		// If we discover an existing instance's phase has changed since we last saw it
-		// increment instance count with new phase and decrement instance count with old phase
-		// update the phase in corresponding map entry
-		// total instance count remains the same
-		if oldPhase := ActiveInstanceMap[argocd.Namespace]; oldPhase != newPhase {
-			ActiveInstanceMap[argocd.Namespace] = newPhase
-			ActiveInstancesByPhase.WithLabelValues(newPhase).Inc()
-			ActiveInstancesByPhase.WithLabelValues(oldPhase).Dec()
-		}
-	}
-
-	ActiveInstanceReconciliationCount.WithLabelValues(argocd.Namespace).Inc()
-
-	if argocd.GetDeletionTimestamp() != nil {
-
-		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
-		// by phase as well as total
-		delete(ActiveInstanceMap, argocd.Namespace)
-		ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
-		ActiveInstancesTotal.Dec()
-		ActiveInstanceReconciliationCount.DeleteLabelValues(argocd.Namespace)
-		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": argocd.Namespace})
-
-		if argocd.IsDeletionFinalizerPresent() {
-			if err := r.deleteClusterResources(argocd); err != nil {
-				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
-			}
-
-			if isRemoveManagedByLabelOnArgoCDDeletion() {
-				if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
-					return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
-				}
-			}
-
-			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
-				return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
-			}
-
-			if err := r.removeDeletionFinalizer(argocd); err != nil {
-				return reconcile.Result{}, err
-			}
-
-			// remove namespace of deleted Argo CD instance from deprecationEventEmissionTracker (if exists) so that if another instance
-			// is created in the same namespace in the future, that instance is appropriately tracked
-			delete(DeprecationEventEmissionTracker, argocd.Namespace)
-		}
-		return reconcile.Result{}, nil
-	}
-
-	if !argocd.IsDeletionFinalizerPresent() {
-		if err := r.addDeletionFinalizer(argocd); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	// get the latest version of argocd instance before reconciling
-	if err = r.Client.Get(ctx, request.NamespacedName, argocd); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err = r.setManagedNamespaces(argocd); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err = r.setManagedSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	if err := r.reconcileResources(argocd); err != nil {
-		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
 	}
 
@@ -644,13 +517,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 
 	r.SecretController = secretController
 
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
-	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
-	return bldr.Complete(r)
 }
 
 // SetupWithManager sets up the controller with the Manager.
