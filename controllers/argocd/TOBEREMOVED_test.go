@@ -1242,3 +1242,16 @@ func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
 	}
 	return a
 }
+
+func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
