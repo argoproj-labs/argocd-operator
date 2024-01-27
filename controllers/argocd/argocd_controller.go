@@ -39,6 +39,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -451,6 +452,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.RedisController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	reposerverController := &reposerver.RepoServerReconciler{

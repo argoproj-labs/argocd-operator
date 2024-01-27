@@ -5,9 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	cntrlr "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -15,7 +13,7 @@ type RedisReconciler struct {
 	Client   client.Client
 	Scheme   *runtime.Scheme
 	Instance *argoproj.ArgoCD
-	Logger   logr.Logger
+	Logger   *util.Logger
 
 	Appcontroller AppController
 	Server        ServerController
@@ -24,16 +22,13 @@ type RedisReconciler struct {
 }
 
 var (
-	resourceName   string
-	component      string
-	resourceLabels map[string]string
+	resourceName string
+	component    string
 )
 
 func (rr *RedisReconciler) Reconcile() error {
-	rr.Logger = cntrlr.Log.WithName(common.RedisController).WithValues("instance", rr.Instance.Name, "instance-namespace", rr.Instance.Namespace)
 	component = common.RedisComponent
 	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, component)
-	resourceLabels = common.DefaultResourceLabels(resourceName, rr.Instance.Name, component)
 
 	// check if TLS needs to be used
 	rr.TLSEnabled = rr.UseTLS()
