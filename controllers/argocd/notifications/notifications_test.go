@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -21,13 +20,11 @@ func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *Noti
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(common.ArgoCDNotificationsControllerComponent)
 
 	return &NotificationsReconciler{
 		Client:   cl,
 		Scheme:   s,
 		Instance: test.MakeTestArgoCD(),
-		Logger:   logger,
 	}
 }
 
