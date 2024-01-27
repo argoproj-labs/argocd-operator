@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace()
 	resourceLabels = testExpectedLabels
 	tests := []struct {
 		name        string
@@ -42,7 +42,7 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 			}
 
 			currentSecret := &corev1.Secret{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsSecretName, Namespace: argocdcommon.TestNamespace}, currentSecret)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsSecretName, Namespace: test.TestNamespace}, currentSecret)
 			if err != nil {
 				t.Fatalf("Could not get current Secret: %v", err)
 			}
@@ -52,7 +52,7 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace()
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

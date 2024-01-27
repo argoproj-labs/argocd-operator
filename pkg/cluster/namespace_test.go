@@ -19,51 +19,18 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-var (
-	testName       = "test-name"
-	testKey        = "test-key"
-	testVal        = "test-value"
-	testValMutated = "test-value-mutated"
-
-	testKVP = map[string]string{
-		testKey: testVal,
-	}
-
-	testKVPMutated = map[string]string{
-		testKey: testValMutated,
-	}
-)
-
-func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
-	return errors.New("test-mutation-error")
-}
 
 func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
 	switch obj := resource.(type) {
 	case *corev1.Namespace:
-		if _, ok := obj.Labels[testKey]; ok {
-			obj.Labels[testKey] = testValMutated
+		if _, ok := obj.Labels[test.TestKey]; ok {
+			obj.Labels[test.TestKey] = test.TestValMutated
 			return nil
 		}
 	}
 	return errors.New("test-mutation-error")
-}
-
-type NamespaceOpt func(*corev1.Namespace)
-
-func getTestNamespace(opts ...NamespaceOpt) *corev1.Namespace {
-	desiredNs := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: make(map[string]string),
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredNs)
-	}
-	return desiredNs
 }
 
 func TestRequestNamespace(t *testing.T) {
@@ -76,16 +43,16 @@ func TestRequestNamespace(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name: "request namespace, no mutation, custom name, labels, annotations",
+			name: "request namespace",
 			nsReq: NamespaceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   testName,
-					Labels: testKVP,
+					Name:   test.TestName,
+					Labels: test.TestKVP,
 				},
 			},
-			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
-				ns.Name = testName
-				ns.Labels = testKVP
+			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+				ns.Name = test.TestName
+				ns.Labels = test.TestKVP
 			}),
 			wantErr: false,
 		},
@@ -93,17 +60,17 @@ func TestRequestNamespace(t *testing.T) {
 			name: "request namespace, successful mutation",
 			nsReq: NamespaceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   testName,
-					Labels: testKVP,
+					Name:   test.TestName,
+					Labels: test.TestKVP,
 				},
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
-				ns.Name = testName
-				ns.Labels = testKVPMutated
+			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+				ns.Name = test.TestName
+				ns.Labels = test.TestKVPMutated
 			}),
 			wantErr: false,
 		},
@@ -111,17 +78,17 @@ func TestRequestNamespace(t *testing.T) {
 			name: "request namespace, failed mutation",
 			nsReq: NamespaceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:   testName,
-					Labels: testKVP,
+					Name:   test.TestName,
+					Labels: test.TestKVP,
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredNamespace: getTestNamespace(func(ns *corev1.Namespace) {
-				ns.Name = testName
-				ns.Labels = testKVP
+			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+				ns.Name = test.TestName
+				ns.Labels = test.TestKVP
 			}),
 			wantErr: true,
 		},
@@ -144,48 +111,48 @@ func TestRequestNamespace(t *testing.T) {
 func TestCreateNamespace(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredNamespace := getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
+	desiredNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
 		ns.TypeMeta = metav1.TypeMeta{
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		}
-		ns.Labels = testKVP
+		ns.Labels = test.TestKVP
 	})
 	err := CreateNamespace(desiredNamespace, testClient)
 	assert.NoError(t, err)
 
 	createdNamespace := &corev1.Namespace{}
-	err = testClient.Get(context.TODO(), cntrlClient.ObjectKey{Name: testName}, createdNamespace)
+	err = testClient.Get(context.TODO(), cntrlClient.ObjectKey{Name: test.TestName}, createdNamespace)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredNamespace, createdNamespace)
 }
 
 func TestGetNamespace(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
 	})).Build()
 
-	_, err := GetNamespace(testName, testClient)
+	_, err := GetNamespace(test.TestName, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetNamespace(testName, testClient)
+	_, err = GetNamespace(test.TestName, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListNamespaces(t *testing.T) {
-	namespace1 := getTestNamespace(func(ns *corev1.Namespace) {
+	namespace1 := test.MakeTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-1"
 		ns.Labels = map[string]string{
 			common.AppK8sKeyComponent: "new-component-1",
 		}
 	})
-	namespace2 := getTestNamespace(func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
-	namespace3 := getTestNamespace(func(ns *corev1.Namespace) {
+	namespace2 := test.MakeTestNamespace(func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
+	namespace3 := test.MakeTestNamespace(func(ns *corev1.Namespace) {
 		ns.Name = "namespace-3"
 		ns.Labels = map[string]string{
 			common.AppK8sKeyComponent: "new-component-2",
@@ -219,29 +186,29 @@ func TestListNamespaces(t *testing.T) {
 }
 
 func TestUpdateNamespace(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
 	})).Build()
 
-	desiredNamespace := getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
-		ns.Labels = testKVP
+	desiredNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
+		ns.Labels = test.TestKVP
 	})
 	err := UpdateNamespace(desiredNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingNamespace := &corev1.Namespace{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Name: testName,
+		Name: test.TestName,
 	}, existingNamespace)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredNamespace.Labels, existingNamespace.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingNamespace = getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
-		ns.Labels = testKVP
+	existingNamespace = test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
+		ns.Labels = test.TestKVP
 	})
 	err = UpdateNamespace(existingNamespace, testClient)
 	assert.Error(t, err)
@@ -249,18 +216,18 @@ func TestUpdateNamespace(t *testing.T) {
 }
 
 func TestDeleteNamespace(t *testing.T) {
-	testNamespace := getTestNamespace(func(ns *corev1.Namespace) {
-		ns.Name = testName
+	testNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+		ns.Name = test.TestName
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testNamespace).Build()
 
-	err := DeleteNamespace(testName, testClient)
+	err := DeleteNamespace(test.TestName, testClient)
 	assert.NoError(t, err)
 
 	existingNamespace := &corev1.Namespace{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Name: testName,
+		Name: test.TestName,
 	}, existingNamespace)
 
 	assert.Error(t, err)

@@ -16,23 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type clusterRoleBindingOpt func(*rbacv1.ClusterRoleBinding)
-
-func getTestClusterRoleBinding(opts ...clusterRoleBindingOpt) *rbacv1.ClusterRoleBinding {
-	desiredClusterRoleBinding := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredClusterRoleBinding)
-	}
-	return desiredClusterRoleBinding
-}
 
 func TestRequestClusterRoleBinding(t *testing.T) {
 	tests := []struct {
@@ -42,24 +27,23 @@ func TestRequestClusterRoleBinding(t *testing.T) {
 	}{
 
 		{
-			name: "request clusterrolebinding, custom name, labels, annotations",
+			name: "request clusterrolebinding",
 			crbReq: ClusterRoleBindingRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 
-				RoleRef:  testRoleRef,
-				Subjects: testSubjects,
+				RoleRef:  test.MakeTestRoleRef(test.TestName),
+				Subjects: test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}),
 			},
-			desiredCrb: getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
-				crb.Name = testName
-				crb.Labels = testKVP
-				crb.Annotations = testKVP
-				crb.RoleRef = testRoleRef
-				crb.Subjects = testSubjects
-
+			desiredCrb: test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+				crb.Name = test.TestName
+				crb.Labels = test.TestKVP
+				crb.Annotations = test.TestKVP
+				crb.RoleRef = test.MakeTestRoleRef(test.TestName)
+				crb.Subjects = test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace})
 			}),
 		},
 	}
@@ -75,21 +59,21 @@ func TestRequestClusterRoleBinding(t *testing.T) {
 func TestCreateClusterRoleBinding(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredClusterRoleBinding := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+	desiredClusterRoleBinding := test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.TypeMeta = metav1.TypeMeta{
 			Kind:       "ClusterRoleBinding",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
-		crb.Name = testName
-		crb.Labels = testKVP
-		crb.Annotations = testKVP
+		crb.Name = test.TestName
+		crb.Labels = test.TestKVP
+		crb.Annotations = test.TestKVP
 	})
 	err := CreateClusterRoleBinding(desiredClusterRoleBinding, testClient)
 	assert.NoError(t, err)
 
 	createdClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Name: testName,
+		Name: test.TestName,
 	}, createdClusterRoleBinding)
 
 	assert.NoError(t, err)
@@ -97,29 +81,29 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 }
 
 func TestGetClusterRoleBinding(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
-		crb.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+		crb.Name = test.TestName
 	})).Build()
 
-	_, err := GetClusterRoleBinding(testName, testClient)
+	_, err := GetClusterRoleBinding(test.TestName, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetClusterRoleBinding(testName, testClient)
+	_, err = GetClusterRoleBinding(test.TestName, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListClusterRoleBindings(t *testing.T) {
-	crb1 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+	crb1 := test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-1"
 		crb.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	crb2 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+	crb2 := test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-2"
 	})
-	crb3 := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+	crb3 := test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
 		crb.Name = "crb-3"
 		crb.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
@@ -151,14 +135,14 @@ func TestListClusterRoleBindings(t *testing.T) {
 }
 
 func TestUpdateClusterRoleBinding(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
-		crb.Name = testName
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+		crb.Name = test.TestName
 	})).Build()
 
-	desiredClusterRoleBinding := getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
-		crb.Name = testName
-		crb.RoleRef = testRoleRef
-		crb.Subjects = testSubjects
+	desiredClusterRoleBinding := test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+		crb.Name = test.TestName
+		crb.RoleRef = test.MakeTestRoleRef(test.TestName)
+		crb.Subjects = test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace})
 	})
 
 	err := UpdateClusterRoleBinding(desiredClusterRoleBinding, testClient)
@@ -166,33 +150,33 @@ func TestUpdateClusterRoleBinding(t *testing.T) {
 
 	existingClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Name: testName,
+		Name: test.TestName,
 	}, existingClusterRoleBinding)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredClusterRoleBinding.Subjects, existingClusterRoleBinding.Subjects)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingClusterRoleBinding = getTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
-		crb.Name = testName
+	existingClusterRoleBinding = test.MakeTestClusterRoleBinding(func(crb *rbacv1.ClusterRoleBinding) {
+		crb.Name = test.TestName
 	})
 	err = UpdateClusterRoleBinding(existingClusterRoleBinding, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteClusterRoleBinding(t *testing.T) {
-	testClusterRoleBinding := getTestClusterRoleBinding(func(rb *rbacv1.ClusterRoleBinding) {
-		rb.Name = testName
+	testClusterRoleBinding := test.MakeTestClusterRoleBinding(func(rb *rbacv1.ClusterRoleBinding) {
+		rb.Name = test.TestName
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testClusterRoleBinding).Build()
 
-	err := DeleteClusterRoleBinding(testName, testClient)
+	err := DeleteClusterRoleBinding(test.TestName, testClient)
 	assert.NoError(t, err)
 
 	existingClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Name: testName,
+		Name: test.TestName,
 	}, existingClusterRoleBinding)
 
 	assert.Error(t, err)

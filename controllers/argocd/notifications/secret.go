@@ -6,7 +6,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -48,7 +47,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 
 	_, err = workloads.GetSecret(desiredSecret.Name, desiredSecret.Namespace, nr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileSecret: failed to retrieve secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 			return err
 		}
