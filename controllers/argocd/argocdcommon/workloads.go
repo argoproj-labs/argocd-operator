@@ -13,6 +13,10 @@ func TriggerDeploymentRollout(name, namespace, key string, client cntrlClient.Cl
 		return err
 	}
 
+	if deployment.Spec.Template.ObjectMeta.Labels == nil {
+		deployment.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+
 	deployment.Spec.Template.ObjectMeta.Labels[key] = util.NowNano()
 	return workloads.UpdateDeployment(deployment, client)
 }
