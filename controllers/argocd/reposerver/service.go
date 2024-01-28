@@ -18,7 +18,7 @@ import (
 )
 
 func (rsr *RepoServerReconciler) reconcileService() error {
-	svcRequest := networking.ServiceRequest{
+	req := networking.ServiceRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -48,52 +48,47 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		Client: rsr.Client,
 	}
 
-	desiredSvc, err := networking.RequestService(svcRequest)
+	desired, err := networking.RequestService(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileService: failed to request service %s", desiredSvc.Name)
+		return errors.Wrapf(err, "reconcileService: failed to request service %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rsr.Instance, desiredSvc, rsr.Scheme); err != nil {
-		rsr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desiredSvc.Name)
+	if err = controllerutil.SetControllerReference(rsr.Instance, desired, rsr.Scheme); err != nil {
+		rsr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desired.Name)
 	}
 
-	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rsr.Client)
+	existing, err := networking.GetService(desired.Name, desired.Namespace, rsr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileService: failed to retrieve service %s", desiredSvc.Name)
+			return errors.Wrapf(err, "reconcileService: failed to retrieve service %s", desired.Name)
 		}
 
-		if err = networking.CreateService(desiredSvc, rsr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileService: failed to create service %s", desiredSvc.Name)
+		if err = networking.CreateService(desired, rsr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileService: failed to create service %s", desired.Name)
 		}
-		rsr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rsr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	svcChanged := false
+	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingSvc.Labels, &desiredSvc.Labels, nil},
-		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
-		{&existingSvc.Spec, &desiredSvc.Spec, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &svcChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	if !svcChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = networking.UpdateService(existingSvc, rsr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileService: failed to update service %s", existingSvc.Name)
+	if err = networking.UpdateService(existing, rsr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileService: failed to update service %s", existing.Name)
 	}
 
-	rsr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rsr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

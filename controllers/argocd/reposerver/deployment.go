@@ -29,81 +29,78 @@ const (
 
 func (rsr *RepoServerReconciler) reconcileDeployment() error {
 
-	deployReq := rsr.getDeploymentRequest()
+	req := rsr.getDeploymentRequest()
 
-	desiredDeploy, err := workloads.RequestDeployment(deployReq)
+	desired, err := workloads.RequestDeployment(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to reconcile deployment %s", desiredDeploy.Name)
+		return errors.Wrapf(err, "reconcileDeployment: failed to reconcile deployment %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rsr.Instance, desiredDeploy, rsr.Scheme); err != nil {
-		rsr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+	if err = controllerutil.SetControllerReference(rsr.Instance, desired, rsr.Scheme); err != nil {
+		rsr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	existingDeploy, err := workloads.GetDeployment(desiredDeploy.Name, desiredDeploy.Namespace, rsr.Client)
+	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, rsr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s", desiredDeploy.Name)
+			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s", desired.Name)
 		}
 
-		if err = workloads.CreateDeployment(desiredDeploy, rsr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desiredDeploy.Name, desiredDeploy.Namespace)
+		if err = workloads.CreateDeployment(desired, rsr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rsr.Logger.Info("deployment created", "name", desiredDeploy.Name, "namespace", desiredDeploy.Namespace)
+		rsr.Logger.Info("deployment created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	deployChanged := false
+	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingDeploy.Spec.Template.Spec.Containers[0].Image, &desiredDeploy.Spec.Template.Spec.Containers[0].Image,
-			func() {
-				if existingDeploy.Spec.Template.ObjectMeta.Labels == nil {
-					existingDeploy.Spec.Template.ObjectMeta.Labels = map[string]string{}
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
+			ExtraAction: func() {
+				if existing.Spec.Template.ObjectMeta.Labels == nil {
+					existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
 				}
-				existingDeploy.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
-		{&existingDeploy.Spec.Template.Spec.NodeSelector, &desiredDeploy.Spec.Template.Spec.NodeSelector, nil},
-		{&existingDeploy.Spec.Template.Spec.Tolerations, &desiredDeploy.Spec.Template.Spec.Tolerations, nil},
-		{&existingDeploy.Spec.Template.Spec.Volumes, &desiredDeploy.Spec.Template.Spec.Volumes, nil},
-		{&existingDeploy.Spec.Template.Spec.Containers[0].Command, &desiredDeploy.Spec.Template.Spec.Containers[0].Command, nil},
-		{&existingDeploy.Spec.Template.Spec.Containers[0].Env, &desiredDeploy.Spec.Template.Spec.Containers[0].Env, nil},
-		{&existingDeploy.Spec.Template.Spec.Containers[0].Resources, &desiredDeploy.Spec.Template.Spec.Containers[0].Resources, nil},
-		{&existingDeploy.Spec.Template.Spec.Containers[0].VolumeMounts, &desiredDeploy.Spec.Template.Spec.Containers[0].VolumeMounts, nil},
-		{&existingDeploy.Spec.Template.Spec.InitContainers, &desiredDeploy.Spec.Template.Spec.InitContainers, nil},
-		{&existingDeploy.Spec.Template.Spec.AutomountServiceAccountToken, &desiredDeploy.Spec.Template.Spec.AutomountServiceAccountToken, nil},
-		{&existingDeploy.Spec.Template.Spec.ServiceAccountName, &desiredDeploy.Spec.Template.Spec.ServiceAccountName, nil},
-		{&existingDeploy.Spec.Replicas, &desiredDeploy.Spec.Replicas, nil},
+		{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
+		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deployChanged)
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+
+	if !reflect.DeepEqual(desired.Spec.Template.Spec.Containers[1:], existing.Spec.Template.Spec.Containers[1:]) {
+		existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
+			desired.Spec.Template.Spec.Containers[1:]...)
+		changed = true
 	}
 
-	if !reflect.DeepEqual(desiredDeploy.Spec.Template.Spec.Containers[1:], existingDeploy.Spec.Template.Spec.Containers[1:]) {
-		existingDeploy.Spec.Template.Spec.Containers = append(existingDeploy.Spec.Template.Spec.Containers[0:1],
-			desiredDeploy.Spec.Template.Spec.Containers[1:]...)
-		deployChanged = true
-	}
-
-	if !deployChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = workloads.UpdateDeployment(existingDeploy, rsr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s", existingDeploy.Name)
+	if err = workloads.UpdateDeployment(existing, rsr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s", existing.Name)
 	}
 
-	rsr.Logger.Info("deployment updated", "name", existingDeploy.Name, "namespace", existingDeploy.Namespace)
+	rsr.Logger.Info("deployment updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
 func (rsr *RepoServerReconciler) getDeploymentRequest() workloads.DeploymentRequest {
-	deploymentReq := workloads.DeploymentRequest{
+	req := workloads.DeploymentRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -111,6 +108,7 @@ func (rsr *RepoServerReconciler) getDeploymentRequest() workloads.DeploymentRequ
 					common.AppK8sKeyName: resourceName,
 				},
 			},
+			Replicas: rsr.getReplicas(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -136,21 +134,21 @@ func (rsr *RepoServerReconciler) getDeploymentRequest() workloads.DeploymentRequ
 	}
 
 	if rsr.Instance.Spec.Repo.ServiceAccount != "" {
-		deploymentReq.Spec.Template.Spec.ServiceAccountName = rsr.Instance.Spec.Repo.ServiceAccount
+		req.Spec.Template.Spec.ServiceAccountName = rsr.Instance.Spec.Repo.ServiceAccount
 	}
 
 	if rsr.Instance.Spec.NodePlacement != nil {
-		deploymentReq.Spec.Template.Spec.NodeSelector = util.MergeMaps(deploymentReq.Spec.Template.Spec.NodeSelector, rsr.Instance.Spec.NodePlacement.NodeSelector)
-		deploymentReq.Spec.Template.Spec.Tolerations = rsr.Instance.Spec.NodePlacement.Tolerations
+		req.Spec.Template.Spec.NodeSelector = util.MergeMaps(req.Spec.Template.Spec.NodeSelector, rsr.Instance.Spec.NodePlacement.NodeSelector)
+		req.Spec.Template.Spec.Tolerations = rsr.Instance.Spec.NodePlacement.Tolerations
 	}
 
-	return deploymentReq
+	return req
 }
 
 func (rsr *RepoServerReconciler) getRepoSeverInitContainers() []corev1.Container {
 	initContainers := []corev1.Container{{
 		Name:            "copyutil",
-		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
+		Image:           rsr.getContainerImage(),
 		Command:         argocdcommon.GetArgoCmpServerInitCommand(),
 		ImagePullPolicy: corev1.PullAlways,
 		Resources:       rsr.getResources(),

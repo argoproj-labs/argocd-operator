@@ -63,18 +63,13 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 
 	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existing.Labels, &desired.Labels, nil},
-		{&existing.Annotations, &desired.Annotations, nil},
-		{&existing.Spec, &desired.Spec, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
 	if !changed {
 		return nil

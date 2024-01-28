@@ -10,26 +10,26 @@ import (
 
 func (rsr *RepoServerReconciler) reconcileServiceAccount() error {
 
-	saReq := permissions.ServiceAccountRequest{
+	req := permissions.ServiceAccountRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
 	}
 
-	desiredSa := permissions.RequestServiceAccount(saReq)
+	desired := permissions.RequestServiceAccount(req)
 
-	if err := controllerutil.SetControllerReference(rsr.Instance, desiredSa, rsr.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(rsr.Instance, desired, rsr.Scheme); err != nil {
 		rsr.Logger.Error(err, "reconcileServiceAccount: failed to set owner reference for serviceaccount")
 	}
 
-	_, err := permissions.GetServiceAccount(desiredSa.Name, desiredSa.Namespace, rsr.Client)
+	_, err := permissions.GetServiceAccount(desired.Name, desired.Namespace, rsr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileServiceAccount: failed to retrieve serviceaccount")
 		}
 
-		if err = permissions.CreateServiceAccount(desiredSa, rsr.Client); err != nil {
+		if err = permissions.CreateServiceAccount(desired, rsr.Client); err != nil {
 			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount")
 		}
-		rsr.Logger.Info("serviceaccount created", "name", desiredSa.Name, "namespace", desiredSa.Namespace)
+		rsr.Logger.Info("serviceaccount created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 	return nil

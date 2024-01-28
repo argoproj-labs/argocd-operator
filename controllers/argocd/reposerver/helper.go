@@ -39,11 +39,11 @@ func (rsr *RepoServerReconciler) getContainerImage() string {
 
 // GetServerAddress will return the repo-server service address for the given ArgoCD instance
 func (rsr *RepoServerReconciler) GetServerAddress() string {
-	if rsr.Instance.Spec.Redis.Remote != nil && *rsr.Instance.Spec.Redis.Remote != "" {
-		return *rsr.Instance.Spec.Redis.Remote
+	if rsr.Instance.Spec.Repo.Remote != nil && *rsr.Instance.Spec.Repo.Remote != "" {
+		return *rsr.Instance.Spec.Repo.Remote
 	}
 
-	return argoutil.FqdnServiceRef(resourceName, rsr.Instance.Namespace, common.DefaultRedisPort)
+	return argoutil.FqdnServiceRef(resourceName, rsr.Instance.Namespace, common.DefaultRepoServerPort)
 }
 
 // getReplicas will return the size value for the argocd-repo-server replica count if it
