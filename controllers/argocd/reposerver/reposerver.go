@@ -70,6 +70,7 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 	return nil
 }
 
+// DeleteResources triggers deletion of all repo-server resources
 func (rsr *RepoServerReconciler) DeleteResources() error {
 	var deletionErr util.MultiError
 
