@@ -393,12 +393,13 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if *r.Instance.Spec.Repo.Enabled {
+	if r.Instance.Spec.Repo.Enabled != nil && *r.Instance.Spec.Repo.Enabled {
 		if err := r.ReposerverController.Reconcile(); err != nil {
 			r.Logger.Error(err, "failed to reconcile repo-server controller")
 			return err
 		}
 	} else {
+		r.Logger.Info("repo-server disabled; deleting resources")
 		if err := r.ReposerverController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete repo-server resources")
 		}
@@ -451,6 +452,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.RedisController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	reposerverController := &reposerver.RepoServerReconciler{
