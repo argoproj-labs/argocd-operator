@@ -28,6 +28,10 @@ func TriggerStatefulSetRollout(name, namespace, key string, client cntrlClient.C
 		return err
 	}
 
+	if statefulset.Spec.Template.ObjectMeta.Labels == nil {
+		statefulset.Spec.Template.ObjectMeta.Labels = make(map[string]string)
+	}
+
 	statefulset.Spec.Template.ObjectMeta.Labels[key] = util.NowNano()
 	return workloads.UpdateStatefulSet(statefulset, client)
 }
