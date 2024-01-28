@@ -1,13 +1,15 @@
 package applicationset
 
 import (
+	"reflect"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/pkg/errors"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -45,7 +47,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		},
 	}
 
-	desiredRoleBinding := permissions.RequestRoleBinding(roleBindingRequest)
+	desiredRb := permissions.RequestRoleBinding(roleBindingRequest)
 
 	namespace, err := cluster.GetNamespace(asr.Instance.Namespace, asr.Client)
 	if err != nil {
@@ -53,58 +55,57 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		return err
 	}
 	if namespace.DeletionTimestamp != nil {
-		if err := asr.deleteRole(desiredRoleBinding.Name, desiredRoleBinding.Namespace); err != nil {
-			asr.Logger.Error(err, "reconcileRoleBinding: failed to delete roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		if err := asr.deleteRole(desiredRb.Name, desiredRb.Namespace); err != nil {
+			asr.Logger.Error(err, "reconcileRoleBinding: failed to delete roleBinding", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 		}
 		return err
 	}
 
-	existingRoleBinding, err := permissions.GetRoleBinding(desiredRoleBinding.Name, desiredRoleBinding.Namespace, asr.Client)
+	existingRb, err := permissions.GetRoleBinding(desiredRb.Name, desiredRb.Namespace, asr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		if !apierrors.IsNotFound(err) {
+			asr.Logger.Error(err, "reconcileRoleBinding: failed to retrieve roleBinding", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 			return err
 		}
 
-		if err = controllerutil.SetControllerReference(asr.Instance, desiredRoleBinding, asr.Scheme); err != nil {
-			asr.Logger.Error(err, "reconcileRole: failed to set owner reference for role", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		if err = controllerutil.SetControllerReference(asr.Instance, desiredRb, asr.Scheme); err != nil {
+			asr.Logger.Error(err, "reconcileRoleBinding: failed to set owner reference for role", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 		}
 
-		if err = permissions.CreateRoleBinding(desiredRoleBinding, asr.Client); err != nil {
-			asr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		if err = permissions.CreateRoleBinding(desiredRb, asr.Client); err != nil {
+			asr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 			return err
 		}
-		asr.Logger.Info("roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		asr.Logger.Info("roleBinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
 		return nil
 	}
 
-	roleBindingChanged := false
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-	}{
-		{
-			&existingRoleBinding.RoleRef,
-			&desiredRoleBinding.RoleRef,
-		},
-		{
-			&existingRoleBinding.Subjects,
-			&desiredRoleBinding.Subjects,
-		},
-	}
-
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, nil, &roleBindingChanged)
-	}
-
-	if roleBindingChanged {
-		if err = permissions.UpdateRoleBinding(existingRoleBinding, asr.Client); err != nil {
-			asr.Logger.Error(err, "reconcileRoleBinding: failed to update roleBinding", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
-			return err
+	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
+	if !reflect.DeepEqual(existingRb.RoleRef, desiredRb.RoleRef) {
+		asr.Logger.Info("detected drift in roleRef for rolebinding", "name", existingRb.Name, "namespace", existingRb.Namespace)
+		if err := asr.deleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
+			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existingRb.Name)
 		}
+		return nil
 	}
 
-	asr.Logger.Info("roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
+	rbChanged := false
 
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existingRb.Subjects, Desired: &desiredRb.Subjects, ExtraAction: nil},
+	}
+
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &rbChanged)
+
+	if !rbChanged {
+		return nil
+	}
+
+	if err = permissions.UpdateRoleBinding(existingRb, asr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileRoleBinding: failed to update role %s", existingRb.Name)
+	}
+
+	asr.Logger.Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
 	return nil
 }
 

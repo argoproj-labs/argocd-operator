@@ -65,31 +65,26 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	}
 	deploymentChanged := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Image, &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
-			func() {
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Image, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
+			ExtraAction: func() {
 				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 			},
 		},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Command, &desiredDeployment.Spec.Template.Spec.Containers[0].Command, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Env, &desiredDeployment.Spec.Template.Spec.Containers[0].Env, nil},
-		{&existingDeployment.Spec.Template.Spec.Containers[0].Resources, &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, nil},
-		{&existingDeployment.Spec.Template.Spec.Volumes, &desiredDeployment.Spec.Template.Spec.Volumes, nil},
-		{&existingDeployment.Spec.Template.Spec.NodeSelector, &desiredDeployment.Spec.Template.Spec.NodeSelector, nil},
-		{&existingDeployment.Spec.Template.Spec.Tolerations, &desiredDeployment.Spec.Template.Spec.Tolerations, nil},
-		{&existingDeployment.Spec.Template.Spec.ServiceAccountName, &desiredDeployment.Spec.Template.Spec.ServiceAccountName, nil},
-		{&existingDeployment.Spec.Template.Labels, &desiredDeployment.Spec.Template.Labels, nil},
-		{&existingDeployment.Spec.Replicas, &desiredDeployment.Spec.Replicas, nil},
-		{&existingDeployment.Spec.Selector, &desiredDeployment.Spec.Selector, nil},
-		{&existingDeployment.Labels, &desiredDeployment.Labels, nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Command, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Env, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Resources, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.Volumes, Desired: &desiredDeployment.Spec.Template.Spec.Volumes, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.NodeSelector, Desired: &desiredDeployment.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.Tolerations, Desired: &desiredDeployment.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Spec.ServiceAccountName, Desired: &desiredDeployment.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Template.Labels, Desired: &desiredDeployment.Spec.Template.Labels, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Replicas, Desired: &desiredDeployment.Spec.Replicas, ExtraAction: nil},
+		{Existing: &existingDeployment.Spec.Selector, Desired: &desiredDeployment.Spec.Selector, ExtraAction: nil},
+		{Existing: &existingDeployment.Labels, Desired: &desiredDeployment.Labels, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &deploymentChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &deploymentChanged)
 
 	if deploymentChanged {
 
