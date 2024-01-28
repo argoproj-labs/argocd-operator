@@ -7,6 +7,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
+type FieldToCompare struct {
+	Existing    interface{}
+	Desired     interface{}
+	ExtraAction func()
+}
+
 func UpdateIfChanged(existingVal, desiredVal interface{}, extraAction func(), changed *bool) {
 	if util.IsPtr(existingVal) && util.IsPtr(desiredVal) {
 		if !reflect.DeepEqual(existingVal, desiredVal) {
@@ -15,6 +21,15 @@ func UpdateIfChanged(existingVal, desiredVal interface{}, extraAction func(), ch
 				extraAction()
 			}
 			*changed = true
+		}
+	}
+}
+
+// PartialMatch accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields and sets the bool to false if a mismatch is detected. It assumes that the bool passed into the fn is set to true by default
+func PartialMatch(ftc []FieldToCompare, changed *bool) {
+	for _, field := range ftc {
+		if !reflect.DeepEqual(field.Existing, field.Desired) {
+			*changed = false
 		}
 	}
 }

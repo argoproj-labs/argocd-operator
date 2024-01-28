@@ -66,8 +66,7 @@ func (rsr *RepoServerReconciler) deleteSecret(name, namespace string) error {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rsr.Logger.Error(err, "deleteSecret: failed to delete secret", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteSecret: failed to delete secret %s in namespace %s", name, namespace)
 	}
 	rsr.Logger.Info("secret deleted", "name", name, "namespace", namespace)
 	return nil

@@ -76,7 +76,9 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 		existing, desired interface{}
 		extraAction       func()
 	}{
+		{&existingSvc.Labels, &desiredSvc.Labels, nil},
 		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
+		{&existingSvc.Spec, &desiredSvc.Spec, nil},
 	}
 
 	for _, field := range fieldsToCompare {
@@ -100,8 +102,7 @@ func (rsr *RepoServerReconciler) deleteService(name, namespace string) error {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rsr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteService: failed to delete service %s in namespace %s", name, namespace)
 	}
 	rsr.Logger.Info("service deleted", "name", name, "namespace", namespace)
 	return nil

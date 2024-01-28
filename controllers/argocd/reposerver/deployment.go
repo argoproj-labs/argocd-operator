@@ -364,8 +364,7 @@ func (rsr *RepoServerReconciler) deleteDeployment(name, namespace string) error 
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rsr.Logger.Error(err, "deleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s in namespace %s", name, namespace)
 	}
 	rsr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil

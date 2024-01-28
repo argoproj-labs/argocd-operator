@@ -40,8 +40,7 @@ func (rsr *RepoServerReconciler) deleteServiceAccount(name, namespace string) er
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		rsr.Logger.Error(err, "deleteServiceAccount: failed to delete serviceaccount", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteServiceAccount: failed to delete serviceaccount %s in namespace %s", name, namespace)
 	}
 	rsr.Logger.Info("service account deleted", "name", name, "namespace", namespace)
 	return nil

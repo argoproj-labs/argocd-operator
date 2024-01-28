@@ -14,7 +14,7 @@ func (rsr *RepoServerReconciler) reconcileStatus() error {
 
 	deploy, err := workloads.GetDeployment(resourceName, rsr.Instance.Namespace, rsr.Client)
 	if err != nil {
-		return errors.Wrapf(err, "failed to retrieve deployment %s", resourceName)
+		return errors.Wrapf(err, "reconcileStatus: failed to retrieve deployment %s", resourceName)
 	}
 
 	status = common.ArgoCDStatusPending

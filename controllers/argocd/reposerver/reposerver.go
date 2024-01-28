@@ -28,10 +28,7 @@ var (
 )
 
 func (rsr *RepoServerReconciler) Reconcile() error {
-	rsr.Logger = util.NewLogger(common.RepoServerController, "instance", rsr.Instance.Name, "instance-namespace", rsr.Instance.Namespace)
-	component = common.RepoServerComponent
-	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
-	resourceMetricsName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetricsSuffix)
+	rsr.varSetter()
 
 	if err := rsr.reconcileServiceAccount(); err != nil {
 		rsr.Logger.Error(err, "failed to reconcile serviceaccount")
@@ -65,6 +62,11 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 		return err
 	}
 
+	if err := rsr.reconcileStatus(); err != nil {
+		rsr.Logger.Error(err, "failed to reconcile status")
+		return err
+	}
+
 	return nil
 }
 
@@ -73,23 +75,38 @@ func (rsr *RepoServerReconciler) DeleteResources() error {
 
 	// delete deployment
 	err := rsr.deleteDeployment(resourceName, rsr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rsr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete service monitor
 	err = rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rsr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete service
 	err = rsr.deleteService(resourceName, rsr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rsr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete serviceaccount
 	err = rsr.deleteServiceAccount(resourceName, rsr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rsr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete TLS secret
 	err = rsr.deleteSecret(common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rsr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	return deletionErr.ErrOrNil()
 }
@@ -100,4 +117,10 @@ func (rsr *RepoServerReconciler) TriggerRollout(key string) error {
 		return err
 	}
 	return nil
+}
+
+func (rsr *RepoServerReconciler) varSetter() {
+	component = common.RepoServerComponent
+	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
+	resourceMetricsName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerMetricsSuffix)
 }

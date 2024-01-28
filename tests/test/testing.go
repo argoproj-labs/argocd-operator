@@ -56,12 +56,12 @@ func MakeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.
 	return client.Build()
 }
 
-type SchemeOpt func(*runtime.Scheme) error
+type SchemeOpt func(*runtime.Scheme)
 
 func MakeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
 	s := scheme.Scheme
 	for _, opt := range sOpts {
-		_ = opt(s)
+		opt(s)
 	}
 
 	return s
