@@ -3,6 +3,8 @@ package reposerver
 import (
 	"testing"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/argoproj-labs/argocd-operator/tests/mock"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
@@ -120,6 +122,11 @@ func TestReconcileTLSSecret(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "Expected no error but got one.")
 			}
+
+			res, err := resource.GetObject(test.TestArgoCDName, test.TestNamespace, &argoproj.ArgoCD{}, reconciler.Client)
+			assert.NoError(t, err)
+			argocd := res.(*argoproj.ArgoCD)
+			assert.NotEqual(t, "", argocd.Status.RepoTLSChecksum)
 
 			dep, err := workloads.GetDeployment(mockServerName, test.TestNamespace, reconciler.Client)
 			assert.NoError(t, err)

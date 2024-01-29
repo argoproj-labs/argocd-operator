@@ -66,17 +66,17 @@ func (rsr *RepoServerReconciler) getArgs() []string {
 
 	if rsr.Instance.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, common.RedisCmd, rsr.Redis.GetServerAddress())
-	} else {
-		rsr.Logger.Info("redis is disabled, skipping redis configuration")
-	}
 
-	if rsr.Redis.UseTLS() {
-		cmd = append(cmd, common.RedisUseTLSCmd)
-		if rsr.Instance.Spec.Redis.DisableTLSVerification {
-			cmd = append(cmd, common.RedisInsecureSkipTLSVerifyCmd)
-		} else {
-			cmd = append(cmd, common.RedisCACertificate, redisTLSCertPath)
+		if rsr.Redis.UseTLS() {
+			cmd = append(cmd, common.RedisUseTLSCmd)
+			if rsr.Instance.Spec.Redis.DisableTLSVerification {
+				cmd = append(cmd, common.RedisInsecureSkipTLSVerifyCmd)
+			} else {
+				cmd = append(cmd, common.RedisCACertificate, redisTLSCertPath)
+			}
 		}
+	} else {
+		rsr.Logger.Debug("redis is disabled; skipping redis configuration")
 	}
 
 	cmd = append(cmd, common.LogLevelCmd)

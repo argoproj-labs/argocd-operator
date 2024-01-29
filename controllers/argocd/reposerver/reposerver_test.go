@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/argoproj-labs/argocd-operator/tests/mock"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,75 @@ func makeTestReposerverReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *R
 		Instance: cr,
 		Logger:   util.NewLogger(common.RepoServerController),
 	}
+}
+
+func TestReconcile(t *testing.T) {
+	mockServerName := "test-argocd-server"
+	mockAppControllerName := "test-argocd-app-controller"
+	mockRedisName := "test-argocd-redis"
+
+	testArgoCD := test.MakeTestArgoCD()
+	reconciler := makeTestReposerverReconciler(
+		testArgoCD,
+	)
+
+	mockRedis := mock.NewRedis(mockRedisName, test.TestNamespace, reconciler.Client)
+	mockRedis.SetUseTLS(true)
+	mockRedis.SetServerAddress("http://mock-redis-server")
+
+	reconciler.varSetter()
+	reconciler.Server = mock.NewServer(mockServerName, test.TestNamespace, reconciler.Client)
+	reconciler.Appcontroller = mock.NewAppController(mockAppControllerName, test.TestNamespace, reconciler.Client)
+	reconciler.Redis = mockRedis
+
+	expectedResources := []client.Object{
+		test.MakeTestServiceAccount(
+			func(sa *corev1.ServiceAccount) {
+				sa.Name = resourceName
+			},
+		),
+		test.MakeTestService(
+			func(s *corev1.Service) {
+				s.Name = resourceName
+			},
+		),
+		test.MakeTestDeployment(
+			func(d *appsv1.Deployment) {
+				d.Name = resourceName
+			},
+		),
+	}
+
+	err := reconciler.Reconcile()
+	assert.NoError(t, err)
+
+	for _, obj := range expectedResources {
+		_, err := resource.GetObject(resourceName, test.TestNamespace, obj, reconciler.Client)
+		assert.NoError(t, err)
+	}
+
+	monitoring.SetPrometheusAPIFound(true)
+	defer monitoring.SetPrometheusAPIFound(false)
+
+	testArgoCD.Spec.Prometheus.Enabled = true
+	reconciler.Instance = testArgoCD
+
+	err = reconciler.Reconcile()
+	assert.NoError(t, err)
+
+	sm, err := resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(), reconciler.Client)
+	assert.NoError(t, err)
+	assert.NotNil(t, sm)
+
+	testArgoCD.Spec.Prometheus.Enabled = false
+	reconciler.Instance = testArgoCD
+
+	err = reconciler.Reconcile()
+	assert.NoError(t, err)
+
+	_, err = resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(), reconciler.Client)
+	assert.True(t, apierrors.IsNotFound(err))
+
 }
 
 func TestDeleteResources(t *testing.T) {

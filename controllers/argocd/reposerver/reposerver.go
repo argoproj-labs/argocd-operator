@@ -46,7 +46,7 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 			return err
 		}
 	} else {
-		if err := rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace); err != nil {
+		if err := rsr.deleteServiceMonitor(resourceMetricsName, rsr.Instance.Namespace); err != nil {
 			rsr.Logger.Error(err, "DeleteResources: failed to delete serviceMonitor")
 			return err
 		}

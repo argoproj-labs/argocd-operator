@@ -6,6 +6,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/mock"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -250,6 +251,69 @@ func TestGetReplicas(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.reconciler.getReplicas()
 			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
+func TestGetArgs(t *testing.T) {
+
+	tests := []struct {
+		name        string
+		reconciler  *RepoServerReconciler
+		useTLS      bool
+		expectedCmd []string
+	}{
+		{
+			name: "redis disabled",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(
+					func(cr *argoproj.ArgoCD) {
+						cr.Spec.Redis.Enabled = util.BoolPtr(false)
+					},
+				),
+			),
+			useTLS:      false,
+			expectedCmd: []string{"uid_entrypoint.sh", "argocd-repo-server", "--loglevel", "info", "--logformat", "text"},
+		},
+		{
+			name: "redis enabled, UseTLS true, disable TLS verification true",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(
+					func(cr *argoproj.ArgoCD) {
+						cr.Spec.Redis.Enabled = util.BoolPtr(true)
+						cr.Spec.Redis.DisableTLSVerification = true
+					},
+				),
+			),
+			useTLS:      true,
+			expectedCmd: []string{"uid_entrypoint.sh", "argocd-repo-server", "--redis", "http://mock-redis-server", "--redis-use-tls", "--redis-insecure-skip-tls-verify", "--loglevel", "info", "--logformat", "text"},
+		},
+		{
+			name: "redis enabled, UseTLS true, disable TLS verification false",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(
+					func(cr *argoproj.ArgoCD) {
+						cr.Spec.Redis.Enabled = util.BoolPtr(true)
+						cr.Spec.Redis.DisableTLSVerification = false
+					},
+				),
+			),
+			useTLS:      true,
+			expectedCmd: []string{"uid_entrypoint.sh", "argocd-repo-server", "--redis", "http://mock-redis-server", "--redis-use-tls", "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt", "--loglevel", "info", "--logformat", "text"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRedisName := "test-argocd-redis"
+			mockRedis := mock.NewRedis(mockRedisName, test.TestNamespace, tt.reconciler.Client)
+			mockRedis.SetUseTLS(tt.useTLS)
+			mockRedis.SetServerAddress("http://mock-redis-server")
+			tt.reconciler.Redis = mockRedis
+			gotArgs := tt.reconciler.getArgs()
+
+			assert.Equal(t, tt.expectedCmd, gotArgs)
+
 		})
 	}
 }

@@ -393,7 +393,7 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if r.Instance.Spec.Repo.Enabled != nil && *r.Instance.Spec.Repo.Enabled {
+	if r.Instance.Spec.Repo.IsEnabled() {
 		if err := r.ReposerverController.Reconcile(); err != nil {
 			r.Logger.Error(err, "failed to reconcile repo-server controller")
 			return err
