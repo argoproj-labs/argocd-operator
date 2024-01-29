@@ -26,7 +26,7 @@ func makeTestReposerverReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *R
 	}
 	sch := test.MakeTestReconcilerScheme(schemeOpt)
 
-	client := test.MakeTestReconcilerClient(sch, objs, []client.Object{}, []runtime.Object{})
+	client := test.MakeTestReconcilerClient(sch, objs, []client.Object{cr}, []runtime.Object{cr})
 
 	return &RepoServerReconciler{
 		Client:   client,
