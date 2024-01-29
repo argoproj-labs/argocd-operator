@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -13,6 +12,11 @@ type Redis struct {
 	Namespace string
 }
 
+var (
+	useTLS             = false
+	redisServerAddress = ""
+)
+
 func NewRedis(name, namespace string, client client.Client) *Redis {
 	return &Redis{
 		Client:    client,
@@ -22,14 +26,18 @@ func NewRedis(name, namespace string, client client.Client) *Redis {
 	}
 }
 
-func (r *Redis) TriggerRollout(key string) error {
-	return argocdcommon.TriggerDeploymentRollout(r.Name, r.Namespace, key, r.Client)
+func (r *Redis) SetUseTLS(val bool) {
+	useTLS = val
+}
+
+func (r *Redis) SetServerAddress(val string) {
+	redisServerAddress = val
 }
 
 func (r *Redis) UseTLS() bool {
-	return true
+	return useTLS
 }
 
 func (r *Redis) GetServerAddress() string {
-	return "http://mock-server-address:8080"
+	return redisServerAddress
 }

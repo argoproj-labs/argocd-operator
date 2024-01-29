@@ -13,6 +13,14 @@ type Reposerver struct {
 	Namespace string
 }
 
+var (
+	reposerveraddress = ""
+)
+
+func (r *Reposerver) SetServerAddress(val string) {
+	reposerveraddress = val
+}
+
 func NewRepoServer(name, namespace string, client client.Client) *Reposerver {
 	return &Reposerver{
 		Client:    client,
@@ -27,5 +35,5 @@ func (r *Reposerver) TriggerRollout(key string) error {
 }
 
 func (r *Reposerver) GetServerAddress() string {
-	return "http://mock-server-address:8080"
+	return reposerveraddress
 }
