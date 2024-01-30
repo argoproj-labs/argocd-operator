@@ -36,8 +36,8 @@ func NameWithSuffix(name string, suffixes ...string) string {
 }
 
 // GenerateResourceName generates names for namespace scoped resources
-func GenerateResourceName(instanceName, suffix string) string {
-	return NameWithSuffix(instanceName, suffix)
+func GenerateResourceName(instanceName string, suffixes ...string) string {
+	return NameWithSuffix(instanceName, suffixes...)
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
