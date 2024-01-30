@@ -185,10 +185,46 @@ func (rsr *RepoServerReconciler) getContainers() []corev1.Container {
 		repoServerEnv = util.EnvMerge(repoServerEnv, []corev1.EnvVar{{Name: common.ArgoCDExecTimeoutEnvVar, Value: fmt.Sprintf("%ds", *rsr.Instance.Spec.Repo.ExecTimeout)}}, true)
 	}
 
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      common.SSHKnownHosts,
+			MountPath: common.VolumeMountPathSSH,
+		},
+		{
+			Name:      common.TLSCerts,
+			MountPath: common.VolumeMountPathTLS,
+		},
+		{
+			Name:      common.GPGKeys,
+			MountPath: common.VolumeMountPathGPG,
+		},
+		{
+			Name:      common.GPGKeyRing,
+			MountPath: common.VolumeMountPathGPGKeyring,
+		},
+		{
+			Name:      common.VolumeTmp,
+			MountPath: common.VolumeMountPathTmp,
+		},
+		{
+			Name:      common.ArgoCDRepoServerTLSSecretName,
+			MountPath: common.VolumeMountPathRepoServerTLS,
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: redisTLSPath,
+		},
+		{
+			Name:      "plugins",
+			MountPath: cmpServerPluginsPath,
+		},
+	}
+
 	containers := []corev1.Container{{
 		Command:         rsr.getArgs(),
 		Image:           argocdcommon.GetArgoContainerImage(rsr.Instance),
 		ImagePullPolicy: corev1.PullAlways,
+		VolumeMounts:    volumeMounts,
 		Name:            common.ArgoCDRepoServerName,
 		Env:             repoServerEnv,
 		Resources:       rsr.getResources(),
@@ -229,41 +265,6 @@ func (rsr *RepoServerReconciler) getContainers() []corev1.Container {
 			RunAsNonRoot: util.BoolPtr(true),
 		},
 	}}
-
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      common.SSHKnownHosts,
-			MountPath: common.VolumeMountPathSSH,
-		},
-		{
-			Name:      common.TLSCerts,
-			MountPath: common.VolumeMountPathTLS,
-		},
-		{
-			Name:      common.GPGKeys,
-			MountPath: common.VolumeMountPathGPG,
-		},
-		{
-			Name:      common.GPGKeyRing,
-			MountPath: common.VolumeMountPathGPGKeyring,
-		},
-		{
-			Name:      common.VolumeTmp,
-			MountPath: common.VolumeMountPathTmp,
-		},
-		{
-			Name:      common.ArgoCDRepoServerTLSSecretName,
-			MountPath: common.VolumeMountPathRepoServerTLS,
-		},
-		{
-			Name:      common.ArgoCDRedisServerTLSSecretName,
-			MountPath: redisTLSPath,
-		},
-		{
-			Name:      "plugins",
-			MountPath: cmpServerPluginsPath,
-		},
-	}
 
 	if rsr.Instance.Spec.Repo.VolumeMounts != nil {
 		containers[0].VolumeMounts = append(volumeMounts, rsr.Instance.Spec.Repo.VolumeMounts...)
