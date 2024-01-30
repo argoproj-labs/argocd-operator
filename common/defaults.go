@@ -306,6 +306,9 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 `
 	// OperatorMetricsPort is the port that is used to expose default controller-runtime metrics for the operator pod.
 	OperatorMetricsPort = 8080
+
+	// NotificationsControllerMetricsPort is the port that is used to expose notifications controller metrics.
+	NotificationsControllerMetricsPort = 9001
 )
 
 // DefaultLabels returns the default set of labels for controllers.

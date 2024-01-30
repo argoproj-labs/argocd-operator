@@ -270,7 +270,7 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 	err := monitoringv1.AddToScheme(r.Scheme)
 	assert.NoError(t, err)
 
-	err = r.reconcileNotificationsService(a)
+	err = r.reconcileNotificationsMetricsService(a)
 	assert.NoError(t, err)
 
 	testService := &corev1.Service{}
@@ -290,7 +290,7 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 		IntVal: int32(9001),
 	})
 	assert.Equal(t, testService.Spec.Ports[0].Protocol, v1.Protocol("TCP"))
-	assert.Equal(t, testService.Spec.Ports[0].Name, "notification")
+	assert.Equal(t, testService.Spec.Ports[0].Name, "metrics")
 }
 
 func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
@@ -316,7 +316,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 
 	assert.Equal(t, testServiceMonitor.ObjectMeta.Labels["release"], "prometheus-operator")
 
-	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "notification")
+	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Port, "metrics")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, "30s")
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],

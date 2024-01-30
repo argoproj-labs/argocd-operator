@@ -56,7 +56,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 	}
 
 	log.Info("reconciling notifications metrics service")
-	if err := r.reconcileNotificationsService(cr); err != nil {
+	if err := r.reconcileNotificationsMetricsService(cr); err != nil {
 		return err
 	}
 
@@ -95,7 +95,7 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 	}
 
 	log.Info("reconciling notifications service")
-	if err := r.reconcileNotificationsService(cr); err != nil {
+	if err := r.reconcileNotificationsMetricsService(cr); err != nil {
 		return err
 	}
 
@@ -455,9 +455,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 }
 
 // reconcileNotificationsService will ensure that the Service for the Notifications controller metrics is present.
-func (r *ReconcileArgoCD) reconcileNotificationsService(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.ArgoCD) error {
 
 	var component = "notifications-controller"
+
 	svc := newServiceWithSuffix(component, component, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
@@ -470,10 +471,10 @@ func (r *ReconcileArgoCD) reconcileNotificationsService(cr *argoproj.ArgoCD) err
 
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
-			Name:       "notification",
-			Port:       9001,
+			Name:       "metrics",
+			Port:       common.NotificationsControllerMetricsPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(9001),
+			TargetPort: intstr.FromInt(common.NotificationsControllerMetricsPort),
 		},
 	}
 
@@ -501,7 +502,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 
 	serviceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{
 		{
-			Port:     "notification",
+			Port:     "metrics",
 			Scheme:   "http",
 			Interval: "30s",
 		},
