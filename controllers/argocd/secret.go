@@ -125,7 +125,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	}
 
 	if cr.Spec.Grafana.Enabled {
-		log.Info("Warning: grafana field is deprecated from ArgoCD")
+		log.Info(grafanaDeprecatedWarning)
 	}
 	if cr.Spec.Prometheus.Enabled {
 		dnsNames = append(dnsNames, getPrometheusHost(cr))
@@ -364,7 +364,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 
 	return nil
 }

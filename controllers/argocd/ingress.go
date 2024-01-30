@@ -248,7 +248,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
 		}
-		log.Info("Warning: grafana field is deprecated from ArgoCD")
+		log.Info(grafanaDeprecatedWarning)
 		return nil // Ingress found and enabled, do nothing
 	}
 
@@ -256,7 +256,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 		return nil // Grafana itself or Ingress not enabled, move along...
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 
 	return nil
 }

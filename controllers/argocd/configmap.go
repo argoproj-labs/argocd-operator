@@ -306,12 +306,6 @@ func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return cm
 }
 
-// newConfigMapWithName creates a new ConfigMap with the given suffix appended to the name.
-// The name for the CongifMap is based on the name of the given ArgCD.
-func newConfigMapWithSuffix(suffix string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
-	return newConfigMapWithName(fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix), cr)
-}
-
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
 func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
@@ -485,7 +479,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 
 	return nil
 }
@@ -496,7 +490,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 
 	return nil
 }

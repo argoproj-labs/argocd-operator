@@ -102,7 +102,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
-		log.Info("Warning: grafana field is deprecated from ArgoCD")
+		log.Info(grafanaDeprecatedWarning)
 		return nil // Route found, do nothing
 	}
 
@@ -110,7 +110,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 
 	return nil
 }

@@ -73,7 +73,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
 		}
-		log.Info("Warning: grafana field is deprecated from ArgoCD")
+		log.Info(grafanaDeprecatedWarning)
 		return nil // Service found, do nothing
 	}
 
@@ -81,7 +81,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	log.Info("Warning: grafana field is deprecated from ArgoCD")
+	log.Info(grafanaDeprecatedWarning)
 	return nil
 }
 
