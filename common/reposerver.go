@@ -16,8 +16,6 @@ const (
 // suffixes
 const (
 	RepoServerSuffix = "repo-server"
-
-	RepoServerMetricsSuffix = "repo-server-metrics"
 )
 
 // values
