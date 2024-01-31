@@ -41,7 +41,7 @@ func TestRequestConfigMap(t *testing.T) {
 				},
 				Data: test.TestKVP,
 			},
-			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+			desiredConfigMap: test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 				cm.Name = test.TestName
 				cm.Namespace = test.TestNamespace
 				cm.Labels = test.TestKVP
@@ -65,7 +65,7 @@ func TestRequestConfigMap(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+			desiredConfigMap: test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 				cm.Name = test.TestNameMutated
 				cm.Namespace = test.TestNamespace
 				cm.Labels = test.TestKVP
@@ -89,7 +89,7 @@ func TestRequestConfigMap(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredConfigMap: test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+			desiredConfigMap: test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 				cm.Name = test.TestName
 				cm.Namespace = test.TestNamespace
 				cm.Labels = test.TestKVP
@@ -119,7 +119,7 @@ func TestRequestConfigMap(t *testing.T) {
 func TestCreateConfigMap(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredConfigMap := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	desiredConfigMap := test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.TypeMeta = metav1.TypeMeta{
 			Kind:       "ConfigMap",
 			APIVersion: "v1",
@@ -144,7 +144,7 @@ func TestCreateConfigMap(t *testing.T) {
 }
 
 func TestGetConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = test.TestName
 		cm.Namespace = test.TestNamespace
 		cm.Data = test.TestKVP
@@ -162,18 +162,18 @@ func TestGetConfigMap(t *testing.T) {
 }
 
 func TestListConfigMaps(t *testing.T) {
-	configMap1 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap1 := test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-1"
 		cm.Namespace = test.TestNamespace
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-1"
 		cm.Data = test.TestKVP
 
 	})
-	configMap2 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap2 := test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-2"
 		cm.Namespace = test.TestNamespace
 	})
-	configMap3 := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	configMap3 := test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = "configMap-3"
 		cm.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		cm.Data = test.TestKVP
@@ -207,13 +207,13 @@ func TestListConfigMaps(t *testing.T) {
 }
 
 func TestUpdateConfigMap(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = test.TestName
 		cm.Namespace = test.TestNamespace
 		cm.Data = test.TestKVP
 	})).Build()
 
-	desiredConfigMap := test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	desiredConfigMap := test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = test.TestName
 		cm.Namespace = test.TestNamespace
 		cm.Data = map[string]string{
@@ -234,7 +234,7 @@ func TestUpdateConfigMap(t *testing.T) {
 	assert.Equal(t, desiredConfigMap.Data, existingConfigMap.Data)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingConfigMap = test.MakeTestConfigMap(func(cm *corev1.ConfigMap) {
+	existingConfigMap = test.MakeTestConfigMap(nil, func(cm *corev1.ConfigMap) {
 		cm.Name = test.TestName
 		cm.Namespace = test.TestNamespace
 		cm.Data = nil
@@ -244,7 +244,7 @@ func TestUpdateConfigMap(t *testing.T) {
 }
 
 func TestDeleteConfigMap(t *testing.T) {
-	testConfigMap := test.MakeTestConfigMap(func(configMap *corev1.ConfigMap) {
+	testConfigMap := test.MakeTestConfigMap(nil, func(configMap *corev1.ConfigMap) {
 		configMap.Name = test.TestName
 		configMap.Namespace = test.TestNamespace
 	})

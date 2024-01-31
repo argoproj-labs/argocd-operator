@@ -45,7 +45,7 @@ func TestRequestDeployment(t *testing.T) {
 					},
 				},
 			},
-			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+			desiredDeployment: test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 				d.Name = test.TestName
 				d.Namespace = test.TestNamespace
 				d.Labels = test.TestKVP
@@ -73,7 +73,7 @@ func TestRequestDeployment(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+			desiredDeployment: test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 				d.Name = test.TestNameMutated
 				d.Namespace = test.TestNamespace
 				d.Labels = test.TestKVP
@@ -102,7 +102,7 @@ func TestRequestDeployment(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredDeployment: test.MakeTestDeployment(func(d *appsv1.Deployment) {
+			desiredDeployment: test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 				d.Name = test.TestNameMutated
 				d.Namespace = test.TestNamespace
 				d.Labels = test.TestKVP
@@ -132,7 +132,7 @@ func TestRequestDeployment(t *testing.T) {
 func TestCreateDeployment(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredDeployment := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	desiredDeployment := test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.TypeMeta = metav1.TypeMeta{
 			Kind:       "Deployment",
 			APIVersion: "apps/v1",
@@ -156,7 +156,7 @@ func TestCreateDeployment(t *testing.T) {
 }
 
 func TestGetDeployment(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = test.TestName
 		d.Namespace = test.TestNamespace
 		d.Labels = test.TestKVP
@@ -174,17 +174,17 @@ func TestGetDeployment(t *testing.T) {
 }
 
 func TestListDeployments(t *testing.T) {
-	deployment1 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	deployment1 := test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = "deployment-1"
 		d.Namespace = test.TestNamespace
 		d.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	deployment2 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	deployment2 := test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = "deployment-2"
 		d.Namespace = test.TestNamespace
 
 	})
-	deployment3 := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	deployment3 := test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = "deployment-3"
 		d.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		d.Namespace = test.TestNamespace
@@ -217,12 +217,12 @@ func TestListDeployments(t *testing.T) {
 }
 
 func TestUpdateDeployment(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = test.TestName
 		d.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredDeployment := test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	desiredDeployment := test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = test.TestName
 		d.Namespace = test.TestNamespace
 		d.Labels = map[string]string{
@@ -242,7 +242,7 @@ func TestUpdateDeployment(t *testing.T) {
 	assert.Equal(t, desiredDeployment.Labels, existingDeployment.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingDeployment = test.MakeTestDeployment(func(d *appsv1.Deployment) {
+	existingDeployment = test.MakeTestDeployment(nil, func(d *appsv1.Deployment) {
 		d.Name = test.TestName
 		d.Namespace = test.TestNamespace
 	})
@@ -251,7 +251,7 @@ func TestUpdateDeployment(t *testing.T) {
 }
 
 func TestDeleteDeployment(t *testing.T) {
-	testDeployment := test.MakeTestDeployment(func(deployment *appsv1.Deployment) {
+	testDeployment := test.MakeTestDeployment(nil, func(deployment *appsv1.Deployment) {
 		deployment.Name = test.TestName
 		deployment.Namespace = test.TestNamespace
 	})

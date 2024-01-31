@@ -42,7 +42,7 @@ func TestReconcile(t *testing.T) {
 	mockAppControllerName := "test-argocd-app-controller"
 	mockRedisName := "test-argocd-redis"
 
-	testArgoCD := test.MakeTestArgoCD()
+	testArgoCD := test.MakeTestArgoCD(nil)
 	reconciler := makeTestReposerverReconciler(
 		testArgoCD,
 	)
@@ -62,12 +62,12 @@ func TestReconcile(t *testing.T) {
 				sa.Name = resourceName
 			},
 		),
-		test.MakeTestService(
+		test.MakeTestService(nil,
 			func(s *corev1.Service) {
 				s.Name = resourceName
 			},
 		),
-		test.MakeTestDeployment(
+		test.MakeTestDeployment(nil,
 			func(d *appsv1.Deployment) {
 				d.Name = resourceName
 			},
@@ -91,7 +91,7 @@ func TestReconcile(t *testing.T) {
 	err = reconciler.Reconcile()
 	assert.NoError(t, err)
 
-	sm, err := resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(), reconciler.Client)
+	sm, err := resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 
@@ -101,7 +101,7 @@ func TestReconcile(t *testing.T) {
 	err = reconciler.Reconcile()
 	assert.NoError(t, err)
 
-	_, err = resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(), reconciler.Client)
+	_, err = resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
 	assert.True(t, apierrors.IsNotFound(err))
 
 }
@@ -121,22 +121,22 @@ func TestDeleteResources(t *testing.T) {
 						sa.Name = resourceName
 					},
 				),
-				test.MakeTestService(
+				test.MakeTestService(nil,
 					func(s *corev1.Service) {
 						s.Name = resourceName
 					},
 				),
-				test.MakeTestServiceMonitor(
+				test.MakeTestServiceMonitor(nil,
 					func(sm *monitoringv1.ServiceMonitor) {
 						sm.Name = resourceMetricsName
 					},
 				),
-				test.MakeTestSecret(
+				test.MakeTestSecret(nil,
 					func(sec *corev1.Secret) {
 						sec.Name = common.ArgoCDRepoServerTLSSecretName
 					},
 				),
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = resourceName
 					},
@@ -153,17 +153,17 @@ func TestDeleteResources(t *testing.T) {
 						sa.Name = resourceName
 					},
 				),
-				test.MakeTestService(
+				test.MakeTestService(nil,
 					func(s *corev1.Service) {
 						s.Name = resourceName
 					},
 				),
-				test.MakeTestSecret(
+				test.MakeTestSecret(nil,
 					func(sec *corev1.Secret) {
 						sec.Name = common.ArgoCDRepoServerTLSSecretName
 					},
 				),
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = resourceName
 					},
@@ -177,7 +177,7 @@ func TestDeleteResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reconciler := makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 				tt.resources...,
 			)
 
@@ -215,8 +215,8 @@ func TestTriggerRollout(t *testing.T) {
 		{
 			name: "Deployment exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestDeployment(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = "test-argocd-repo-server"
 					},
@@ -228,7 +228,7 @@ func TestTriggerRollout(t *testing.T) {
 		{
 			name: "Deployment does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			deploymentexists: false,
 			expectedError:    true,

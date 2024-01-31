@@ -22,7 +22,7 @@ func TestTLSVerificationRequested(t *testing.T) {
 		{
 			name: "TLS Verification Requested",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Repo.VerifyTLS = true
 					},
@@ -33,7 +33,7 @@ func TestTLSVerificationRequested(t *testing.T) {
 		{
 			name: "TLS Verification Not Requested",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Repo.VerifyTLS = false
 					},
@@ -44,7 +44,7 @@ func TestTLSVerificationRequested(t *testing.T) {
 		{
 			name: "Default (TLS Verification Not Specified)",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedResult: false,
 		},
@@ -67,7 +67,7 @@ func TestGetResources(t *testing.T) {
 		{
 			name: "Resource Requirements Specified",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Repo.Resources = &corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
@@ -96,7 +96,7 @@ func TestGetResources(t *testing.T) {
 		{
 			name: "Default (Resource Requirements Not Specified)",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedResult: corev1.ResourceRequirements{},
 		},
@@ -121,7 +121,7 @@ func TestGetContainerImage(t *testing.T) {
 		{
 			name: "CR Spec Specifies Image",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Repo.Image = "custom-image"
 						cr.Spec.Repo.Version = "custom-version"
@@ -139,7 +139,7 @@ func TestGetContainerImage(t *testing.T) {
 		{
 			name: "Env Var Specifies Image",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			setEnvVarFunc: func() {
 				os.Setenv("ARGOCD_IMAGE", "default-argocd-img:v1.0")
@@ -152,7 +152,7 @@ func TestGetContainerImage(t *testing.T) {
 		{
 			name: "Default Image and Tag Used",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			setEnvVarFunc:  nil,
 			expectedResult: "quay.io/argoproj/argocd@sha256:8576d347f30fa4c56a0129d1c0a0f5ed1e75662f0499f1ed7e917c405fd909dc",
@@ -182,7 +182,7 @@ func TestGetServerAddress(t *testing.T) {
 		{
 			name: "Custom Remote Specified",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Repo.Remote = util.StringPtr("https://custom.repo.server")
 					},
@@ -193,7 +193,7 @@ func TestGetServerAddress(t *testing.T) {
 		{
 			name: "Default (Remote Not Specified)",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedResult: "test-argocd-repo-server.test-ns.svc.cluster.local:8081",
 		},
@@ -217,7 +217,7 @@ func TestGetReplicas(t *testing.T) {
 		{
 			name: "Replicas Specified",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						replicas := int32(3)
 						cr.Spec.Repo.Replicas = &replicas
@@ -229,7 +229,7 @@ func TestGetReplicas(t *testing.T) {
 		{
 			name: "Negative Replicas Specified",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						replicas := int32(-1)
 						cr.Spec.Repo.Replicas = &replicas
@@ -241,7 +241,7 @@ func TestGetReplicas(t *testing.T) {
 		{
 			name: "Default (Replicas Not Specified)",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedResult: nil,
 		},
@@ -266,7 +266,7 @@ func TestGetArgs(t *testing.T) {
 		{
 			name: "redis disabled",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Redis.Enabled = util.BoolPtr(false)
 					},
@@ -278,7 +278,7 @@ func TestGetArgs(t *testing.T) {
 		{
 			name: "redis enabled, UseTLS true, disable TLS verification true",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Redis.Enabled = util.BoolPtr(true)
 						cr.Spec.Redis.DisableTLSVerification = true
@@ -291,7 +291,7 @@ func TestGetArgs(t *testing.T) {
 		{
 			name: "redis enabled, UseTLS true, disable TLS verification false",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(
+				test.MakeTestArgoCD(nil,
 					func(cr *argoproj.ArgoCD) {
 						cr.Spec.Redis.Enabled = util.BoolPtr(true)
 						cr.Spec.Redis.DisableTLSVerification = false

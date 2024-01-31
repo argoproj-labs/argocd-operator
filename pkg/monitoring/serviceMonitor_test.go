@@ -48,7 +48,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 					},
 				},
 			},
-			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+			desiredServiceMonitor: test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 				sm.Labels = test.TestKVP
 				sm.Annotations = test.TestKVP
 			}),
@@ -69,7 +69,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 					},
 				},
 			},
-			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+			desiredServiceMonitor: test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 				sm.Labels = test.TestKVP
 				sm.Annotations = test.TestKVP
 			}),
@@ -94,7 +94,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+			desiredServiceMonitor: test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 				sm.Name = test.TestNameMutated
 				sm.Labels = test.TestKVP
 				sm.Annotations = test.TestKVP
@@ -120,7 +120,7 @@ func TestRequestServiceMonitor(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredServiceMonitor: test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {}),
+			desiredServiceMonitor: test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {}),
 			wantErr:               true,
 		},
 	}
@@ -146,7 +146,7 @@ func TestCreateServiceMonitor(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 	testClient := fake.NewClientBuilder().WithScheme(s).Build()
 
-	desiredServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	desiredServiceMonitor := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.TypeMeta = metav1.TypeMeta{
 			Kind:       "ServiceMonitor",
 			APIVersion: "monitoring.coreos.com/v1",
@@ -173,7 +173,7 @@ func TestGetServiceMonitor(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = test.TestName
 		sm.Namespace = test.TestNamespace
 	})).Build()
@@ -189,13 +189,13 @@ func TestGetServiceMonitor(t *testing.T) {
 }
 
 func TestListServiceMonitors(t *testing.T) {
-	serviceMonitor1 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	serviceMonitor1 := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-1"
 		sm.Namespace = test.TestNamespace
 		sm.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	serviceMonitor2 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) { sm.Name = "serviceMonitor-2" })
-	serviceMonitor3 := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	serviceMonitor2 := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) { sm.Name = "serviceMonitor-2" })
+	serviceMonitor3 := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = "serviceMonitor-3"
 		sm.Namespace = test.TestNamespace
 		sm.Labels[common.AppK8sKeyComponent] = "new-component-2"
@@ -235,7 +235,7 @@ func TestUpdateServiceMonitor(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
 	// Create the initial ServiceMonitor
-	initialServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	initialServiceMonitor := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = test.TestName
 		sm.Namespace = test.TestNamespace
 	})
@@ -267,7 +267,7 @@ func TestUpdateServiceMonitor(t *testing.T) {
 	assert.Equal(t, desiredServiceMonitor.Spec.Endpoints, existingServiceMonitor.Spec.Endpoints)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	existingServiceMonitor = test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	existingServiceMonitor = test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = test.TestName
 		sm.Labels = nil
 	})
@@ -279,7 +279,7 @@ func TestDeleteServiceMonitor(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testServiceMonitor := test.MakeTestServiceMonitor(func(sm *monitoringv1.ServiceMonitor) {
+	testServiceMonitor := test.MakeTestServiceMonitor(nil, func(sm *monitoringv1.ServiceMonitor) {
 		sm.Name = test.TestName
 		sm.Namespace = test.TestNamespace
 	})

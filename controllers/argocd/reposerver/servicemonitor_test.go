@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestReconcileServiceMonitor(t *testing.T) {
+func TestReconcileServiceMonitor_create(t *testing.T) {
 	tests := []struct {
 		name                   string
 		reconciler             *RepoServerReconciler
@@ -23,7 +23,7 @@ func TestReconcileServiceMonitor(t *testing.T) {
 		{
 			name: "Prometheus API absent",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			prometheusAPIAvailable: false,
 			expectedError:          true,
@@ -31,7 +31,7 @@ func TestReconcileServiceMonitor(t *testing.T) {
 		{
 			name: "ServiceMonitor does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			prometheusAPIAvailable: true,
 			expectedError:          false,
@@ -40,8 +40,8 @@ func TestReconcileServiceMonitor(t *testing.T) {
 		{
 			name: "ServiceMonitor exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestServiceMonitor(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestServiceMonitor(nil,
 					func(sm *monitoringv1.ServiceMonitor) {
 						sm.Name = "test-argocd-repo-server-metrics"
 					},
@@ -51,14 +51,45 @@ func TestReconcileServiceMonitor(t *testing.T) {
 			expectedError:          false,
 			expectedServiceMonitor: getDesiredSvcMonitor(),
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.varSetter()
+
+			monitoring.SetPrometheusAPIFound(tt.prometheusAPIAvailable)
+			defer monitoring.SetPrometheusAPIFound(false)
+
+			err := tt.reconciler.reconcileServiceMonitor()
+			assert.NoError(t, err)
+
+			_, err = monitoring.GetServiceMonitor("test-argocd-repo-server-metrics", test.TestNamespace, tt.reconciler.Client)
+
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
+		})
+	}
+}
+
+func TestReconcileServiceMonitor_update(t *testing.T) {
+	tests := []struct {
+		name                   string
+		reconciler             *RepoServerReconciler
+		prometheusAPIAvailable bool
+		expectedError          bool
+		expectedServiceMonitor *monitoringv1.ServiceMonitor
+	}{
 		{
 			name: "ServiceMonitor drift",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 				test.MakeTestServiceMonitor(
+					getDesiredSvcMonitor(),
 					func(sm *monitoringv1.ServiceMonitor) {
 						sm.Name = "test-argocd-repo-server-metrics"
-						// Modify some fields to simulate drift
 						sm.Spec.Endpoints = []monitoringv1.Endpoint{
 							{
 								Port: "diff-port",
@@ -126,7 +157,7 @@ func TestDeleteServiceMonitor(t *testing.T) {
 		{
 			name: "Prometheus API absent",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			prometheusAPIAvailable: false,
 			svcMonitorExist:        false,
@@ -135,7 +166,7 @@ func TestDeleteServiceMonitor(t *testing.T) {
 		{
 			name: "ServiceMonitor not found",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			prometheusAPIAvailable: true,
 			svcMonitorExist:        false,
@@ -144,8 +175,8 @@ func TestDeleteServiceMonitor(t *testing.T) {
 		{
 			name: "ServiceMonitor exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestServiceMonitor(),
+				test.MakeTestArgoCD(nil),
+				test.MakeTestServiceMonitor(nil),
 			),
 			prometheusAPIAvailable: true,
 			svcMonitorExist:        true,

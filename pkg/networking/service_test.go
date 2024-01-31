@@ -42,7 +42,7 @@ func TestRequestService(t *testing.T) {
 				},
 			},
 			mutation: false,
-			desiredService: test.MakeTestService(func(s *corev1.Service) {
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
 				s.Labels = test.TestKVP
 				s.Annotations = test.TestKVP
 			}),
@@ -64,7 +64,7 @@ func TestRequestService(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredService: test.MakeTestService(func(s *corev1.Service) {
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
 				s.Name = testServiceNameMutated
 				s.Labels = test.TestKVP
 				s.Annotations = test.TestKVP
@@ -86,7 +86,7 @@ func TestRequestService(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredService: test.MakeTestService(func(s *corev1.Service) {
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
 				s.Labels = test.TestKVP
 				s.Annotations = test.TestKVP
 			}),
@@ -113,7 +113,7 @@ func TestRequestService(t *testing.T) {
 func TestCreateService(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredService := test.MakeTestService(func(s *corev1.Service) {
+	desiredService := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.TypeMeta = metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
@@ -137,7 +137,7 @@ func TestCreateService(t *testing.T) {
 }
 
 func TestGetService(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(func(s *corev1.Service) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})).Build()
@@ -153,13 +153,13 @@ func TestGetService(t *testing.T) {
 }
 
 func TestListServices(t *testing.T) {
-	service1 := test.MakeTestService(func(s *corev1.Service) {
+	service1 := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = "service-1"
 		s.Namespace = test.TestNamespace
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	service2 := test.MakeTestService(func(s *corev1.Service) { s.Name = "service-2" })
-	service3 := test.MakeTestService(func(s *corev1.Service) {
+	service2 := test.MakeTestService(nil, func(s *corev1.Service) { s.Name = "service-2" })
+	service3 := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = "service-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
@@ -191,12 +191,12 @@ func TestListServices(t *testing.T) {
 }
 
 func TestUpdateService(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(func(s *corev1.Service) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredService := test.MakeTestService(func(s *corev1.Service) {
+	desiredService := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 		s.Labels = map[string]string{
@@ -216,7 +216,7 @@ func TestUpdateService(t *testing.T) {
 	assert.Equal(t, desiredService.Labels, existingService.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingService = test.MakeTestService(func(s *corev1.Service) {
+	existingService = test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})
@@ -225,7 +225,7 @@ func TestUpdateService(t *testing.T) {
 }
 
 func TestDeleteService(t *testing.T) {
-	testService := test.MakeTestService(func(s *corev1.Service) {
+	testService := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})

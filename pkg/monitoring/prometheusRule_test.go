@@ -46,7 +46,7 @@ func TestRequestPrometheusRule(t *testing.T) {
 				},
 			},
 			mutation: false,
-			desiredPrometheusRule: test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 				pr.Labels = test.TestKVP
 				pr.Annotations = test.TestKVP
 
@@ -69,7 +69,7 @@ func TestRequestPrometheusRule(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredPrometheusRule: test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 				pr.Name = test.TestNameMutated
 				pr.Labels = test.TestKVP
 				pr.Annotations = test.TestKVP
@@ -92,7 +92,7 @@ func TestRequestPrometheusRule(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredPrometheusRule: test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 				pr.Labels = test.TestKVP
 				pr.Annotations = test.TestKVP
 			}),
@@ -121,7 +121,7 @@ func TestCreatePrometheusRule(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 	testClient := fake.NewClientBuilder().WithScheme(s).Build()
 
-	desiredPrometheusRule := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	desiredPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.TypeMeta = metav1.TypeMeta{
 			Kind:       "PrometheusRule",
 			APIVersion: "monitoring.coreos.com/v1",
@@ -148,7 +148,7 @@ func TestGetPrometheusRule(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = test.TestName
 		pr.Namespace = test.TestNamespace
 	})).Build()
@@ -164,13 +164,13 @@ func TestGetPrometheusRule(t *testing.T) {
 }
 
 func TestListPrometheusRules(t *testing.T) {
-	prometheusRule1 := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	prometheusRule1 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-1"
 		pr.Namespace = test.TestNamespace
 		pr.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	prometheusRule2 := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) { pr.Name = "prometheusRule-2" })
-	prometheusRule3 := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	prometheusRule2 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) { pr.Name = "prometheusRule-2" })
+	prometheusRule3 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-3"
 		pr.Namespace = test.TestNamespace
 		pr.Labels[common.AppK8sKeyComponent] = "new-component-2"
@@ -210,7 +210,7 @@ func TestUpdatePrometheusRule(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
 	// Create the initial PrometheusRule
-	initialPrometheusRule := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	initialPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = test.TestName
 		pr.Namespace = test.TestNamespace
 	})
@@ -259,7 +259,7 @@ func TestUpdatePrometheusRule(t *testing.T) {
 	assert.Equal(t, desiredPrometheusRule.Spec.Groups, existingPrometheusRule.Spec.Groups)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	existingPrometheusRule = test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	existingPrometheusRule = test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = test.TestName
 		pr.Labels = nil
 	})
@@ -271,7 +271,7 @@ func TestDeletePrometheusRule(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testPrometheusRule := test.MakeTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	testPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = test.TestName
 		pr.Namespace = test.TestNamespace
 	})

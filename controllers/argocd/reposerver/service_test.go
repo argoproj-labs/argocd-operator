@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestReconcileService(t *testing.T) {
+func TestReconcileService_create(t *testing.T) {
 	tests := []struct {
 		name            string
 		reconciler      *RepoServerReconciler
@@ -23,7 +23,7 @@ func TestReconcileService(t *testing.T) {
 		{
 			name: "Service does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedError:   false,
 			expectedService: getDesiredSvc(),
@@ -31,8 +31,8 @@ func TestReconcileService(t *testing.T) {
 		{
 			name: "Service exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestService(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestService(nil,
 					func(svc *corev1.Service) {
 						svc.Name = "test-argocd-repo-server"
 					},
@@ -41,11 +41,39 @@ func TestReconcileService(t *testing.T) {
 			expectedError:   false,
 			expectedService: getDesiredSvc(),
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.varSetter()
+
+			err := tt.reconciler.reconcileService()
+			assert.NoError(t, err)
+
+			_, err = networking.GetService("test-argocd-repo-server", test.TestNamespace, tt.reconciler.Client)
+
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
+
+		})
+	}
+}
+
+func TestReconcileService_update(t *testing.T) {
+	tests := []struct {
+		name            string
+		reconciler      *RepoServerReconciler
+		expectedError   bool
+		expectedService *corev1.Service
+	}{
 		{
 			name: "Service drift",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestService(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestService(getDesiredSvc(),
 					func(svc *corev1.Service) {
 						svc.Name = "test-argocd-repo-server"
 						// Modify some fields to simulate drift
@@ -113,8 +141,8 @@ func TestDeleteService(t *testing.T) {
 		{
 			name: "Service exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestService(),
+				test.MakeTestArgoCD(nil),
+				test.MakeTestService(nil),
 			),
 			serviceExist:  true,
 			expectedError: false,
@@ -122,7 +150,7 @@ func TestDeleteService(t *testing.T) {
 		{
 			name: "Service does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			serviceExist:  false,
 			expectedError: false,

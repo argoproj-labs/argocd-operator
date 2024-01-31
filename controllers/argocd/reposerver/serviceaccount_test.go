@@ -20,7 +20,7 @@ func TestReconcileServiceAccount(t *testing.T) {
 		{
 			name: "ServiceAccount does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedError:            false,
 			expectedCreateLogMessage: "serviceaccount created",
@@ -28,7 +28,7 @@ func TestReconcileServiceAccount(t *testing.T) {
 		{
 			name: "ServiceAccount exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 				test.MakeTestServiceAccount(
 					func(sa *corev1.ServiceAccount) {
 						sa.Name = "test-argocd-repo-server"
@@ -68,7 +68,7 @@ func TestDeleteServiceAccount(t *testing.T) {
 		{
 			name: "ServiceAccount exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 				test.MakeTestServiceAccount(),
 			),
 			serviceAccountExist: true,
@@ -77,7 +77,7 @@ func TestDeleteServiceAccount(t *testing.T) {
 		{
 			name: "ServiceAccount does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			serviceAccountExist: false,
 			expectedError:       false,

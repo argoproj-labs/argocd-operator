@@ -28,17 +28,17 @@ func TestReconcileTLSSecret(t *testing.T) {
 		{
 			name: "no TLS secret",
 			resources: []client.Object{
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = mockServerName
 					},
 				),
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = "test-argocd-repo-server"
 					},
 				),
-				test.MakeTestStatefulSet(
+				test.MakeTestStatefulSet(nil,
 					func(d *appsv1.StatefulSet) {
 						d.Name = mockAppControllerName
 					},
@@ -50,7 +50,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 		{
 			name: "missing target deployments and statefulset",
 			resources: []client.Object{
-				test.MakeTestSecret(
+				test.MakeTestSecret(nil,
 					func(s *corev1.Secret) {
 						s.Name = "argocd-repo-server-tls"
 						s.Type = corev1.SecretTypeTLS
@@ -67,7 +67,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 		{
 			name: "reconcile TLS secret",
 			resources: []client.Object{
-				test.MakeTestSecret(
+				test.MakeTestSecret(nil,
 					func(s *corev1.Secret) {
 						s.Name = "argocd-repo-server-tls"
 						s.Type = corev1.SecretTypeTLS
@@ -77,17 +77,17 @@ func TestReconcileTLSSecret(t *testing.T) {
 						}
 					},
 				),
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = mockServerName
 					},
 				),
-				test.MakeTestDeployment(
+				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
 						d.Name = "test-argocd-repo-server"
 					},
 				),
-				test.MakeTestStatefulSet(
+				test.MakeTestStatefulSet(nil,
 					func(d *appsv1.StatefulSet) {
 						d.Name = mockAppControllerName
 					},
@@ -102,7 +102,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			reconciler := makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 				tt.resources...,
 			)
 			reconciler.varSetter()
@@ -157,8 +157,8 @@ func TestDeleteSecret(t *testing.T) {
 		{
 			name: "Secret exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestSecret(),
+				test.MakeTestArgoCD(nil),
+				test.MakeTestSecret(nil),
 			),
 			secretExist:   true,
 			expectedError: false,
@@ -166,7 +166,7 @@ func TestDeleteSecret(t *testing.T) {
 		{
 			name: "Secret does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			secretExist:   false,
 			expectedError: false,

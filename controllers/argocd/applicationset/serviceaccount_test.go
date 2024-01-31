@@ -11,7 +11,7 @@ import (
 )
 
 func TestApplicationSetReconciler_reconcileServiceAccount(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	resourceLabels = testExpectedLabels
 
@@ -51,7 +51,7 @@ func TestApplicationSetReconciler_reconcileServiceAccount(t *testing.T) {
 }
 
 func TestApplicationSetReconciler_DeleteServiceAccount(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string

@@ -16,7 +16,7 @@ import (
 
 func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 	resourceName = test.TestArgoCDName
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	sa := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = resourceName
 	})
@@ -76,7 +76,7 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 }
 
 func TestApplicationSetReconciler_DeleteRoleBinding(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	sa := test.MakeTestServiceAccount()
 	resourceName = test.TestArgoCDName
 	tests := []struct {

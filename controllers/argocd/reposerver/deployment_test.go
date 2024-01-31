@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestReconcileDeployment(t *testing.T) {
+func TestReconcileDeployment_create(t *testing.T) {
 	mockRedisName := "test-argocd-redis"
 
 	tests := []struct {
@@ -28,7 +28,7 @@ func TestReconcileDeployment(t *testing.T) {
 		{
 			name: "Deployment does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			expectedError:      false,
 			expectedDeployment: getDesiredDeployment(),
@@ -36,8 +36,8 @@ func TestReconcileDeployment(t *testing.T) {
 		{
 			name: "Deployment exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestDeployment(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestDeployment(getDesiredDeployment(),
 					func(d *appsv1.Deployment) {
 						d.Name = "test-argocd-repo-server"
 					},
@@ -46,20 +46,50 @@ func TestReconcileDeployment(t *testing.T) {
 			expectedError:      false,
 			expectedDeployment: getDesiredDeployment(),
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.varSetter()
+
+			mockRedis := mock.NewRedis(mockRedisName, test.TestNamespace, tt.reconciler.Client)
+			mockRedis.SetServerAddress("http://mock-server-address")
+			mockRedis.SetUseTLS(true)
+			tt.reconciler.Redis = mockRedis
+
+			err := tt.reconciler.reconcileDeployment()
+			assert.NoError(t, err)
+
+			_, err = workloads.GetDeployment("test-argocd-repo-server", test.TestNamespace, tt.reconciler.Client)
+
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
+
+		})
+	}
+}
+
+func TestReconcileDeployment_update(t *testing.T) {
+	mockRedisName := "test-argocd-redis"
+
+	tests := []struct {
+		name               string
+		reconciler         *RepoServerReconciler
+		expectedError      bool
+		expectedDeployment *appsv1.Deployment
+	}{
 		{
 			name: "Deployment drift",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestDeployment(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestDeployment(getDesiredDeployment(),
 					func(d *appsv1.Deployment) {
 						d.Name = "test-argocd-repo-server"
 						// Modify some fields to simulate drift
-						d.Spec.Template.Spec.Containers = []corev1.Container{
-							{
-								Name:  "argocd-repo-server",
-								Image: "random-img",
-							},
-						}
+						d.Spec.Template.Spec.Containers[0].Image = "random-image"
 					},
 				),
 			),
@@ -94,7 +124,11 @@ func TestReconcileDeployment(t *testing.T) {
 				ftc := []argocdcommon.FieldToCompare{
 					{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &tt.expectedDeployment.Spec.Template.Spec.NodeSelector},
 					{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &tt.expectedDeployment.Spec.Template.Spec.Volumes},
-					// {Existing: &existing.Spec.Template.Spec.Containers[0], Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0]},
+					{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Image},
+					{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Command},
+					{Existing: &existing.Spec.Template.Spec.Containers[0].Ports, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Ports},
+					{Existing: &existing.Spec.Template.Spec.Containers[0].SecurityContext, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].SecurityContext},
+					{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts},
 					{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &tt.expectedDeployment.Spec.Template.Spec.InitContainers},
 					{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &tt.expectedDeployment.Spec.Template.Spec.ServiceAccountName},
 					{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &tt.expectedDeployment.Spec.Template.Spec.SecurityContext},
@@ -121,8 +155,8 @@ func TestDeleteDeployment(t *testing.T) {
 		{
 			name: "Deployment exists",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
-				test.MakeTestDeployment(),
+				test.MakeTestArgoCD(nil),
+				test.MakeTestDeployment(nil),
 			),
 			deploymentExist: true,
 			expectedError:   false,
@@ -130,7 +164,7 @@ func TestDeleteDeployment(t *testing.T) {
 		{
 			name: "Deployment does not exist",
 			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(),
+				test.MakeTestArgoCD(nil),
 			),
 			deploymentExist: false,
 			expectedError:   false,
@@ -287,7 +321,7 @@ func getDesiredDeployment() *appsv1.Deployment {
 						{
 							Name:            "argocd-repo-server",
 							Image:           "quay.io/argoproj/argocd@sha256:8576d347f30fa4c56a0129d1c0a0f5ed1e75662f0499f1ed7e917c405fd909dc",
-							Command:         []string{"uid_entrypoint.sh", "argocd-repo-server", "--redis", "http://mock-redis-server", "--redis-use-tls", "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt", "--loglevel", "info", "--logformat", "text"},
+							Command:         []string{"uid_entrypoint.sh", "argocd-repo-server", "--redis", "http://mock-server-address", "--redis-use-tls", "--redis-ca-certificate", "/app/config/reposerver/tls/redis/tls.crt", "--loglevel", "info", "--logformat", "text"},
 							ImagePullPolicy: "Always",
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
