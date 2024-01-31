@@ -17,9 +17,6 @@ var (
 )
 
 func (rr *RedisReconciler) reconcileHA() error {
-	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
-	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
-	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
 
 	// reconcile ha role
 	if err := rr.reconcileHARole(); err != nil {

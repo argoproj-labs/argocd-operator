@@ -27,8 +27,7 @@ var (
 )
 
 func (rr *RedisReconciler) Reconcile() error {
-	component = common.RedisComponent
-	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, component)
+	rr.varSetter()
 
 	// check if TLS needs to be used
 	rr.TLSEnabled = rr.UseTLS()
@@ -133,22 +132,45 @@ func (rr *RedisReconciler) DeleteResources() error {
 	var deletionErr util.MultiError
 
 	err := rr.DeleteHAResources()
-	deletionErr.Append(err)
+	if err != nil {
+		rr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	err = rr.DeleteNonHAResources()
-	deletionErr.Append(err)
+	if err != nil {
+		rr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete rolebinding
 	err = rr.deleteRoleBinding(resourceName, rr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete serviceaccount
 	err = rr.deleteServiceAccount(resourceName, rr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	// delete TLS secret
 	err = rr.deleteSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err != nil {
+		rr.Logger.Error(err, "DeleteResources")
+		deletionErr.Append(err)
+	}
 
 	return deletionErr.ErrOrNil()
+}
+
+func (rr *RedisReconciler) varSetter() {
+	component = common.RedisComponent
+	resourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisSuffix)
+	HAResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHASuffix)
+	HAServerResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAServerSuffix)
+	HAProxyResourceName = argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAProxySuffix)
 }

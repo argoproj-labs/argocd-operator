@@ -4,7 +4,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
-	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -62,7 +61,7 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 	fieldsToCompare := []argocdcommon.FieldToCompare{
 		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+		{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 	}
 
 	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
@@ -71,17 +70,17 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		return nil
 	}
 
-	if err = networking.UpdateService(existing, rsr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileService: failed to update service %s", existing.Name)
+	if err = workloads.UpdateConfigMap(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileHAConfigMap: failed to update configmap %s", existing.Name)
 	}
 
-	rsr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
+	rr.Logger.Info("configmap updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
 // reconcileHAHealthConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
 func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
-	cmRequest := workloads.ConfigMapRequest{
+	req := workloads.ConfigMapRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDRedisHAHealthConfigMapName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 		Data: map[string]string{
 			livenessScriptKey:         rr.getLivenessScript(),
@@ -90,7 +89,7 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		},
 	}
 
-	desired, err := workloads.RequestConfigMap(cmRequest)
+	desired, err := workloads.RequestConfigMap(req)
 	if err != nil {
 		rr.Logger.Debug("reconcileHAHealthConfigMap: one or more mutations could not be applied")
 		return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to request configMap %s", desired.Namespace)
@@ -100,7 +99,7 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to set owner reference for configMap", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	_, err = workloads.GetConfigMap(desired.Name, desired.Namespace, rr.Client)
+	existing, err := workloads.GetConfigMap(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to retrieve configMap %s in namespace %s", desired.Name, desired.Namespace)
@@ -113,6 +112,25 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		return nil
 	}
 
+	changed := false
+
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	}
+
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+
+	if !changed {
+		return nil
+	}
+
+	if err = workloads.UpdateConfigMap(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to update configmap %s", existing.Name)
+	}
+
+	rr.Logger.Info("configmap updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

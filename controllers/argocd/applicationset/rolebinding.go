@@ -89,9 +89,6 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 		return nil
 	}
 
-<<<<<<< HEAD
-	asr.Logger.Info("roleBinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
-=======
 	rbChanged := false
 
 	fieldsToCompare := []argocdcommon.FieldToCompare{
@@ -109,7 +106,6 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 	}
 
 	asr.Logger.Info("rolebinding updated", "name", existingRoleBinding.Name, "namespace", existingRoleBinding.Namespace)
->>>>>>> e122612c94b07ffeeda58a84c787e79fd9f30626
 
 	return nil
 }

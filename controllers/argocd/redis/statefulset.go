@@ -45,72 +45,65 @@ var (
 )
 
 func (rr *RedisReconciler) reconcileHAStatefulSet() error {
-	ssReq := rr.getStatefulSetRequest()
+	req := rr.getStatefulSetRequest()
 
-	desiredSS, err := workloads.RequestStatefulSet(ssReq)
+	desired, err := workloads.RequestStatefulSet(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to reconcile statefulset %s", desiredSS.Name)
+		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to reconcile statefulset %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredSS, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAStatefulSet: failed to set owner reference for statefulset", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAStatefulSet: failed to set owner reference for statefulset", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	existingSS, err := workloads.GetStatefulSet(desiredSS.Name, desiredSS.Namespace, rr.Client)
+	existing, err := workloads.GetStatefulSet(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to retrieve statefulset %s", desiredSS.Name)
+			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to retrieve statefulset %s", desired.Name)
 		}
 
-		if err = workloads.CreateStatefulSet(desiredSS, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to create statefulset %s in namespace %s", desiredSS.Name, desiredSS.Namespace)
+		if err = workloads.CreateStatefulSet(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to create statefulset %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("statefulset created", "name", desiredSS.Name, "namespace", desiredSS.Namespace)
+		rr.Logger.Info("statefulset created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	ssChanged := false
+	changed := false
 
-	for i, _ := range existingSS.Spec.Template.Spec.Containers {
+	for i := range existing.Spec.Template.Spec.Containers {
 
-		fieldsToCompare := []struct {
-			existing, desired interface{}
-			extraAction       func()
-		}{
-			{&existingSS.Spec.Template.Spec.Containers[i].Image, &desiredSS.Spec.Template.Spec.Containers[i].Image,
-				func() {
-					existingSS.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.Containers[i].Image, Desired: &desired.Spec.Template.Spec.Containers[i].Image,
+				ExtraAction: func() {
+					if existing.Spec.Template.ObjectMeta.Labels == nil {
+						existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
+					}
+					existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
 				},
 			},
-			{&existingSS.Spec.Template.Spec.Containers[i].Resources, &desiredSS.Spec.Template.Spec.Containers[i].Resources, nil},
-			{&existingSS.Spec.Template.Spec.SecurityContext, &desiredSS.Spec.Template.Spec.SecurityContext, nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[i].Resources, Desired: &desired.Spec.Template.Spec.Containers[i].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[i].SecurityContext, Desired: &desired.Spec.Template.Spec.Containers[i].SecurityContext, ExtraAction: nil},
 		}
 
-		for _, field := range fieldsToCompare {
-			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &ssChanged)
-		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 	}
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingSS.Spec.Template.Spec.InitContainers[0].Resources, &desiredSS.Spec.Template.Spec.InitContainers[0].Resources, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Spec.Template.Spec.InitContainers[0].Resources, Desired: &desired.Spec.Template.Spec.InitContainers[0].Resources, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &ssChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	if !ssChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = workloads.UpdateStatefulSet(existingSS, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to update statefulset %s", existingSS.Name)
+	if err = workloads.UpdateStatefulSet(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to update statefulset %s", existing.Name)
 	}
 
-	rr.Logger.Info("statefulset updated", "name", existingSS.Name, "namespace", existingSS.Namespace)
+	rr.Logger.Info("statefulset updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

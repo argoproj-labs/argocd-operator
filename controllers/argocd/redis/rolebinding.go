@@ -14,7 +14,7 @@ import (
 )
 
 func (rr *RedisReconciler) reconcileRoleBinding() error {
-	rbReq := permissions.RoleBindingRequest{
+	req := permissions.RoleBindingRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
@@ -30,56 +30,53 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 		},
 	}
 
-	desiredRb := permissions.RequestRoleBinding(rbReq)
+	desired := permissions.RequestRoleBinding(req)
 
-	if err := controllerutil.SetControllerReference(rr.Instance, desiredRb, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileRoleBinding: failed to set owner reference for role", "name", desiredRb.Name)
+	if err := controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileRoleBinding: failed to set owner reference for role", "name", desired.Name)
 	}
 
-	existingRb, err := permissions.GetRoleBinding(desiredRb.Name, desiredRb.Namespace, rr.Client)
+	existing, err := permissions.GetRoleBinding(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileRoleBinding: failed to retrieve role %s", desiredRb.Name)
+			return errors.Wrapf(err, "reconcileRoleBinding: failed to retrieve role %s", desired.Name)
 		}
 
-		if err = permissions.CreateRoleBinding(desiredRb, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileRoleBinding: failed to create role %s", desiredRb.Name)
+		if err = permissions.CreateRoleBinding(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileRoleBinding: failed to create role %s", desired.Name)
 		}
-		rr.Logger.Info("rolebinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
+		rr.Logger.Info("rolebinding created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
 	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
-	if !reflect.DeepEqual(existingRb.RoleRef, desiredRb.RoleRef) {
-		rr.Logger.Info("detected drift in roleRef for rolebinding", "name", existingRb.Name, "namespace", existingRb.Namespace)
+	if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
+		rr.Logger.Info("detected drift in roleRef for rolebinding", "name", existing.Name, "namespace", existing.Namespace)
 		if err := rr.deleteRoleBinding(resourceName, rr.Instance.Namespace); err != nil {
-			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existingRb.Name)
+			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existing.Name)
 		}
 		return nil
 	}
 
-	rbChanged := false
+	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingRb.Subjects, &desiredRb.Subjects, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &rbChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	if !rbChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = permissions.UpdateRoleBinding(existingRb, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileRoleBinding: failed to update role %s", existingRb.Name)
+	if err = permissions.UpdateRoleBinding(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileRoleBinding: failed to update role %s", existing.Name)
 	}
 
-	rr.Logger.Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
+	rr.Logger.Info("rolebinding updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

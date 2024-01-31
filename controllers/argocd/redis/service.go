@@ -18,7 +18,7 @@ import (
 )
 
 func (rr *RedisReconciler) reconcileService() error {
-	svcRequest := networking.ServiceRequest{
+	req := networking.ServiceRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
@@ -42,56 +42,53 @@ func (rr *RedisReconciler) reconcileService() error {
 		Client: rr.Client,
 	}
 
-	desiredSvc, err := networking.RequestService(svcRequest)
+	desired, err := networking.RequestService(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileService: failed to request service %s", desiredSvc.Name)
+		return errors.Wrapf(err, "reconcileService: failed to request service %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desiredSvc.Name)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desired.Name)
 	}
 
-	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
+	existing, err := networking.GetService(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileService: failed to retrieve service %s", desiredSvc.Name)
+			return errors.Wrapf(err, "reconcileService: failed to retrieve service %s", desired.Name)
 		}
 
-		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileService: failed to create service %s", desiredSvc.Name)
+		if err = networking.CreateService(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileService: failed to create service %s", desired.Name)
 		}
-		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	svcChanged := false
+	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &svcChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	if !svcChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileService: failed to update service %s", existingSvc.Name)
+	if err = networking.UpdateService(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileService: failed to update service %s", existing.Name)
 	}
 
-	rr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
 // reconcileHAProxyService will ensure that the HA Proxy Service is present for Redis when running in HA mode.
 func (rr *RedisReconciler) reconcileHAProxyService() error {
-	svcRequest := networking.ServiceRequest{
+	req := networking.ServiceRequest{
 		ObjectMeta: argoutil.GetObjMeta(HAProxyResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
@@ -114,50 +111,47 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 		Client: rr.Client,
 	}
 
-	desiredSvc, err := networking.RequestService(svcRequest)
+	desired, err := networking.RequestService(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHAProxyService: failed to request service %s", desiredSvc.Name)
+		return errors.Wrapf(err, "reconcileHAProxyService: failed to request service %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAProxyService: failed to set owner reference for service", "name", desiredSvc.Name)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAProxyService: failed to set owner reference for service", "name", desired.Name)
 	}
 
-	existingSvc, err := networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
+	existing, err := networking.GetService(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAProxyService: failed to retrieve service %s", desiredSvc.Name)
+			return errors.Wrapf(err, "reconcileHAProxyService: failed to retrieve service %s", desired.Name)
 		}
 
-		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAProxyService: failed to create service %s", desiredSvc.Name)
+		if err = networking.CreateService(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileHAProxyService: failed to create service %s", desired.Name)
 		}
-		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	svcChanged := false
+	changed := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingSvc.Annotations, &desiredSvc.Annotations, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &svcChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	if !svcChanged {
+	if !changed {
 		return nil
 	}
 
-	if err = networking.UpdateService(existingSvc, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHAProxyService: failed to update service %s", existingSvc.Name)
+	if err = networking.UpdateService(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileHAProxyService: failed to update service %s", existing.Name)
 	}
 
-	rr.Logger.Info("service updated", "name", existingSvc.Name, "namespace", existingSvc.Namespace)
+	rr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
@@ -184,25 +178,25 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 		},
 	}
 
-	desiredSvc, err := networking.RequestService(svcRequest)
+	desired, err := networking.RequestService(svcRequest)
 	if err != nil {
-		return errors.Wrapf(err, "failed to request service %s", desiredSvc.Name)
+		return errors.Wrapf(err, "failed to request service %s", desired.Name)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "failed to set owner reference for service", "name", desiredSvc.Name)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "failed to set owner reference for service", "name", desired.Name)
 	}
 
-	_, err = networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
+	_, err = networking.GetService(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "failed to retrieve service %s", desiredSvc.Name)
+			return errors.Wrapf(err, "failed to retrieve service %s", desired.Name)
 		}
 
-		if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-			return errors.Wrapf(err, "failed to create service %s", desiredSvc.Name)
+		if err = networking.CreateService(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "failed to create service %s", desired.Name)
 		}
-		rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+		rr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
@@ -214,7 +208,7 @@ func (rr *RedisReconciler) reconcileHAAnnourceServices() error {
 	var reconcileErrs util.MultiError
 
 	for i := int32(0); i < common.DefaultRedisHAReplicas; i++ {
-		svcRequest := networking.ServiceRequest{
+		req := networking.ServiceRequest{
 			ObjectMeta: argoutil.GetObjMeta(argoutil.GenerateResourceName(rr.Instance.Name, fmt.Sprintf("%s-%d", common.RedisHAAnnouceSuffix, i)), rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 			Spec: corev1.ServiceSpec{
 				Selector: map[string]string{
@@ -238,30 +232,30 @@ func (rr *RedisReconciler) reconcileHAAnnourceServices() error {
 			},
 		}
 
-		svcRequest.ObjectMeta.Annotations[common.ServiceAlphaK8sKeyTolerateUnreadyEndpoints] = "true"
+		req.ObjectMeta.Annotations[common.ServiceAlphaK8sKeyTolerateUnreadyEndpoints] = "true"
 
-		desiredSvc, err := networking.RequestService(svcRequest)
+		desired, err := networking.RequestService(req)
 		if err != nil {
-			reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to request service %s", desiredSvc.Name))
+			reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to request service %s", desired.Name))
 			continue
 		}
 
-		if err = controllerutil.SetControllerReference(rr.Instance, desiredSvc, rr.Scheme); err != nil {
-			rr.Logger.Error(err, "reconcileHAAnnourceServices: failed to set owner reference for service", "name", desiredSvc.Name)
+		if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+			rr.Logger.Error(err, "reconcileHAAnnourceServices: failed to set owner reference for service", "name", desired.Name)
 		}
 
-		_, err = networking.GetService(desiredSvc.Name, desiredSvc.Namespace, rr.Client)
+		_, err = networking.GetService(desired.Name, desired.Namespace, rr.Client)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
-				reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to retrieve service %s", desiredSvc.Name))
+				reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to retrieve service %s", desired.Name))
 				continue
 			}
 
-			if err = networking.CreateService(desiredSvc, rr.Client); err != nil {
-				reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to create service %s", desiredSvc.Name))
+			if err = networking.CreateService(desired, rr.Client); err != nil {
+				reconcileErrs.Append(errors.Wrapf(err, "reconcileHAAnnourceServices: failed to create service %s", desired.Name))
 				continue
 			}
-			rr.Logger.Info("service created", "name", desiredSvc.Name, "namespace", desiredSvc.Namespace)
+			rr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 			continue
 		}
 	}
