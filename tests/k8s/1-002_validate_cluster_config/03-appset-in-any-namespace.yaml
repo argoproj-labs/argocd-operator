@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: some-namespace
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: argocd-e2e-cluster-config
+spec:
+  # appset in any ns requires apps in any ns
+  sourceNamespaces:
+    - some-namespace
+  applicationSet:
+    sourceNamespaces:
+      - some-namespace
+    scmProviders:
+      - github.com

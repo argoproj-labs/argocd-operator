@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -58,6 +59,20 @@ func getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []string {
 		cmd = append(cmd, ApplicationSetGitlabSCMTlsCertPath)
 	}
 
+	if len(cr.Spec.ApplicationSet.SourceNamespaces) > 0 {
+		cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(cr.Spec.ApplicationSet.SourceNamespaces, ",")))
+	}
+
+	if len(cr.Spec.ApplicationSet.SCMProviders) > 0 {
+		cmd = append(cmd, "--allowed-scm-providers", fmt.Sprint(strings.Join(cr.Spec.ApplicationSet.SCMProviders, ",")))
+	}
+
+	// appset in any ns doesn't support default SCM providers list.
+	// The list needs to be explicitly defined by admins when the feature is enabled.
+	if len(cr.Spec.ApplicationSet.SourceNamespaces) > 0 && !(len(cr.Spec.ApplicationSet.SCMProviders) > 0) {
+		cmd = append(cmd, "--enable-scm-providers", "false")
+	}
+
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
 	err := isMergable(extraArgs, cmd)
@@ -75,6 +90,18 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD)
 	log.Info("reconciling applicationset serviceaccounts")
 	sa, err := r.reconcileApplicationSetServiceAccount(cr)
 	if err != nil {
+		return err
+	}
+
+	// create clusterrole & clusterrolebinding if cluster-scoped ArgoCD
+	log.Info("reconciling applicationset clusterroles")
+	clusterrole, err := r.reconcileApplicationSetClusterRole(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset clusterrolebindings")
+	if err := r.reconcileApplicationSetClusterRoleBinding(cr, clusterrole, sa); err != nil {
 		return err
 	}
 
@@ -336,6 +363,231 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	}
 
 	return sa, err
+}
+
+func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
+
+	allowed := false
+	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+		allowed = true
+	}
+
+	// policy rules based on https://github.com/argoproj/argo-cd/blob/3c2124235619d8451e2d24c7873e5a6da17354af/manifests/cluster-rbac/applicationset-controller/argocd-applicationset-controller-clusterrole.yaml
+	policyRules := []v1.PolicyRule{
+
+		// ApplicationSet
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applications",
+				"applicationsets",
+				"applicationsets/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		// ApplicationSet Status
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applicationsets/status",
+			},
+			Verbs: []string{
+				"get",
+				"patch",
+				"update",
+			},
+		},
+		// AppProjects
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+
+		// Events
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"watch",
+			},
+		},
+
+		// ConfigMaps
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"create",
+				"update",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"watch",
+			},
+		},
+
+		// Secrets
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+
+		// Deployments
+		{
+			APIGroups: []string{"apps", "extensions"},
+			Resources: []string{
+				"deployments",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+
+		// leases
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{
+				"leases",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+	}
+
+	clusterRole := newClusterRole("argocd-applicationset-controller", policyRules, cr)
+	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
+		return nil, err
+	}
+
+	existingClusterRole := &v1.ClusterRole{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", clusterRole.Name, err)
+		}
+		if !allowed {
+			// Do Nothing
+			return clusterRole, nil
+		}
+		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
+	}
+
+	// ArgoCD not cluster scoped, cleanup any existing resource and exit
+	if !allowed {
+		err := r.Client.Delete(context.TODO(), existingClusterRole)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return existingClusterRole, err
+			}
+		}
+		return existingClusterRole, nil
+	}
+
+	// if the Rules differ, update the Role
+	if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
+		existingClusterRole.Rules = clusterRole.Rules
+		if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
+			return nil, err
+		}
+	}
+	return existingClusterRole, nil
+}
+
+func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj.ArgoCD, role *v1.ClusterRole, sa *corev1.ServiceAccount) error {
+
+	allowed := false
+	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+		allowed = true
+	}
+
+	clusterRB := newClusterRoleBindingWithname("argocd-applicationset-controller", cr)
+	clusterRB.Subjects = []v1.Subject{
+		{
+			Kind:      v1.ServiceAccountKind,
+			Name:      sa.Name,
+			Namespace: cr.Namespace,
+		},
+	}
+	clusterRB.RoleRef = v1.RoleRef{
+		APIGroup: v1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     role.Name,
+	}
+	if err := applyReconcilerHook(cr, clusterRB, ""); err != nil {
+		return err
+	}
+
+	existingClusterRB := &v1.ClusterRoleBinding{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRB.Name}, existingClusterRB)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to reconcile the cluster rolebinding for the service account associated with %s : %s", clusterRB.Name, err)
+		}
+		if !allowed {
+			// Do Nothing
+			return nil
+		}
+		return r.Client.Create(context.TODO(), clusterRB)
+	}
+
+	// ArgoCD not cluster scoped, cleanup any existing resource and exit
+	if !allowed {
+		err := r.Client.Delete(context.TODO(), existingClusterRB)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// if the Rules differ, update the rolebinding
+	if !reflect.DeepEqual(existingClusterRB.Subjects, clusterRB.Subjects) || !reflect.DeepEqual(existingClusterRB.RoleRef, clusterRB.RoleRef) {
+		existingClusterRB.Subjects = clusterRB.Subjects
+		existingClusterRB.RoleRef = clusterRB.RoleRef
+		if err := r.Client.Update(context.TODO(), existingClusterRB); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.Role, error) {
