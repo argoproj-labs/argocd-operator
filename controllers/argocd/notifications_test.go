@@ -255,7 +255,7 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 	assert.True(t, errors.IsNotFound(err))
 }
 
-func TestReconcileNotifications_CreateService(t *testing.T) {
+func TestReconcileNotifications_CreateMetricsService(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
@@ -275,12 +275,12 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 
 	testService := &corev1.Service{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller"),
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testService))
 
 	assert.Equal(t, testService.ObjectMeta.Labels["app.kubernetes.io/name"],
-		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 
 	assert.Equal(t, testService.Spec.Selector["app.kubernetes.io/name"],
 		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
@@ -294,6 +294,7 @@ func TestReconcileNotifications_CreateService(t *testing.T) {
 }
 
 func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
+
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Notifications.Enabled = true
 	})
@@ -302,15 +303,30 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	monitoringv1.AddToScheme(sch)
+
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	err := r.reconcileNotificationsServiceMonitor(a)
+	// Notifications controller service monitor should not be created when Prometheus API is not found.
+	prometheusAPIFound = false
+	err := r.reconcileNotificationsController(a)
 	assert.NoError(t, err)
 
 	testServiceMonitor := &monitoringv1.ServiceMonitor{}
+	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
+		Namespace: a.Namespace,
+	}, testServiceMonitor))
+
+	// Prometheus API found, Verify notification controller service monitor exists.
+	prometheusAPIFound = true
+	err = r.reconcileNotificationsController(a)
+	assert.NoError(t, err)
+
+	testServiceMonitor = &monitoringv1.ServiceMonitor{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller"),
+		Name:      fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"),
 		Namespace: a.Namespace,
 	}, testServiceMonitor))
 
@@ -320,7 +336,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Scheme, "http")
 	assert.Equal(t, testServiceMonitor.Spec.Endpoints[0].Interval, "30s")
 	assert.Equal(t, testServiceMonitor.Spec.Selector.MatchLabels["app.kubernetes.io/name"],
-		fmt.Sprintf("%s-%s", a.Name, "notifications-controller"))
+		fmt.Sprintf("%s-%s", a.Name, "notifications-controller-metrics"))
 }
 
 func TestReconcileNotifications_CreateSecret(t *testing.T) {

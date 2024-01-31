@@ -60,9 +60,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 		return err
 	}
 
-	log.Info("reconciling notifications metrics service monitor")
-	if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
-		return err
+	if prometheusAPIFound {
+		log.Info("reconciling notifications metrics service monitor")
+		if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -458,8 +460,9 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.ArgoCD) error {
 
 	var component = "notifications-controller"
+	var suffix = "notifications-controller-metrics"
 
-	svc := newServiceWithSuffix(component, component, cr)
+	svc := newServiceWithSuffix(suffix, component, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		// Service found, do nothing
 		return nil
@@ -487,7 +490,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 // reconcileNotificationsServiceMonitor will ensure that the ServiceMonitor for the Notifications controller metrics is present.
 func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.ArgoCD) error {
 
-	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller")
+	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller-metrics")
 	serviceMonitor := newServiceMonitorWithName(name, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, serviceMonitor.Name, serviceMonitor) {
 		// Service found, do nothing

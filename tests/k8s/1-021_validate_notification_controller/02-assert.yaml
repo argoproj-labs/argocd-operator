@@ -9,12 +9,12 @@ status:
 kind: Service
 apiVersion: v1
 metadata:
-  name: example-argocd-notifications-controller
+  name: example-argocd-notifications-controller-metrics
 ---
 kind: ServiceMonitor
-apiVersion: v1
+apiVersion: monitoring.coreos.com/v1
 metadata:
-  name: example-argocd-notifications-controller
+  name: example-argocd-notifications-controller-metrics
 ---
 kind: Deployment
 apiVersion: apps/v1
