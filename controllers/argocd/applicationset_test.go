@@ -458,82 +458,8 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	appsetAssertExpectedLabels(t, &sa.ObjectMeta)
 }
 
-func TestReconcileApplicationSet_ClusterRole(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	crRet, err := r.reconcileApplicationSetClusterRole(a)
-	assert.NoError(t, err)
-
-	cr := &rbacv1.ClusterRole{}
-	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: "argocd-argocd-argocd-applicationset-controller"}, cr)
-	assert.NoError(t, err)
-
-	assert.Equal(t, crRet.Name, cr.Name)
-
-	expectedResources := []string{
-		"deployments",
-		"secrets",
-		"configmaps",
-		"events",
-		"applicationsets/status",
-		"applications",
-		"applicationsets",
-		"appprojects",
-		"applicationsets/finalizers",
-		"leases",
-	}
-
-	foundResources := []string{}
-
-	for _, rule := range cr.Rules {
-		foundResources = append(foundResources, rule.Resources...)
-	}
-
-	sort.Strings(expectedResources)
-	sort.Strings(foundResources)
-
-	assert.Equal(t, expectedResources, foundResources)
-}
-
-func TestReconcileApplicationSet_ClusterRoleBinding(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-
-	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	cr := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
-	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
-
-	err := r.reconcileApplicationSetClusterRoleBinding(a, cr, sa)
-	assert.NoError(t, err)
-
-	crb := &rbacv1.ClusterRoleBinding{}
-	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: "argocd-argocd-argocd-applicationset-controller"}, crb)
-	assert.NoError(t, err)
-
-	assert.Equal(t, crb.RoleRef.Name, cr.Name)
-	assert.Equal(t, crb.Subjects[0].Name, sa.Name)
-}
-
-// Test cleanup of applicationset-controller clusterrole & clusterrolebinding
-func TestReconcileApplicationSet_ClusterRBACCleanup(t *testing.T) {
+// Test creation/cleanup of applicationset-controller clusterrole & clusterrolebinding
+func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
 
@@ -583,6 +509,8 @@ func TestReconcileApplicationSet_ClusterRBACCleanup(t *testing.T) {
 	crb = &rbacv1.ClusterRoleBinding{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName}, crb)
 	assert.NoError(t, err)
+	assert.Equal(t, crb.RoleRef.Name, cr.Name)
+	assert.Equal(t, crb.Subjects[0].Name, sa.Name)
 
 	// make ArgoCD namespaced-scope, existing resources should be deleted
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
