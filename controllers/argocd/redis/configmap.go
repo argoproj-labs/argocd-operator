@@ -2,7 +2,9 @@ package redis
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,29 +35,47 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		},
 	}
 
-	desiredCM, err := workloads.RequestConfigMap(cmRequest)
+	desired, err := workloads.RequestConfigMap(cmRequest)
 	if err != nil {
 		rr.Logger.Debug("reconcileHAConfigMap: one or more mutations could not be applied")
-		return errors.Wrapf(err, "reconcileHAConfigMap: failed to request configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
+		return errors.Wrapf(err, "reconcileHAConfigMap: failed to request configMap %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAConfigMap: failed to set owner reference for configMap", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
+	existing, err := workloads.GetConfigMap(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
+			return errors.Wrapf(err, "reconcileHAConfigMap: failed to retrieve configMap %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
+		if err = workloads.CreateConfigMap(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileHAConfigMap: failed to create configMap %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("config map created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+		rr.Logger.Info("config map created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+	changed := false
+
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+	}
+
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+
+	if !changed {
 		return nil
 	}
 
+	if err = networking.UpdateService(existing, rsr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileService: failed to update service %s", existing.Name)
+	}
+
+	rsr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
@@ -70,26 +90,26 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 		},
 	}
 
-	desiredCM, err := workloads.RequestConfigMap(cmRequest)
+	desired, err := workloads.RequestConfigMap(cmRequest)
 	if err != nil {
 		rr.Logger.Debug("reconcileHAHealthConfigMap: one or more mutations could not be applied")
-		return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to request configMap %s", desiredCM.Namespace)
+		return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to request configMap %s", desired.Namespace)
 	}
 
-	if err = controllerutil.SetControllerReference(rr.Instance, desiredCM, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to set owner reference for configMap", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
+		rr.Logger.Error(err, "reconcileHAHealthConfigMap: failed to set owner reference for configMap", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	_, err = workloads.GetConfigMap(desiredCM.Name, desiredCM.Namespace, rr.Client)
+	_, err = workloads.GetConfigMap(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to retrieve configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
+			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to retrieve configMap %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = workloads.CreateConfigMap(desiredCM, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to create configMap %s in namespace %s", desiredCM.Name, desiredCM.Namespace)
+		if err = workloads.CreateConfigMap(desired, rr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileHAHealthConfigMap: failed to create configMap %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("configMap created", "name", desiredCM.Name, "namespace", desiredCM.Namespace)
+		rr.Logger.Info("configMap created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
