@@ -631,3 +631,61 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 		})
 	}
 }
+
+// ADDMANGAAL
+func TestReconcileArgoCD_sourceNamespacemapper(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Namespace = "argo"
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Create ArgoCD instances with different source namespaces
+	argocd1 := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd1",
+			Namespace: "argo-test-1",
+		},
+		Spec: argoproj.ArgoCDSpec{
+			SourceNamespaces: []string{"test-namespace-1"},
+		},
+	}
+
+	argocd2 := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd2",
+			Namespace: "argo-test2",
+		},
+		Spec: argoproj.ArgoCDSpec{
+			SourceNamespaces: []string{"test-namespace-2"},
+		},
+	}
+
+	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+	assert.NoError(t, r.Client.Create(context.TODO(), argocd2))
+
+	// Create a mock namespace object triggering the sourceNamespacemapper
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+
+	// Call the sourceNamespacemapper function
+	result := r.sourceNamespacemapper(context.TODO(), ns)
+
+	// Assert the expected reconcile requests
+	expectedResult := []reconcile.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Name:      "argocd1",
+				Namespace: "argo-test-1",
+			},
+		},
+	}
+	assert.ElementsMatch(t, expectedResult, result)
+}
