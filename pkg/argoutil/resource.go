@@ -42,7 +42,7 @@ func GenerateResourceName(instanceName string, suffixes ...string) string {
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
 func GenerateUniqueResourceName(instanceName, instanceNamespace string, suffixes ...string) string {
-	return NameWithSuffix(NameWithSuffix(instanceName, instanceName), suffixes...)
+	return NameWithSuffix(NameWithSuffix(instanceName, instanceNamespace), suffixes...)
 }
 
 func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) metav1.ObjectMeta {
