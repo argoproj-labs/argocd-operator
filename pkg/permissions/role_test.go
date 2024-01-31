@@ -41,7 +41,7 @@ func TestRequestRole(t *testing.T) {
 				},
 				Rules: test.TestRules,
 			},
-			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+			desiredRole: test.MakeTestRole(nil, func(r *rbacv1.Role) {
 				r.Name = test.TestName
 				r.Namespace = test.TestNamespace
 				r.Labels = test.TestKVP
@@ -65,7 +65,7 @@ func TestRequestRole(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+			desiredRole: test.MakeTestRole(nil, func(r *rbacv1.Role) {
 				r.Name = test.TestName
 				r.Namespace = test.TestNamespace
 				r.Labels = test.TestKVP
@@ -89,7 +89,7 @@ func TestRequestRole(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredRole: test.MakeTestRole(func(r *rbacv1.Role) {
+			desiredRole: test.MakeTestRole(nil, func(r *rbacv1.Role) {
 				r.Name = test.TestName
 				r.Namespace = test.TestNamespace
 				r.Labels = test.TestKVP
@@ -120,7 +120,7 @@ func TestRequestRole(t *testing.T) {
 func TestCreateRole(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredRole := test.MakeTestRole(func(r *rbacv1.Role) {
+	desiredRole := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.TypeMeta = metav1.TypeMeta{
 			Kind:       "Role",
 			APIVersion: "rbac.authorization.k8s.io/v1",
@@ -144,7 +144,7 @@ func TestCreateRole(t *testing.T) {
 }
 
 func TestGetRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(func(r *rbacv1.Role) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = test.TestName
 		r.Namespace = test.TestNamespace
 	})).Build()
@@ -160,16 +160,16 @@ func TestGetRole(t *testing.T) {
 }
 
 func TestListRoles(t *testing.T) {
-	role1 := test.MakeTestRole(func(r *rbacv1.Role) {
+	role1 := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = "role-1"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
 		r.Namespace = test.TestNamespace
 	})
-	role2 := test.MakeTestRole(func(r *rbacv1.Role) {
+	role2 := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = "role-2"
 		r.Namespace = test.TestNamespace
 	})
-	role3 := test.MakeTestRole(func(r *rbacv1.Role) {
+	role3 := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = "role-3"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		r.Namespace = test.TestNamespace
@@ -203,12 +203,12 @@ func TestListRoles(t *testing.T) {
 }
 
 func TestUpdateRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(func(r *rbacv1.Role) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = test.TestName
 		r.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredRole := test.MakeTestRole(func(r *rbacv1.Role) {
+	desiredRole := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = test.TestName
 		r.Rules = testRulesMutated
 		r.Namespace = test.TestNamespace
@@ -226,7 +226,7 @@ func TestUpdateRole(t *testing.T) {
 	assert.Equal(t, desiredRole.Rules, existingRole.Rules)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingRole = test.MakeTestRole(func(r *rbacv1.Role) {
+	existingRole = test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = test.TestName
 	})
 	err = UpdateRole(existingRole, testClient)
@@ -234,7 +234,7 @@ func TestUpdateRole(t *testing.T) {
 }
 
 func TestDeleteRole(t *testing.T) {
-	testRole := test.MakeTestRole(func(r *rbacv1.Role) {
+	testRole := test.MakeTestRole(nil, func(r *rbacv1.Role) {
 		r.Name = test.TestName
 		r.Namespace = test.TestNamespace
 	})

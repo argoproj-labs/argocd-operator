@@ -77,12 +77,14 @@ func TestMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, clien
 
 type argoCDOpt func(*argoproj.ArgoCD)
 
-func MakeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestArgoCDName,
-			Namespace: TestNamespace,
-		},
+func MakeTestArgoCD(a *argoproj.ArgoCD, opts ...argoCDOpt) *argoproj.ArgoCD {
+	if a == nil {
+		a = &argoproj.ArgoCD{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      TestArgoCDName,
+				Namespace: TestNamespace,
+			},
+		}
 	}
 	for _, o := range opts {
 		o(a)
@@ -92,12 +94,14 @@ func MakeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
 
 type namespaceOpt func(*corev1.Namespace)
 
-func MakeTestNamespace(opts ...namespaceOpt) *corev1.Namespace {
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   TestNamespace,
-			Labels: make(map[string]string),
-		},
+func MakeTestNamespace(ns *corev1.Namespace, opts ...namespaceOpt) *corev1.Namespace {
+	if ns == nil {
+		ns = &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   TestNamespace,
+				Labels: make(map[string]string),
+			},
+		}
 	}
 	for _, o := range opts {
 		o(ns)
@@ -107,38 +111,41 @@ func MakeTestNamespace(opts ...namespaceOpt) *corev1.Namespace {
 
 type statefulSetOpt func(*appsv1.StatefulSet)
 
-func MakeTestStatefulSet(opts ...statefulSetOpt) *appsv1.StatefulSet {
-	desiredStatefulSet := &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Selector: &metav1.LabelSelector{},
-		},
+func MakeTestStatefulSet(ss *appsv1.StatefulSet, opts ...statefulSetOpt) *appsv1.StatefulSet {
+	if ss == nil {
+		ss = &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Selector: &metav1.LabelSelector{},
+			},
+		}
 	}
-
 	for _, opt := range opts {
-		opt(desiredStatefulSet)
+		opt(ss)
 	}
-	return desiredStatefulSet
+	return ss
 }
 
 type deploymentOpt func(*appsv1.Deployment)
 
-func MakeTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
-	d := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{},
-		},
+func MakeTestDeployment(d *appsv1.Deployment, opts ...deploymentOpt) *appsv1.Deployment {
+	if d == nil {
+		d = &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Spec: appsv1.DeploymentSpec{
+				Selector: &metav1.LabelSelector{},
+			},
+		}
 	}
 	for _, o := range opts {
 		o(d)
@@ -148,15 +155,17 @@ func MakeTestDeployment(opts ...deploymentOpt) *appsv1.Deployment {
 
 type hpaOpt func(*autoscalingv1.HorizontalPodAutoscaler)
 
-func MakeTestHPA(opts ...hpaOpt) *autoscalingv1.HorizontalPodAutoscaler {
-	hpa := &autoscalingv1.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: autoscalingv1.HorizontalPodAutoscalerSpec{},
+func MakeTestHPA(hpa *autoscalingv1.HorizontalPodAutoscaler, opts ...hpaOpt) *autoscalingv1.HorizontalPodAutoscaler {
+	if hpa == nil {
+		hpa = &autoscalingv1.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Spec: autoscalingv1.HorizontalPodAutoscalerSpec{},
+		}
 	}
 	for _, o := range opts {
 		o(hpa)
@@ -166,12 +175,14 @@ func MakeTestHPA(opts ...hpaOpt) *autoscalingv1.HorizontalPodAutoscaler {
 
 type podOpt func(*corev1.Pod)
 
-func MakeTestPod(opts ...podOpt) *corev1.Pod {
-	p := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      TestName,
-			Namespace: TestNamespace,
-		},
+func MakeTestPod(p *corev1.Pod, opts ...podOpt) *corev1.Pod {
+	if p == nil {
+		p = &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      TestName,
+				Namespace: TestNamespace,
+			},
+		}
 	}
 	for _, o := range opts {
 		o(p)
@@ -181,14 +192,16 @@ func MakeTestPod(opts ...podOpt) *corev1.Pod {
 
 type serviceOpt func(*corev1.Service)
 
-func MakeTestService(opts ...serviceOpt) *corev1.Service {
-	s := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
+func MakeTestService(s *corev1.Service, opts ...serviceOpt) *corev1.Service {
+	if s == nil {
+		s = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+		}
 	}
 	for _, o := range opts {
 		o(s)
@@ -198,15 +211,17 @@ func MakeTestService(opts ...serviceOpt) *corev1.Service {
 
 type configMapOpt func(*corev1.ConfigMap)
 
-func MakeTestConfigMap(opts ...configMapOpt) *corev1.ConfigMap {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Data: make(map[string]string),
+func MakeTestConfigMap(cm *corev1.ConfigMap, opts ...configMapOpt) *corev1.ConfigMap {
+	if cm == nil {
+		cm = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Data: make(map[string]string),
+		}
 	}
 	for _, o := range opts {
 		o(cm)
@@ -216,15 +231,17 @@ func MakeTestConfigMap(opts ...configMapOpt) *corev1.ConfigMap {
 
 type secretOpt func(*corev1.Secret)
 
-func MakeTestSecret(opts ...secretOpt) *corev1.Secret {
-	s := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		StringData: map[string]string{},
+func MakeTestSecret(s *corev1.Secret, opts ...secretOpt) *corev1.Secret {
+	if s == nil {
+		s = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			StringData: map[string]string{},
+		}
 	}
 	for _, o := range opts {
 		o(s)
@@ -234,15 +251,17 @@ func MakeTestSecret(opts ...secretOpt) *corev1.Secret {
 
 type roleOpt func(*rbacv1.Role)
 
-func MakeTestRole(opts ...roleOpt) *rbacv1.Role {
-	r := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Rules: TestRules,
+func MakeTestRole(r *rbacv1.Role, opts ...roleOpt) *rbacv1.Role {
+	if r == nil {
+		r = &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Rules: TestRules,
+		}
 	}
 	for _, o := range opts {
 		o(r)
@@ -289,14 +308,16 @@ var (
 
 type roleBindingOpt func(*rbacv1.RoleBinding)
 
-func MakeTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
-	rb := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
+func MakeTestRoleBinding(rb *rbacv1.RoleBinding, opts ...roleBindingOpt) *rbacv1.RoleBinding {
+	if rb == nil {
+		rb = &rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+		}
 	}
 	for _, o := range opts {
 		o(rb)
@@ -306,14 +327,16 @@ func MakeTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
 
 type clusterRoleOpt func(*rbacv1.ClusterRole)
 
-func MakeTestClusterRole(opts ...clusterRoleOpt) *rbacv1.ClusterRole {
-	cr := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Rules: TestRules,
+func MakeTestClusterRole(cr *rbacv1.ClusterRole, opts ...clusterRoleOpt) *rbacv1.ClusterRole {
+	if cr == nil {
+		cr = &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			Rules: TestRules,
+		}
 	}
 	for _, o := range opts {
 		o(cr)
@@ -323,18 +346,20 @@ func MakeTestClusterRole(opts ...clusterRoleOpt) *rbacv1.ClusterRole {
 
 type clusterRoleBindingOpt func(*rbacv1.ClusterRoleBinding)
 
-func MakeTestClusterRoleBinding(opts ...clusterRoleBindingOpt) *rbacv1.ClusterRoleBinding {
-	crb := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		RoleRef: rbacv1.RoleRef{
-			Kind:     "ClusterRole",
-			Name:     TestName,
-			APIGroup: "rbac.authorization.k8s.io",
-		},
+func MakeTestClusterRoleBinding(crb *rbacv1.ClusterRoleBinding, opts ...clusterRoleBindingOpt) *rbacv1.ClusterRoleBinding {
+	if crb == nil {
+		crb = &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+			RoleRef: rbacv1.RoleRef{
+				Kind:     "ClusterRole",
+				Name:     TestName,
+				APIGroup: "rbac.authorization.k8s.io",
+			},
+		}
 	}
 	for _, o := range opts {
 		o(crb)
@@ -361,19 +386,21 @@ func MakeTestServiceAccount(opts ...serviceAccountOpt) *corev1.ServiceAccount {
 
 type serviceMonitorOpt func(*monitoringv1.ServiceMonitor)
 
-func MakeTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMonitor {
-	sm := &monitoringv1.ServiceMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: monitoringv1.ServiceMonitorSpec{
-			Selector: metav1.LabelSelector{
-				MatchLabels: TestKVP,
+func MakeTestServiceMonitor(sm *monitoringv1.ServiceMonitor, opts ...serviceMonitorOpt) *monitoringv1.ServiceMonitor {
+	if sm == nil {
+		sm = &monitoringv1.ServiceMonitor{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
 			},
-		},
+			Spec: monitoringv1.ServiceMonitorSpec{
+				Selector: metav1.LabelSelector{
+					MatchLabels: TestKVP,
+				},
+			},
+		}
 	}
 	for _, o := range opts {
 		o(sm)
@@ -383,14 +410,16 @@ func MakeTestServiceMonitor(opts ...serviceMonitorOpt) *monitoringv1.ServiceMoni
 
 type prometheusRuleOpt func(*monitoringv1.PrometheusRule)
 
-func MakeTestPrometheusRule(opts ...prometheusRuleOpt) *monitoringv1.PrometheusRule {
-	pr := &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        TestName,
-			Namespace:   TestNamespace,
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
+func MakeTestPrometheusRule(pr *monitoringv1.PrometheusRule, opts ...prometheusRuleOpt) *monitoringv1.PrometheusRule {
+	if pr == nil {
+		pr = &monitoringv1.PrometheusRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        TestName,
+				Namespace:   TestNamespace,
+				Labels:      make(map[string]string),
+				Annotations: make(map[string]string),
+			},
+		}
 	}
 	for _, o := range opts {
 		o(pr)

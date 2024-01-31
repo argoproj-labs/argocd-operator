@@ -14,7 +14,7 @@ import (
 )
 
 func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceLabels = testExpectedLabels
 	tests := []struct {
 		name        string
@@ -52,7 +52,7 @@ func TestNotificationsReconciler_reconcileSecret(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteSecret(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

@@ -14,7 +14,7 @@ import (
 
 func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 	resourceLabels = testExpectedLabels
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	asr := makeTestApplicationSetReconciler(t, true, ns)
 
 	existingWebhookRoute := asr.getDesiredWebhookRoute()
@@ -67,7 +67,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 }
 
 func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabled(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 
 	tests := []struct {
 		name                      string
@@ -106,7 +106,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabl
 }
 
 func TestApplicationSetReconciler_deleteWebhookRoute(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	tests := []struct {
 		name                      string
 		webhookServerRouteEnabled bool

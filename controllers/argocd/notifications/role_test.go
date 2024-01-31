@@ -14,7 +14,7 @@ import (
 )
 
 func TestNotificationsReconciler_reconcileRole(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	existingRole := &rbacv1.Role{
 		TypeMeta: metav1.TypeMeta{
@@ -73,7 +73,7 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteRole(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string

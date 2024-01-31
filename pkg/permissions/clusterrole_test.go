@@ -42,7 +42,7 @@ func TestRequestClusterClusterRole(t *testing.T) {
 				Rules: test.TestRules,
 			},
 			mutation: false,
-			desiredClusterRole: test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+			desiredClusterRole: test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 				r.Name = test.TestName
 				r.Labels = test.TestKVP
 				r.Annotations = test.TestKVP
@@ -64,7 +64,7 @@ func TestRequestClusterClusterRole(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredClusterRole: test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+			desiredClusterRole: test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 				r.Name = test.TestName
 				r.Labels = test.TestKVP
 				r.Annotations = test.TestKVP
@@ -87,7 +87,7 @@ func TestRequestClusterClusterRole(t *testing.T) {
 				Client: testClient,
 			},
 			mutation: true,
-			desiredClusterRole: test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+			desiredClusterRole: test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 				r.Name = test.TestName
 				r.Labels = test.TestKVP
 				r.Annotations = test.TestKVP
@@ -115,7 +115,7 @@ func TestRequestClusterClusterRole(t *testing.T) {
 func TestCreateClusterRole(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredClusterRole := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	desiredClusterRole := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = test.TestName
 		r.TypeMeta = metav1.TypeMeta{
 			Kind:       "ClusterRole",
@@ -136,7 +136,7 @@ func TestCreateClusterRole(t *testing.T) {
 }
 
 func TestGetClusterRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = test.TestName
 	})).Build()
 
@@ -151,12 +151,12 @@ func TestGetClusterRole(t *testing.T) {
 }
 
 func TestListClusterRoles(t *testing.T) {
-	role1 := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	role1 := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = "role-1"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	role2 := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) { r.Name = "role-2" })
-	role3 := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	role2 := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) { r.Name = "role-2" })
+	role3 := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = "role-3"
 		r.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
@@ -188,11 +188,11 @@ func TestListClusterRoles(t *testing.T) {
 }
 
 func TestUpdateClusterRole(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = test.TestName
 	})).Build()
 
-	desiredClusterRole := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	desiredClusterRole := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = test.TestName
 		r.Rules = testRulesMutated
 	})
@@ -208,7 +208,7 @@ func TestUpdateClusterRole(t *testing.T) {
 	assert.Equal(t, desiredClusterRole.Rules, existingClusterRole.Rules)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingClusterRole = test.MakeTestClusterRole(func(cr *rbacv1.ClusterRole) {
+	existingClusterRole = test.MakeTestClusterRole(nil, func(cr *rbacv1.ClusterRole) {
 		cr.Name = test.TestName
 	})
 	err = UpdateClusterRole(existingClusterRole, testClient)
@@ -216,7 +216,7 @@ func TestUpdateClusterRole(t *testing.T) {
 }
 
 func TestDeleteClusterRole(t *testing.T) {
-	testClusterRole := test.MakeTestClusterRole(func(r *rbacv1.ClusterRole) {
+	testClusterRole := test.MakeTestClusterRole(nil, func(r *rbacv1.ClusterRole) {
 		r.Name = test.TestName
 	})
 
