@@ -2,7 +2,6 @@ apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: argocd-test
-  namespace: test
 status:
   phase: Available
 ---
@@ -10,18 +9,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-test-argocd-application-controller
-  namespace: test
-
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: argocd-test-argocd-server
-  namespace: test
-
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: argocd-test-argocd-redis-ha
-  namespace: test
