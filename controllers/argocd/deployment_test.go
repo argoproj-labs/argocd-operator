@@ -1566,12 +1566,6 @@ func operationProcessors(n int32) argoCDOpt {
 	}
 }
 
-func statusProcessors(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Processors.Status = n
-	}
-}
-
 func Test_UpdateNodePlacement(t *testing.T) {
 
 	deployment := &appsv1.Deployment{
