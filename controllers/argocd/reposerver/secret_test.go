@@ -105,6 +105,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 				test.MakeTestArgoCD(nil),
 				tt.resources...,
 			)
+			reconciler.TLSEnabled = tt.secretExist
 			reconciler.varSetter()
 
 			reconciler.Server = mock.NewServer(mockServerName, test.TestNamespace, reconciler.Client)

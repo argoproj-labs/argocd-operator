@@ -17,6 +17,11 @@ func (rsr *RepoServerReconciler) TLSVerificationRequested() bool {
 	return rsr.Instance.Spec.Repo.VerifyTLS
 }
 
+// UseTLS determines whether repo-server component should communicate with TLS or not
+func (rsr *RepoServerReconciler) UseTLS() {
+	rsr.TLSEnabled = argocdcommon.UseTLS(common.ArgoCDRepoServerTLS, rsr.Instance.Namespace, rsr.Client, rsr.Logger)
+}
+
 // getResources will return the ResourceRequirements for the Repo server container.
 func (rsr *RepoServerReconciler) getResources() corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}

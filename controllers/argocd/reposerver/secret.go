@@ -19,6 +19,11 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 	var reconErrs util.MultiError
 	var sha256sum string
 
+	if !rsr.TLSEnabled {
+		rsr.Logger.Debug("reconcileTLSSecret: TLS disabled; skipping TLS secret reconciliation")
+		return nil
+	}
+
 	sha256sum, err := argocdcommon.TLSSecretChecksum(types.NamespacedName{Name: common.ArgoCDRepoServerTLSSecretName, Namespace: rsr.Instance.Namespace}, rsr.Client)
 	if err != nil {
 		reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Namespace))

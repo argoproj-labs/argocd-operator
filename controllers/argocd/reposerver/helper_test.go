@@ -13,6 +13,70 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+func TestUseTLS(t *testing.T) {
+	tests := []struct {
+		name           string
+		reconciler     *RepoServerReconciler
+		expectedResult bool
+	}{
+		{
+			name: "no TLS secret found",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectedResult: false,
+		},
+		{
+			name: "secret not of type TLS",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestSecret(nil,
+					func(s *corev1.Secret) {
+						s.Name = "argocd-repo-server-tls"
+						s.Type = corev1.SecretTypeBasicAuth
+					},
+				),
+			),
+			expectedResult: false,
+		},
+		{
+			name: "TLS secret with no owner instance found",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestSecret(nil,
+					func(s *corev1.Secret) {
+						s.Name = "argocd-repo-server-tls"
+						s.Type = corev1.SecretTypeTLS
+					},
+				),
+			),
+			expectedResult: false,
+		},
+		{
+			name: "TLS secret with owner Instance found",
+			reconciler: makeTestReposerverReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestSecret(nil,
+					func(s *corev1.Secret) {
+						s.Name = "argocd-repo-server-tls"
+						s.Type = corev1.SecretTypeTLS
+						s.Annotations["argocds.argoproj.io/name"] = test.TestArgoCDName
+						s.Annotations["argocds.argoproj.io/namespace"] = test.TestNamespace
+					},
+				),
+			),
+			expectedResult: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.UseTLS()
+			assert.Equal(t, tt.expectedResult, tt.reconciler.TLSEnabled)
+		})
+	}
+}
+
 func TestTLSVerificationRequested(t *testing.T) {
 	tests := []struct {
 		name           string

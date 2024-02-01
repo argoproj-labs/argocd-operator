@@ -11,10 +11,11 @@ import (
 )
 
 type RepoServerReconciler struct {
-	Client   client.Client
-	Scheme   *runtime.Scheme
-	Instance *argoproj.ArgoCD
-	Logger   *util.Logger
+	Client     client.Client
+	Scheme     *runtime.Scheme
+	Instance   *argoproj.ArgoCD
+	Logger     *util.Logger
+	TLSEnabled bool
 
 	Appcontroller AppController
 	Server        ServerController
