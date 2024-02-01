@@ -17,7 +17,7 @@ import (
 
 func TestReconcileTLSSecret(t *testing.T) {
 	mockServerName := "test-argocd-server"
-	mockRepoServerName := "test-argocd-repo-server"
+	mockReposerverName := "test-argocd-repo-server"
 	mockAppControllerName := "test-argocd-app-controller"
 
 	tests := []struct {
@@ -36,7 +36,12 @@ func TestReconcileTLSSecret(t *testing.T) {
 				),
 				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
-						d.Name = mockRepoServerName
+						d.Name = mockReposerverName
+					},
+				),
+				test.MakeTestDeployment(nil,
+					func(d *appsv1.Deployment) {
+						d.Name = "test-argocd-redis"
 					},
 				),
 				test.MakeTestStatefulSet(nil,
@@ -53,7 +58,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 			resources: []client.Object{
 				test.MakeTestSecret(nil,
 					func(s *corev1.Secret) {
-						s.Name = "argocd-redis-operator-tls"
+						s.Name = "argocd-operator-redis-tls"
 						s.Type = corev1.SecretTypeTLS
 						s.Data = map[string][]byte{
 							"tls.crt": []byte(test.TestCert),
@@ -70,7 +75,7 @@ func TestReconcileTLSSecret(t *testing.T) {
 			resources: []client.Object{
 				test.MakeTestSecret(nil,
 					func(s *corev1.Secret) {
-						s.Name = "argocd-redis-operator-tls"
+						s.Name = "argocd-operator-redis-tls"
 						s.Type = corev1.SecretTypeTLS
 						s.Data = map[string][]byte{
 							"tls.crt": []byte(test.TestCert),
@@ -85,7 +90,12 @@ func TestReconcileTLSSecret(t *testing.T) {
 				),
 				test.MakeTestDeployment(nil,
 					func(d *appsv1.Deployment) {
-						d.Name = mockRepoServerName
+						d.Name = "test-argocd-redis"
+					},
+				),
+				test.MakeTestDeployment(nil,
+					func(d *appsv1.Deployment) {
+						d.Name = mockReposerverName
 					},
 				),
 				test.MakeTestStatefulSet(nil,
@@ -106,10 +116,11 @@ func TestReconcileTLSSecret(t *testing.T) {
 				test.MakeTestArgoCD(nil),
 				tt.resources...,
 			)
+			reconciler.TLSEnabled = tt.secretExist
 			reconciler.varSetter()
 
 			reconciler.Server = mock.NewServer(mockServerName, test.TestNamespace, reconciler.Client)
-			reconciler.RepoServer = mock.NewRepoServer(mockRepoServerName, test.TestNamespace, reconciler.Client)
+			reconciler.RepoServer = mock.NewRepoServer(mockReposerverName, test.TestNamespace, reconciler.Client)
 			reconciler.Appcontroller = mock.NewAppController(mockAppControllerName, test.TestNamespace, reconciler.Client)
 
 			err := reconciler.reconcileTLSSecret()
@@ -128,21 +139,21 @@ func TestReconcileTLSSecret(t *testing.T) {
 			res, err := resource.GetObject(test.TestArgoCDName, test.TestNamespace, &argoproj.ArgoCD{}, reconciler.Client)
 			assert.NoError(t, err)
 			argocd := res.(*argoproj.ArgoCD)
-			assert.NotEqual(t, "", argocd.Status.RepoTLSChecksum)
+			assert.NotEqual(t, "", argocd.Status.RedisTLSChecksum)
 
 			dep, err := workloads.GetDeployment(mockServerName, test.TestNamespace, reconciler.Client)
 			assert.NoError(t, err)
-			_, ok := dep.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+			_, ok := dep.Spec.Template.ObjectMeta.Labels["redis.tls.cert.changed"]
 			assert.True(t, ok)
 
 			dep, err = workloads.GetDeployment(resourceName, test.TestNamespace, reconciler.Client)
 			assert.NoError(t, err)
-			_, ok = dep.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+			_, ok = dep.Spec.Template.ObjectMeta.Labels["redis.tls.cert.changed"]
 			assert.True(t, ok)
 
 			ss, err := workloads.GetStatefulSet(mockAppControllerName, test.TestNamespace, reconciler.Client)
 			assert.NoError(t, err)
-			_, ok = ss.Spec.Template.ObjectMeta.Labels["repo.tls.cert.changed"]
+			_, ok = ss.Spec.Template.ObjectMeta.Labels["redis.tls.cert.changed"]
 			assert.True(t, ok)
 
 		})
