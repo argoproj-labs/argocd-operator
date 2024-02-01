@@ -27,7 +27,7 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	return &ApplicationSetReconciler{
 		Client: cl,
 		Scheme: s,
-		Instance: test.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
+		Instance: test.MakeTestArgoCD(nil, func(a *argoproj.ArgoCD) {
 			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 				WebhookServer: argoproj.WebhookServerSpec{
 					Route: argoproj.ArgoCDRouteSpec{

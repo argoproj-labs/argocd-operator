@@ -42,7 +42,7 @@ func TestRequestSecret(t *testing.T) {
 				StringData: test.TestKVP,
 				Type:       corev1.SecretTypeBasicAuth,
 			},
-			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+			desiredSecret: test.MakeTestSecret(nil, func(s *corev1.Secret) {
 				s.Name = test.TestName
 				s.Namespace = test.TestNamespace
 				s.Labels = test.TestKVP
@@ -67,7 +67,7 @@ func TestRequestSecret(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+			desiredSecret: test.MakeTestSecret(nil, func(s *corev1.Secret) {
 				s.Name = test.TestNameMutated
 				s.Namespace = test.TestNamespace
 				s.Labels = test.TestKVP
@@ -90,7 +90,7 @@ func TestRequestSecret(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredSecret: test.MakeTestSecret(func(s *corev1.Secret) {
+			desiredSecret: test.MakeTestSecret(nil, func(s *corev1.Secret) {
 				s.Name = test.TestName
 				s.Namespace = test.TestNamespace
 				s.Labels = test.TestKVP
@@ -119,7 +119,7 @@ func TestRequestSecret(t *testing.T) {
 func TestCreateSecret(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredSecret := test.MakeTestSecret(func(s *corev1.Secret) {
+	desiredSecret := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.TypeMeta = metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
@@ -144,7 +144,7 @@ func TestCreateSecret(t *testing.T) {
 }
 
 func TestGetSecret(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(func(s *corev1.Secret) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 		s.StringData = test.TestKVP
@@ -161,16 +161,16 @@ func TestGetSecret(t *testing.T) {
 }
 
 func TestListSecrets(t *testing.T) {
-	secret1 := test.MakeTestSecret(func(s *corev1.Secret) {
+	secret1 := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = "secret-1"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
 		s.Namespace = test.TestNamespace
 	})
-	secret2 := test.MakeTestSecret(func(s *corev1.Secret) {
+	secret2 := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = "secret-2"
 		s.Namespace = test.TestNamespace
 	})
-	secret3 := test.MakeTestSecret(func(s *corev1.Secret) {
+	secret3 := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = "secret-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
 		s.Namespace = test.TestNamespace
@@ -203,12 +203,12 @@ func TestListSecrets(t *testing.T) {
 }
 
 func TestUpdateSecret(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(func(s *corev1.Secret) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredSecret := test.MakeTestSecret(func(s *corev1.Secret) {
+	desiredSecret := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 		s.Data = map[string][]byte{
@@ -228,7 +228,7 @@ func TestUpdateSecret(t *testing.T) {
 	assert.Equal(t, desiredSecret.Data, existingSecret.Data)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingSecret = test.MakeTestSecret(func(d *corev1.Secret) {
+	existingSecret = test.MakeTestSecret(nil, func(d *corev1.Secret) {
 		d.Name = test.TestName
 	})
 	err = UpdateSecret(existingSecret, testClient)
@@ -236,7 +236,7 @@ func TestUpdateSecret(t *testing.T) {
 }
 
 func TestDeleteSecret(t *testing.T) {
-	testSecret := test.MakeTestSecret(func(s *corev1.Secret) {
+	testSecret := test.MakeTestSecret(nil, func(s *corev1.Secret) {
 		s.Name = test.TestName
 		s.Namespace = test.TestNamespace
 	})

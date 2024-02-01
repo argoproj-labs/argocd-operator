@@ -24,12 +24,13 @@ func makeTestNotificationsReconciler(t *testing.T, objs ...runtime.Object) *Noti
 	return &NotificationsReconciler{
 		Client:   cl,
 		Scheme:   s,
-		Instance: test.MakeTestArgoCD(),
+		Instance: test.MakeTestArgoCD(nil),
+		// Logger:   logger,
 	}
 }
 
 func TestNotificationsReconciler_Reconcile(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name         string

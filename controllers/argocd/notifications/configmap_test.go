@@ -14,7 +14,7 @@ import (
 )
 
 func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 
 	tests := []struct {
 		name        string
@@ -52,7 +52,7 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteConfigMap(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

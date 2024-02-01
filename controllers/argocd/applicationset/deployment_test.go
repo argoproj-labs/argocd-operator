@@ -14,7 +14,7 @@ import (
 func TestApplicationSetReconciler_reconcileDeployment(t *testing.T) {
 	resourceName = test.TestArgoCDName
 	resourceLabels = testExpectedLabels
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	asr := makeTestApplicationSetReconciler(t, false, ns)
 
 	existingDeployment := asr.getDesiredDeployment()
@@ -64,7 +64,7 @@ func TestApplicationSetReconciler_reconcileDeployment(t *testing.T) {
 }
 
 func TestApplicationSetReconciler_DeleteDeployment(t *testing.T) {
-	ns := test.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string

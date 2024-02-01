@@ -25,16 +25,14 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
+
+type argoCDOpt func(*argoproj.ArgoCD)
 
 const (
 	testNamespace             = "argocd"
@@ -44,68 +42,6 @@ const (
 
 func ZapLogger(development bool) logr.Logger {
 	return zap.New(zap.UseDevMode(development))
-}
-
-type namespaceOpt func(*corev1.Namespace)
-
-func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
-	a := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   "test-ns",
-			Labels: make(map[string]string),
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
-}
-
-type SchemeOpt func(*runtime.Scheme) error
-
-func makeNewTestReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
-	return &ArgoCDReconciler{
-		Client: client,
-		Scheme: sch,
-	}
-}
-
-func makeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.Object, runtimeObj []runtime.Object) client.Client {
-	client := fake.NewClientBuilder().WithScheme(sch)
-	if len(resObjs) > 0 {
-		client = client.WithObjects(resObjs...)
-	}
-	if len(subresObjs) > 0 {
-		client = client.WithStatusSubresource(subresObjs...)
-	}
-	if len(runtimeObj) > 0 {
-		client = client.WithRuntimeObjects(runtimeObj...)
-	}
-	return client.Build()
-}
-
-func makeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
-	s := scheme.Scheme
-	for _, opt := range sOpts {
-		_ = opt(s)
-	}
-
-	return s
-}
-
-type argoCDOpt func(*argoproj.ArgoCD)
-
-func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
-	a := &argoproj.ArgoCD{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testArgoCDName,
-			Namespace: testNamespace,
-		},
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
 }
 
 func makeTestArgoCDForKeycloak() *argoproj.ArgoCD {
@@ -278,17 +214,3 @@ func makeTestDexResources() *corev1.ResourceRequirements {
 		},
 	}
 }
-
-// func createNs(r *ArgoCDReconciler, n string, managedBy string) error {
-// 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: n}}
-// 	if managedBy != "" {
-// 		ns.Labels = map[string]string{common.ArgoCDArgoprojKeyManagedBy: managedBy}
-// 	}
-
-// 	if r.ResourceManagedNamespaces == nil {
-// 		r.ResourceManagedNamespaces = make(map[string]string)
-// 	}
-// 	r.ResourceManagedNamespaces[ns.Name] = ""
-
-// 	return r.Client.Create(context.TODO(), ns)
-// }

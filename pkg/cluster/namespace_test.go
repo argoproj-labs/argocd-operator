@@ -50,7 +50,7 @@ func TestRequestNamespace(t *testing.T) {
 					Labels: test.TestKVP,
 				},
 			},
-			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+			desiredNamespace: test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 				ns.Name = test.TestName
 				ns.Labels = test.TestKVP
 			}),
@@ -68,7 +68,7 @@ func TestRequestNamespace(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+			desiredNamespace: test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 				ns.Name = test.TestName
 				ns.Labels = test.TestKVPMutated
 			}),
@@ -86,7 +86,7 @@ func TestRequestNamespace(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredNamespace: test.MakeTestNamespace(func(ns *corev1.Namespace) {
+			desiredNamespace: test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 				ns.Name = test.TestName
 				ns.Labels = test.TestKVP
 			}),
@@ -111,7 +111,7 @@ func TestRequestNamespace(t *testing.T) {
 func TestCreateNamespace(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	desiredNamespace := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 		ns.TypeMeta = metav1.TypeMeta{
 			Kind:       "Namespace",
@@ -130,7 +130,7 @@ func TestCreateNamespace(t *testing.T) {
 }
 
 func TestGetNamespace(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 	})).Build()
 
@@ -145,14 +145,14 @@ func TestGetNamespace(t *testing.T) {
 }
 
 func TestListNamespaces(t *testing.T) {
-	namespace1 := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	namespace1 := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = "namespace-1"
 		ns.Labels = map[string]string{
 			common.AppK8sKeyComponent: "new-component-1",
 		}
 	})
-	namespace2 := test.MakeTestNamespace(func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
-	namespace3 := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	namespace2 := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) { ns.Name = "namespace-2" })
+	namespace3 := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = "namespace-3"
 		ns.Labels = map[string]string{
 			common.AppK8sKeyComponent: "new-component-2",
@@ -186,11 +186,11 @@ func TestListNamespaces(t *testing.T) {
 }
 
 func TestUpdateNamespace(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 	})).Build()
 
-	desiredNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	desiredNamespace := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 		ns.Labels = test.TestKVP
 	})
@@ -206,7 +206,7 @@ func TestUpdateNamespace(t *testing.T) {
 	assert.Equal(t, desiredNamespace.Labels, existingNamespace.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingNamespace = test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	existingNamespace = test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 		ns.Labels = test.TestKVP
 	})
@@ -216,7 +216,7 @@ func TestUpdateNamespace(t *testing.T) {
 }
 
 func TestDeleteNamespace(t *testing.T) {
-	testNamespace := test.MakeTestNamespace(func(ns *corev1.Namespace) {
+	testNamespace := test.MakeTestNamespace(nil, func(ns *corev1.Namespace) {
 		ns.Name = test.TestName
 	})
 
