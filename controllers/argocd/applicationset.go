@@ -354,7 +354,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	}
 
 	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		return nil, nil
+		return sa, nil
 	}
 
 	err := r.Client.Create(context.TODO(), sa)
@@ -370,6 +370,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 		allowed = true
+	}
+
+	// controller disabled, don't create resources
+	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+		allowed = false
 	}
 
 	// policy rules based on https://github.com/argoproj/argo-cd/blob/3c2124235619d8451e2d24c7873e5a6da17354af/manifests/cluster-rbac/applicationset-controller/argocd-applicationset-controller-clusterrole.yaml
@@ -536,6 +541,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 		allowed = true
+	}
+
+	// controller disabled, don't create resources
+	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+		allowed = false
 	}
 
 	clusterRB := newClusterRoleBindingWithname("argocd-applicationset-controller", cr)
