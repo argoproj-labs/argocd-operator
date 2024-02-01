@@ -62,11 +62,6 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if err := rsr.reconcileStatus(); err != nil {
-		rsr.Logger.Error(err, "failed to reconcile status")
-		return err
-	}
-
 	return nil
 }
 

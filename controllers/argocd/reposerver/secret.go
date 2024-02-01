@@ -37,7 +37,7 @@ func (rsr *RepoServerReconciler) reconcileTLSSecret() error {
 		// cost of a possibly missed restart when we cannot update the status
 		// field of the resource.
 		rsr.Instance.Status.RepoTLSChecksum = sha256sum
-		err = rsr.UpdateInstanceStatus()
+		err = rsr.updateInstanceStatus()
 		if err != nil {
 			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}

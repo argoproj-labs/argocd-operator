@@ -9,8 +9,8 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-// reconcileStatus will ensure that the Repo-server status is updated for the given ArgoCD instance
-func (rsr *RepoServerReconciler) reconcileStatus() error {
+// ReconcileStatus will ensure that the Repo-server status is updated for the given ArgoCD instance
+func (rsr *RepoServerReconciler) ReconcileStatus() error {
 	status := common.ArgoCDStatusUnknown
 
 	deploy, err := workloads.GetDeployment(resourceName, rsr.Instance.Namespace, rsr.Client)
@@ -30,10 +30,10 @@ func (rsr *RepoServerReconciler) reconcileStatus() error {
 		rsr.Instance.Status.Repo = status
 	}
 
-	return rsr.UpdateInstanceStatus()
+	return rsr.updateInstanceStatus()
 }
 
-func (rsr *RepoServerReconciler) UpdateInstanceStatus() error {
+func (rsr *RepoServerReconciler) updateInstanceStatus() error {
 
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		if err := rsr.Client.Status().Update(context.TODO(), rsr.Instance); err != nil {
