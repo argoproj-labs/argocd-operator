@@ -344,7 +344,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	if exists {
 		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
 			err := r.Client.Delete(context.TODO(), sa)
-			return nil, err
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					return nil, err
+				}
+			}
 		}
 		return sa, nil
 	}

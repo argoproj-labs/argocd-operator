@@ -431,6 +431,66 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 }
 
+func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name        string
+		appSetField *argoproj.ArgoCDApplicationSet
+		expectedCmd []string
+	}{
+		{
+			name: "Appset in any namespaces without scm provider list",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expectedCmd: []string{"--applicationset-namespaces", "foo,bar", "--enable-scm-providers", "false"},
+		},
+		{
+			name: "with SCM provider list",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo"},
+				SCMProviders:     []string{"github.com"},
+			},
+			expectedCmd: []string{"--applicationset-namespaces", "foo", "--allowed-scm-providers", "github.com"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD()
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
+
+			a.Spec.ApplicationSet = test.appSetField
+
+			sa := corev1.ServiceAccount{}
+			assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+			deployment := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      "argocd-applicationset-controller",
+					Namespace: a.Namespace,
+				},
+				deployment))
+
+			cmds := deployment.Spec.Template.Spec.Containers[0].Command
+			for _, c := range test.expectedCmd {
+				assert.True(t, contains(cmds, c))
+			}
+		})
+	}
+}
+
 func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
