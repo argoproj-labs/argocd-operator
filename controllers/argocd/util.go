@@ -27,6 +27,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/argoproj/argo-cd/v2/util/glob"
+
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"gopkg.in/yaml.v2"
@@ -942,8 +944,9 @@ func removeString(slice []string, s string) []string {
 	return result
 }
 
+// ADDMANGAAL
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, sourceNamespacemapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -1110,6 +1113,10 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+	//ADDMANGAAL
+	sourceNamespaceHandler := handler.EnqueueRequestsFromMapFunc(sourceNamespacemapper)
+
+	bldr.Watches(&corev1.Namespace{}, sourceNamespaceHandler, builder.WithPredicates(sourceNamespaceFilterPredicate()))
 
 	return bldr
 }
@@ -1182,6 +1189,15 @@ type DeprecationEventEmissionStatus struct {
 // where DeprecationEventEmissionStatus tracks the events that have been emitted for the instance in the particular namespace.
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
+
+// ADDMANGAAL
+func sourceNamespaceFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(ce event.CreateEvent) bool {
+			return true
+		},
+	}
+}
 
 func namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
@@ -1391,19 +1407,57 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 // ADDMANGAAL
 func (r *ReconcileArgoCD) setSourceNamespaces(cr *argoproj.ArgoCD) error {
 
-	if containsWildcard(cr.Spec.SourceNamespaces) {
-		// If '*' is present, retrieve all namespaces
-		namespaces := &corev1.NamespaceList{}
-		if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
-			return err
+	sourceNamespacesMap := map[string]bool{}
+	sourceNamespaces := []string{}
+
+	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
+
+		if sourceNamespace == "*" {
+			namespaces := &corev1.NamespaceList{}
+			if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+				return err
+			}
+
+			// Add all namespaces to the sourceNamespaces slice
+			for _, ns := range namespaces.Items {
+				if !sourceNamespacesMap[ns.Name] {
+					sourceNamespaces = append(sourceNamespaces, ns.Name)
+					sourceNamespacesMap[ns.Name] = true
+				}
+
+			}
+			break
+		} else {
+
+			if strings.Contains(sourceNamespace, "*") {
+
+				namespaces := &corev1.NamespaceList{}
+				if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+					return err
+				}
+
+				for _, ns := range namespaces.Items {
+					// Check if the namespace matches the pattern
+					if glob.Match(sourceNamespace, ns.Name) {
+						if !sourceNamespacesMap[ns.Name] {
+							sourceNamespaces = append(sourceNamespaces, ns.Name)
+							sourceNamespacesMap[ns.Name] = true
+						}
+					}
+				}
+			} else {
+
+				if !sourceNamespacesMap[sourceNamespace] {
+					sourceNamespaces = append(sourceNamespaces, sourceNamespace)
+					sourceNamespacesMap[sourceNamespace] = true
+				}
+
+			}
 		}
-		for _, ns := range namespaces.Items {
-			r.SourceNamespaces = append(r.SourceNamespaces, ns.Name)
-		}
-	} else {
-		// Otherwise, use the specified namespaces
-		r.SourceNamespaces = cr.Spec.SourceNamespaces
+
 	}
+
+	r.SourceNamespaces = sourceNamespaces
 
 	return nil
 }
@@ -1627,15 +1681,4 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
 		host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 	return host
-}
-
-// ADDMANGAAL
-// containsWildcard checks if '*' is present in the given array
-func containsWildcard(arr []string) bool {
-	for _, item := range arr {
-		if item == "*" {
-			return true
-		}
-	}
-	return false
 }
