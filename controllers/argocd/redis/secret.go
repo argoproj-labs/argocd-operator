@@ -18,6 +18,11 @@ func (rr *RedisReconciler) reconcileTLSSecret() error {
 	var reconErrs util.MultiError
 	var sha256sum string
 
+	if !rr.TLSEnabled {
+		rr.Logger.Debug("reconcileTLSSecret: TLS disabled; skipping TLS secret reconciliation")
+		return nil
+	}
+
 	sha256sum, err := argocdcommon.TLSSecretChecksum(types.NamespacedName{Name: common.ArgoCDRedisServerTLSSecretName, Namespace: rr.Instance.Namespace}, rr.Client)
 	if err != nil {
 		reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret: failed to calculate checksum for %s in namespace %s", common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace))
