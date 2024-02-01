@@ -246,7 +246,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaIngress(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Ingress.Enabled {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
-			return r.Client.Delete(context.TODO(), ingress)
+			return nil
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Ingress found and enabled, do nothing
