@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -187,7 +186,7 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 		rr.Logger.Error(err, "failed to set owner reference for service", "name", desired.Name)
 	}
 
-	_, err = networking.GetService(desired.Name, desired.Namespace, rr.Client)
+	existing, err := networking.GetService(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to retrieve service %s", desired.Name)
@@ -200,20 +199,36 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 		return nil
 	}
 
+	changed := false
+
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+	}
+
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+
+	if !changed {
+		return nil
+	}
+
 	// nothing to do
 	return nil
 }
 
-func (rr *RedisReconciler) reconcileHAAnnourceServices() error {
+func (rr *RedisReconciler) reconcileHAAnnounceServices() error {
 	var reconcileErrs util.MultiError
 
 	for i := int32(0); i < common.DefaultRedisHAReplicas; i++ {
+		name := argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAAnnouceSuffix, string(i))
+
 		req := networking.ServiceRequest{
-			ObjectMeta: argoutil.GetObjMeta(argoutil.GenerateResourceName(rr.Instance.Name, fmt.Sprintf("%s-%d", common.RedisHAAnnouceSuffix, i)), rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+			ObjectMeta: argoutil.GetObjMeta(name, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 			Spec: corev1.ServiceSpec{
 				Selector: map[string]string{
 					common.AppK8sKeyName:            HAResourceName,
-					common.StatefulSetK8sKeyPodName: argoutil.GenerateResourceName(rr.Instance.Name, fmt.Sprintf("%s-%d", common.RedisHASuffix, i)),
+					common.StatefulSetK8sKeyPodName: name,
 				},
 				PublishNotReadyAddresses: true,
 				Ports: []corev1.ServicePort{

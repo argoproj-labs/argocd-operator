@@ -41,7 +41,7 @@ func (rr *RedisReconciler) reconcileTLSSecret() error {
 		// cost of a possibly missed restart when we cannot update the status
 		// field of the resource.
 		rr.Instance.Status.RedisTLSChecksum = sha256sum
-		err = rr.UpdateInstanceStatus()
+		err = rr.updateInstanceStatus()
 		if err != nil {
 			reconErrs.Append(errors.Wrapf(err, "reconcileTLSSecret"))
 		}

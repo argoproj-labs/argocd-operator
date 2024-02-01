@@ -6,10 +6,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
+	"k8s.io/client-go/util/retry"
 )
 
-// reconcileStatusRedis will ensure that the Redis status is updated for the given ArgoCD instance
-func (rr *RedisReconciler) reconcileStatus() error {
+// ReconcileStatus will ensure that the Redis status is updated for the given ArgoCD instance
+func (rr *RedisReconciler) ReconcileStatus() error {
 	status := common.ArgoCDStatusUnknown
 
 	if !rr.Instance.Spec.HA.Enabled {
@@ -44,12 +45,21 @@ func (rr *RedisReconciler) reconcileStatus() error {
 		rr.Instance.Status.Redis = status
 	}
 
-	return rr.UpdateInstanceStatus()
+	return rr.updateInstanceStatus()
 }
 
-func (rr *RedisReconciler) UpdateInstanceStatus() error {
-	if err := rr.Client.Status().Update(context.TODO(), rr.Instance); err != nil {
-		return errors.Wrap(err, "UpdateInstanceStatus: failed to update instance status")
+func (rr *RedisReconciler) updateInstanceStatus() error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		if err := rr.Client.Status().Update(context.TODO(), rr.Instance); err != nil {
+			return errors.Wrap(err, "UpdateInstanceStatus: failed to update instance status")
+		}
+		return nil
+	})
+
+	if err != nil {
+		// May be conflict if max retries were hit, or may be something unrelated
+		// like permissions or a network error
+		return err
 	}
 	return nil
 }

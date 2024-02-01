@@ -81,7 +81,7 @@ func (rr *RedisReconciler) reconcileHAServices() error {
 	err = rr.reconcileHAProxyService()
 	reconErrs.Append(err)
 
-	err = rr.reconcileHAAnnourceServices()
+	err = rr.reconcileHAAnnounceServices()
 	reconErrs.Append(err)
 
 	return reconErrs.ErrOrNil()

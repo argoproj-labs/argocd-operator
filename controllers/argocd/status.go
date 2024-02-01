@@ -28,7 +28,60 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
+
+// reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcileStatus() error {
+	var statusErr util.MultiError
+
+	if err := r.AppController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.ServerController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.RedisController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.ReposerverController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.AppsetController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.NotificationsController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	if err := r.SSOController.ReconcileStatus(); err != nil {
+		r.Logger.Error(err, "reconcileStatus")
+		statusErr.Append(err)
+	}
+
+	// TO DO
+
+	// if err := r.reconcileStatusHost(cr); err != nil {
+	// 	return err
+	// }
+
+	// if err := r.reconcileStatusPhase(cr); err != nil {
+	// 	return err
+	// }
+
+	return statusErr.ErrOrNil()
+}
 
 // reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD) error {

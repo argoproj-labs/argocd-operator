@@ -23,7 +23,7 @@ const (
 
 // reconcileHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD instance
 func (rr *RedisReconciler) reconcileHAConfigMap() error {
-	cmRequest := workloads.ConfigMapRequest{
+	req := workloads.ConfigMapRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDRedisHAConfigMapName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
 		Data: map[string]string{
 			haproxyCfgKey:    rr.getHAProxyConfig(),
@@ -34,7 +34,7 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 		},
 	}
 
-	desired, err := workloads.RequestConfigMap(cmRequest)
+	desired, err := workloads.RequestConfigMap(req)
 	if err != nil {
 		rr.Logger.Debug("reconcileHAConfigMap: one or more mutations could not be applied")
 		return errors.Wrapf(err, "reconcileHAConfigMap: failed to request configMap %s in namespace %s", desired.Name, desired.Namespace)
