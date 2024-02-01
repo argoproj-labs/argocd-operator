@@ -5,7 +5,3 @@ delete:
 - apiVersion: v1
   kind: Namespace
   name: argocd-e2e-cluster-config
-- apiVersion: v1
-  kind: Namespace
-  name: some-namespace
-
