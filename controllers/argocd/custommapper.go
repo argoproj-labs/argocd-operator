@@ -7,6 +7,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj/argo-cd/v2/util/glob"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -149,6 +150,35 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
 		}
+	}
+
+	return result
+}
+
+// ADDMANGAAL
+// SourceNamespacemapper retrieves all ArgoCD instances and returns them as reconcile requests.
+func (r *ReconcileArgoCD) sourceNamespacemapper(ctx context.Context, o client.Object) []reconcile.Request {
+	var result []reconcile.Request
+
+	namespaceName := o.GetName()
+	argocds := &argoproj.ArgoCDList{}
+	if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
+
+		return result
+	}
+
+	for _, argocd := range argocds.Items {
+
+		if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
+			namespacedName := client.ObjectKey{
+				Name:      argocd.Name,
+				Namespace: argocd.Namespace,
+			}
+
+			result = append(result, reconcile.Request{NamespacedName: namespacedName})
+
+		}
+
 	}
 
 	return result
