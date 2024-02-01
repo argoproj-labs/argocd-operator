@@ -39,7 +39,7 @@ func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client
 	return sha256sum, nil
 }
 
-// FindSecretOwnerInstance finds the Argo CD instance that indirectly owns the given secret. It looks up a given secret, checks if it is owned by an Argo CD service or not. If yes, finds the Argo CD instance that owns the service and returns a reference to that instance
+// FindSecretOwnerInstance finds the Argo CD instance that directly or indirectly owns the given secret. It looks up a given secret, checks if it is owned by an Argo CD service or not. If yes, finds the Argo CD instance that owns the service and returns a reference to that instance. If not, it looks for a reference to the owning instance set in the secret's annotations, and returns the reference from there
 func FindSecretOwnerInstance(secretRef types.NamespacedName, client cntrlClient.Client) (types.NamespacedName, error) {
 	owner := types.NamespacedName{}
 

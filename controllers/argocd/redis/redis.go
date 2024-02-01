@@ -29,8 +29,8 @@ var (
 func (rr *RedisReconciler) Reconcile() error {
 	rr.varSetter()
 
-	// check if TLS needs to be used
-	rr.TLSEnabled = rr.UseTLS()
+	// determine if TLS is enabled
+	rr.UseTLS()
 
 	if rr.Instance.Spec.HA.Enabled {
 		// clean up regular redis resources first

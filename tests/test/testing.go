@@ -31,6 +31,7 @@ const (
 	TestVal               = "test-val"
 	TestValMutated        = "test-val-mutated"
 	TestNameMutated       = "test-name-mutated"
+	TestCert              = "test-cert"
 )
 
 var (

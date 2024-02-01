@@ -2,7 +2,6 @@ package redis
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -10,10 +9,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
-	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -33,29 +29,9 @@ func (rr *RedisReconciler) TLSVerificationDisabled() bool {
 	return rr.Instance.Spec.Redis.DisableTLSVerification
 }
 
-// UseTLS decides whether Redis component should communicate with TLS or not
-func (rr *RedisReconciler) UseTLS() bool {
-	tlsSecret, err := workloads.GetSecret(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			rr.Logger.Debug("skipping TLS enforcement")
-			return false
-		}
-		rr.Logger.Error(err, "UseTLS: failed to retrieve tls secret", "name", common.ArgoCDRedisServerTLSSecretName, "namespace", rr.Instance.Namespace)
-		return false
-	}
-
-	secretOwner, err := argocdcommon.FindSecretOwnerInstance(types.NamespacedName{Name: tlsSecret.Name, Namespace: tlsSecret.Namespace}, rr.Client)
-	if err != nil {
-		rr.Logger.Error(err, "UseTLS: failed to find secret owning instance")
-		return false
-	}
-
-	if !reflect.DeepEqual(secretOwner, types.NamespacedName{}) {
-		return true
-	}
-
-	return false
+// UseTLS determines whether Redis component should communicate with TLS or not
+func (rr *RedisReconciler) UseTLS() {
+	rr.TLSEnabled = argocdcommon.UseTLS(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client, rr.Logger)
 }
 
 // GetServerAddress will return the Redis service address for the given ArgoCD instance
