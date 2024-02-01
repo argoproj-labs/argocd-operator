@@ -31,6 +31,9 @@ var (
 func (rsr *RepoServerReconciler) Reconcile() error {
 	rsr.varSetter()
 
+	// check if TLS is enabled
+	rsr.UseTLS()
+
 	if err := rsr.reconcileServiceAccount(); err != nil {
 		rsr.Logger.Error(err, "failed to reconcile serviceaccount")
 		return err
