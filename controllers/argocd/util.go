@@ -27,8 +27,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/argoproj/argo-cd/v2/util/glob"
-
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"gopkg.in/yaml.v2"
@@ -36,6 +34,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+	"github.com/argoproj/argo-cd/v2/util/glob"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -1407,59 +1406,46 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 // ADDMANGAAL
 func (r *ReconcileArgoCD) setSourceNamespaces(cr *argoproj.ArgoCD) error {
 
-	sourceNamespacesMap := map[string]bool{}
 	sourceNamespaces := []string{}
 
-	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
+	namespaces := &corev1.NamespaceList{}
+	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+		return err
+	}
 
-		if sourceNamespace == "*" {
-			namespaces := &corev1.NamespaceList{}
-			if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
-				return err
-			}
+	for _, namespace := range namespaces.Items {
 
-			// Add all namespaces to the sourceNamespaces slice
-			for _, ns := range namespaces.Items {
-				if !sourceNamespacesMap[ns.Name] {
-					sourceNamespaces = append(sourceNamespaces, ns.Name)
-					sourceNamespacesMap[ns.Name] = true
-				}
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
 
-			}
-			break
-		} else {
+			r.SourceNamespaces = sourceNamespaces
 
-			if strings.Contains(sourceNamespace, "*") {
-
-				namespaces := &corev1.NamespaceList{}
-				if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
-					return err
-				}
-
-				for _, ns := range namespaces.Items {
-					// Check if the namespace matches the pattern
-					if glob.Match(sourceNamespace, ns.Name) {
-						if !sourceNamespacesMap[ns.Name] {
-							sourceNamespaces = append(sourceNamespaces, ns.Name)
-							sourceNamespacesMap[ns.Name] = true
-						}
-					}
-				}
-			} else {
-
-				if !sourceNamespacesMap[sourceNamespace] {
-					sourceNamespaces = append(sourceNamespaces, sourceNamespace)
-					sourceNamespacesMap[sourceNamespace] = true
-				}
-
-			}
 		}
 
 	}
 
-	r.SourceNamespaces = sourceNamespaces
-
 	return nil
+}
+
+func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+
+	sourceNamespaces := []string{}
+
+	namespaces := &corev1.NamespaceList{}
+	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+		return nil, err
+	}
+
+	for _, namespace := range namespaces.Items {
+
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
+
+			sourceNamespaces = append(sourceNamespaces, namespace.Name)
+
+		}
+
+	}
+
+	return sourceNamespaces, nil
 }
 
 func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
