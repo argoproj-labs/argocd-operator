@@ -739,6 +739,45 @@ func TestSetSourceNamespaces(t *testing.T) {
 	assert.Contains(t, r.SourceNamespaces, "test-namespace-2")
 }
 
+func TestGetSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test*",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-namespace",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "test-namespace-1")
+	assert.Contains(t, sourceNamespaces, "test-namespace-2")
+}
+
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings
