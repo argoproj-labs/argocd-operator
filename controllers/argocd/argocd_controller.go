@@ -550,6 +550,10 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		r.Logger.Error(err, "failed to reconcile SSO controller")
 	}
 
+	if err := r.reconcileStatus(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -615,7 +619,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	ssoController := &sso.SSOReconciler{
-		Client:   &r.Client,
+		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
 	}
