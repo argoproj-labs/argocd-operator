@@ -944,6 +944,7 @@ func removeString(slice []string, s string) []string {
 	return result
 }
 
+// ADDMANGAAL
 // setResourceWatches will register Watches for each of the supported Resources.
 func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, sourceNamespacemapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
 
@@ -1112,7 +1113,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
-
+	//ADDMANGAAL
 	sourceNamespaceHandler := handler.EnqueueRequestsFromMapFunc(sourceNamespacemapper)
 
 	bldr.Watches(&corev1.Namespace{}, sourceNamespaceHandler, builder.WithPredicates(sourceNamespaceFilterPredicate()))
@@ -1189,6 +1190,7 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
+// ADDMANGAAL
 func sourceNamespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(ce event.CreateEvent) bool {
@@ -1402,6 +1404,7 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+// ADDMANGAAL
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
 
 	sourceNamespaces := []string{}
