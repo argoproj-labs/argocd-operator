@@ -16,6 +16,7 @@ package argoutil
 
 import (
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -29,19 +30,19 @@ func FqdnServiceRef(serviceName, namespace string, port int) string {
 	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, namespace, port)
 }
 
-// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffix appended.
-func NameWithSuffix(name, suffix string) string {
-	return fmt.Sprintf("%s-%s", name, suffix)
+// NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffixes appended.
+func NameWithSuffix(name string, suffixes ...string) string {
+	return fmt.Sprintf("%s-%s", name, strings.Join(suffixes, "-"))
 }
 
 // GenerateResourceName generates names for namespace scoped resources
-func GenerateResourceName(instanceName, suffix string) string {
-	return NameWithSuffix(instanceName, suffix)
+func GenerateResourceName(instanceName string, suffixes ...string) string {
+	return NameWithSuffix(instanceName, suffixes...)
 }
 
 // GenerateUniqueResourceName generates unique names for cluster scoped resources
-func GenerateUniqueResourceName(instanceName, instanceNamespace, suffix string) string {
-	return fmt.Sprintf("%s-%s-%s", instanceName, instanceNamespace, suffix)
+func GenerateUniqueResourceName(instanceName, instanceNamespace string, suffixes ...string) string {
+	return NameWithSuffix(NameWithSuffix(instanceName, instanceNamespace), suffixes...)
 }
 
 func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) metav1.ObjectMeta {

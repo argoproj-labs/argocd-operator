@@ -7,14 +7,32 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
-func UpdateIfChanged(existingVal, desiredVal interface{}, extraAction func(), changed *bool) {
-	if util.IsPtr(existingVal) && util.IsPtr(desiredVal) {
-		if !reflect.DeepEqual(existingVal, desiredVal) {
-			reflect.ValueOf(existingVal).Elem().Set(reflect.ValueOf(desiredVal).Elem())
-			if extraAction != nil {
-				extraAction()
+type FieldToCompare struct {
+	Existing    interface{}
+	Desired     interface{}
+	ExtraAction func()
+}
+
+// UpdateIfChanged accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields, updating any fields and setting the bool ptr to true if a drift is detected
+func UpdateIfChanged(ftc []FieldToCompare, changed *bool) {
+	for _, field := range ftc {
+		if util.IsPtr(field.Existing) && util.IsPtr(field.Desired) {
+			if !reflect.DeepEqual(field.Existing, field.Desired) {
+				reflect.ValueOf(field.Existing).Elem().Set(reflect.ValueOf(field.Desired).Elem())
+				if field.ExtraAction != nil {
+					field.ExtraAction()
+				}
+				*changed = true
 			}
-			*changed = true
+		}
+	}
+}
+
+// PartialMatch accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields and sets the bool to false if a drift is detected
+func PartialMatch(ftc []FieldToCompare, match *bool) {
+	for _, field := range ftc {
+		if !reflect.DeepEqual(field.Existing, field.Desired) {
+			*match = false
 		}
 	}
 }
