@@ -31,10 +31,11 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/argoproj/argo-cd/v2/util/glob"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"github.com/argoproj/argo-cd/v2/util/glob"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	oappsv1 "github.com/openshift/api/apps/v1"
