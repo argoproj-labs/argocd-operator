@@ -47,8 +47,6 @@ type ReconcileArgoCD struct {
 	ManagedNamespaces *corev1.NamespaceList
 	// Stores a list of SourceNamespaces as values
 	ManagedSourceNamespaces map[string]string
-	// Store a list of SourceNamespaces defined in Argocd Spec
-	SourceNamespaces []string // ADDMANGAAL
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 }
@@ -201,10 +199,6 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if err = r.setSourceNamespaces(argocd); err != nil {
-		return reconcile.Result{}, err
-	}
-
 	if err := r.reconcileResources(argocd); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
 		return reconcile.Result{}, err
@@ -214,7 +208,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	return reconcile.Result{}, nil
 }
 
-// ADDMANGAAL
+// ADDMANGAAL new
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)

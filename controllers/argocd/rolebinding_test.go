@@ -267,8 +267,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_forSourceNamespaces(t *testing.T) 
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 	assert.NoError(t, createNamespaceManagedByClusterArgoCDLabel(r, sourceNamespace, a.Namespace))
 
-	assert.NoError(t, r.setSourceNamespaces(a))
-
 	workloadIdentifier := common.ArgoCDServerComponent
 
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, p, a))
