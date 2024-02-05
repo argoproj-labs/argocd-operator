@@ -1404,28 +1404,6 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 }
 
 // ADDMANGAAL
-func (r *ReconcileArgoCD) setSourceNamespaces(cr *argoproj.ArgoCD) error {
-
-	sourceNamespaces := []string{}
-
-	namespaces := &corev1.NamespaceList{}
-	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
-		return err
-	}
-
-	for _, namespace := range namespaces.Items {
-
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
-
-			r.SourceNamespaces = sourceNamespaces
-
-		}
-
-	}
-
-	return nil
-}
-
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
 
 	sourceNamespaces := []string{}
@@ -1474,7 +1452,12 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
-			for _, namespace := range r.SourceNamespaces {
+
+			sourceNamespaces, err := r.getSourceNamespaces(cr)
+			if err != nil {
+				return err
+			}
+			for _, namespace := range sourceNamespaces {
 				if namespace == ns {
 					managedNamespace = true
 					break

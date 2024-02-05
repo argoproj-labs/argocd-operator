@@ -189,7 +189,14 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
 
 	// create policy rules for each source namespace for ArgoCD Server
-	for _, sourceNamespace := range r.SourceNamespaces {
+	// for _, sourceNamespace := range cr.Spec.SourceNamespaces
+
+	sourceNamespaces, err := r.getSourceNamespaces(cr)
+	if err != nil {
+		return err
+	}
+
+	for _, sourceNamespace := range sourceNamespaces {
 
 		namespace := &corev1.Namespace{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
