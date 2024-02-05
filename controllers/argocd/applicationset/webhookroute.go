@@ -62,22 +62,17 @@ func (asr *ApplicationSetReconciler) reconcileWebhookRoute() error {
 
 	webhookRouteChanged := false
 
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingRoute.Annotations, &desiredWebhookRoute.Annotations, nil},
-		{&existingRoute.Labels, &desiredWebhookRoute.Labels, nil},
-		{&existingRoute.Spec.WildcardPolicy, &desiredWebhookRoute.Spec.WildcardPolicy, nil},
-		{&existingRoute.Spec.Host, &desiredWebhookRoute.Spec.Host, nil},
-		{&existingRoute.Spec.Port, &desiredWebhookRoute.Spec.Port, nil},
-		{&existingRoute.Spec.TLS, &desiredWebhookRoute.Spec.TLS, nil},
-		{&existingRoute.Spec.To, &desiredWebhookRoute.Spec.To, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existingRoute.Annotations, Desired: &desiredWebhookRoute.Annotations, ExtraAction: nil},
+		{Existing: &existingRoute.Labels, Desired: &desiredWebhookRoute.Labels, ExtraAction: nil},
+		{Existing: &existingRoute.Spec.WildcardPolicy, Desired: &desiredWebhookRoute.Spec.WildcardPolicy, ExtraAction: nil},
+		{Existing: &existingRoute.Spec.Host, Desired: &desiredWebhookRoute.Spec.Host, ExtraAction: nil},
+		{Existing: &existingRoute.Spec.Port, Desired: &desiredWebhookRoute.Spec.Port, ExtraAction: nil},
+		{Existing: &existingRoute.Spec.TLS, Desired: &desiredWebhookRoute.Spec.TLS, ExtraAction: nil},
+		{Existing: &existingRoute.Spec.To, Desired: &desiredWebhookRoute.Spec.To, ExtraAction: nil},
 	}
 
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &webhookRouteChanged)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &webhookRouteChanged)
 
 	if webhookRouteChanged {
 		if err = openshift.UpdateRoute(existingRoute, asr.Client); err != nil {
