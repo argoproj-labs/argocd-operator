@@ -208,6 +208,7 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	return reconcile.Result{}, nil
 }
 
+// ADDMANGAAL new
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)

@@ -632,6 +632,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	}
 }
 
+// ADDMANGAAL
 func TestReconcileArgoCD_sourceNamespacemapper(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Namespace = "argo"
