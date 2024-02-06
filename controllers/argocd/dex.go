@@ -159,7 +159,8 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 	dex := make(map[string]interface{})
 	dex["connectors"] = connectors
 
-	if err := updateDexConfig(cr, dex); err != nil {
+	// add dex config from the Argo CD CR.
+	if err := addDexConfigFromCR(cr, dex); err != nil {
 		return "", err
 	}
 
@@ -167,7 +168,7 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 	return string(bytes), err
 }
 
-func updateDexConfig(cr *argoproj.ArgoCD, dex map[string]interface{}) error {
+func addDexConfigFromCR(cr *argoproj.ArgoCD, dex map[string]interface{}) error {
 	dexCfgStr := getDexConfig(cr)
 	if dexCfgStr == "" {
 		return nil

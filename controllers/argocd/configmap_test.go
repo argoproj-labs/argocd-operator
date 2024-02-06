@@ -342,6 +342,26 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDisableAdmin(t *testing.T) {
 func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
+	getSampleDexConfig := func(t *testing.T) []byte {
+		t.Helper()
+
+		type expiry struct {
+			IdTokens    string `yaml:"idTokens"`
+			SigningKeys string `yaml:"signingKeys"`
+		}
+
+		dexCfg := map[string]interface{}{
+			"expiry": expiry{
+				IdTokens:    "1hr",
+				SigningKeys: "12hr",
+			},
+		}
+
+		dexCfgBytes, err := yaml.Marshal(dexCfg)
+		assert.NoError(t, err)
+		return dexCfgBytes
+	}
+
 	tests := []struct {
 		name             string
 		updateCrSpecFunc func(cr *argoproj.ArgoCD)
@@ -353,6 +373,18 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 					Provider: argoproj.SSOProviderTypeDex,
 					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
+					},
+				}
+			},
+		},
+		{
+			name: "update .dex.config and verify that the dex connector is not overwritten",
+			updateCrSpecFunc: func(cr *argoproj.ArgoCD) {
+				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeDex,
+					Dex: &argoproj.ArgoCDDexSpec{
+						OpenShiftOAuth: true,
+						Config:         string(getSampleDexConfig(t)),
 					},
 				}
 			},
@@ -393,65 +425,40 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withDexConnector(t *testing.T) {
 			err := r.reconcileArgoConfigMap(a)
 			assert.NoError(t, err)
 
-			getDexConfig := func(t *testing.T, k8sClient client.Client) map[string]interface{} {
-				cm := &corev1.ConfigMap{}
-				err := k8sClient.Get(context.TODO(), types.NamespacedName{
-					Name:      common.ArgoCDConfigMapName,
-					Namespace: testNamespace,
-				}, cm)
+			cm := &corev1.ConfigMap{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      common.ArgoCDConfigMapName,
+				Namespace: testNamespace,
+			}, cm)
+			assert.NoError(t, err)
+
+			dex, ok := cm.Data["dex.config"]
+			if !ok {
+				t.Fatal("reconcileArgoConfigMap with dex failed")
+			}
+
+			m := make(map[string]interface{})
+			err = yaml.Unmarshal([]byte(dex), &m)
+			assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
+
+			connectors, ok := m["connectors"]
+			if !ok {
+				t.Fatal("no connectors found in dex.config")
+			}
+			dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
+			config := dexConnector["config"]
+			assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
+
+			// verify that the dex config in the CR matches the config from the argocd-cm
+			if a.Spec.SSO.Dex.Config != "" {
+				expectedCfg := make(map[string]interface{})
+				expectedCfgStr, err := r.getOpenShiftDexConfig(a)
 				assert.NoError(t, err)
 
-				dex, ok := cm.Data["dex.config"]
-				if !ok {
-					t.Fatal("reconcileArgoConfigMap with dex failed")
-				}
-
-				m := make(map[string]interface{})
-				err = yaml.Unmarshal([]byte(dex), &m)
+				err = yaml.Unmarshal([]byte(expectedCfgStr), expectedCfg)
 				assert.NoError(t, err, fmt.Sprintf("failed to unmarshal %s", dex))
-
-				return m
+				assert.Equal(t, expectedCfg, m)
 			}
-
-			m := getDexConfig(t, r.Client)
-
-			verifyDexConnector := func(dexCfg map[string]interface{}) {
-				connectors, ok := dexCfg["connectors"]
-				if !ok {
-					t.Fatal("no connectors found in dex.config")
-				}
-				dexConnector := connectors.([]interface{})[0].(map[interface{}]interface{})
-				config := dexConnector["config"]
-				assert.Equal(t, config.(map[interface{}]interface{})["clientID"], "system:serviceaccount:argocd:argocd-argocd-dex-server")
-			}
-			verifyDexConnector(m)
-
-			// update .dex.config and verify that the dex connector is not overwritten
-			type expiry struct {
-				IdTokens    string `yaml:"idTokens"`
-				SigningKeys string `yaml:"signingKeys"`
-			}
-
-			dexCfg := map[string]interface{}{
-				"expiry": expiry{
-					IdTokens:    "1hr",
-					SigningKeys: "12hr",
-				},
-			}
-
-			dexCfgBytes, err := yaml.Marshal(dexCfg)
-			assert.NoError(t, err)
-
-			a.Spec.SSO.Dex.Config = string(dexCfgBytes)
-
-			err = r.reconcileArgoConfigMap(a)
-			assert.NoError(t, err)
-
-			m = getDexConfig(t, r.Client)
-			_, ok := m["expiry"]
-			assert.True(t, ok)
-
-			verifyDexConnector(m)
 		})
 	}
 
