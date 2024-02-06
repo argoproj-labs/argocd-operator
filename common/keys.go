@@ -117,9 +117,9 @@ const (
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"
 
-	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
+	// ArgoCDKeyPolicyMatcherMode is the key for matchers function for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
-	ArgoCDPolicyMatcherMode = "policy.matchMode"
+	ArgoCDKeyPolicyMatcherMode = "policy.matchMode"
 
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"

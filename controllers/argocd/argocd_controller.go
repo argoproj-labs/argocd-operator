@@ -40,12 +40,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	v1 "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -80,7 +80,7 @@ type ArgoCDReconciler struct {
 	Scheme        *runtime.Scheme
 	Instance      *argoproj.ArgoCD
 	ClusterScoped bool
-	Logger        logr.Logger
+	Logger        *util.Logger
 
 	ResourceManagedNamespaces map[string]string
 	AppManagedNamespaces      map[string]string
@@ -134,7 +134,6 @@ var ActiveInstanceMap = make(map[string]string)
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
-	argocdControllerLog := ctrl.Log.WithName("argocd-controller")
 
 	reconcileStartTS := time.Now()
 	defer func() {
@@ -180,7 +179,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 
 	r.Instance = argocd
 	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
-	r.Logger = argocdControllerLog.WithValues("instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
+	r.Logger = util.NewLogger("argocd-controller", "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
 
 	// if r.Instance.GetDeletionTimestamp() != nil {
 
@@ -493,6 +492,11 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
 	// core components, return reconciliation errors
+	if err := r.reconcileConfigMaps(); err != nil {
+		r.Logger.Error(err, "failed to reconcile required config maps")
+		return err
+	}
+
 	if err := r.SecretController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile secret controller")
 		return err
@@ -677,9 +681,9 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
 
-	bldr.Owns(&v1.Role{})
+	bldr.Owns(&rbacv1.Role{})
 
-	bldr.Owns(&v1.RoleBinding{})
+	bldr.Owns(&rbacv1.RoleBinding{})
 
 	if openshift.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.

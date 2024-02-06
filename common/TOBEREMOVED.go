@@ -160,6 +160,10 @@ const (
 	// ArgoCDRedisHAImageEnvVar is the environment variable used to get the image
 	// to used for the the Redis container in HA mode.
 	ArgoCDRedisHAImageEnvVar = "ARGOCD_REDIS_HA_IMAGE"
+
+	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
+	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
+	ArgoCDPolicyMatcherMode = "policy.matchMode"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
