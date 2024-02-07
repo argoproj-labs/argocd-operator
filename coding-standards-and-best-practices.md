@@ -244,7 +244,7 @@ func CreateRole(role *rbacv1.Role, client cntrlClient.Client) error {
 ```
 
 
-** Update: Jan 3, 2024 **
+** Update: Jan 27, 2024 **
 
 Some major changes introduced that we should observe going forwards:
 
@@ -252,6 +252,8 @@ Some major changes introduced that we should observe going forwards:
   
 - Addition of TOBEREMOVED.go in every package
 Instead of deleting a piece of code that has been refactored/moved/renamed (to be used by the new code), duplicate that code in the new location and move the existing function/set of functions into that package's TOBEREMOVED.go. This ensures existing code does not break (references remain in tact) and we have a way to track which code has not yet been replicated in the new codebase
+
+- For Argo CD package, a single TOBEREMOVED.go file is not enough. Subsequent component controller development will lead to too many merge conflicts in this file as every branch will try to add new stuff into this file. Each component controller will have its own dedicated TOBEREMOVED.go file, so that concurrent development does not affect other branches, and merge conflicts to be solved in these TOBEREMOVED files are kept to a minimum
 
 - If renaming/moving constants, do the same
 move existing constant to TOBEREMOVED and create the renamed constant in the correct location
