@@ -17,24 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type serviceAccountOpt func(*corev1.ServiceAccount)
-
-func getTestServiceAccount(opts ...serviceAccountOpt) *corev1.ServiceAccount {
-	desiredServiceAccount := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredServiceAccount)
-	}
-
-	return desiredServiceAccount
-}
 
 func TestRequestServiceAccount(t *testing.T) {
 	tests := []struct {
@@ -43,20 +27,20 @@ func TestRequestServiceAccount(t *testing.T) {
 		desiredSa *corev1.ServiceAccount
 	}{
 		{
-			name: "request service account, custom name, labels, annotations",
+			name: "request service account",
 			saReq: ServiceAccountRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 			},
-			desiredSa: getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-				sa.Name = testName
-				sa.Namespace = testNamespace
-				sa.Labels = util.MergeMaps(sa.Labels, testKVP)
-				sa.Annotations = util.MergeMaps(sa.Annotations, testKVP)
+			desiredSa: test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+				sa.Name = test.TestName
+				sa.Namespace = test.TestNamespace
+				sa.Labels = util.MergeMaps(sa.Labels, test.TestKVP)
+				sa.Annotations = util.MergeMaps(sa.Annotations, test.TestKVP)
 			}),
 		},
 	}
@@ -72,23 +56,23 @@ func TestRequestServiceAccount(t *testing.T) {
 func TestCreateServiceAccount(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredServiceAccount := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+	desiredServiceAccount := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.TypeMeta = metav1.TypeMeta{
 			Kind:       "ServiceAccount",
 			APIVersion: "v1",
 		}
-		sa.Name = testName
-		sa.Namespace = testNamespace
-		sa.Labels = testKVP
-		sa.Annotations = testKVP
+		sa.Name = test.TestName
+		sa.Namespace = test.TestNamespace
+		sa.Labels = test.TestKVP
+		sa.Annotations = test.TestKVP
 	})
 	err := CreateServiceAccount(desiredServiceAccount, testClient)
 	assert.NoError(t, err)
 
 	createdServiceAccount := &corev1.ServiceAccount{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdServiceAccount)
 
 	assert.NoError(t, err)
@@ -96,35 +80,35 @@ func TestCreateServiceAccount(t *testing.T) {
 }
 
 func TestGetServiceAccount(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-		sa.Name = testName
-		sa.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = test.TestName
+		sa.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetServiceAccount(testName, testNamespace, testClient)
+	_, err := GetServiceAccount(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetServiceAccount(testName, testNamespace, testClient)
+	_, err = GetServiceAccount(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListServiceAccounts(t *testing.T) {
-	sa1 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+	sa1 := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-1"
 		sa.Labels[common.AppK8sKeyComponent] = "new-component-1"
-		sa.Namespace = testNamespace
+		sa.Namespace = test.TestNamespace
 	})
-	sa2 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+	sa2 := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-2"
-		sa.Namespace = testNamespace
+		sa.Namespace = test.TestNamespace
 	})
-	sa3 := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
+	sa3 := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
 		sa.Name = "sa-3"
 		sa.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		sa.Namespace = testNamespace
+		sa.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -141,7 +125,7 @@ func TestListServiceAccounts(t *testing.T) {
 
 	desiredServiceAccounts := []string{"sa-1", "sa-3"}
 
-	existingServiceAccountList, err := ListServiceAccounts(testNamespace, testClient, listOpts)
+	existingServiceAccountList, err := ListServiceAccounts(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingServiceAccounts := []string{}
@@ -154,19 +138,19 @@ func TestListServiceAccounts(t *testing.T) {
 }
 
 func TestUpdateServiceAccount(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-		sa.Name = testName
-		sa.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = test.TestName
+		sa.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredServiceAccount := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-		sa.Name = testName
+	desiredServiceAccount := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = test.TestName
 		sa.ImagePullSecrets = []corev1.LocalObjectReference{
 			{
 				Name: "new-secret",
 			},
 		}
-		sa.Namespace = testNamespace
+		sa.Namespace = test.TestNamespace
 	})
 
 	err := UpdateServiceAccount(desiredServiceAccount, testClient)
@@ -174,8 +158,8 @@ func TestUpdateServiceAccount(t *testing.T) {
 
 	existingServiceAccount := &corev1.ServiceAccount{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingServiceAccount)
 
 	assert.NoError(t, err)
@@ -183,28 +167,28 @@ func TestUpdateServiceAccount(t *testing.T) {
 	assert.Equal(t, desiredServiceAccount.AutomountServiceAccountToken, existingServiceAccount.AutomountServiceAccountToken)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingServiceAccount = getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-		sa.Name = testName
+	existingServiceAccount = test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = test.TestName
 	})
 	err = UpdateServiceAccount(existingServiceAccount, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteServiceAccount(t *testing.T) {
-	testServiceAccount := getTestServiceAccount(func(sa *corev1.ServiceAccount) {
-		sa.Name = testName
-		sa.Namespace = testNamespace
+	testServiceAccount := test.MakeTestServiceAccount(func(sa *corev1.ServiceAccount) {
+		sa.Name = test.TestName
+		sa.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testServiceAccount).Build()
 
-	err := DeleteServiceAccount(testName, testNamespace, testClient)
+	err := DeleteServiceAccount(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingServiceAccount := &corev1.ServiceAccount{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingServiceAccount)
 
 	assert.Error(t, err)

@@ -105,7 +105,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the metrics and webhook servers.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", secureMetrics, "If the metrics endpoint should be served securely.")
-	flag.StringVar(&logLevel, "loglevel", "info", "The desired logger level")
+	flag.StringVar(&logLevel, "loglevel", "debug", "The desired logger level")
 
 	opts := ctrlzap.Options{
 		Development: true,

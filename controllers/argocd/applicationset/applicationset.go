@@ -13,10 +13,11 @@ import (
 )
 
 type ApplicationSetReconciler struct {
-	Client   client.Client
-	Scheme   *runtime.Scheme
-	Instance *argoproj.ArgoCD
-	Logger   *util.Logger
+	Client     client.Client
+	Scheme     *runtime.Scheme
+	Instance   *argoproj.ArgoCD
+	Logger     *util.Logger
+	RepoServer RepoServerController
 }
 
 var (

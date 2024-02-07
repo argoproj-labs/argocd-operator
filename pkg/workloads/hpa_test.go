@@ -17,24 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type horizontalPodAutoscalerOpt func(*autoscaling.HorizontalPodAutoscaler)
-
-func getTestHorizontalPodAutoscaler(opts ...horizontalPodAutoscalerOpt) *autoscaling.HorizontalPodAutoscaler {
-	desiredHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-		Spec: autoscaling.HorizontalPodAutoscalerSpec{},
-	}
-
-	for _, opt := range opts {
-		opt(desiredHorizontalPodAutoscaler)
-	}
-	return desiredHorizontalPodAutoscaler
-}
 
 func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 
@@ -47,23 +31,23 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 		wantErr                        bool
 	}{
 		{
-			name: "request horizontalPodAutoscaler, no mutation, custom name, labels, annotations",
+			name: "request horizontalPodAutoscaler",
 			hpaReq: HorizontalPodAutoscalerRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					MaxReplicas: testReplicasMutated,
 				},
 			},
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-				hpa.Name = testName
-				hpa.Namespace = testNamespace
-				hpa.Labels = testKVP
-				hpa.Annotations = testKVP
+			desiredHorizontalPodAutoscaler: test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+				hpa.Name = test.TestName
+				hpa.Namespace = test.TestNamespace
+				hpa.Labels = test.TestKVP
+				hpa.Annotations = test.TestKVP
 				hpa.Spec.MaxReplicas = testReplicasMutated
 			}),
 			wantErr: false,
@@ -72,10 +56,10 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 			name: "request horizontalPodAutoscaler, successful mutation",
 			hpaReq: HorizontalPodAutoscalerRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					MaxReplicas: testReplicasMutated,
@@ -85,11 +69,11 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 				},
 				Client: testClient,
 			},
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-				hpa.Name = testNameMutated
-				hpa.Namespace = testNamespace
-				hpa.Labels = testKVP
-				hpa.Annotations = testKVP
+			desiredHorizontalPodAutoscaler: test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+				hpa.Name = test.TestNameMutated
+				hpa.Namespace = test.TestNamespace
+				hpa.Labels = test.TestKVP
+				hpa.Annotations = test.TestKVP
 				hpa.Spec.MaxReplicas = testReplicasMutated
 			}),
 			wantErr: false,
@@ -98,24 +82,24 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 			name: "request horizontalPodAutoscaler, failed mutation",
 			hpaReq: HorizontalPodAutoscalerRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Spec: autoscaling.HorizontalPodAutoscalerSpec{
 					MaxReplicas: testReplicasMutated,
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			desiredHorizontalPodAutoscaler: getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-				hpa.Name = testName
-				hpa.Namespace = testNamespace
-				hpa.Labels = testKVP
-				hpa.Annotations = testKVP
+			desiredHorizontalPodAutoscaler: test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+				hpa.Name = test.TestName
+				hpa.Namespace = test.TestNamespace
+				hpa.Labels = test.TestKVP
+				hpa.Annotations = test.TestKVP
 				hpa.Spec.MaxReplicas = testReplicasMutated
 			}),
 			wantErr: true,
@@ -141,23 +125,23 @@ func TestRequestHorizontalPodAutoscaler(t *testing.T) {
 func TestCreateHorizontalPodAutoscaler(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredHorizontalPodAutoscaler := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+	desiredHorizontalPodAutoscaler := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.TypeMeta = metav1.TypeMeta{
 			Kind:       "HorizontalPodAutoscaler",
 			APIVersion: "autoscaling/v1",
 		}
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
-		hpa.Labels = testKVP
-		hpa.Annotations = testKVP
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
+		hpa.Labels = test.TestKVP
+		hpa.Annotations = test.TestKVP
 	})
 	err := CreateHorizontalPodAutoscaler(desiredHorizontalPodAutoscaler, testClient)
 	assert.NoError(t, err)
 
 	createdHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdHorizontalPodAutoscaler)
 
 	assert.NoError(t, err)
@@ -165,35 +149,35 @@ func TestCreateHorizontalPodAutoscaler(t *testing.T) {
 }
 
 func TestGetHorizontalPodAutoscaler(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetHorizontalPodAutoscaler(testName, testNamespace, testClient)
+	_, err := GetHorizontalPodAutoscaler(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetHorizontalPodAutoscaler(testName, testNamespace, testClient)
+	_, err = GetHorizontalPodAutoscaler(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListHorizontalPodAutoscalers(t *testing.T) {
-	horizontalPodAutoscaler1 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+	horizontalPodAutoscaler1 := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-1"
-		hpa.Namespace = testNamespace
+		hpa.Namespace = test.TestNamespace
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	horizontalPodAutoscaler2 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+	horizontalPodAutoscaler2 := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-2"
-		hpa.Namespace = testNamespace
+		hpa.Namespace = test.TestNamespace
 	})
-	horizontalPodAutoscaler3 := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
+	horizontalPodAutoscaler3 := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
 		hpa.Name = "horizontalPodAutoscaler-3"
 		hpa.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		hpa.Namespace = testNamespace
+		hpa.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -210,7 +194,7 @@ func TestListHorizontalPodAutoscalers(t *testing.T) {
 
 	desiredHorizontalPodAutoscalers := []string{"horizontalPodAutoscaler-1", "horizontalPodAutoscaler-3"}
 
-	existingHorizontalPodAutoscalerList, err := ListHorizontalPodAutoscalers(testNamespace, testClient, listOpts)
+	existingHorizontalPodAutoscalerList, err := ListHorizontalPodAutoscalers(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingHorizontalPodAutoscalers := []string{}
@@ -227,14 +211,14 @@ func TestUpdateHorizontalPodAutoscaler(t *testing.T) {
 		maxReplicas int32 = 3
 		minReplicas int32 = 1
 	)
-	testClient := fake.NewClientBuilder().WithObjects(getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredHorizontalPodAutoscaler := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
+	desiredHorizontalPodAutoscaler := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
 		hpa.Spec.MinReplicas = &minReplicas
 		hpa.Spec.MaxReplicas = maxReplicas
 	})
@@ -243,37 +227,37 @@ func TestUpdateHorizontalPodAutoscaler(t *testing.T) {
 
 	existingHorizontalPodAutoscaler := &autoscaling.HorizontalPodAutoscaler{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingHorizontalPodAutoscaler)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredHorizontalPodAutoscaler.Spec, existingHorizontalPodAutoscaler.Spec)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingHorizontalPodAutoscaler = getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
+	existingHorizontalPodAutoscaler = test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
 	})
 	err = UpdateHorizontalPodAutoscaler(existingHorizontalPodAutoscaler, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteHorizontalPodAutoscaler(t *testing.T) {
-	testHPA := getTestHorizontalPodAutoscaler(func(hpa *autoscaling.HorizontalPodAutoscaler) {
-		hpa.Name = testName
-		hpa.Namespace = testNamespace
+	testHPA := test.MakeTestHPA(nil, func(hpa *autoscaling.HorizontalPodAutoscaler) {
+		hpa.Name = test.TestName
+		hpa.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testHPA).Build()
 
-	err := DeleteHorizontalPodAutoscaler(testName, testNamespace, testClient)
+	err := DeleteHorizontalPodAutoscaler(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingHPA := &autoscaling.HorizontalPodAutoscaler{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingHPA)
 
 	assert.Error(t, err)
