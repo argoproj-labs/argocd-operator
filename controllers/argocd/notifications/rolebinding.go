@@ -76,7 +76,7 @@ func (nr *NotificationsReconciler) reconcileRoleBinding() error {
 			nr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
-		nr.Logger.Info("roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		nr.Logger.V(0).Info("reconcileRoleBinding: roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		return nil
 	}
 
