@@ -6,6 +6,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"gopkg.in/yaml.v2"
@@ -18,119 +19,94 @@ const (
 	allKey        = "all"
 )
 
-// getValueOrDefault returns the value if it's non-empty, otherwise returns the default value.
-func (r *ArgoCDReconciler) getValueOrDefault(value interface{}, defaultValue interface{}) interface{} {
-	if util.IsPtr(value) {
-		if reflect.ValueOf(value).IsNil() {
-			return defaultValue
-		}
-		return reflect.ValueOf(value).String()
-	}
-
-	switch v := value.(type) {
-	case string:
-		if len(v) > 0 {
-			return v
-		}
-		return defaultValue
-	case map[string]string:
-		if len(v) > 0 {
-			return v
-		}
-		return defaultValue
-	}
-
-	return defaultValue
-}
-
 // getApplicationInstanceLabelKey returns the application instance label key for the given ArgoCD.
 func (r *ArgoCDReconciler) getApplicationInstanceLabelKey() string {
-	return r.getValueOrDefault(r.Instance.Spec.ApplicationInstanceLabelKey, common.ArgoCDDefaultApplicationInstanceLabelKey).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ApplicationInstanceLabelKey, common.ArgoCDDefaultApplicationInstanceLabelKey).(string)
 }
 
 // getCAConfigMapName returns the CA ConfigMap name for the given ArgoCD.
 func (r *ArgoCDReconciler) getCAConfigMapName() string {
-	return r.getValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)).(string)
 }
 
 // getSCMRootCAConfigMapName returns the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
 func (r *ArgoCDReconciler) getSCMRootCAConfigMapName() string {
-	return r.getValueOrDefault(r.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, "").(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, "").(string)
 }
 
 // getConfigManagementPlugins returns the config management plugins for the given ArgoCD.
 func (r *ArgoCDReconciler) getConfigManagementPlugins() string {
-	return r.getValueOrDefault(r.Instance.Spec.ConfigManagementPlugins, common.ArgoCDDefaultConfigManagementPlugins).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ConfigManagementPlugins, common.ArgoCDDefaultConfigManagementPlugins).(string)
 }
 
 // getGATrackingID returns the google analytics tracking ID for the given Argo CD.
 func (r *ArgoCDReconciler) getGATrackingID() string {
-	return r.getValueOrDefault(r.Instance.Spec.GATrackingID, common.ArgoCDDefaultGATrackingID).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.GATrackingID, common.ArgoCDDefaultGATrackingID).(string)
 }
 
 // getHelpChatURL returns the help chat URL for the given Argo CD.
 func (r *ArgoCDReconciler) getHelpChatURL() string {
-	return r.getValueOrDefault(r.Instance.Spec.HelpChatURL, common.ArgoCDDefaultHelpChatURL).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.HelpChatURL, common.ArgoCDDefaultHelpChatURL).(string)
 }
 
 // getHelpChatText returns the help chat text for the given Argo CD.
 func (r *ArgoCDReconciler) getHelpChatText() string {
-	return r.getValueOrDefault(r.Instance.Spec.HelpChatText, common.ArgoCDDefaultHelpChatText).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.HelpChatText, common.ArgoCDDefaultHelpChatText).(string)
 }
 
 // getKustomizeBuildOptions returns the kuztomize build options for the given ArgoCD.
 func (r *ArgoCDReconciler) getKustomizeBuildOptions() string {
-	return r.getValueOrDefault(r.Instance.Spec.KustomizeBuildOptions, common.ArgoCDDefaultKustomizeBuildOptions).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.KustomizeBuildOptions, common.ArgoCDDefaultKustomizeBuildOptions).(string)
 }
 
 // getOIDCConfig returns the OIDC configuration for the given  instance.
 func (r *ArgoCDReconciler) getOIDCConfig() string {
-	return r.getValueOrDefault(r.Instance.Spec.OIDCConfig, common.ArgoCDDefaultOIDCConfig).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.OIDCConfig, common.ArgoCDDefaultOIDCConfig).(string)
 }
 
 // getRBACPolicy will return the RBAC policy for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACPolicy() string {
-	return r.getValueOrDefault(r.Instance.Spec.RBAC.Policy, common.ArgoCDDefaultRBACPolicy).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.Policy, common.ArgoCDDefaultRBACPolicy).(string)
 }
 
 // getRBACPolicyMatcherMode will return the RBAC policy matcher mode for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACPolicyMatcherMode() string {
-	return r.getValueOrDefault(r.Instance.Spec.RBAC.PolicyMatcherMode, common.ArgoCDPolicyMatcherMode).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.PolicyMatcherMode, nil).(string)
 }
 
 // getRBACDefaultPolicy will return the RBAC default policy for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACDefaultPolicy() string {
-	return r.getValueOrDefault(r.Instance.Spec.RBAC.DefaultPolicy, common.ArgoCDDefaultRBACPolicy).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.DefaultPolicy, common.ArgoCDDefaultRBACPolicy).(string)
 }
 
 // getRBACScopes will return the RBAC scopes for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACScopes() string {
-	return r.getValueOrDefault(r.Instance.Spec.RBAC.Scopes, common.ArgoCDDefaultRBACScopes).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.Scopes, common.ArgoCDDefaultRBACScopes).(string)
 }
 
 // getResourceExclusions will return the resource exclusions for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getResourceExclusions() string {
-	return r.getValueOrDefault(r.Instance.Spec.ResourceExclusions, common.ArgoCDDefaultResourceExclusions).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ResourceExclusions, common.ArgoCDDefaultResourceExclusions).(string)
 }
 
 // getResourceInclusions will return the resource inclusions for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getResourceInclusions() string {
-	return r.getValueOrDefault(r.Instance.Spec.ResourceInclusions, common.ArgoCDDefaultResourceInclusions).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ResourceInclusions, common.ArgoCDDefaultResourceInclusions).(string)
 }
 
 // getInitialRepositories will return the initial repositories for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getInitialRepositories() string {
-	return r.getValueOrDefault(r.Instance.Spec.InitialRepositories, common.ArgoCDDefaultRepositories).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.InitialRepositories, common.ArgoCDDefaultRepositories).(string)
 }
 
 // getRepositoryCredentials will return the repository credentials for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRepositoryCredentials() string {
-	return r.getValueOrDefault(r.Instance.Spec.RepositoryCredentials, common.ArgoCDDefaultRepositoryCredentials).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RepositoryCredentials, common.ArgoCDDefaultRepositoryCredentials).(string)
 }
 
 // getInitialTLSCerts will return the TLS certs for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getInitialTLSCerts() map[string]string {
-	return r.getValueOrDefault(r.Instance.Spec.TLS.InitialCerts, make(map[string]string)).(map[string]string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.TLS.InitialCerts, make(map[string]string)).(map[string]string)
 }
 
 // getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD instance.
@@ -185,14 +161,14 @@ func (r *ArgoCDReconciler) getKustomizeVersions() map[string]string {
 func (r *ArgoCDReconciler) getBanner() map[string]string {
 	banner := make(map[string]string)
 	if r.Instance.Spec.Banner != nil {
-		banner[common.ArgoCDKeyBannerContent] = r.getValueOrDefault(r.Instance.Spec.Banner.Content, "").(string)
-		banner[common.ArgoCDKeyBannerURL] = r.getValueOrDefault(r.Instance.Spec.Banner.URL, "").(string)
+		banner[common.ArgoCDKeyBannerContent] = argocdcommon.GetValueOrDefault(r.Instance.Spec.Banner.Content, "").(string)
+		banner[common.ArgoCDKeyBannerURL] = argocdcommon.GetValueOrDefault(r.Instance.Spec.Banner.URL, "").(string)
 	}
 	return banner
 }
 
 func (r *ArgoCDReconciler) getExtraConfig() map[string]string {
-	return r.getValueOrDefault(r.Instance.Spec.ExtraConfig, make(map[string]string)).(map[string]string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ExtraConfig, make(map[string]string)).(map[string]string)
 }
 
 // getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
@@ -202,7 +178,7 @@ func (r *ArgoCDReconciler) getResourceHealthChecks() map[string]string {
 	if r.Instance.Spec.ResourceHealthChecks != nil {
 		rhc := r.Instance.Spec.ResourceHealthChecks
 		for _, hc := range rhc {
-			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, healthKey, util.ConstructStr(util.UnderscoreSep, hc.Group, hc.Kind))
+			subkey := util.ConstructString(util.DotSep, common.ArgoCDKeyResourceCustomizations, healthKey, util.ConstructString(util.UnderscoreSep, hc.Group, hc.Kind))
 			subvalue := hc.Check
 			healthCheck[subkey] = subvalue
 		}
@@ -218,7 +194,7 @@ func (r *ArgoCDReconciler) getResourceActions() map[string]string {
 	if r.Instance.Spec.ResourceActions != nil {
 		ra := r.Instance.Spec.ResourceActions
 		for _, a := range ra {
-			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, actionsKey, util.ConstructStr(util.UnderscoreSep, a.Group, a.Kind))
+			subkey := util.ConstructString(util.DotSep, common.ArgoCDKeyResourceCustomizations, actionsKey, util.ConstructString(util.UnderscoreSep, a.Group, a.Kind))
 			subvalue := a.Action
 			actions[subkey] = subvalue
 		}
@@ -235,7 +211,7 @@ func (r *ArgoCDReconciler) getResourceIgnoreDifferences() map[string]string {
 		rid := r.Instance.Spec.ResourceIgnoreDifferences
 
 		if !reflect.DeepEqual(rid.All, &argoproj.IgnoreDifferenceCustomization{}) {
-			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, allKey)
+			subkey := util.ConstructString(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, allKey)
 			bytes, err := yaml.Marshal(rid.All)
 			if err != nil {
 				r.Logger.Error(err, "getResourceIgnoreDifferences")
@@ -246,7 +222,7 @@ func (r *ArgoCDReconciler) getResourceIgnoreDifferences() map[string]string {
 		}
 
 		for _, id := range rid.ResourceIdentifiers {
-			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, util.ConstructStr(util.UnderscoreSep, id.Group, id.Kind))
+			subkey := util.ConstructString(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, util.ConstructString(util.UnderscoreSep, id.Group, id.Kind))
 			bytes, err := yaml.Marshal(id.Customization)
 			if err != nil {
 				r.Logger.Error(err, "getResourceIgnoreDifferences")

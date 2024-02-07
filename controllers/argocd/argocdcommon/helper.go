@@ -80,3 +80,28 @@ func IsMergable(extraArgs []string, cmd []string) error {
 	}
 	return nil
 }
+
+// GetValueOrDefault returns the value if it's non-empty, otherwise returns the default value.
+func GetValueOrDefault(value interface{}, defaultValue interface{}) interface{} {
+	if util.IsPtr(value) {
+		if reflect.ValueOf(value).IsNil() {
+			return defaultValue
+		}
+		return reflect.ValueOf(value).String()
+	}
+
+	switch v := value.(type) {
+	case string:
+		if len(v) > 0 {
+			return v
+		}
+		return defaultValue
+	case map[string]string:
+		if len(v) > 0 {
+			return v
+		}
+		return defaultValue
+	}
+
+	return defaultValue
+}
