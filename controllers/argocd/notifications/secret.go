@@ -29,7 +29,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 	desiredSecret, err := workloads.RequestSecret(secretRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileSecret: failed to request secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
-		nr.Logger.V(1).Info("reconcileSecret: one or more mutations could not be applied")
+		nr.Logger.Debug("reconcileSecret: one or more mutations could not be applied")
 		return err
 	}
 
@@ -60,7 +60,7 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 			nr.Logger.Error(err, "reconcileSecret: failed to create secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileSecret: secret created", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
+		nr.Logger.Info("secret created", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		return nil
 	}
 
@@ -75,6 +75,6 @@ func (nr *NotificationsReconciler) deleteSecret(namespace string) error {
 		nr.Logger.Error(err, "DeleteSecret: failed to delete secret", "name", common.NotificationsSecretName, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteSecret: secret deleted", "name", common.NotificationsSecretName, "namespace", namespace)
+	nr.Logger.Info("secret deleted", "name", common.NotificationsSecretName, "namespace", namespace)
 	return nil
 }

@@ -49,6 +49,8 @@ const (
 	ArgoCDStatusRunning = "Running"
 
 	ArgoCDStatusAvailable = "Available"
+
+	PrometheusOperator = "prometheus-operator"
 )
 
 // general values
@@ -88,5 +90,7 @@ const (
 
 // Commnds
 const (
-	LogLevel = "--loglevel"
+	LogLevelCmd     = "--loglevel"
+	LogFormatCmd    = "--logformat"
+	UidEntryPointSh = "uid_entrypoint.sh"
 )

@@ -29,7 +29,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		nr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
+		nr.Logger.Debug("reconcileDeployment: one or more mutations could not be applied")
 		return err
 	}
 
@@ -60,7 +60,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 			nr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		nr.Logger.Info("deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		return nil
 	}
 	deploymentChanged := false
@@ -94,7 +94,7 @@ func (nr *NotificationsReconciler) reconcileDeployment() error {
 		}
 	}
 
-	nr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	nr.Logger.Info("deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	return nil
 }
 
@@ -106,7 +106,7 @@ func (nr *NotificationsReconciler) deleteDeployment(name, namespace string) erro
 		nr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

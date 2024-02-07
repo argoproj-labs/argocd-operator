@@ -31,6 +31,10 @@ const (
 	TestVal               = "test-val"
 	TestValMutated        = "test-val-mutated"
 	TestNameMutated       = "test-name-mutated"
+<<<<<<< HEAD
+=======
+	TestCert              = "test-cert"
+>>>>>>> 156d1a63aabf2b589961d073090ee574544de23a
 )
 
 var (
