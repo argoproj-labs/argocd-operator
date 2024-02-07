@@ -8,7 +8,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -33,7 +33,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 	desiredRole, err := permissions.RequestRole(roleRequest)
 	if err != nil {
 		nr.Logger.Error(err, "reconcileRole: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-		nr.Logger.V(1).Info("reconcileRole: one or more mutations could not be applied")
+		nr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
 		return err
 	}
 
@@ -51,7 +51,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 
 	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, nr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
@@ -64,7 +64,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 			nr.Logger.Error(err, "reconcileRole: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileRole: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		nr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func (nr *NotificationsReconciler) reconcileRole() error {
 			return err
 		}
 	}
-	nr.Logger.V(0).Info("reconcileRole: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+	nr.Logger.Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (nr *NotificationsReconciler) deleteRole(name, namespace string) error {
 		nr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteRole: role deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

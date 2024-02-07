@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 
 	tests := []struct {
 		name        string
@@ -42,7 +42,7 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 			}
 
 			currentConfigMap := &corev1.ConfigMap{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsConfigMapName, Namespace: argocdcommon.TestNamespace}, currentConfigMap)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: common.NotificationsConfigMapName, Namespace: test.TestNamespace}, currentConfigMap)
 			if err != nil {
 				t.Fatalf("Could not get current ConfigMap: %v", err)
 			}
@@ -52,7 +52,7 @@ func TestNotificationsReconciler_reconcileConfigMap(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteConfigMap(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

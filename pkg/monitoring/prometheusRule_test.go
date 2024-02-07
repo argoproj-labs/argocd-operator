@@ -19,46 +19,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type prometheusRuleOpt func(*monitoringv1.PrometheusRule)
-
-func getTestPrometheusRule(opts ...prometheusRuleOpt) *monitoringv1.PrometheusRule {
-	desiredPrometheusRule := &monitoringv1.PrometheusRule{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testName,
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
-		},
-		Spec: monitoringv1.PrometheusRuleSpec{
-			Groups: []monitoringv1.RuleGroup{
-				{
-					Name: common.ArgoCDComponentStatus,
-					Rules: []monitoringv1.Rule{
-						{
-							Alert: "test alert",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredPrometheusRule)
-	}
-	return desiredPrometheusRule
-}
 
 func TestRequestPrometheusRule(t *testing.T) {
 
@@ -74,76 +36,20 @@ func TestRequestPrometheusRule(t *testing.T) {
 		wantErr               bool
 	}{
 		{
-			name: "request prometheusRule, no mutation",
+			name: "request prometheusRule",
 			prometheusRuleReq: PrometheusRuleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
-				},
-				Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{
-						{
-							Name: common.ArgoCDComponentStatus,
-							Rules: []monitoringv1.Rule{
-								{
-									Alert: "test alert",
-								},
-							},
-						},
-					},
-				},
-			},
-			mutation:              false,
-			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {}),
-			wantErr:               false,
-		},
-		{
-			name: "request prometheusRule, no mutation, custom name, labels, annotations",
-			prometheusRuleReq: PrometheusRuleRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-						testKey:                   testVal,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-						testKey:                           testVal,
-					},
-				},
-				Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{
-						{
-							Name: common.ArgoCDComponentStatus,
-							Rules: []monitoringv1.Rule{
-								{
-									Alert: "test alert",
-								},
-							},
-						},
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 			},
 			mutation: false,
-			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
-				pr.Name = testName
-				pr.Labels = util.MergeMaps(pr.Labels, testKVP)
-				pr.Annotations = util.MergeMaps(pr.Annotations, testKVP)
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+				pr.Labels = test.TestKVP
+				pr.Annotations = test.TestKVP
+
 			}),
 			wantErr: false,
 		},
@@ -151,77 +57,46 @@ func TestRequestPrometheusRule(t *testing.T) {
 			name: "request prometheusRule, successful mutation",
 			prometheusRuleReq: PrometheusRuleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testPrometheusRuleNameMutated,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{
-						{
-							Name: common.ArgoCDComponentStatus,
-							Rules: []monitoringv1.Rule{
-								{
-									Alert: "test alert",
-								},
-							},
-						},
-					},
-				},
+
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:              true,
-			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) { pr.Name = testPrometheusRuleNameMutated }),
-			wantErr:               false,
+			mutation: true,
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+				pr.Name = test.TestNameMutated
+				pr.Labels = test.TestKVP
+				pr.Annotations = test.TestKVP
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request prometheusRule, failed mutation",
 			prometheusRuleReq: PrometheusRuleRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{
-						{
-							Name: common.ArgoCDComponentStatus,
-							Rules: []monitoringv1.Rule{
-								{
-									Alert: "test alert",
-								},
-							},
-						},
-					},
-				},
+
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:              true,
-			desiredPrometheusRule: getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {}),
-			wantErr:               true,
+			mutation: true,
+			desiredPrometheusRule: test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+				pr.Labels = test.TestKVP
+				pr.Annotations = test.TestKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -246,21 +121,23 @@ func TestCreatePrometheusRule(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 	testClient := fake.NewClientBuilder().WithScheme(s).Build()
 
-	desiredPrometheusRule := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	desiredPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.TypeMeta = metav1.TypeMeta{
 			Kind:       "PrometheusRule",
 			APIVersion: "monitoring.coreos.com/v1",
 		}
-		pr.Name = testName
-		pr.Namespace = testNamespace
+		pr.Name = test.TestName
+		pr.Namespace = test.TestNamespace
+		pr.Labels = test.TestKVP
+		pr.Annotations = test.TestKVP
 	})
 	err := CreatePrometheusRule(desiredPrometheusRule, testClient)
 	assert.NoError(t, err)
 
 	createdPrometheusRule := &monitoringv1.PrometheusRule{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdPrometheusRule)
 
 	assert.NoError(t, err)
@@ -271,31 +148,31 @@ func TestGetPrometheusRule(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
-		pr.Name = testName
-		pr.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+		pr.Name = test.TestName
+		pr.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetPrometheusRule(testName, testNamespace, testClient)
+	_, err := GetPrometheusRule(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
 
-	_, err = GetPrometheusRule(testName, testNamespace, testClient)
+	_, err = GetPrometheusRule(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListPrometheusRules(t *testing.T) {
-	prometheusRule1 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	prometheusRule1 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-1"
-		pr.Namespace = testNamespace
+		pr.Namespace = test.TestNamespace
 		pr.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	prometheusRule2 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) { pr.Name = "prometheusRule-2" })
-	prometheusRule3 := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
+	prometheusRule2 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) { pr.Name = "prometheusRule-2" })
+	prometheusRule3 := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
 		pr.Name = "prometheusRule-3"
-		pr.Namespace = testNamespace
+		pr.Namespace = test.TestNamespace
 		pr.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
 
@@ -316,7 +193,7 @@ func TestListPrometheusRules(t *testing.T) {
 
 	desiredPrometheusRules := []string{"prometheusRule-1", "prometheusRule-3"}
 
-	existingPrometheusRuleList, err := ListPrometheusRules(testNamespace, testClient, listOpts)
+	existingPrometheusRuleList, err := ListPrometheusRules(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingPrometheusRules := []string{}
@@ -333,9 +210,9 @@ func TestUpdatePrometheusRule(t *testing.T) {
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
 	// Create the initial PrometheusRule
-	initialPrometheusRule := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
-		pr.Name = testName
-		pr.Namespace = testNamespace
+	initialPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+		pr.Name = test.TestName
+		pr.Namespace = test.TestNamespace
 	})
 
 	// Create the client with the initial PrometheusRule
@@ -343,7 +220,7 @@ func TestUpdatePrometheusRule(t *testing.T) {
 
 	// Fetch the PrometheusRule from the client
 	desiredPrometheusRule := &monitoringv1.PrometheusRule{}
-	err := testClient.Get(context.TODO(), types.NamespacedName{Name: testName, Namespace: testNamespace}, desiredPrometheusRule)
+	err := testClient.Get(context.TODO(), types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}, desiredPrometheusRule)
 	assert.NoError(t, err)
 
 	newRuleGroups := []monitoringv1.RuleGroup{
@@ -374,16 +251,16 @@ func TestUpdatePrometheusRule(t *testing.T) {
 
 	existingPrometheusRule := &monitoringv1.PrometheusRule{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingPrometheusRule)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredPrometheusRule.Spec.Groups, existingPrometheusRule.Spec.Groups)
 
 	testClient = fake.NewClientBuilder().WithScheme(s).Build()
-	existingPrometheusRule = getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
-		pr.Name = testName
+	existingPrometheusRule = test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+		pr.Name = test.TestName
 		pr.Labels = nil
 	})
 	err = UpdatePrometheusRule(existingPrometheusRule, testClient)
@@ -394,20 +271,20 @@ func TestDeletePrometheusRule(t *testing.T) {
 	s := scheme.Scheme
 	assert.NoError(t, monitoringv1.AddToScheme(s))
 
-	testPrometheusRule := getTestPrometheusRule(func(pr *monitoringv1.PrometheusRule) {
-		pr.Name = testName
-		pr.Namespace = testNamespace
+	testPrometheusRule := test.MakeTestPrometheusRule(nil, func(pr *monitoringv1.PrometheusRule) {
+		pr.Name = test.TestName
+		pr.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithScheme(s).WithObjects(testPrometheusRule).Build()
 
-	err := DeletePrometheusRule(testName, testNamespace, testClient)
+	err := DeletePrometheusRule(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingPrometheusRule := &monitoringv1.PrometheusRule{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingPrometheusRule)
 
 	assert.Error(t, err)

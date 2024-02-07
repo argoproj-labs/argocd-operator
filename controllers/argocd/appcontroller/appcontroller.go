@@ -23,3 +23,8 @@ func (acr *AppControllerReconciler) Reconcile() error {
 	// controller logic goes here
 	return nil
 }
+
+// TO DO: finish this
+func (acr *AppControllerReconciler) TriggerRollout(key string) error {
+	return acr.TriggerStatefulSetRollout("", "", key)
+}

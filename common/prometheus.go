@@ -4,6 +4,9 @@ package common
 const (
 	// ArgoCDKeyPrometheus is the resource prometheus key for labels.
 	ArgoCDKeyPrometheus = "prometheus"
+
+	// PrometheusReleaseKey is the prometheus release key for labels.
+	PrometheusReleaseKey = "release"
 )
 
 // defaults
