@@ -78,9 +78,6 @@ const (
 	// ArgoCDKeyRBACScopes is the configuration key for the Argo CD RBAC scopes.
 	ArgoCDKeyRBACScopes = "scopes"
 
-	// ArgoCDKeyRelease is the prometheus release key for labels.
-	ArgoCDKeyRelease = "release"
-
 	// ArgoCDKeyResourceExclusions is the configuration key for resource exclusions.
 	ArgoCDKeyResourceExclusions = "resource.exclusions"
 

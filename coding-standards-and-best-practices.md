@@ -214,18 +214,18 @@ if rr.Instance.Spec.HA.Enabled {
 acr.Logger.Error(err, "reconcileManagedRoles: failed to retrieve role", "name", existingRole.Name, "namespace", existingRole.Namespace)
 ```
 
-- Use debug level (`Logger.V(1).Info`) when recording non-essential information. i.e, information on events that don't block happy path execution, but can provide hints if troubleshooting is needed e.g:
+- Use debug level (`Logger.Debug`) when recording non-essential information. i.e, information on events that don't block happy path execution, but can provide hints if troubleshooting is needed e.g:
 
 ```
-acr.Logger.V(1).Info("reconcileManagedRoles: one or more mutations could not be applied")
-acr.Logger.V(1).Info("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
+acr.Logger.Debug("reconcileManagedRoles: one or more mutations could not be applied")
+acr.Logger.Debug("reconcileManagedRoles: skip reconciliation in favor of custom role", "name", customRoleName)
 ```
 
-- Use Info level (`Logger.Info` or `Logger.V(0).Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
+- Use Info level (`Logger.Info`) for all other info-level logs.  Any new action taken by the controller that is critical to normal functioning.
 - - No need to mention function names when logging at `info` level. eg:
 
 ```
-acr.Logger.V(0).Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+acr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 ```
 
 - Only use log statements to log success/error if the function belongs to a controller package and is invoked by the controller. No need to log statements from utility/helper packages. e.g:
@@ -244,7 +244,7 @@ func CreateRole(role *rbacv1.Role, client cntrlClient.Client) error {
 ```
 
 
-** Update: Jan 3, 2024 **
+** Update: Jan 27, 2024 **
 
 Some major changes introduced that we should observe going forwards:
 
@@ -252,6 +252,8 @@ Some major changes introduced that we should observe going forwards:
   
 - Addition of TOBEREMOVED.go in every package
 Instead of deleting a piece of code that has been refactored/moved/renamed (to be used by the new code), duplicate that code in the new location and move the existing function/set of functions into that package's TOBEREMOVED.go. This ensures existing code does not break (references remain in tact) and we have a way to track which code has not yet been replicated in the new codebase
+
+- For Argo CD package, a single TOBEREMOVED.go file is not enough. Subsequent component controller development will lead to too many merge conflicts in this file as every branch will try to add new stuff into this file. Each component controller will have its own dedicated TOBEREMOVED.go file, so that concurrent development does not affect other branches, and merge conflicts to be solved in these TOBEREMOVED files are kept to a minimum
 
 - If renaming/moving constants, do the same
 move existing constant to TOBEREMOVED and create the renamed constant in the correct location

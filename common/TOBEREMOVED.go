@@ -164,6 +164,15 @@ const (
 	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
 	ArgoCDPolicyMatcherMode = "policy.matchMode"
+
+	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
+	ArgoCDDefaultRepoMetricsPort = 8084
+
+	// ArgoCDDefaultRepoServerPort is the default listen port for the Argo CD repo server.
+	ArgoCDDefaultRepoServerPort = 8081
+
+	// ArgoCDKeyRelease is the prometheus release key for labels.
+	ArgoCDKeyRelease = "release"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

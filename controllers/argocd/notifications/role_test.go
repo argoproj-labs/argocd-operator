@@ -10,20 +10,20 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
 func TestNotificationsReconciler_reconcileRole(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace(nil)
+	resourceName = test.TestArgoCDName
 	existingRole := &rbacv1.Role{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       common.RoleKind,
 			APIVersion: common.APIGroupVersionRbacV1,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdcommon.TestArgoCDName,
-			Namespace: argocdcommon.TestNamespace,
+			Name:      test.TestArgoCDName,
+			Namespace: test.TestNamespace,
 		},
 		Rules: getPolicyRules(),
 	}
@@ -63,7 +63,7 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 			}
 
 			updatedRole := &rbacv1.Role{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, updatedRole)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: test.TestArgoCDName, Namespace: test.TestNamespace}, updatedRole)
 			if err != nil {
 				t.Fatalf("Could not get updated Role: %v", err)
 			}
@@ -73,8 +73,8 @@ func TestNotificationsReconciler_reconcileRole(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteRole(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace(nil)
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

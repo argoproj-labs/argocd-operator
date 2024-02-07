@@ -74,6 +74,11 @@ func GenerateRandomString(s int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
+// StringPtr returns a pointer to provided string value
+func StringPtr(val string) *string {
+	return &val
+}
+
 // ConstructString concatenates the supplied parts by using the provided separator. Any empty strings are skipped
 func ConstructString(separtor string, parts ...string) string {
 	return strings.Join(RemoveString(parts, ""), separtor)

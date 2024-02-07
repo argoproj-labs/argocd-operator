@@ -5,7 +5,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
@@ -29,7 +28,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
 	if err != nil {
 		asr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		asr.Logger.V(1).Info("reconcileDeployment: one or more mutations could not be applied")
+		asr.Logger.Debug("reconcileDeployment: one or more mutations could not be applied")
 		return err
 	}
 
@@ -60,7 +59,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 			asr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileDeployment: deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		asr.Logger.Info("deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
 		return nil
 	}
 	deploymentChanged := false
@@ -95,7 +94,7 @@ func (asr *ApplicationSetReconciler) reconcileDeployment() error {
 		}
 	}
 
-	asr.Logger.V(0).Info("reconcileDeployment: deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	asr.Logger.Info("deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
 	return nil
 }
 
@@ -107,7 +106,7 @@ func (asr *ApplicationSetReconciler) deleteDeployment(name, namespace string) er
 		asr.Logger.Error(err, "DeleteDeployment: failed to delete deployment", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.V(0).Info("DeleteDeployment: deployment deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
 	return nil
 }
 
@@ -180,9 +179,9 @@ func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 	cmd = append(cmd, AppSetController)
 
 	cmd = append(cmd, ArgoCDRepoServer)
-	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
+	cmd = append(cmd, asr.RepoServer.GetServerAddress())
 
-	cmd = append(cmd, common.LogLevel)
+	cmd = append(cmd, common.LogLevelCmd)
 	cmd = append(cmd, argoutil.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user

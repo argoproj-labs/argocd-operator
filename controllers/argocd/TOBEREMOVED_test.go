@@ -15,7 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -1199,4 +1201,57 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 		deployment))
 
 	assert.Equal(t, defaultEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+}
+
+type SchemeOpt func(*runtime.Scheme) error
+
+func makeTestReconcilerClient(sch *runtime.Scheme, resObjs, subresObjs []client.Object, runtimeObj []runtime.Object) client.Client {
+	client := fake.NewClientBuilder().WithScheme(sch)
+	if len(resObjs) > 0 {
+		client = client.WithObjects(resObjs...)
+	}
+	if len(subresObjs) > 0 {
+		client = client.WithStatusSubresource(subresObjs...)
+	}
+	if len(runtimeObj) > 0 {
+		client = client.WithRuntimeObjects(runtimeObj...)
+	}
+	return client.Build()
+}
+
+func makeTestReconcilerScheme(sOpts ...SchemeOpt) *runtime.Scheme {
+	s := scheme.Scheme
+	for _, opt := range sOpts {
+		_ = opt(s)
+	}
+
+	return s
+}
+
+type namespaceOpt func(*corev1.Namespace)
+
+func makeTestNs(opts ...namespaceOpt) *corev1.Namespace {
+	a := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "test-ns",
+			Labels: make(map[string]string),
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
+}
+
+func makeTestArgoCD(opts ...argoCDOpt) *argoproj.ArgoCD {
+	a := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+	for _, o := range opts {
+		o(a)
+	}
+	return a
 }
