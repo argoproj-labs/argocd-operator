@@ -124,11 +124,11 @@ const (
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
-	// ArgoCDDefaultServer is the default server address
-	ArgoCDDefaultServer = "https://kubernetes.default.svc"
-
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
+
+	ArgoCDKeyKustomizeVersion       = "kustomize.version."
+	ArgoCDKeyResourceCustomizations = "resource.customizations."
 )
 
 // openshift.io keys

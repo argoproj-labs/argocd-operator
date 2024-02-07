@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+const (
+	DotSep        = "."
+	UnderscoreSep = "_"
+)
+
 // SplitList accepts a string input containing a list of comma separated values, and returns a slice containing those values as separate elements
 func SplitList(s string) []string {
 	if s == "" {
@@ -67,4 +72,9 @@ func GenerateRandomString(s int) (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// ConstructStr concatenates the supplied parts by using the provided separator. Any empty strings are skipped
+func ConstructStr(separtor string, parts ...string) string {
+	return strings.Join(RemoveString(parts, ""), separtor)
 }

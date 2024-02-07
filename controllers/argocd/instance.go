@@ -1,10 +1,21 @@
 package argocd
 
 import (
+	"fmt"
 	"reflect"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"gopkg.in/yaml.v2"
+)
+
+const (
+	healthKey     = "health"
+	ignoreDIffKey = "ignoreDifferences"
+	actionsKey    = "actions"
+	allKey        = "all"
 )
 
 // getValueOrDefault returns the value if it's non-empty, otherwise returns the default value.
@@ -39,7 +50,7 @@ func (r *ArgoCDReconciler) getApplicationInstanceLabelKey() string {
 
 // getCAConfigMapName returns the CA ConfigMap name for the given ArgoCD.
 func (r *ArgoCDReconciler) getCAConfigMapName() string {
-	return r.getValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, nameWithSuffix(common.ArgoCDCASuffix, r.Instance)).(string)
+	return r.getValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)).(string)
 }
 
 // getSCMRootCAConfigMapName returns the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
@@ -72,57 +83,57 @@ func (r *ArgoCDReconciler) getKustomizeBuildOptions() string {
 	return r.getValueOrDefault(r.Instance.Spec.KustomizeBuildOptions, common.ArgoCDDefaultKustomizeBuildOptions).(string)
 }
 
-// getOIDCConfig returns the OIDC configuration for the given ArgoCD.
+// getOIDCConfig returns the OIDC configuration for the given  instance.
 func (r *ArgoCDReconciler) getOIDCConfig() string {
 	return r.getValueOrDefault(r.Instance.Spec.OIDCConfig, common.ArgoCDDefaultOIDCConfig).(string)
 }
 
-// getRBACPolicy will return the RBAC policy for the given ArgoCD.
+// getRBACPolicy will return the RBAC policy for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACPolicy() string {
 	return r.getValueOrDefault(r.Instance.Spec.RBAC.Policy, common.ArgoCDDefaultRBACPolicy).(string)
 }
 
-// getRBACPolicyMatcherMode will return the RBAC policy matcher mode for the given ArgoCD.
+// getRBACPolicyMatcherMode will return the RBAC policy matcher mode for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACPolicyMatcherMode() string {
 	return r.getValueOrDefault(r.Instance.Spec.RBAC.PolicyMatcherMode, common.ArgoCDPolicyMatcherMode).(string)
 }
 
-// getRBACDefaultPolicy will return the RBAC default policy for the given ArgoCD.
+// getRBACDefaultPolicy will return the RBAC default policy for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACDefaultPolicy() string {
 	return r.getValueOrDefault(r.Instance.Spec.RBAC.DefaultPolicy, common.ArgoCDDefaultRBACPolicy).(string)
 }
 
-// getRBACScopes will return the RBAC scopes for the given ArgoCD.
+// getRBACScopes will return the RBAC scopes for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACScopes() string {
 	return r.getValueOrDefault(r.Instance.Spec.RBAC.Scopes, common.ArgoCDDefaultRBACScopes).(string)
 }
 
-// getResourceExclusions will return the resource exclusions for the given ArgoCD.
+// getResourceExclusions will return the resource exclusions for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getResourceExclusions() string {
 	return r.getValueOrDefault(r.Instance.Spec.ResourceExclusions, common.ArgoCDDefaultResourceExclusions).(string)
 }
 
-// getResourceInclusions will return the resource inclusions for the given ArgoCD.
+// getResourceInclusions will return the resource inclusions for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getResourceInclusions() string {
 	return r.getValueOrDefault(r.Instance.Spec.ResourceInclusions, common.ArgoCDDefaultResourceInclusions).(string)
 }
 
-// getInitialRepositories will return the initial repositories for the given ArgoCD.
+// getInitialRepositories will return the initial repositories for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getInitialRepositories() string {
 	return r.getValueOrDefault(r.Instance.Spec.InitialRepositories, common.ArgoCDDefaultRepositories).(string)
 }
 
-// getRepositoryCredentials will return the repository credentials for the given ArgoCD.
+// getRepositoryCredentials will return the repository credentials for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRepositoryCredentials() string {
 	return r.getValueOrDefault(r.Instance.Spec.RepositoryCredentials, common.ArgoCDDefaultRepositoryCredentials).(string)
 }
 
-// getInitialTLSCerts will return the TLS certs for the given ArgoCD.
+// getInitialTLSCerts will return the TLS certs for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getInitialTLSCerts() map[string]string {
-	return r.getValueOrDefault(r.Instance.Spec.RepositoryCredentials, make(map[string]string)).(map[string]string)
+	return r.getValueOrDefault(r.Instance.Spec.TLS.InitialCerts, make(map[string]string)).(map[string]string)
 }
 
-// getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD.
+// getSSHKnownHosts will return the SSH Known Hosts data for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getInitialSSHKnownHosts() string {
 	skh := common.ArgoCDDefaultSSHKnownHosts
 	if r.Instance.Spec.InitialSSHKnownHosts.ExcludeDefaultHosts {
@@ -132,4 +143,119 @@ func (r *ArgoCDReconciler) getInitialSSHKnownHosts() string {
 		skh += r.Instance.Spec.InitialSSHKnownHosts.Keys
 	}
 	return skh
+}
+
+func (r *ArgoCDReconciler) getDisableAdmin() string {
+	return fmt.Sprintf("%t", !r.Instance.Spec.DisableAdmin)
+}
+
+func (r *ArgoCDReconciler) getGAAnonymizeUsers() string {
+	return fmt.Sprintf("%t", r.Instance.Spec.GAAnonymizeUsers)
+}
+
+func (r *ArgoCDReconciler) getStatusBadgeEnabled() string {
+	return fmt.Sprintf("%t", r.Instance.Spec.StatusBadgeEnabled)
+}
+
+func (r *ArgoCDReconciler) getUsersAnonymousEnabled() string {
+	return fmt.Sprintf("%t", r.Instance.Spec.UsersAnonymousEnabled)
+}
+
+// getResourceTrackingMethod will return the resource tracking method for the given ArgoCD instance
+func (r *ArgoCDReconciler) getResourceTrackingMethod() string {
+	rtm := argoproj.ParseResourceTrackingMethod(r.Instance.Spec.ResourceTrackingMethod)
+	if rtm == argoproj.ResourceTrackingMethodInvalid {
+		r.Logger.Debug(fmt.Sprintf("found invalid resource tracking method '%s'; defaulting to 'label' method", r.Instance.Spec.ResourceTrackingMethod))
+	} else if r.Instance.Spec.ResourceTrackingMethod != "" {
+		r.Logger.Debug(fmt.Sprintf("found resource tracking method '%s'", r.Instance.Spec.ResourceTrackingMethod))
+	} else {
+		r.Logger.Debug("using default resource tracking method 'label'")
+	}
+	return rtm.String()
+}
+
+func (r *ArgoCDReconciler) getKustomizeVersions() map[string]string {
+	versions := make(map[string]string)
+	for _, kv := range r.Instance.Spec.KustomizeVersions {
+		versions[common.ArgoCDKeyKustomizeVersion+kv.Version] = kv.Path
+	}
+	return versions
+}
+
+func (r *ArgoCDReconciler) getBanner() map[string]string {
+	banner := make(map[string]string)
+	if r.Instance.Spec.Banner != nil {
+		banner[common.ArgoCDKeyBannerContent] = r.getValueOrDefault(r.Instance.Spec.Banner.Content, "").(string)
+		banner[common.ArgoCDKeyBannerURL] = r.getValueOrDefault(r.Instance.Spec.Banner.URL, "").(string)
+	}
+	return banner
+}
+
+func (r *ArgoCDReconciler) getExtraConfig() map[string]string {
+	return r.getValueOrDefault(r.Instance.Spec.ExtraConfig, make(map[string]string)).(map[string]string)
+}
+
+// getResourceHealthChecks loads health customizations to `resource.customizations.health` from argocd-cm ConfigMap
+func (r *ArgoCDReconciler) getResourceHealthChecks() map[string]string {
+	healthCheck := make(map[string]string)
+
+	if r.Instance.Spec.ResourceHealthChecks != nil {
+		rhc := r.Instance.Spec.ResourceHealthChecks
+		for _, hc := range rhc {
+			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, healthKey, util.ConstructStr(util.UnderscoreSep, hc.Group, hc.Kind))
+			subvalue := hc.Check
+			healthCheck[subkey] = subvalue
+		}
+	}
+
+	return healthCheck
+}
+
+// getResourceActions loads custom actions to `resource.customizations.actions` from argocd-cm ConfigMap
+func (r *ArgoCDReconciler) getResourceActions() map[string]string {
+	actions := make(map[string]string)
+
+	if r.Instance.Spec.ResourceActions != nil {
+		ra := r.Instance.Spec.ResourceActions
+		for _, a := range ra {
+			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, actionsKey, util.ConstructStr(util.UnderscoreSep, a.Group, a.Kind))
+			subvalue := a.Action
+			actions[subkey] = subvalue
+		}
+	}
+
+	return actions
+}
+
+// getResourceIgnoreDifferences loads ignore differences customizations to `resource.customizations.ignoreDifferences` from argocd-cm ConfigMap
+func (r *ArgoCDReconciler) getResourceIgnoreDifferences() map[string]string {
+	ignoreDiff := make(map[string]string)
+
+	if r.Instance.Spec.ResourceIgnoreDifferences != nil {
+		rid := r.Instance.Spec.ResourceIgnoreDifferences
+
+		if !reflect.DeepEqual(rid.All, &argoproj.IgnoreDifferenceCustomization{}) {
+			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, allKey)
+			bytes, err := yaml.Marshal(rid.All)
+			if err != nil {
+				r.Logger.Error(err, "getResourceIgnoreDifferences")
+				return ignoreDiff
+			}
+			subvalue := string(bytes)
+			ignoreDiff[subkey] = subvalue
+		}
+
+		for _, id := range rid.ResourceIdentifiers {
+			subkey := util.ConstructStr(util.DotSep, common.ArgoCDKeyResourceCustomizations, ignoreDIffKey, util.ConstructStr(util.UnderscoreSep, id.Group, id.Kind))
+			bytes, err := yaml.Marshal(id.Customization)
+			if err != nil {
+				r.Logger.Error(err, "getResourceIgnoreDifferences")
+				return ignoreDiff
+			}
+			subvalue := string(bytes)
+			ignoreDiff[subkey] = subvalue
+		}
+	}
+
+	return ignoreDiff
 }
