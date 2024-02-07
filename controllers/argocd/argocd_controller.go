@@ -393,12 +393,18 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.ReposerverController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile reposerver controller")
-		return err
+	if r.Instance.Spec.Repo.IsEnabled() {
+		if err := r.ReposerverController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile repo-server controller")
+			return err
+		}
+	} else {
+		r.Logger.Info("repo-server disabled; deleting resources")
+		if err := r.ReposerverController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete repo-server resources")
+		}
 	}
 
-	// non-core components, don't return reconciliation errors
 	if r.Instance.Spec.ApplicationSet != nil {
 		if err := r.AppsetController.Reconcile(); err != nil {
 			r.Logger.Error(err, "failed to reconcile applicationset controller")
@@ -450,12 +456,14 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.RedisController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	reposerverController := &reposerver.RepoServerReconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.RepoServerController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	serverController := &server.ServerReconciler{
@@ -502,8 +510,12 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.ServerController = serverController
 
 	r.ReposerverController = reposerverController
+	r.ReposerverController.Appcontroller = appController
+	r.ReposerverController.Server = serverController
+	r.ReposerverController.Redis = redisController
 
 	r.AppsetController = appsetController
+	r.AppsetController.RepoServer = reposerverController
 
 	r.RedisController = redisController
 

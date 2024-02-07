@@ -17,23 +17,8 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type roleBindingOpt func(*rbacv1.RoleBinding)
-
-func getTestRoleBinding(opts ...roleBindingOpt) *rbacv1.RoleBinding {
-	desiredRoleBinding := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      make(map[string]string),
-			Annotations: make(map[string]string),
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredRoleBinding)
-	}
-	return desiredRoleBinding
-}
 
 func TestRequestRoleBinding(t *testing.T) {
 	tests := []struct {
@@ -45,42 +30,42 @@ func TestRequestRoleBinding(t *testing.T) {
 			name: "request rolebinding",
 			rbReq: RoleBindingRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				RoleRef:  testRoleRef,
-				Subjects: testSubjects,
+				RoleRef:  test.MakeTestRoleRef(test.TestName),
+				Subjects: test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}),
 			},
-			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-				rb.Name = testName
-				rb.Namespace = testNamespace
-				rb.Labels = testKVP
-				rb.Annotations = testKVP
-				rb.RoleRef = testRoleRef
-				rb.Subjects = testSubjects
+			desiredRb: test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+				rb.Name = test.TestName
+				rb.Namespace = test.TestNamespace
+				rb.Labels = test.TestKVP
+				rb.Annotations = test.TestKVP
+				rb.RoleRef = test.MakeTestRoleRef(test.TestName)
+				rb.Subjects = test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace})
 			}),
 		},
 		{
 			name: "request rolebinding, custom name, labels, annotations",
 			rbReq: RoleBindingRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        testName,
-					Namespace:   testNamespace,
-					Labels:      testKVP,
-					Annotations: testKVP,
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				RoleRef:  testRoleRef,
-				Subjects: testSubjects,
+				RoleRef:  test.MakeTestRoleRef(test.TestName),
+				Subjects: test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace}),
 			},
-			desiredRb: getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-				rb.Name = testName
-				rb.Namespace = testNamespace
-				rb.Labels = util.MergeMaps(rb.Labels, testKVP)
-				rb.Annotations = util.MergeMaps(rb.Annotations, testKVP)
-				rb.RoleRef = testRoleRef
-				rb.Subjects = testSubjects
+			desiredRb: test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+				rb.Name = test.TestName
+				rb.Namespace = test.TestNamespace
+				rb.Labels = util.MergeMaps(rb.Labels, test.TestKVP)
+				rb.Annotations = util.MergeMaps(rb.Annotations, test.TestKVP)
+				rb.RoleRef = test.MakeTestRoleRef(test.TestName)
+				rb.Subjects = test.MakeTestSubjects(types.NamespacedName{Name: test.TestName, Namespace: test.TestNamespace})
 			}),
 		},
 	}
@@ -98,23 +83,23 @@ func TestRequestRoleBinding(t *testing.T) {
 func TestCreateRoleBinding(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredRoleBinding := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+	desiredRoleBinding := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
 		rb.TypeMeta = metav1.TypeMeta{
 			Kind:       "RoleBinding",
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		}
-		rb.Name = testName
-		rb.Namespace = testNamespace
-		rb.Labels = testKVP
-		rb.Annotations = testKVP
+		rb.Name = test.TestName
+		rb.Namespace = test.TestNamespace
+		rb.Labels = test.TestKVP
+		rb.Annotations = test.TestKVP
 	})
 	err := CreateRoleBinding(desiredRoleBinding, testClient)
 	assert.NoError(t, err)
 
 	createdRoleBinding := &rbacv1.RoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdRoleBinding)
 
 	assert.NoError(t, err)
@@ -122,35 +107,35 @@ func TestCreateRoleBinding(t *testing.T) {
 }
 
 func TestGetRoleBinding(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-		rb.Name = testName
-		rb.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+		rb.Name = test.TestName
+		rb.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetRoleBinding(testName, testNamespace, testClient)
+	_, err := GetRoleBinding(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetRoleBinding(testName, testNamespace, testClient)
+	_, err = GetRoleBinding(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListRoleBindings(t *testing.T) {
-	rb1 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+	rb1 := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-1"
 		rb.Labels[common.AppK8sKeyComponent] = "new-component-1"
-		rb.Namespace = testNamespace
+		rb.Namespace = test.TestNamespace
 	})
-	rb2 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+	rb2 := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-2"
-		rb.Namespace = testNamespace
+		rb.Namespace = test.TestNamespace
 	})
-	rb3 := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
+	rb3 := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
 		rb.Name = "rb-3"
 		rb.Labels[common.AppK8sKeyComponent] = "new-component-2"
-		rb.Namespace = testNamespace
+		rb.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(
@@ -167,7 +152,7 @@ func TestListRoleBindings(t *testing.T) {
 
 	desiredRoleBindings := []string{"rb-1", "rb-3"}
 
-	existingRoleBindingList, err := ListRoleBindings(testNamespace, testClient, listOpts)
+	existingRoleBindingList, err := ListRoleBindings(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingRoleBindings := []string{}
@@ -180,13 +165,13 @@ func TestListRoleBindings(t *testing.T) {
 }
 
 func TestUpdateRoleBinding(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-		rb.Name = testName
-		rb.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+		rb.Name = test.TestName
+		rb.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredRoleBinding := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-		rb.Name = testName
+	desiredRoleBinding := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+		rb.Name = test.TestName
 		rb.RoleRef = rbacv1.RoleRef{
 			Kind:     "Role",
 			Name:     "desired-role-name",
@@ -196,10 +181,10 @@ func TestUpdateRoleBinding(t *testing.T) {
 			{
 				Kind:      "ServiceAccount",
 				Name:      "new-sa",
-				Namespace: testNamespace,
+				Namespace: test.TestNamespace,
 			},
 		}
-		rb.Namespace = testNamespace
+		rb.Namespace = test.TestNamespace
 
 	})
 
@@ -208,8 +193,8 @@ func TestUpdateRoleBinding(t *testing.T) {
 
 	existingRoleBinding := &rbacv1.RoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingRoleBinding)
 
 	assert.NoError(t, err)
@@ -217,28 +202,28 @@ func TestUpdateRoleBinding(t *testing.T) {
 	assert.Equal(t, desiredRoleBinding.Subjects, existingRoleBinding.Subjects)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingRoleBinding = getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-		rb.Name = testName
+	existingRoleBinding = test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+		rb.Name = test.TestName
 	})
 	err = UpdateRoleBinding(existingRoleBinding, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteRoleBinding(t *testing.T) {
-	testRoleBinding := getTestRoleBinding(func(rb *rbacv1.RoleBinding) {
-		rb.Name = testName
-		rb.Namespace = testNamespace
+	testRoleBinding := test.MakeTestRoleBinding(nil, func(rb *rbacv1.RoleBinding) {
+		rb.Name = test.TestName
+		rb.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testRoleBinding).Build()
 
-	err := DeleteRoleBinding(testName, testNamespace, testClient)
+	err := DeleteRoleBinding(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingRoleBinding := &rbacv1.RoleBinding{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingRoleBinding)
 
 	assert.Error(t, err)

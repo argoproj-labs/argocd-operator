@@ -3,14 +3,32 @@ package reposerver
 import (
 	"context"
 
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/util/retry"
 )
 
-// reconcileStatus will ensure that the Repo-server status is updated for the given ArgoCD instance
+// ReconcileStatus will ensure that the Repo-server status is updated for the given ArgoCD instance
 func (rsr *RepoServerReconciler) ReconcileStatus() error {
+	status := common.ArgoCDStatusUnknown
 
-	// TO DO
+	deploy, err := workloads.GetDeployment(resourceName, rsr.Instance.Namespace, rsr.Client)
+	if err != nil {
+		return errors.Wrapf(err, "reconcileStatus: failed to retrieve deployment %s", resourceName)
+	}
+
+	status = common.ArgoCDStatusPending
+
+	if deploy.Spec.Replicas != nil {
+		if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+			status = common.ArgoCDStatusRunning
+		}
+	}
+
+	if rsr.Instance.Status.Repo != status {
+		rsr.Instance.Status.Repo = status
+	}
 
 	return rsr.updateInstanceStatus()
 }

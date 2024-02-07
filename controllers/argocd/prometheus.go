@@ -169,38 +169,6 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	return r.Client.Create(context.TODO(), prometheus)
 }
 
-// reconcileRepoServerServiceMonitor will ensure that the ServiceMonitor is present for the Repo Server metrics Service.
-func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitorWithSuffix("repo-server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
-		if !cr.Spec.Prometheus.Enabled {
-			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
-		}
-		return nil // ServiceMonitor found, do nothing
-	}
-
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	sm.Spec.Selector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
-		},
-	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDMetrics,
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), sm)
-}
-
 // reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
 func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
 	sm := newServiceMonitorWithSuffix("server-metrics", cr)

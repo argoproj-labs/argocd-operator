@@ -4,16 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 )
 
 func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace(nil)
+	resourceName = test.TestArgoCDName
 	resourceLabels = testExpectedLabels
 
 	tests := []struct {
@@ -42,7 +41,7 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 			}
 
 			currentServiceAccount := &corev1.ServiceAccount{}
-			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: argocdcommon.TestArgoCDName, Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
+			err = nr.Client.Get(context.TODO(), types.NamespacedName{Name: test.TestArgoCDName, Namespace: test.TestNamespace}, currentServiceAccount)
 			if err != nil {
 				t.Fatalf("Could not get current ServiceAccount: %v", err)
 			}
@@ -52,8 +51,8 @@ func TestNotificationsReconciler_reconcileServiceAccount(t *testing.T) {
 }
 
 func TestNotificationsReconciler_DeleteServiceAccount(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	resourceName = argocdcommon.TestArgoCDName
+	ns := test.MakeTestNamespace(nil)
+	resourceName = test.TestArgoCDName
 	tests := []struct {
 		name        string
 		setupClient func() *NotificationsReconciler

@@ -23,3 +23,8 @@ func (sr *ServerReconciler) Reconcile() error {
 	// controller logic goes here
 	return nil
 }
+
+// TO DO: fix this
+func (acr *ServerReconciler) TriggerRollout(key string) error {
+	return acr.TriggerDeploymentRollout("", "", key)
+}
