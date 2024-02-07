@@ -76,7 +76,7 @@ func (asr *ApplicationSetReconciler) reconcileRoleBinding() error {
 			asr.Logger.Error(err, "reconcileRoleBinding: failed to create roleBinding", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileRoleBinding: roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
+		asr.Logger.Info("roleBinding created", "name", desiredRoleBinding.Name, "namespace", desiredRoleBinding.Namespace)
 		return nil
 	}
 
@@ -118,6 +118,6 @@ func (asr *ApplicationSetReconciler) deleteRoleBinding(name, namespace string) e
 		asr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.V(0).Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -33,7 +33,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 	desiredRole, err := permissions.RequestRole(roleRequest)
 	if err != nil {
 		asr.Logger.Error(err, "reconcileRole: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-		asr.Logger.V(1).Info("reconcileRole: one or more mutations could not be applied")
+		asr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 			asr.Logger.Error(err, "reconcileRole: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 			return err
 		}
-		asr.Logger.V(0).Info("reconcileRole: role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		asr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
 		return nil
 	}
 
@@ -75,7 +75,7 @@ func (asr *ApplicationSetReconciler) reconcileRole() error {
 			return err
 		}
 	}
-	asr.Logger.V(0).Info("reconcileRole: role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+	asr.Logger.Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (asr *ApplicationSetReconciler) deleteRole(name, namespace string) error {
 		asr.Logger.Error(err, "DeleteRole: failed to delete role", "name", name, "namespace", namespace)
 		return err
 	}
-	asr.Logger.V(0).Info("DeleteRole: role deleted", "name", name, "namespace", namespace)
+	asr.Logger.Info("role deleted", "name", name, "namespace", namespace)
 	return nil
 }
 

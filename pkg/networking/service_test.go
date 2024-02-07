@@ -12,51 +12,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
-	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
-
-type serviceOpt func(*corev1.Service)
-
-func getTestService(opts ...serviceOpt) *corev1.Service {
-	desiredService := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testName,
-			Namespace: testNamespace,
-			Labels: map[string]string{
-				common.AppK8sKeyName:      testInstance,
-				common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-				common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-				common.AppK8sKeyComponent: testComponent,
-			},
-			Annotations: map[string]string{
-				common.ArgoCDArgoprojKeyName:      testInstance,
-				common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeClusterIP,
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   corev1.ProtocolTCP,
-					Port:       80,
-					TargetPort: intstr.FromInt(8080),
-				},
-			},
-		},
-	}
-
-	for _, opt := range opts {
-		opt(desiredService)
-	}
-	return desiredService
-}
 
 func TestRequestService(t *testing.T) {
 
@@ -70,74 +32,19 @@ func TestRequestService(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "request service, no mutation",
+			name: "request service",
 			deployReq: ServiceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
-				},
-				Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP,
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   corev1.ProtocolTCP,
-							Port:       80,
-							TargetPort: intstr.FromInt(8080),
-						},
-					},
-				},
-			},
-			mutation:       false,
-			desiredService: getTestService(func(s *corev1.Service) {}),
-			wantErr:        false,
-		},
-		{
-			name: "request service, no mutation, custom name, labels, annotations",
-			deployReq: ServiceRequest{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-						testKey:                   testVal,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-						testKey:                           testVal,
-					},
-				},
-				Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP,
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   corev1.ProtocolTCP,
-							Port:       80,
-							TargetPort: intstr.FromInt(8080),
-						},
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 			},
 			mutation: false,
-			desiredService: getTestService(func(s *corev1.Service) {
-				s.Name = testName
-				s.Labels = util.MergeMaps(s.Labels, testKVP)
-				s.Annotations = util.MergeMaps(s.Annotations, testKVP)
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
 			}),
 			wantErr: false,
 		},
@@ -145,75 +52,45 @@ func TestRequestService(t *testing.T) {
 			name: "request service, successful mutation",
 			deployReq: ServiceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testServiceNameMutated,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
-				Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP,
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   corev1.ProtocolTCP,
-							Port:       80,
-							TargetPort: intstr.FromInt(8080),
-						},
-					},
-				},
+
 				Mutations: []mutation.MutateFunc{
 					testMutationFuncSuccessful,
 				},
 				Client: testClient,
 			},
-			mutation:       true,
-			desiredService: getTestService(func(s *corev1.Service) { s.Name = testServiceNameMutated }),
-			wantErr:        false,
+			mutation: true,
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
+				s.Name = testServiceNameMutated
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
+			}),
+			wantErr: false,
 		},
 		{
 			name: "request service, failed mutation",
 			deployReq: ServiceRequest{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      testName,
-					Namespace: testNamespace,
-					Labels: map[string]string{
-						common.AppK8sKeyName:      testInstance,
-						common.AppK8sKeyPartOf:    common.ArgoCDAppName,
-						common.AppK8sKeyManagedBy: common.ArgoCDOperatorName,
-						common.AppK8sKeyComponent: testComponent,
-					},
-					Annotations: map[string]string{
-						common.ArgoCDArgoprojKeyName:      testInstance,
-						common.ArgoCDArgoprojKeyNamespace: testInstanceNamespace,
-					},
-				},
-				Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP,
-					Ports: []corev1.ServicePort{
-						{
-							Name:       "http",
-							Protocol:   corev1.ProtocolTCP,
-							Port:       80,
-							TargetPort: intstr.FromInt(8080),
-						},
-					},
+					Name:        test.TestName,
+					Namespace:   test.TestNamespace,
+					Labels:      test.TestKVP,
+					Annotations: test.TestKVP,
 				},
 				Mutations: []mutation.MutateFunc{
-					testMutationFuncFailed,
+					test.TestMutationFuncFailed,
 				},
 				Client: testClient,
 			},
-			mutation:       true,
-			desiredService: getTestService(func(s *corev1.Service) {}),
-			wantErr:        true,
+			mutation: true,
+			desiredService: test.MakeTestService(nil, func(s *corev1.Service) {
+				s.Labels = test.TestKVP
+				s.Annotations = test.TestKVP
+			}),
+			wantErr: true,
 		},
 	}
 
@@ -236,21 +113,23 @@ func TestRequestService(t *testing.T) {
 func TestCreateService(t *testing.T) {
 	testClient := fake.NewClientBuilder().Build()
 
-	desiredService := getTestService(func(s *corev1.Service) {
+	desiredService := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.TypeMeta = metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
 		}
-		s.Name = testName
-		s.Namespace = testNamespace
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
+		s.Labels = test.TestKVP
+		s.Annotations = test.TestKVP
 	})
 	err := CreateService(desiredService, testClient)
 	assert.NoError(t, err)
 
 	createdService := &corev1.Service{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, createdService)
 
 	assert.NoError(t, err)
@@ -258,29 +137,29 @@ func TestCreateService(t *testing.T) {
 }
 
 func TestGetService(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestService(func(s *corev1.Service) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(nil, func(s *corev1.Service) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})).Build()
 
-	_, err := GetService(testName, testNamespace, testClient)
+	_, err := GetService(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	testClient = fake.NewClientBuilder().Build()
 
-	_, err = GetService(testName, testNamespace, testClient)
+	_, err = GetService(test.TestName, test.TestNamespace, testClient)
 	assert.Error(t, err)
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestListServices(t *testing.T) {
-	service1 := getTestService(func(s *corev1.Service) {
+	service1 := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = "service-1"
-		s.Namespace = testNamespace
+		s.Namespace = test.TestNamespace
 		s.Labels[common.AppK8sKeyComponent] = "new-component-1"
 	})
-	service2 := getTestService(func(s *corev1.Service) { s.Name = "service-2" })
-	service3 := getTestService(func(s *corev1.Service) {
+	service2 := test.MakeTestService(nil, func(s *corev1.Service) { s.Name = "service-2" })
+	service3 := test.MakeTestService(nil, func(s *corev1.Service) {
 		s.Name = "service-3"
 		s.Labels[common.AppK8sKeyComponent] = "new-component-2"
 	})
@@ -299,7 +178,7 @@ func TestListServices(t *testing.T) {
 
 	desiredServices := []string{"service-1", "service-3"}
 
-	existingServiceList, err := ListServices(testNamespace, testClient, listOpts)
+	existingServiceList, err := ListServices(test.TestNamespace, testClient, listOpts)
 	assert.NoError(t, err)
 
 	existingServices := []string{}
@@ -312,14 +191,14 @@ func TestListServices(t *testing.T) {
 }
 
 func TestUpdateService(t *testing.T) {
-	testClient := fake.NewClientBuilder().WithObjects(getTestService(func(s *corev1.Service) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	testClient := fake.NewClientBuilder().WithObjects(test.MakeTestService(nil, func(s *corev1.Service) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})).Build()
 
-	desiredService := getTestService(func(s *corev1.Service) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	desiredService := test.MakeTestService(nil, func(s *corev1.Service) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 		s.Labels = map[string]string{
 			"control-plane": "argocd-operator",
 		}
@@ -329,37 +208,37 @@ func TestUpdateService(t *testing.T) {
 
 	existingService := &corev1.Service{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingService)
 
 	assert.NoError(t, err)
 	assert.Equal(t, desiredService.Labels, existingService.Labels)
 
 	testClient = fake.NewClientBuilder().Build()
-	existingService = getTestService(func(s *corev1.Service) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	existingService = test.MakeTestService(nil, func(s *corev1.Service) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})
 	err = UpdateService(existingService, testClient)
 	assert.Error(t, err)
 }
 
 func TestDeleteService(t *testing.T) {
-	testService := getTestService(func(s *corev1.Service) {
-		s.Name = testName
-		s.Namespace = testNamespace
+	testService := test.MakeTestService(nil, func(s *corev1.Service) {
+		s.Name = test.TestName
+		s.Namespace = test.TestNamespace
 	})
 
 	testClient := fake.NewClientBuilder().WithObjects(testService).Build()
 
-	err := DeleteService(testName, testNamespace, testClient)
+	err := DeleteService(test.TestName, test.TestNamespace, testClient)
 	assert.NoError(t, err)
 
 	existingService := &corev1.Service{}
 	err = testClient.Get(context.TODO(), types.NamespacedName{
-		Namespace: testNamespace,
-		Name:      testName,
+		Namespace: test.TestNamespace,
+		Name:      test.TestName,
 	}, existingService)
 
 	assert.Error(t, err)

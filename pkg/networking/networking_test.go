@@ -11,28 +11,11 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
-// common test variables used across workloads tests
 var (
-	testName              = "test-name"
-	testInstance          = "test-instance"
-	testInstanceNamespace = "test-instance-ns"
-	testNamespace         = "test-ns"
-	testComponent         = "test-component"
-	testApplicationName   = "test-application-name"
-	testKey               = "test-key"
-	testVal               = "test-value"
-
 	testServiceNameMutated = "mutated-name"
 	testRouteNameMutated   = "mutated-name"
 	testIngressNameMutated = "mutated-name"
-	testKVP                = map[string]string{
-		testKey: testVal,
-	}
 )
-
-func testMutationFuncFailed(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
-	return errors.New("test-mutation-error")
-}
 
 func testMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, client cntrlClient.Client, args ...interface{}) error {
 	switch obj := resource.(type) {

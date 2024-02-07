@@ -68,3 +68,8 @@ func GenerateRandomString(s int) (string, error) {
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
 }
+
+// StringPtr returns a pointer to provided string value
+func StringPtr(val string) *string {
+	return &val
+}

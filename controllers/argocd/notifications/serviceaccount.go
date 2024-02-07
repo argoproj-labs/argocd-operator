@@ -4,7 +4,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,7 +38,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 
 	_, err = permissions.GetServiceAccount(desiredServiceAccount.Name, desiredServiceAccount.Namespace, nr.Client)
 	if err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to retrieve serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
@@ -52,7 +51,7 @@ func (nr *NotificationsReconciler) reconcileServiceAccount() error {
 			nr.Logger.Error(err, "reconcileServiceAccount: failed to create serviceAccount", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 			return err
 		}
-		nr.Logger.V(0).Info("reconcileServiceAccount: serviceAccount created", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
+		nr.Logger.Info("serviceAccount created", "name", desiredServiceAccount.Name, "namespace", desiredServiceAccount.Namespace)
 		return nil
 	}
 
@@ -67,6 +66,6 @@ func (nr *NotificationsReconciler) deleteServiceAccount(name, namespace string) 
 		nr.Logger.Error(err, "DeleteServiceAccount: failed to delete serviceAccount", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteServiceAccount: serviceAccount deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("serviceAccount deleted", "name", name, "namespace", namespace)
 	return nil
 }

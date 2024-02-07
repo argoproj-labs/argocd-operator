@@ -7,15 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(argocdcommon.TestArgoCDName, argocdcommon.TestNamespace, AppSetControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(test.TestArgoCDName, test.TestNamespace, AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme
@@ -24,12 +23,11 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	assert.NoError(t, argoproj.AddToScheme(s))
 
 	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(AppSetControllerComponent)
 
 	return &ApplicationSetReconciler{
 		Client: cl,
 		Scheme: s,
-		Instance: argocdcommon.MakeTestArgoCD(func(a *argoproj.ArgoCD) {
+		Instance: test.MakeTestArgoCD(nil, func(a *argoproj.ArgoCD) {
 			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 				WebhookServer: argoproj.WebhookServerSpec{
 					Route: argoproj.ArgoCDRouteSpec{
@@ -38,6 +36,5 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 				},
 			}
 		}),
-		Logger: logger,
 	}
 }

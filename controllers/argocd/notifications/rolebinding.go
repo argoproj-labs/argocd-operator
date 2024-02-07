@@ -118,6 +118,6 @@ func (nr *NotificationsReconciler) deleteRoleBinding(name, namespace string) err
 		nr.Logger.Error(err, "DeleteRole: failed to delete roleBinding", "name", name, "namespace", namespace)
 		return err
 	}
-	nr.Logger.V(0).Info("DeleteRoleBinding: roleBinding deleted", "name", name, "namespace", namespace)
+	nr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
 }

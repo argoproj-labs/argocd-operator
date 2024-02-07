@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,7 +14,7 @@ import (
 
 func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 	resourceLabels = testExpectedLabels
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	asr := makeTestApplicationSetReconciler(t, true, ns)
 
 	existingWebhookRoute := asr.getDesiredWebhookRoute()
@@ -39,7 +38,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 			webhookServerRouteEnabled: true,
 			setupClient: func(webhookServerRouteEnabled bool) *ApplicationSetReconciler {
 				outdatedWebhookRoute := existingWebhookRoute
-				outdatedWebhookRoute.ObjectMeta.Labels = argocdcommon.TestKVP
+				outdatedWebhookRoute.ObjectMeta.Labels = test.TestKVP
 				return makeTestApplicationSetReconciler(t, webhookServerRouteEnabled, outdatedWebhookRoute, ns)
 			},
 			wantErr: false,
@@ -58,7 +57,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 			}
 
 			updatedWebhookRoute := &routev1.Route{}
-			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, updatedWebhookRoute)
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: test.TestNamespace}, updatedWebhookRoute)
 			if err != nil {
 				t.Fatalf("Could not get updated WebhookRoute: %v", err)
 			}
@@ -68,7 +67,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute(t *testing.T) {
 }
 
 func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabled(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 
 	tests := []struct {
 		name                      string
@@ -98,7 +97,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabl
 			}
 
 			webhookRoute := &routev1.Route{}
-			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: argocdcommon.TestNamespace}, webhookRoute)
+			err = asr.Client.Get(context.TODO(), types.NamespacedName{Name: AppSetWebhookRouteName, Namespace: test.TestNamespace}, webhookRoute)
 			if err != nil {
 				assert.Equal(t, errors.IsNotFound(err), true)
 			}
@@ -107,7 +106,7 @@ func TestApplicationSetReconciler_reconcileWebhookRoute_WebhookServerRouteDisabl
 }
 
 func TestApplicationSetReconciler_deleteWebhookRoute(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
+	ns := test.MakeTestNamespace(nil)
 	tests := []struct {
 		name                      string
 		webhookServerRouteEnabled bool
