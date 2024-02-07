@@ -5,7 +5,6 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
@@ -180,9 +179,9 @@ func (asr *ApplicationSetReconciler) getArgoApplicationSetCommand() []string {
 	cmd = append(cmd, AppSetController)
 
 	cmd = append(cmd, ArgoCDRepoServer)
-	cmd = append(cmd, reposerver.GetRepoServerAddress(resourceName, asr.Instance.Namespace))
+	cmd = append(cmd, asr.RepoServer.GetServerAddress())
 
-	cmd = append(cmd, common.LogLevel)
+	cmd = append(cmd, common.LogLevelCmd)
 	cmd = append(cmd, argoutil.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))
 
 	// ApplicationSet command arguments provided by the user

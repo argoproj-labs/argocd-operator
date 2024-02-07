@@ -30,8 +30,10 @@ func (rr *RedisReconciler) TLSVerificationDisabled() bool {
 }
 
 // UseTLS determines whether Redis component should communicate with TLS or not
-func (rr *RedisReconciler) UseTLS() {
+func (rr *RedisReconciler) UseTLS() bool {
 	rr.TLSEnabled = argocdcommon.UseTLS(common.ArgoCDRedisServerTLSSecretName, rr.Instance.Namespace, rr.Client, rr.Logger)
+	// returning for interface compliance
+	return rr.TLSEnabled
 }
 
 // GetServerAddress will return the Redis service address for the given ArgoCD instance

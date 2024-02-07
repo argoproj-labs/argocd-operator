@@ -9,6 +9,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,9 @@ func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client
 
 	tlsSecret, err := workloads.GetSecret(secretRef.Name, secretRef.Namespace, client)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
 		return "", err
 	}
 

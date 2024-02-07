@@ -128,50 +128,6 @@ func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
 	return r.Client.Create(context.TODO(), svc)
 }
 
-// reconcileRepoService will ensure that the Service for the Argo CD repo server is present.
-func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
-	svc := newServiceWithSuffix("repo-server", "repo-server", cr)
-
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if !cr.Spec.Repo.IsEnabled() {
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
-		}
-		return nil // Service found, do nothing
-	}
-
-	if !cr.Spec.Repo.IsEnabled() {
-		return nil
-	}
-
-	ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
-
-	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
-	}
-
-	svc.Spec.Ports = []corev1.ServicePort{
-		{
-			Name:       "server",
-			Port:       common.ArgoCDDefaultRepoServerPort,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoServerPort),
-		}, {
-			Name:       "metrics",
-			Port:       common.ArgoCDDefaultRepoMetricsPort,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), svc)
-}
-
 // reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
 func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server-metrics", "server", cr)
