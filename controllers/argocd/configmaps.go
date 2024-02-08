@@ -13,10 +13,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const ()
+var (
+	caResourceName string
+)
 
 func (r *ArgoCDReconciler) reconcileConfigMaps() error {
 	var reconErrs util.MultiError
+	r.cmVarSetter()
 
 	err := r.reconcileRBACCm()
 	reconErrs.Append(err)
@@ -37,6 +40,30 @@ func (r *ArgoCDReconciler) reconcileConfigMaps() error {
 	reconErrs.Append(err)
 
 	return reconErrs.ErrOrNil()
+}
+
+func (r *ArgoCDReconciler) deleteConfigMaps() error {
+	var delErrs util.MultiError
+
+	err := r.deleteConfigMap(common.ArgoCDConfigMapName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteConfigMap(caResourceName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteConfigMap(common.ArgoCDGPGKeysConfigMapName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteConfigMap(common.ArgoCDTLSCertsConfigMapName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteConfigMap(common.ArgoCDKnownHostsConfigMapName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteConfigMap(common.ArgoCDRBACConfigMapName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	return delErrs.ErrOrNil()
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
@@ -242,4 +269,19 @@ func (r *ArgoCDReconciler) reconcileCM(req workloads.ConfigMapRequest, compare a
 
 	r.Logger.Info("configmap updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
+}
+
+func (r *ArgoCDReconciler) deleteConfigMap(name, namespace string) error {
+	if err := workloads.DeleteConfigMap(name, namespace, r.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteConfigMap: failed to delete config map %s", name)
+	}
+	r.Logger.Info("config map deleted", "name", name, "namespace", namespace)
+	return nil
+}
+
+func (r *ArgoCDReconciler) cmVarSetter() {
+	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
 }

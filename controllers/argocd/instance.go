@@ -29,6 +29,7 @@ func (r *ArgoCDReconciler) getCAConfigMapName() string {
 	return argocdcommon.GetValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)).(string)
 }
 
+// TO DO: move to appset component
 // getSCMRootCAConfigMapName returns the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.
 func (r *ArgoCDReconciler) getSCMRootCAConfigMapName() string {
 	return argocdcommon.GetValueOrDefault(r.Instance.Spec.ApplicationSet.SCMRootCAConfigMap, "").(string)
@@ -71,7 +72,7 @@ func (r *ArgoCDReconciler) getRBACPolicy() string {
 
 // getRBACPolicyMatcherMode will return the RBAC policy matcher mode for the given ArgoCD instance.
 func (r *ArgoCDReconciler) getRBACPolicyMatcherMode() string {
-	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.PolicyMatcherMode, nil).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.RBAC.PolicyMatcherMode, "").(string)
 }
 
 // getRBACDefaultPolicy will return the RBAC default policy for the given ArgoCD instance.

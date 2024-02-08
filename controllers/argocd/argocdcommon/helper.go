@@ -87,7 +87,12 @@ func GetValueOrDefault(value interface{}, defaultValue interface{}) interface{} 
 		if reflect.ValueOf(value).IsNil() {
 			return defaultValue
 		}
-		return reflect.ValueOf(value).String()
+		ptVal := reflect.Indirect(reflect.ValueOf(value))
+
+		switch ptVal.Kind() {
+		case reflect.String:
+			return reflect.Indirect(reflect.ValueOf(value)).String()
+		}
 	}
 
 	switch v := value.(type) {
@@ -95,12 +100,12 @@ func GetValueOrDefault(value interface{}, defaultValue interface{}) interface{} 
 		if len(v) > 0 {
 			return v
 		}
-		return defaultValue
+		return defaultValue.(string)
 	case map[string]string:
 		if len(v) > 0 {
 			return v
 		}
-		return defaultValue
+		return defaultValue.(map[string]string)
 	}
 
 	return defaultValue
