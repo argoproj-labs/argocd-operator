@@ -275,6 +275,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"applications",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"list",
