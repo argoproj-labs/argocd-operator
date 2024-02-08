@@ -96,18 +96,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD)
 		return err
 	}
 
-	// create clusterrole & clusterrolebinding if cluster-scoped ArgoCD
-	log.Info("reconciling applicationset clusterroles")
-	clusterrole, err := r.reconcileApplicationSetClusterRole(cr)
-	if err != nil {
-		return err
-	}
-
-	log.Info("reconciling applicationset clusterrolebindings")
-	if err := r.reconcileApplicationSetClusterRoleBinding(cr, clusterrole, sa); err != nil {
-		return err
-	}
-
 	log.Info("reconciling applicationset roles")
 	role, err := r.reconcileApplicationSetRole(cr)
 	if err != nil {
@@ -158,6 +146,19 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD)
 
 // reconcileApplicationControllerDeployment will ensure the Deployment resource is present for the ArgoCD Application Controller component.
 func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD, sa *corev1.ServiceAccount) error {
+
+	exists := false
+	existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
+		exists = true
+	}
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
+		if exists {
+			return r.Client.Delete(context.TODO(), existing)
+		}
+		return nil
+	}
+
 	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
 
 	setAppSetLabels(&deploy.ObjectMeta)
@@ -235,12 +236,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	}
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 
-	if existing := newDeploymentWithSuffix("applicationset-controller", "controller", cr); argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-
-		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-			err := r.Client.Delete(context.TODO(), existing)
-			return err
-		}
+	if exists {
 
 		existingSpec := existing.Spec.Template.Spec
 
@@ -363,37 +359,35 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	exists := true
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, err
+			return sa, err
 		}
 		exists = false
 	}
 
-	if exists {
-		if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
+		if exists {
 			err := r.Client.Delete(context.TODO(), sa)
 			if err != nil {
 				if !apierrors.IsNotFound(err) {
-					return nil, err
+					return sa, err
 				}
 			}
 		}
 		return sa, nil
 	}
 
-	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
-		return nil, err
+	if !exists {
+		if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+			return sa, err
+		}
+
+		err := r.Client.Create(context.TODO(), sa)
+		if err != nil {
+			return sa, err
+		}
 	}
 
-	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		return sa, nil
-	}
-
-	err := r.Client.Create(context.TODO(), sa)
-	if err != nil {
-		return nil, err
-	}
-
-	return sa, err
+	return sa, nil
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
@@ -404,13 +398,11 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 	}
 
 	// controller disabled, don't create resources
-	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 		allowed = false
 	}
 
-	// policy rules based on https://github.com/argoproj/argo-cd/blob/3c2124235619d8451e2d24c7873e5a6da17354af/manifests/cluster-rbac/applicationset-controller/argocd-applicationset-controller-clusterrole.yaml
 	policyRules := []v1.PolicyRule{
-
 		// ApplicationSet
 		{
 			APIGroups: []string{"argoproj.io"},
@@ -483,7 +475,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 	}
 
 	// controller disabled, don't create resources
-	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
 		allowed = false
 	}
 
@@ -927,14 +919,14 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
 		}
-		if apierrors.IsNotFound(err) && cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-			return nil
-		}
 		roleBindingExists = false
 	}
 
-	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		return r.Client.Delete(context.TODO(), roleBinding)
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
+		if roleBindingExists {
+			return r.Client.Delete(context.TODO(), roleBinding)
+		}
+		return nil
 	}
 
 	setAppSetLabels(&roleBinding.ObjectMeta)

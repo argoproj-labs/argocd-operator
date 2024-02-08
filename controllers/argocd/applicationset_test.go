@@ -502,6 +502,10 @@ func TestReconcileApplicationSet_ServiceAccount(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		Enabled: boolPtr(true),
+	}
+
 	retSa, err := r.reconcileApplicationSetServiceAccount(a)
 	assert.NoError(t, err)
 
@@ -532,6 +536,10 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
+
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		Enabled: boolPtr(true),
+	}
 
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
@@ -703,9 +711,6 @@ func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t 
 
 	a.Spec = argoproj.ArgoCDSpec{
 		SourceNamespaces: []string{ns},
-		ApplicationSet: &argoproj.ArgoCDApplicationSet{
-			SourceNamespaces: []string{ns},
-		},
 	}
 
 	createNamespace(r, "new-ns", "")
@@ -727,6 +732,9 @@ func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t 
 	assert.Equal(t, roleBinding.Subjects, getRoleBindingSubjectsForApplicationSourceNamespaces(a))
 
 	// should update the existing resources to add appsets permissions
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		SourceNamespaces: []string{ns},
+	}
 	err = r.reconcileApplicationSetSourceNamespacesResources(a)
 	assert.NoError(t, err)
 
@@ -739,8 +747,7 @@ func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t 
 	roleBinding = &rbacv1.RoleBinding{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
 	assert.NoError(t, err)
-	subjs := append(getRoleBindingSubjectsForApplicationSetSourceNamespaces(a), getRoleBindingSubjectsForApplicationSourceNamespaces(a)...)
-	assert.Equal(t, roleBinding.Subjects, subjs)
+	assert.Equal(t, roleBinding.Subjects, getRoleBindingSubjectsForApplicationSourceNamespaces(a))
 }
 
 func TestReconcileApplicationSet_Role(t *testing.T) {
@@ -753,6 +760,10 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
+
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		Enabled: boolPtr(true),
+	}
 
 	roleRet, err := r.reconcileApplicationSetRole(a)
 	assert.NoError(t, err)
@@ -805,6 +816,10 @@ func TestReconcileApplicationSet_RoleBinding(t *testing.T) {
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
+
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		Enabled: boolPtr(true),
+	}
 
 	role := &rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-name"}}
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
