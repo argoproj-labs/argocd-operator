@@ -142,6 +142,52 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 	return r.Client.Create(context.TODO(), cm)
 }
 
+<<<<<<< HEAD
+=======
+// reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
+func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
+	cm := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		return r.reconcileRBACConfigMap(cm, cr)
+	}
+	return r.createRBACConfigMap(cm, cr)
+}
+
+// reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
+	changed := false
+	// Policy CSV
+	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
+		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
+		changed = true
+	}
+
+	// Default Policy
+	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
+		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
+		changed = true
+	}
+
+	// Default Policy Matcher Mode
+	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDKeyPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
+		cm.Data[common.ArgoCDKeyPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
+		changed = true
+	}
+
+	// Scopes
+	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
+		cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
+		changed = true
+	}
+
+	if changed {
+		// TODO: Reload server (and dex?) if RBAC settings change?
+		return r.Client.Update(context.TODO(), cm)
+	}
+	return nil // ConfigMap exists and nothing to do, move along...
+}
+
+>>>>>>> 52e4741f8c9ac375dafbd92b7bb4de9c75e370cf
 // reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileRedisHAConfigMap(cr, useTLSForRedis); err != nil {
