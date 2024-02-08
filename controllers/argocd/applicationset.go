@@ -129,16 +129,28 @@ func (r *ReconcileArgoCD) reconcileApplicationSetController(cr *argoproj.ArgoCD)
 		return err
 	}
 
+	// create clusterrole & clusterrolebinding if cluster-scoped ArgoCD
+	log.Info("reconciling applicationset clusterroles")
+	clusterrole, err := r.reconcileApplicationSetClusterRole(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling applicationset clusterrolebindings")
+	if err := r.reconcileApplicationSetClusterRoleBinding(cr, clusterrole, sa); err != nil {
+		return err
+	}
+
 	// reconcile source namespace roles & rolebindings
 	log.Info("reconciling applicationset roles & rolebindings in source namespaces")
 	if err := r.reconcileApplicationSetSourceNamespacesResources(cr); err != nil {
-		log.Error(err, "errors encountered during reconciliation of applicationset resources in source namespaces")
+		return err
 	}
 
 	// remove resources for namespaces not part of SourceNamespaces
 	log.Info("performing cleanup for applicationset source namespaces")
 	if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(cr); err != nil {
-		log.Error(err, "errors encountered during cleanup of applicationset resources in source namespaces")
+		return err
 	}
 
 	return nil
@@ -516,14 +528,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 		return nil
 	}
 
-	// TODO: delete rb for roleref change
-	// if the Rules differ, update the rolebinding
-	if !reflect.DeepEqual(existingClusterRB.Subjects, clusterRB.Subjects) || !reflect.DeepEqual(existingClusterRB.RoleRef, clusterRB.RoleRef) {
+	// if subj differ, update the rolebinding
+	if !reflect.DeepEqual(existingClusterRB.Subjects, clusterRB.Subjects) {
 		existingClusterRB.Subjects = clusterRB.Subjects
-		existingClusterRB.RoleRef = clusterRB.RoleRef
 		if err := r.Client.Update(context.TODO(), existingClusterRB); err != nil {
 			return err
 		}
+	} else if !reflect.DeepEqual(existingClusterRB.RoleRef, clusterRB.RoleRef) {
+		// RoleRef can't be updated, delete the rolebinding so that it gets recreated
+		r.Client.Delete(context.TODO(), existingClusterRB)
+		return fmt.Errorf("change detected in roleRef for rolebinding %s of Argo CD instance %s in namespace %s", existingClusterRB.Name, cr.Name, existingClusterRB.Namespace)
 	}
 	return nil
 }
@@ -532,7 +546,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 
 	var reconciliationErrors []error
 
-	// nothing to do
+	// controller disabled, nothing to do. cleanup handled by removeUnmanagedApplicationSetSourceNamespaceResources()
 	if cr.Spec.ApplicationSet == nil {
 		return nil
 	}
@@ -543,7 +557,6 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 		// skip source ns if doesn't exist
 		namespace := &corev1.Namespace{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
-			// TODO: log errors &  continue and return err only for crtical things like rb delete everywhere
 			errMsg := fmt.Errorf("failed to retrieve namespace %s", sourceNamespace)
 			reconciliationErrors = append(reconciliationErrors, errors.Join(errMsg, err))
 			continue
@@ -747,7 +760,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 			Rules: getApplicationSetPolicyRuleForArgoCDServer(),
 		}
 		// patch rules if apps in source namespace is allowed
-		if ns, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && ns == cr.Namespace {
+		if cr.Spec.SourceNamespaces != nil && contains(cr.Spec.SourceNamespaces, sourceNamespace) {
 			role.Rules = append(role.Rules, policyRuleForServerApplicationSourceNamespaces()...)
 		}
 		err = r.reconcileSourceNamespaceRole(role, cr)
@@ -869,28 +882,36 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRole(cr *argoproj.ArgoCD) (*v1.
 	role := newRole("applicationset-controller", policyRules, cr)
 	setAppSetLabels(&role.ObjectMeta)
 
+	exists := true
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: cr.Namespace}, role)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", role.Name, err)
+			return role, err
 		}
-		if apierrors.IsNotFound(err) && cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-			return nil, nil
-		}
-		if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
-			return nil, err
-		}
-		return role, r.Client.Create(context.TODO(), role)
+		exists = false
 	}
-	if cr.Spec.ApplicationSet != nil && !cr.Spec.ApplicationSet.IsEnabled() {
-		return nil, r.Client.Delete(context.TODO(), role)
+
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.IsEnabled() {
+		if exists {
+			if err := r.Client.Delete(context.TODO(), role); err != nil {
+				if !apierrors.IsNotFound(err) {
+					return role, err
+				}
+			}
+		}
+		return role, nil
 	}
 
 	role.Rules = policyRules
 	if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
-		return nil, err
+		return role, err
 	}
-	return role, r.Client.Update(context.TODO(), role)
+	if exists {
+		return role, r.Client.Update(context.TODO(), role)
+	} else {
+		return role, r.Client.Create(context.TODO(), role)
+	}
+
 }
 
 func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD, role *v1.Role, sa *corev1.ServiceAccount) error {
@@ -1050,7 +1071,7 @@ func getApplicationSetPolicyRuleForArgoCDServer() []v1.PolicyRule {
 				"argoproj.io",
 			},
 			Resources: []string{
-				"applicationset",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"create",
@@ -1070,7 +1091,7 @@ func (r *ReconcileArgoCD) removeUnmanagedApplicationSetSourceNamespaceResources(
 
 	for ns := range r.ManagedApplicationSetSourceNamespaces {
 		managedNamespace := false
-		if cr.GetDeletionTimestamp() == nil {
+		if cr.Spec.ApplicationSet != nil && cr.GetDeletionTimestamp() == nil {
 			for _, namespace := range cr.Spec.ApplicationSet.SourceNamespaces {
 				if namespace == ns {
 					managedNamespace = true
@@ -1130,7 +1151,10 @@ func (r *ReconcileArgoCD) cleanupUnmanagedApplicationSetSourceNamespaceResources
 
 	// handle argocd-server role & rolebinding in target namespace
 	// app-in-any-namespace enabled on target namespace, update/ignore the resources instead of deleting them
-	_, isApplicationNs := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]
+	isApplicationNs := false
+	if cr.Spec.SourceNamespaces != nil {
+		isApplicationNs = contains(cr.Spec.SourceNamespaces, namespace.Name)
+	}
 
 	existingRole = v1.Role{}
 	roleName = getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)

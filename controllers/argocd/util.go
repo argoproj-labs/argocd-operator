@@ -792,7 +792,8 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	if cr.Spec.ApplicationSet != nil {
+	// check ManagedApplicationSetSourceNamespaces for proper cleanup
+	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
 		log.Info("reconciling ApplicationSet controller")
 		if err := r.reconcileApplicationSetController(cr); err != nil {
 			return err
@@ -1422,8 +1423,11 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	}
 
 	// handle argocd-server role & rolebinding in target namespace
-	// appset-in-any-namespace enabled on target namespace, update the resources instead of deleting them
-	_, isApplicationSetNs := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+	// appset-in-any-namespace enabled on target namespace, update the resources to remove permissions instead of deleting them
+	isApplicationSetNs := false
+	if cr.Spec.ApplicationSet != nil {
+		isApplicationSetNs = contains(cr.Spec.ApplicationSet.SourceNamespaces, namespace.Name)
+	}
 
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
@@ -1457,7 +1461,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	// don't delete rolebinding if appsets in source namespace is enabled
-	if existingRoleBinding.Name != "" && !isApplicationSetNs{
+	if existingRoleBinding.Name != "" && !isApplicationSetNs {
 		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
