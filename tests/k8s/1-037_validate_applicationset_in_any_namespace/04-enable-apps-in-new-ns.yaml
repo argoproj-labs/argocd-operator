@@ -1,0 +1,15 @@
+# appset resources should be updated to include app-in-any-ns permissions in target appset-new-ns ns
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+  namespace: appset-argocd
+spec:
+  sourceNamespaces:
+    - appset-new-ns
+  applicationSet:
+    sourceNamespaces:
+      - appset-old-ns
+      - appset-new-ns
+    scmProviders:
+      - github.com

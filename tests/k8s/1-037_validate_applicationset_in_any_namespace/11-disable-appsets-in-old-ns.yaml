@@ -1,0 +1,6 @@
+# appset resources should be removed
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    kubectl patch -n appset-argocd argocd/example --type='json' -p='[{"op": "remove", "path": "/spec/applicationSet"}]'

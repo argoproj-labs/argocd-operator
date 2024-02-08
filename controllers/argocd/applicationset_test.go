@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +35,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -534,7 +535,7 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 
 	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-name"}}
 
-	// ArgoCD is not cluster-scoped, resources shouldn't be created
+	// test: ArgoCD is not cluster-scoped, resources shouldn't be created
 	role, err := r.reconcileApplicationSetClusterRole(a)
 	assert.NoError(t, err)
 	err = r.reconcileApplicationSetClusterRoleBinding(a, role, sa)
@@ -544,15 +545,15 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	cr := &rbacv1.ClusterRole{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName}, cr)
 	assert.Error(t, err)
-	assert.True(t, errors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 
 	// clusterrolebinding should not be created
 	crb := &rbacv1.ClusterRoleBinding{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName}, crb)
 	assert.Error(t, err)
-	assert.True(t, errors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 
-	// make ArgoCD cluster-scoped, resources should be created
+	// test: make ArgoCD cluster-scoped, resources should be created
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", a.Namespace)
 
 	role, err = r.reconcileApplicationSetClusterRole(a)
@@ -572,7 +573,7 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	assert.Equal(t, crb.RoleRef.Name, cr.Name)
 	assert.Equal(t, crb.Subjects[0].Name, sa.Name)
 
-	// make ArgoCD namespaced-scope, existing resources should be deleted
+	// test: make ArgoCD namespaced-scope, existing resources should be deleted
 	os.Setenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES", "")
 	role, err = r.reconcileApplicationSetClusterRole(a)
 	assert.NoError(t, err)
@@ -583,13 +584,163 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	cr = &rbacv1.ClusterRole{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName}, cr)
 	assert.Error(t, err)
-	assert.True(t, errors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
 
 	// clusterrolebinding should not exists
 	crb = &rbacv1.ClusterRoleBinding{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName}, crb)
 	assert.Error(t, err)
-	assert.True(t, errors.IsNotFound(err))
+	assert.True(t, apierrors.IsNotFound(err))
+}
+
+func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name               string
+		appSetField        *argoproj.ArgoCDApplicationSet
+		expectErr          bool
+		foundNamespaces    []string
+		notfoundNamespaces []string
+	}{
+		{
+			name: "No source namespaces", // no resources should be created
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				Enabled: boolPtr(true),
+			},
+			expectErr: false,
+		},
+		{
+			name: "Source namespaces set", // resources should be created in allowed namespaces
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expectErr:       false,
+			foundNamespaces: []string{"foo", "bar"},
+		},
+		{
+			name: "Source namespaces set, namespace doesn't exist", // resource creation should be skipped in non existing ns
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expectErr:       true,
+			foundNamespaces: []string{"foo"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD()
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+			a.Spec.ApplicationSet = test.appSetField
+
+			for _, ns := range test.foundNamespaces {
+				createNamespace(r, ns, "")
+			}
+
+			err := r.reconcileApplicationSetSourceNamespacesResources(a)
+			if test.expectErr {
+				assert.Error(t, err)
+			}
+
+			// resources for applicationset-controller should be created in target ns
+			for _, ns := range test.foundNamespaces {
+				resName := getResourceNameForApplicationSetSourceNamespaces(a)
+
+				role := &rbacv1.Role{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
+				assert.NoError(t, err)
+
+				roleBinding := &rbacv1.RoleBinding{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
+				assert.NoError(t, err)
+			}
+
+			// resources for argocd-server should be created in target ns
+			for _, ns := range test.foundNamespaces {
+				resName := getRoleNameForApplicationSourceNamespaces(ns, a)
+
+				role := &rbacv1.Role{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
+				assert.NoError(t, err)
+
+				roleBinding := &rbacv1.RoleBinding{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
+				assert.NoError(t, err)
+			}
+
+			// appset tracker label should be added on the target namespace
+			for _, ns := range test.foundNamespaces {
+				namespace := &v1.Namespace{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: ns}, namespace)
+				assert.NoError(t, err)
+				val, found := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+				assert.True(t, found)
+				assert.Equal(t, a.Namespace, val)
+			}
+
+		})
+	}
+}
+
+func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	ns := "foo"
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{ns},
+		ApplicationSet: &argoproj.ArgoCDApplicationSet{
+			SourceNamespaces: []string{ns},
+		},
+	}
+
+	createNamespace(r, "new-ns", "")
+	createNamespace(r, ns, "")
+	resName := getRoleNameForApplicationSourceNamespaces(ns, a)
+
+	// role & rolebinding already exist in the target namespace with permissions for app-in-any-ns
+	r.reconcileRoles(a)
+	r.reconcileRoleBindings(a)
+
+	role := &rbacv1.Role{}
+	err := r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
+	assert.NoError(t, err)
+	assert.Equal(t, role.Rules, policyRuleForServerApplicationSourceNamespaces())
+
+	roleBinding := &rbacv1.RoleBinding{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
+	assert.NoError(t, err)
+	assert.Equal(t, roleBinding.Subjects, getRoleBindingSubjectsForApplicationSourceNamespaces(a))
+
+	// should update the existing resources to add appsets permissions
+	err = r.reconcileApplicationSetSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	role = &rbacv1.Role{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
+	assert.NoError(t, err)
+	rules := append(getApplicationSetPolicyRuleForArgoCDServer(), policyRuleForServerApplicationSourceNamespaces()...)
+	assert.Equal(t, role.Rules, rules)
+
+	roleBinding = &rbacv1.RoleBinding{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
+	assert.NoError(t, err)
+	subjs := append(getRoleBindingSubjectsForApplicationSetSourceNamespaces(a), getRoleBindingSubjectsForApplicationSourceNamespaces(a)...)
+	assert.Equal(t, roleBinding.Subjects, subjs)
 }
 
 func TestReconcileApplicationSet_Role(t *testing.T) {

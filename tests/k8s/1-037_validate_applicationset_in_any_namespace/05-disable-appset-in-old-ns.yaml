@@ -1,0 +1,14 @@
+# appset resources should be cleaned up from removed appset-old-ns ns
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+  namespace: appset-argocd
+spec:
+  sourceNamespaces:
+    - appset-new-ns
+  applicationSet:
+    sourceNamespaces:
+      - appset-new-ns
+    scmProviders:
+      - github.com

@@ -1,0 +1,12 @@
+# appset resources should be created in target ns
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+  namespace: appset-argocd
+spec:
+  applicationSet:
+    sourceNamespaces:
+      - appset-old-ns
+    scmProviders:
+      - github.com

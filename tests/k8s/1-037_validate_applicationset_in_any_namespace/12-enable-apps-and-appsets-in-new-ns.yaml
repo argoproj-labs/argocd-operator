@@ -1,0 +1,14 @@
+# resources created in target ns should have both apps & appsets permissions
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+  namespace: appset-argocd
+spec:
+  sourceNamespaces:
+    - appset-old-ns
+  applicationSet:
+    sourceNamespaces:
+      - appset-old-ns
+    scmProviders:
+      - github.com

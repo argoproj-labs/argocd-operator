@@ -1,0 +1,7 @@
+# appset resources in target ns should be cleaned up upon argocd delete
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    kubectl delete -n appset-argocd argocd/example 
+

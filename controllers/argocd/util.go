@@ -1414,13 +1414,17 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 		return nil
 	}
+
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
 	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}
 
-	// Delete Roles for SourceNamespaces
+	// handle argocd-server role & rolebinding in target namespace
+	// appset-in-any-namespace enabled on target namespace, update the resources instead of deleting them
+	_, isApplicationSetNs := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
@@ -1429,10 +1433,21 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	if existingRole.Name != "" {
-		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
-			return err
+		if isApplicationSetNs {
+			// update the role to remove app-in-any-ns permissions
+			existingRole.Rules = getApplicationSetPolicyRuleForArgoCDServer()
+			err := r.Client.Update(context.TODO(), &existingRole)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("failed to update role from namespace [%s]", namespace.Name))
+			}
+		} else {
+			err := r.Client.Delete(context.TODO(), &existingRole)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
 	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
@@ -1441,11 +1456,13 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
-	if existingRoleBinding.Name != "" {
+	// don't delete rolebinding if appsets in source namespace is enabled
+	if existingRoleBinding.Name != "" && !isApplicationSetNs{
 		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 

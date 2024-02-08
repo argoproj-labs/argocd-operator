@@ -1,0 +1,16 @@
+# existing resources in appset-old-ns ns should be modified to include appset permissions along with new appset specific roles & rolebindings
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+  namespace: appset-argocd
+spec:
+  sourceNamespaces:
+    - appset-new-ns
+    - appset-old-ns
+  applicationSet:
+    sourceNamespaces:
+      - appset-old-ns
+    scmProviders:
+      - github.com
+
