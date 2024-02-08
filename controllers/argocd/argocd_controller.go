@@ -29,7 +29,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/configmap"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
@@ -89,7 +88,6 @@ type ArgoCDReconciler struct {
 	LabelSelector string
 
 	SecretController        *secret.SecretReconciler
-	ConfigMapController     *configmap.ConfigMapReconciler
 	RedisController         *redis.RedisReconciler
 	ReposerverController    *reposerver.RepoServerReconciler
 	ServerController        *server.ServerReconciler
@@ -378,11 +376,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.ConfigMapController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile configmap controller")
-		return err
-	}
-
 	if err := r.AppController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile application controller")
 		return err
@@ -449,12 +442,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
 		ManagedNamespaces: r.ResourceManagedNamespaces,
-	}
-
-	configMapController := &configmap.ConfigMapReconciler{
-		Client:   &r.Client,
-		Scheme:   r.Scheme,
-		Instance: r.Instance,
 	}
 
 	redisController := &redis.RedisReconciler{
@@ -527,8 +514,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.NotificationsController = notificationsController
 
 	r.SSOController = ssoController
-
-	r.ConfigMapController = configMapController
 
 	r.SecretController = secretController
 
