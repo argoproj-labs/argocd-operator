@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	caResourceName string
+	caResourceName  string
+	tlsResourceName string
 )
 
 func (r *ArgoCDReconciler) reconcileSecrets() error {
@@ -27,7 +28,20 @@ func (r *ArgoCDReconciler) reconcileSecrets() error {
 	return reconErrs.ErrOrNil()
 }
 
+// reconcileClusterTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
+// This secret contains the TLS certificate used by Argo CD components. It is generated using the
+// CA cert and CA key contained within the cluster CA secret
+func (r *ArgoCDReconciler) reconcileClusterTLSSecret() error {
+	caSecret, err := workloads.GetSecret(caResourceName, r.Instance.Namespace, r.Client)
+	if err != nil {
+		return errors.Wrapf(err, "reconcileClusterTLSSecret: failed to retrieve ca secret %s in namespace %s", caResourceName, r.Instance.Namespace)
+	}
+
+}
+
 // reconcileClusterCASecret ensures the CA Secret is reconciled for the ArgoCD cluster.
+// This secret contains the self-signed CA certificate and CA key that is used to generate the TLS
+// certificate contained in the cluster TLS secret
 func (r *ArgoCDReconciler) reconcileCLusterCASecret() error {
 	pvtKey, err := argoutil.NewPrivateKey()
 	if err != nil {
@@ -114,4 +128,5 @@ func (r *ArgoCDReconciler) deleteSecret(name, namespace string) error {
 
 func (r *ArgoCDReconciler) secretVarSetter() {
 	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
+	tlsResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDTLSSuffix)
 }

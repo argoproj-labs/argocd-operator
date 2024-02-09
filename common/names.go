@@ -35,5 +35,8 @@ const (
 	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
 	ArgoCDCASuffix = "ca"
 
+	// ArgoCDTLSSuffix is the name suffix for ArgoCD TLS resources.
+	ArgoCDTLSSuffix = "tls"
+
 	MetricsSuffix = "metrics"
 )
