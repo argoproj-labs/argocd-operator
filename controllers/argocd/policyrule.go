@@ -143,6 +143,17 @@ func policyRuleForServer() []v1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
 	}
 }
 
@@ -228,6 +239,17 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"delete",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
 	}
 }
 
@@ -267,6 +289,17 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"list",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
 			},
 		},
 	}
