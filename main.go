@@ -95,7 +95,6 @@ func main() {
 
 	var secureMetrics = false
 	var enableHTTP2 = false
-	var logLevel string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", fmt.Sprintf(":%d", common.OperatorMetricsPort), "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -105,13 +104,12 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the metrics and webhook servers.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", secureMetrics, "If the metrics endpoint should be served securely.")
-	flag.StringVar(&logLevel, "loglevel", "debug", "The desired logger level")
 
 	opts := ctrlzap.Options{
 		Development: true,
 		Encoder:     zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
 		TimeEncoder: zapcore.RFC3339TimeEncoder,
-		Level:       zapcore.Level(util.GetLogLevel(logLevel)),
+		Level:       util.GetLogLevel(util.GetEnv(common.ArgoCDOperatorLogLevelEnvVar)),
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
