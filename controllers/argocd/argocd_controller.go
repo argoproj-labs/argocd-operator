@@ -33,7 +33,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
@@ -88,7 +87,6 @@ type ArgoCDReconciler struct {
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
-	SecretController        *secret.SecretReconciler
 	ConfigMapController     *configmap.ConfigMapReconciler
 	RedisController         *redis.RedisReconciler
 	ReposerverController    *reposerver.RepoServerReconciler
@@ -367,14 +365,13 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
-	// core components, return reconciliation errors
-	if err := r.SecretController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile secret controller")
+	if err := r.ConfigMapController.Reconcile(); err != nil {
+		r.Logger.Error(err, "failed to reconcile configmap controller")
 		return err
 	}
 
-	if err := r.ConfigMapController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile configmap controller")
+	if err := r.reconcileSecrets(); err != nil {
+		r.Logger.Error(err, "failed to reconcile required secrets")
 		return err
 	}
 
@@ -437,15 +434,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 }
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
-
-	secretController := &secret.SecretReconciler{
-		Client:            r.Client,
-		Scheme:            r.Scheme,
-		Instance:          r.Instance,
-		ClusterScoped:     r.ClusterScoped,
-		ManagedNamespaces: r.ResourceManagedNamespaces,
-	}
-
 	configMapController := &configmap.ConfigMapReconciler{
 		Client:   &r.Client,
 		Scheme:   r.Scheme,
@@ -524,8 +512,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.SSOController = ssoController
 
 	r.ConfigMapController = configMapController
-
-	r.SecretController = secretController
 
 }
 
