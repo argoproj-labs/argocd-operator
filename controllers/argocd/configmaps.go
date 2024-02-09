@@ -118,11 +118,7 @@ func (r *ArgoCDReconciler) reeconcileArgoCDCm() error {
 func (r *ArgoCDReconciler) reconcileCACm() error {
 	caSecret, err := workloads.GetSecret(caResourceName, r.Instance.Namespace, r.Client)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileCACm: failed to retrieve ca secret %s in namespace %s", caResourceName, r.Instance.Namespace)
-		}
-		r.Logger.Debug("reconcileCACm: ca secret not found; skipping ca configmap reconciliation")
-		return nil
+		return errors.Wrapf(err, "reconcileCACm: failed to retrieve ca secret %s in namespace %s", caResourceName, r.Instance.Namespace)
 	}
 
 	req := workloads.ConfigMapRequest{

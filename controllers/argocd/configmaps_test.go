@@ -308,8 +308,14 @@ func Test_reconcileCaCm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.cmVarSetter()
+
 			err := tt.reconciler.reconcileCACm()
-			assert.NoError(t, err)
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
 
 			existing, err := workloads.GetConfigMap("test-argocd-ca", test.TestNamespace, tt.reconciler.Client)
 
