@@ -116,11 +116,10 @@ func (r *ArgoCDReconciler) reeconcileArgoCDCm() error {
 // reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
 // This ConfigMap holds the CA Certificate data for client use.
 func (r *ArgoCDReconciler) reconcileCACm() error {
-	caSecretName := argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
-	caSecret, err := workloads.GetSecret(caSecretName, r.Instance.Namespace, r.Client)
+	caSecret, err := workloads.GetSecret(caResourceName, r.Instance.Namespace, r.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileCACm: failed to retrieve ca secret %s in namespace %s", caSecretName, r.Instance.Namespace)
+			return errors.Wrapf(err, "reconcileCACm: failed to retrieve ca secret %s in namespace %s", caResourceName, r.Instance.Namespace)
 		}
 		r.Logger.Debug("reconcileCACm: ca secret not found; skipping ca configmap reconciliation")
 		return nil
