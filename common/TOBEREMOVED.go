@@ -187,3 +187,8 @@ func DefaultAnnotations(name string, namespace string) map[string]string {
 		AnnotationNamespace: namespace,
 	}
 }
+
+const (
+	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
+	ArgoCDCASuffix = "ca"
+)

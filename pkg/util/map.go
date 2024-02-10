@@ -24,3 +24,7 @@ func StringMapKeys(m map[string]string) []string {
 	sort.Strings(r)
 	return r
 }
+
+func EmptyMap() map[string]string {
+	return map[string]string{}
+}

@@ -101,7 +101,7 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 
 func (rsr *RepoServerReconciler) getDeploymentRequest() workloads.DeploymentRequest {
 	req := workloads.DeploymentRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{

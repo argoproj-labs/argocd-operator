@@ -32,11 +32,16 @@ const (
 
 // suffixes
 const (
-	// ArgoCDCASuffix is the name suffix for ArgoCD CA resources.
-	ArgoCDCASuffix = "ca"
+	// CASuffix is the name suffix for ArgoCD CA resources.
+	CASuffix = "ca"
 
-	// ArgoCDTLSSuffix is the name suffix for ArgoCD TLS resources.
-	ArgoCDTLSSuffix = "tls"
+	// TLSSuffix is the name suffix for ArgoCD TLS resources.
+	TLSSuffix = "tls"
+
+	// GRPCSuffix is the name suffix for ArgoCD GRPC resources.
+	GRPCSuffix = "grpc"
+
+	CLusterSuffix = "cluster"
 
 	MetricsSuffix = "metrics"
 )

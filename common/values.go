@@ -51,6 +51,8 @@ const (
 	ArgoCDStatusAvailable = "Available"
 
 	PrometheusOperator = "prometheus-operator"
+
+	SecretTypeCluster = "cluster"
 )
 
 // general values

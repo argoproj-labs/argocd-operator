@@ -26,7 +26,7 @@ func (r *ArgoCDReconciler) getApplicationInstanceLabelKey() string {
 
 // getCAConfigMapName returns the CA ConfigMap name for the given ArgoCD.
 func (r *ArgoCDReconciler) getCAConfigMapName() string {
-	return argocdcommon.GetValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)).(string)
+	return argocdcommon.GetValueOrDefault(r.Instance.Spec.TLS.CA.ConfigMapName, argoutil.GenerateResourceName(r.Instance.Name, common.CASuffix)).(string)
 }
 
 // getSCMRootCAConfigMapName returns the SCMRootCA ConfigMap name for the given ArgoCD ApplicationSet Controller.

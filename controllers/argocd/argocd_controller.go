@@ -370,10 +370,10 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.reconcileSecrets(); err != nil {
-		r.Logger.Error(err, "failed to reconcile required secrets")
-		return err
-	}
+	// if err := r.reconcileSecrets(); err != nil {
+	// 	r.Logger.Error(err, "failed to reconcile required secrets")
+	// 	return err
+	// }
 
 	if err := r.AppController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile application controller")
