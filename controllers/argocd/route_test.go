@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
@@ -209,6 +211,196 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 		TargetPort: intstr.FromString("https"),
 	}
 	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+}
+
+func TestReconcileRouteApplicationSetHost(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			WebhookServer: argoproj.WebhookServerSpec{
+				Host: "webhook-test.org",
+				Route: argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+				},
+			},
+		}
+	})
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+	wantTLSConfig := &routev1.TLSConfig{
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+		Termination:                   routev1.TLSTerminationEdge,
+	}
+	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	if diff := cmp.Diff(argoCD.Spec.ApplicationSet.WebhookServer.Host, loaded.Spec.Host); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+}
+
+func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			WebhookServer: argoproj.WebhookServerSpec{
+				Host: "webhook-test.org",
+				Route: argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: "passthrough",
+					},
+				},
+			},
+		}
+	})
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+	wantTLSConfig := &routev1.TLSConfig{
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+		Termination:                   routev1.TLSTerminationPassthrough,
+	}
+	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	if diff := cmp.Diff(argoCD.Spec.ApplicationSet.WebhookServer.Host, loaded.Spec.Host); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+}
+
+func TestReconcileRouteApplicationSetTls(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+	wildcardPolicy := routev1.WildcardPolicyType("subdomain")
+
+	argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+			WebhookServer: argoproj.WebhookServerSpec{
+				Route: argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Certificate:                   "test-certificate",
+						Key:                           "test-key",
+						CACertificate:                 "test-ca-certificate",
+						DestinationCACertificate:      "test-destination-ca-certificate",
+						InsecureEdgeTerminationPolicy: "Redirect",
+					},
+					Annotations:    map[string]string{"my-annotation-key": "my-annotation-value"},
+					Labels:         map[string]string{"my-label-key": "my-label-value"},
+					WildcardPolicy: &wildcardPolicy,
+				},
+			},
+		}
+	})
+
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+	req := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}
+
+	_, err := r.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	loaded := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-%s-%s", testArgoCDName, common.ApplicationSetServiceNameSuffix, "webhook"), Namespace: testNamespace}, loaded)
+	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+	wantTLSConfig := &routev1.TLSConfig{
+		Termination:                   routev1.TLSTerminationEdge,
+		Certificate:                   "test-certificate",
+		Key:                           "test-key",
+		CACertificate:                 "test-ca-certificate",
+		DestinationCACertificate:      "test-destination-ca-certificate",
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+	}
+	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	assert.Empty(t, loaded.Spec.Host)
+
+	wantPort := &routev1.RoutePort{
+		TargetPort: intstr.FromString("webhook"),
+	}
+	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	if diff := cmp.Diff("my-annotation-value", loaded.Annotations["my-annotation-key"]); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	if diff := cmp.Diff("my-label-value", loaded.Labels["my-label-key"]); diff != "" {
+		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+
+	if diff := cmp.Diff(wildcardPolicy, loaded.Spec.WildcardPolicy); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
 	}
 }
