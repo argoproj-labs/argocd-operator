@@ -632,7 +632,6 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	}
 }
 
-// ADDMANGAAL
 func TestReconcileArgoCD_sourceNamespacemapper(t *testing.T) {
 	a := makeTestArgoCD()
 	a.Namespace = "argo"
@@ -676,7 +675,7 @@ func TestReconcileArgoCD_sourceNamespacemapper(t *testing.T) {
 	}
 
 	// Call the sourceNamespacemapper function
-	result := r.sourceNamespacemapper(context.TODO(), ns)
+	result := r.sourceNamespaceMapper(context.TODO(), ns)
 
 	// Assert the expected reconcile requests
 	expectedResult := []reconcile.Request{
