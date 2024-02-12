@@ -156,9 +156,8 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	return result
 }
 
-// ADDMANGAAL
 // SourceNamespacemapper retrieves all ArgoCD instances and returns them as reconcile requests.
-func (r *ReconcileArgoCD) sourceNamespacemapper(ctx context.Context, o client.Object) []reconcile.Request {
+func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result []reconcile.Request
 
 	namespaceName := o.GetName()
