@@ -100,7 +100,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
-			return nil
+			return r.Client.Delete(context.TODO(), route)
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Route found, do nothing

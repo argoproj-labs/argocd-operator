@@ -38,4 +38,3 @@ The following default value of images could be overridden by setting the environ
 | `ARGOCD_REDIS_IMAGE` | redis |
 | `ARGOCD_REDIS_HA_IMAGE` | redis |
 | `ARGOCD_REDIS_HA_PROXY_IMAGE` | haproxy |
-| `ARGOCD_GRAFANA_IMAGE` | grafana/grafana |

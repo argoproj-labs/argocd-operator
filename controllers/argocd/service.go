@@ -71,7 +71,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
 		if !cr.Spec.Grafana.Enabled {
 			// Service exists but enabled flag has been set to false, delete the Service
-			return nil
+			return r.Client.Delete(context.TODO(), svc)
 		}
 		log.Info(grafanaDeprecatedWarning)
 		return nil // Service found, do nothing
