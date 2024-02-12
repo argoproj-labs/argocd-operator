@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,30 @@ const (
 	redisHATestImage      = "testing/redis:latest-ha"
 	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
 )
+
+func parallelismLimit(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.ParallelismLimit = n
+	}
+}
+
+func logFormat(f string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.LogFormat = f
+	}
+}
+
+func logLevel(l string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.LogLevel = l
+	}
+}
+
+func appSync(s int) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
+	}
+}
 
 var imageTests = []struct {
 	name      string
@@ -507,7 +532,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		},
 		{
 			"configured invalid loglevel",
-			[]argoCDOpt{logFormat("arbitrary")},
+			[]argoCDOpt{logLevel("arbitrary")},
 			defaultResult,
 		},
 		{
@@ -538,6 +563,34 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
+		}
+	}
+}
+
+func TestGetArgoApplicationContainerEnv(t *testing.T) {
+
+	sync60s := []v1.EnvVar{
+		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+
+	cmdTests := []struct {
+		name string
+		opts []argoCDOpt
+		want []v1.EnvVar
+	}{
+		{
+			"configured apsync to 60s",
+			[]argoCDOpt{appSync(60)},
+			sync60s,
+		},
+	}
+
+	for _, tt := range cmdTests {
+		cr := makeTestArgoCD(tt.opts...)
+		env := getArgoControllerContainerEnv(cr)
+
+		if !reflect.DeepEqual(env, tt.want) {
+			t.Fatalf("got %#v, want %#v", env, tt.want)
 		}
 	}
 }
