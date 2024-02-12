@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -248,6 +249,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
 	}
 
+	hostname, err := shortenHostname(route.Spec.Host)
+	if err != nil {
+		return err
+	}
+
+	route.Spec.Host = hostname
+
 	if cr.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{
@@ -325,19 +333,17 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 
-	route.Spec.Port = &routev1.RoutePort{
-		TargetPort: intstr.FromString("webhook"),
+	hostname, err := shortenHostname(route.Spec.Host)
+	if err != nil {
+		return err
 	}
 
-	// Allow override of TLS options for the Route
-	if cr.Spec.ApplicationSet.WebhookServer.Route.TLS != nil {
-		tls := &routev1.TLSConfig{}
+	route.Spec.Host = hostname
 
-		// Set Termination
-		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination != "" {
-			tls.Termination = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination
-		} else {
-			tls.Termination = routev1.TLSTerminationEdge
+	if cr.Spec.Server.Insecure {
+		// Disable TLS and rely on the cluster certificate.
+		route.Spec.Port = &routev1.RoutePort{
+			TargetPort: intstr.FromString("webhook"),
 		}
 
 		// Set Certificate
@@ -391,4 +397,36 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		return r.Client.Create(context.TODO(), route)
 	}
 	return r.Client.Update(context.TODO(), route)
+}
+
+func shortenHostname(hostname string) (string, error) {
+	// Split the hostname into labels
+	labels := strings.Split(hostname, ".")
+
+	// Check and truncate the FIRST label if longer than 63 characters
+	if len(labels[0]) > 63 {
+		labels[0] = labels[0][:63]
+	}
+
+	// Check other labels and return an error if any is longer than 63 characters
+	for _, label := range labels[1:] {
+		if len(label) > 63 {
+			return "", fmt.Errorf("label length exceeds 63 characters")
+		}
+	}
+
+	// Join the labels back into a hostname
+	resultHostname := strings.Join(labels, ".")
+
+	// Check and shorten the overall hostname if > 253 characters
+	if len(resultHostname) > 255 {
+		resultHostname = resultHostname[:253]
+	}
+
+	// Check if the FIRST label is < 20 and return an error if true
+	if len(labels[0]) < 20 {
+		return "", fmt.Errorf("first label length is less than 20 characters")
+	}
+
+	return resultHostname, nil
 }
