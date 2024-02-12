@@ -1,7 +1,3 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 60
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -9,31 +5,18 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_test-2
-  namespace: test-2
-rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - applications
-  verbs:
-  - create
-  - get
-  - list
-  - patch
-  - update
-  - watch
-  - delete
+  name: example-argocd_dev
+  namespace: dev
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_test-2
-  namespace: test-2
+  name: example-argocd_dev
+  namespace: dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_test-2
+  name: example-argocd_test
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
