@@ -418,11 +418,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 // - If the FIRST label ("console-openshift-console" in the above case) is longer than 63 characters, shorten (truncate the end) it to 63.
 // - If any other label is longer than 63 characters, return an error
 // - After all the labels are 63 characters or less, check the length of the overall hostname:
-//   - If the overall hostname is > 255, then shorten the FIRST label until the host name is < 255
+//   - If the overall hostname is > 253, then shorten the FIRST label until the host name is < 253
 //   - After the FIRST label has been shortened, if it is < 20, then return an error (this is a sanity test to ensure the label is likely to be unique)
 func shortenHostname(hostname string) (string, error) {
 	if hostname == "" {
 		return "", nil
+	}
+
+	// Return the hostname as it is if hostname is already within the size limit
+	if len(hostname) <= maxHostnameLength {
+		return hostname, nil
 	}
 
 	// Split the hostname into labels
