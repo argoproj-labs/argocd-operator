@@ -1,0 +1,87 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+status:
+  phase: Available
+---
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: example-argocd
+    app.kubernetes.io/name: example-argocd
+    app.kubernetes.io/part-of: argocd
+  name: example-argocd_test
+  namespace: test
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd_test
+  namespace: test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd_test
+subjects:
+- kind: ServiceAccount
+  name: example-argocd-argocd-server
+  namespace: default
+- kind: ServiceAccount
+  name: example-argocd-argocd-application-controller
+  namespace: default
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: example-argocd
+    app.kubernetes.io/name: example-argocd
+    app.kubernetes.io/part-of: argocd
+  name: example-argocd_test
+  namespace: dev
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd_test
+  namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd_test
+subjects:
+- kind: ServiceAccount
+  name: example-argocd-argocd-server
+  namespace: default
+- kind: ServiceAccount
+  name: example-argocd-argocd-application-controller
+  namespace: default
