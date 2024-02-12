@@ -308,54 +308,80 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 
 	// Allow override of the Annotations for the Route.
 	if len(cr.Spec.ApplicationSet.WebhookServer.Route.Annotations) > 0 {
-		route.Annotations = cr.Spec.Server.Route.Annotations
+		route.Annotations = cr.Spec.ApplicationSet.WebhookServer.Route.Annotations
 	}
 
 	// Allow override of the Labels for the Route.
 	if len(cr.Spec.ApplicationSet.WebhookServer.Route.Labels) > 0 {
 		labels := route.Labels
-		for key, val := range cr.Spec.Server.Route.Labels {
+		for key, val := range cr.Spec.ApplicationSet.WebhookServer.Route.Labels {
 			labels[key] = val
 		}
 		route.Labels = labels
 	}
 
 	// Allow override of the Host for the Route.
-	if len(cr.Spec.Server.Host) > 0 {
+	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
 		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 
-	if cr.Spec.Server.Insecure {
-		// Disable TLS and rely on the cluster certificate.
-		route.Spec.Port = &routev1.RoutePort{
-			TargetPort: intstr.FromString("webhook"),
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("webhook"),
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.ApplicationSet.WebhookServer.Route.TLS != nil {
+		tls := &routev1.TLSConfig{}
+
+		// Set Termination
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination != "" {
+			tls.Termination = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination
+		} else {
+			tls.Termination = routev1.TLSTerminationEdge
 		}
+
+		// Set Certificate
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate != "" {
+			tls.Certificate = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate
+		}
+
+		// Set Key
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key != "" {
+			tls.Key = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key
+		}
+
+		// Set CACertificate
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.CACertificate != "" {
+			tls.CACertificate = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.CACertificate
+		}
+
+		// Set DestinationCACertificate
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.DestinationCACertificate != "" {
+			tls.DestinationCACertificate = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.DestinationCACertificate
+		}
+
+		// Set InsecureEdgeTerminationPolicy
+		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.InsecureEdgeTerminationPolicy != "" {
+			tls.InsecureEdgeTerminationPolicy = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.InsecureEdgeTerminationPolicy
+		} else {
+			tls.InsecureEdgeTerminationPolicy = routev1.InsecureEdgeTerminationPolicyRedirect
+		}
+
+		route.Spec.TLS = tls
+	} else {
+		// Disable TLS and rely on the cluster certificate.
 		route.Spec.TLS = &routev1.TLSConfig{
 			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 			Termination:                   routev1.TLSTerminationEdge,
 		}
-	} else {
-		// Server is using TLS configure passthrough.
-		route.Spec.Port = &routev1.RoutePort{
-			TargetPort: intstr.FromString("webhook"),
-		}
-		route.Spec.TLS = &routev1.TLSConfig{
-			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-			Termination:                   routev1.TLSTerminationPassthrough,
-		}
-	}
-
-	// Allow override of TLS options for the Route
-	if cr.Spec.Server.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Server.Route.TLS
 	}
 
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
 
 	// Allow override of the WildcardPolicy for the Route
-	if cr.Spec.Server.Route.WildcardPolicy != nil && len(*cr.Spec.Server.Route.WildcardPolicy) > 0 {
-		route.Spec.WildcardPolicy = *cr.Spec.Server.Route.WildcardPolicy
+	if cr.Spec.ApplicationSet.WebhookServer.Route.WildcardPolicy != nil && len(*cr.Spec.ApplicationSet.WebhookServer.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.ApplicationSet.WebhookServer.Route.WildcardPolicy
 	}
 
 	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {

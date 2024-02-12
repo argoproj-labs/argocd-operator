@@ -1631,6 +1631,18 @@ func parallelismLimit(n int32) argoCDOpt {
 	}
 }
 
+func logFormat(f string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.LogFormat = f
+	}
+}
+
+func logLevel(l string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.LogLevel = l
+	}
+}
+
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	t.Helper()
 	deployment := &appsv1.Deployment{}
