@@ -2,6 +2,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestAssert
 timeout: 60
 ---
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -42,6 +43,7 @@ subjects:
   name: example-argocd-argocd-application-controller
   namespace: default
 ---
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -81,3 +83,84 @@ subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
   namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: example-argocd
+    app.kubernetes.io/name: example-argocd
+    app.kubernetes.io/part-of: argocd
+  name: example-argocd_test-2
+  namespace: test-2
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd_test-2
+  namespace: test-2
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd_test-2
+subjects:
+- kind: ServiceAccount
+  name: example-argocd-argocd-server
+  namespace: default
+- kind: ServiceAccount
+  name: example-argocd-argocd-application-controller
+  namespace: default
+--- 
+apiVersion: rbac.authorization.k8s.io/v1 
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: example-argocd
+    app.kubernetes.io/name: example-argocd
+    app.kubernetes.io/part-of: argocd
+  name: example-argocd_dev
+  namespace: dev
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: example-argocd_dev
+  namespace: dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: example-argocd_dev
+subjects:
+- kind: ServiceAccount
+  name: example-argocd-argocd-server
+  namespace: default
+- kind: ServiceAccount
+  name: example-argocd-argocd-application-controller
+  namespace: default
+
