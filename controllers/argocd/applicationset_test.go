@@ -109,7 +109,7 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	want := []corev1.Container{applicationSetContainer(a, false)}
+	want := []corev1.Container{r.applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(want, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment containers:\n%s", diff)
@@ -324,7 +324,7 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
-	containerWant := []corev1.Container{applicationSetContainer(a, false)}
+	containerWant := []corev1.Container{r.applicationSetContainer(a, false)}
 
 	if diff := cmp.Diff(containerWant, deployment.Spec.Template.Spec.Containers); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
@@ -436,24 +436,43 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name        string
-		appSetField *argoproj.ArgoCDApplicationSet
-		expectedCmd []string
+		name           string
+		argocdSpec     argoproj.ArgoCDSpec
+		expectedCmd    []string
+		notExpectedCmd []string
 	}{
 		{
 			name: "Appset in any namespaces without scm provider list",
-			appSetField: &argoproj.ArgoCDApplicationSet{
+			argocdSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo", "bar"},
+				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
 			expectedCmd: []string{"--applicationset-namespaces", "foo,bar", "--enable-scm-providers", "false"},
 		},
 		{
 			name: "with SCM provider list",
-			appSetField: &argoproj.ArgoCDApplicationSet{
-				SourceNamespaces: []string{"foo"},
-				SCMProviders:     []string{"github.com"},
+			argocdSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo"},
+					SCMProviders:     []string{"github.com"},
+				},
+				SourceNamespaces: []string{"foo", "bar"},
 			},
 			expectedCmd: []string{"--applicationset-namespaces", "foo", "--allowed-scm-providers", "github.com"},
+		},
+		{
+			name: "Appsets namespaces without Apps namespaces",
+			argocdSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo"},
+					SCMProviders:     []string{"github.com"},
+				},
+				SourceNamespaces: []string{},
+			},
+			expectedCmd:    []string{"--allowed-scm-providers", "github.com"},
+			notExpectedCmd: []string{"--applicationset-namespaces", "foo"},
 		},
 	}
 
@@ -470,7 +489,7 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 			cm := newConfigMapWithName(getCAConfigMapName(a), a)
 			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
 
-			a.Spec.ApplicationSet = test.appSetField
+			a.Spec = test.argocdSpec
 
 			sa := corev1.ServiceAccount{}
 			assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
@@ -487,6 +506,9 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 			cmds := deployment.Spec.Template.Spec.Containers[0].Command
 			for _, c := range test.expectedCmd {
 				assert.True(t, contains(cmds, c))
+			}
+			for _, c := range test.notExpectedCmd {
+				assert.False(t, contains(cmds, c))
 			}
 		})
 	}
@@ -741,7 +763,7 @@ func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t 
 	role = &rbacv1.Role{}
 	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
 	assert.NoError(t, err)
-	rules := append(getApplicationSetPolicyRuleForArgoCDServer(), policyRuleForServerApplicationSourceNamespaces()...)
+	rules := append(policyRuleForServerApplicationSetSourceNamespaces(), policyRuleForServerApplicationSourceNamespaces()...)
 	assert.Equal(t, role.Rules, rules)
 
 	roleBinding = &rbacv1.RoleBinding{}

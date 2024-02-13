@@ -1415,20 +1415,13 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 		return nil
 	}
-
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
 	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}
 
-	// handle argocd-server role & rolebinding in target namespace
-	// appset-in-any-namespace enabled on target namespace, update the resources to remove permissions instead of deleting them
-	isApplicationSetNs := false
-	if cr.Spec.ApplicationSet != nil {
-		isApplicationSetNs = contains(cr.Spec.ApplicationSet.SourceNamespaces, namespace.Name)
-	}
-
+	// Delete Roles for SourceNamespaces
 	existingRole := v1.Role{}
 	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
@@ -1437,21 +1430,10 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	if existingRole.Name != "" {
-		if isApplicationSetNs {
-			// update the role to remove app-in-any-ns permissions
-			existingRole.Rules = getApplicationSetPolicyRuleForArgoCDServer()
-			err := r.Client.Update(context.TODO(), &existingRole)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("failed to update role from namespace [%s]", namespace.Name))
-			}
-		} else {
-			err := r.Client.Delete(context.TODO(), &existingRole)
-			if err != nil {
-				return err
-			}
+		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+			return err
 		}
 	}
-
 	// Delete RoleBindings for SourceNamespaces
 	existingRoleBinding := &v1.RoleBinding{}
 	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
@@ -1460,13 +1442,11 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
 		}
 	}
-	// don't delete rolebinding if appsets in source namespace is enabled
-	if existingRoleBinding.Name != "" && !isApplicationSetNs {
+	if existingRoleBinding.Name != "" {
 		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -1605,4 +1585,17 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
+}
+
+// NOTE: creating this placeholder func to align the changes with ongoing effort
+// to support wildcards in https://github.com/argoproj-labs/argocd-operator/pull/1218.
+func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+	return cr.Spec.SourceNamespaces, nil
+}
+
+func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) []string {
+	if cr.Spec.ApplicationSet != nil {
+		return cr.Spec.ApplicationSet.SourceNamespaces
+	}
+	return []string{}
 }

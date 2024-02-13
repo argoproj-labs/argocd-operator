@@ -225,8 +225,8 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		}
 		role.Namespace = namespace.Name
 		// patch rules if appset in source namespace is allowed
-		if cr.Spec.ApplicationSet != nil && contains(cr.Spec.ApplicationSet.SourceNamespaces, sourceNamespace) {
-			role.Rules = append(role.Rules, getApplicationSetPolicyRuleForArgoCDServer()...)
+		if contains(r.getApplicationSetSourceNamespaces(cr), sourceNamespace) {
+			role.Rules = append(role.Rules, policyRuleForServerApplicationSetSourceNamespaces()...)
 		}
 
 		created := false
