@@ -156,7 +156,9 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	return result
 }
 
-// SourceNamespacemapper retrieves all ArgoCD instances and returns them as reconcile requests.
+// sourceNamespaceMapper maps namespace events to ArgoCD reconciliation requests.
+// It checks each ArgoCD instance's sourceNamespace pattern against the observed namespace.
+// If there's a match, it generates a reconcile request for that ArgoCD instance.
 func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result []reconcile.Request
 
