@@ -1403,10 +1403,9 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
-
 	sourceNamespaces := []string{}
-
 	namespaces := &corev1.NamespaceList{}
+
 	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
 		return nil, err
 	}
