@@ -72,10 +72,9 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 		{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
 		{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
 		{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: 
-			func() {
-				existing.Spec.Template.Spec.DeprecatedServiceAccount = desired.Spec.Template.Spec.ServiceAccountName
-			}
+		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: func() {
+			existing.Spec.Template.Spec.DeprecatedServiceAccount = desired.Spec.Template.Spec.ServiceAccountName
+		},
 		},
 		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
 		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},

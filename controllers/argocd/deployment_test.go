@@ -1561,12 +1561,6 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
-func operationProcessors(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Processors.Operation = n
-	}
-}
-
 func Test_UpdateNodePlacement(t *testing.T) {
 
 	deployment := &appsv1.Deployment{
@@ -1626,24 +1620,6 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 }
 
-func parallelismLimit(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.ParallelismLimit = n
-	}
-}
-
-func logFormat(f string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogFormat = f
-	}
-}
-
-func logLevel(l string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogLevel = l
-	}
-}
-
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	t.Helper()
 	deployment := &appsv1.Deployment{}
@@ -1699,12 +1675,6 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 func assertNotFound(t *testing.T, err error) {
 	t.Helper()
 	assert.True(t, apierrors.IsNotFound(err))
-}
-
-func controllerProcessors(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Processors.Status = n
-	}
 }
 
 // repoServerVolumes returns the list of expected default volumes for the repo server
