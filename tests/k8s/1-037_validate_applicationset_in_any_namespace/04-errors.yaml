@@ -3,36 +3,12 @@ kind: Role
 metadata:
   name: example_appset-old-ns
   namespace: appset-old-ns
-rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - applicationsets
-  verbs:
-  - create
-  - get
-  - list
-  - patch
-  - update
-  - watch
-  - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: example_appset-old-ns
   namespace: appset-old-ns
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: example_appset-old-ns
-subjects:
-- kind: ServiceAccount
-  name: example-argocd-server
-  namespace: appset-argocd
-- kind: ServiceAccount
-  name: example-argocd-application-controller
-  namespace: appset-argocd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

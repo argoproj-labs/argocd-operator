@@ -1,4 +1,4 @@
-# appset resources should be created in all target namespaces
+# appset resources shouldn't be created as apps in target ns is disabled
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:

@@ -1,8 +1,0 @@
-# all resources from target namespaces should be cleaned up
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-- script: |
-    kubectl patch -n appset-argocd argocd/example --type='json' -p='[{"op": "remove", "path": "/spec/applicationSet"}]'
-    kubectl patch -n appset-argocd argocd/example --type='json' -p='[{"op": "remove", "path": "/spec/sourceNamespaces"}]'
-

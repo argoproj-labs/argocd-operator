@@ -1,4 +1,4 @@
-# appset resources should be updated to include app-in-any-ns permissions in target appset-new-ns ns
+# appset resources should be created in appset-new-ns namespace as it is subset of sourceNamespaces i.e apps in any ns is enabled on appset-new-ns namespace
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:

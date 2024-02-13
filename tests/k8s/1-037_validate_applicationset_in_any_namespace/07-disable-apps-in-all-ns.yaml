@@ -1,13 +1,13 @@
-# appset resources should be added to target ns
+# all appset resources from target ns should be removed
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example
   namespace: appset-argocd
 spec:
+  sourceNamespaces: []
   applicationSet:
     sourceNamespaces:
       - appset-old-ns
     scmProviders:
       - github.com
-
