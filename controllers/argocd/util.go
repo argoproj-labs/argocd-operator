@@ -1134,10 +1134,14 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
-func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
+func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 	host := cr.Name
 	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
-		host = cr.Spec.ApplicationSet.WebhookServer.Host
+		hostname, err := shortenHostname(cr.Spec.ApplicationSet.WebhookServer.Host)
+		if err != nil {
+			return "", err
+		}
+		host = hostname
 	}
-	return host
+	return host, nil
 }
