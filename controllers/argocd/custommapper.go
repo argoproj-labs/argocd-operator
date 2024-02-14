@@ -173,11 +173,9 @@ func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Ob
 				Name:      argocd.Name,
 				Namespace: argocd.Namespace,
 			}
-
 			result = append(result, reconcile.Request{NamespacedName: namespacedName})
 		}
 	}
-
 	return result
 }
 
