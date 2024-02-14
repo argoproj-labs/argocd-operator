@@ -27,7 +27,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
 	appsv1 "github.com/openshift/api/apps/v1"
-	oappsv1 "github.com/openshift/api/apps/v1"
+
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	template "github.com/openshift/api/template/v1"
@@ -1095,7 +1095,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 }
 
 // HandleKeycloakPodDeletion resets the Realm Creation Status to false when keycloak pod is deleted.
-func handleKeycloakPodDeletion(dc *oappsv1.DeploymentConfig) error {
+func handleKeycloakPodDeletion(dc *appsv1.DeploymentConfig) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "unable to get k8s config")
@@ -1316,7 +1316,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 		}
 	}
 
-	existingDC := &oappsv1.DeploymentConfig{
+	existingDC := &appsv1.DeploymentConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultKeycloakIdentifier,
 			Namespace: cr.Namespace,

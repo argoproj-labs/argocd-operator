@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -67,7 +67,7 @@ func Test_ReconcileArgoCD_ReconcileRepoTLSSecret(t *testing.T) {
 	crt := []byte("foo")
 	key := []byte("bar")
 	t.Run("Reconcile TLS secret", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-repo-server",
 				Namespace: "argocd-operator",
@@ -273,7 +273,7 @@ func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {
 	crt := []byte("foo")
 	key := []byte("bar")
 	t.Run("Reconcile TLS secret", func(t *testing.T) {
-		service := &v1.Service{
+		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "argocd-redis",
 				Namespace: "argocd-operator",

@@ -55,15 +55,6 @@ const (
 	// ArgoCDKeyGAAnonymizeUsers is the configuration key for the Google Analytics user anonymization.
 	ArgoCDKeyGAAnonymizeUsers = "ga.anonymizeusers"
 
-	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
-	ArgoCDKeyGrafanaAdminUsername = "admin.username"
-
-	// ArgoCDKeyGrafanaAdminPassword is the admin password key for labels.
-	ArgoCDKeyGrafanaAdminPassword = "admin.password"
-
-	// ArgoCDKeyGrafanaSecretKey is the "secret key" key for labels.
-	ArgoCDKeyGrafanaSecretKey = "secret.key"
-
 	// ArgoCDKeyHelpChatURL is the congifuration key for the help chat URL.
 	ArgoCDKeyHelpChatURL = "help.chatUrl"
 
@@ -200,10 +191,6 @@ const (
 	// ArgoCDRedisImageEnvName is the environment variable used to get the image
 	// to used for the Redis container.
 	ArgoCDRedisImageEnvName = "ARGOCD_REDIS_IMAGE"
-
-	// ArgoCDGrafanaImageEnvName is the environment variable used to get the image
-	// to used for the Grafana container.
-	ArgoCDGrafanaImageEnvName = "ARGOCD_GRAFANA_IMAGE"
 
 	// ArgoCDDeletionFinalizer is a finalizer to implement pre-delete hooks
 	ArgoCDDeletionFinalizer = "argoproj.io/finalizer"

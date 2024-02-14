@@ -5,7 +5,6 @@ import (
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -66,7 +65,7 @@ func getDexOAuthClientID(cr *argoproj.ArgoCD) string {
 // getDexResources will return the ResourceRequirements for the Dex container.
 func getDexResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 
-	resources := v1.ResourceRequirements{}
+	resources := corev1.ResourceRequirements{}
 
 	// Allow override of resource requirements from CR
 	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.Resources != nil {
