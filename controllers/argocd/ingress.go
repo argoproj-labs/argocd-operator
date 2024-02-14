@@ -363,10 +363,15 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.
 	ingress.ObjectMeta.Annotations = atns
 
 	pathType := networkingv1.PathTypeImplementationSpecific
+	httpServerHost, err := getApplicationSetHTTPServerHost(cr)
+	if err != nil {
+		return err
+	}
+
 	// Add rules
 	ingress.Spec.Rules = []networkingv1.IngressRule{
 		{
-			Host: getApplicationSetHTTPServerHost(cr),
+			Host: httpServerHost,
 			IngressRuleValue: networkingv1.IngressRuleValue{
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
