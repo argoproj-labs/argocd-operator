@@ -543,7 +543,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 		}
 	} else if !reflect.DeepEqual(existingClusterRB.RoleRef, clusterRB.RoleRef) {
 		// RoleRef can't be updated, delete the rolebinding so that it gets recreated
-		r.Client.Delete(context.TODO(), existingClusterRB)
+		_ = r.Client.Delete(context.TODO(), existingClusterRB)
 		return fmt.Errorf("change detected in roleRef for rolebinding %s of Argo CD instance %s in namespace %s", existingClusterRB.Name, cr.Name, existingClusterRB.Namespace)
 	}
 	return nil
