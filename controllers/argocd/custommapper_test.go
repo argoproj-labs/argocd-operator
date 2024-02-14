@@ -770,6 +770,100 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardPatternNamespace(t *te
 
 }
 
+func TestReconcileArgoCD_sourceNamespaceMapperWithMultipleSourceNamespaces(t *testing.T) {
+	argocd1 := makeTestArgoCD()
+	resObjs := []client.Object{argocd1}
+	subresObjs := []client.Object{argocd1}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	argocd1.Name = "argocd1"
+	argocd1.Namespace = "argo-test-1"
+	argocd1.Spec.SourceNamespaces = append(argocd1.Spec.SourceNamespaces, "test*", "dev*")
+	// Fake client returns an error if ResourceVersion is not nil
+	argocd1.ResourceVersion = ""
+
+	assert.NoError(t, r.Client.Create(context.TODO(), argocd1))
+
+	type test struct {
+		name string
+		o    client.Object
+		want []reconcile.Request
+	}
+
+	tests := []test{
+		{
+			name: "Reconcile for Namespace 'test-namespace-1'",
+			o: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-1",
+				},
+			},
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      argocd1.Name,
+						Namespace: argocd1.Namespace,
+					},
+				},
+			},
+		},
+		{
+			name: "Reconcile for Namespace 'test-namespace-2'",
+			o: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test-namespace-2",
+				},
+			},
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      argocd1.Name,
+						Namespace: argocd1.Namespace,
+					},
+				},
+			},
+		},
+		{
+			name: "Reconcile for Namespace 'dev-namespace-1'",
+			o: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "dev-namespace-1",
+				},
+			},
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name:      argocd1.Name,
+						Namespace: argocd1.Namespace,
+					},
+				},
+			},
+		},
+
+		{
+			name: "No Reconcile for Namespace 'prod-namespace-1'",
+			o: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "prod-namespace-1",
+				},
+			},
+			want: []reconcile.Request{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := r.sourceNamespaceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
+				t.Errorf("ReconcileArgoCD.sourceNamespaceMapper(), got = %v, want = %v", got, tt.want)
+			}
+		})
+	}
+
+}
+
 func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardNamespace(t *testing.T) {
 	argocd1 := makeTestArgoCD()
 	resObjs := []client.Object{argocd1}
