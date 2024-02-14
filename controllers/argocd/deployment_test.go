@@ -36,7 +36,6 @@ var (
 	deploymentNames = []string{
 		"argocd-repo-server",
 		"argocd-dex-server",
-		"argocd-grafana",
 		"argocd-redis",
 		"argocd-server"}
 )
@@ -687,7 +686,6 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Grafana.Enabled = true
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 			Dex: &argoproj.ArgoCDDexSpec{

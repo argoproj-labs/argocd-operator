@@ -19,7 +19,6 @@ Name | Default | Description
 [**ExtraConfig**](#extra-config) | [Empty] | A catch-all mechanism to populate the argocd-cm configmap.
 [**GATrackingID**](#ga-tracking-id) | [Empty] | The google analytics tracking ID to use.
 [**GAAnonymizeUsers**](#ga-anonymize-users) | `false` | Enable hashed usernames sent to google analytics.
-[**Grafana**](#grafana-options) | [Object] | Grafana configuration options.
 [**HA**](#ha-options) | [Object] | High Availability options.
 [**HelpChatURL**](#help-chat-url) | `https://mycorp.slack.com/argo-cd` | URL for getting chat help, this will typically be your Slack channel for support.
 [**HelpChatText**](#help-chat-text) | `Chat now!` | The text for getting chat help.
@@ -328,70 +327,6 @@ metadata:
     example: ga-anonymize-users
 spec:
   gaAnonymizeUsers: true
-```
-
-## Grafana Options
-
-The following properties are available for configuring the Grafana component.
-
-Name | Default | Description
---- | --- | ---
-Enabled | false | Toggle Grafana support globally for ArgoCD.
-Host | `example-argocd-grafana` | The hostname to use for Ingress/Route resources.
-Image | `grafana/grafana` | The container image for Grafana. This overrides the `ARGOCD_GRAFANA_IMAGE` environment variable.
-[Ingress](#grafana-ingress-options) | [Object] | Ingress configuration for Grafana.
-Resources | [Empty] | The container compute resources.
-[Route](#grafana-route-options) | [Object] | Route configuration options.
-Size | 1 | The replica count for the Grafana Deployment.
-Version | 6.7.1 (SHA) | The tag to use with the Grafana container image.
-
-### Grafana Ingress Options
-
-The following properties are available for configuring the Grafana Ingress.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to use for the Ingress resource.
-Enabled | `false` | Toggle creation of an Ingress resource.
-IngressClassName | [Empty] | IngressClass to use for the Ingress resource.
-Path | `/` | Path to use for Ingress resources.
-TLS | [Empty] | TLS configuration for the Ingress.
-
-### Grafana Route Options
-
-The following properties are available to configure the Route for the Grafana component.
-
-Name | Default | Description
---- | --- | ---
-Annotations | [Empty] | The map of annotations to add to the Route.
-Enabled | `false` | Toggles the creation of a Route for the Grafana component.
-Labels | [Empty] | The map of labels to add to the Route.
-Path | `/` | The path for the Route.
-TLS | [Object] | The TLSConfig for the Route.
-WildcardPolicy| `None` | The wildcard policy for the Route. Can be one of `Subdomain` or `None`.
-
-### Grafana Example
-
-The following example shows all properties set to the default values.
-
-``` yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ArgoCD
-metadata:
-  name: example-argocd
-  labels:
-    example: insights
-spec:
-  grafana:
-    enabled: false
-    host: example-argocd-grafana
-    image: grafana/grafana
-    ingress:
-      enabled: false
-    resources: {}
-    route: false
-    size: 1
-    version: 6.7.1
 ```
 
 ## HA Options

@@ -25,7 +25,6 @@ import (
 const (
 	dexTestImage          = "testing/dex:latest"
 	argoTestImage         = "testing/argocd:latest"
-	grafanaTestImage      = "testing/grafana:latest"
 	redisTestImage        = "testing/redis:latest"
 	redisHATestImage      = "testing/redis:latest-ha"
 	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
@@ -84,28 +83,6 @@ var imageTests = []struct {
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
-		},
-	},
-	{
-		name:      "grafana default configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
-	},
-	{
-		name:      "grafana spec configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      grafanaTestImage,
-		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
-			a.Spec.Grafana.Image = "testing/grafana"
-			a.Spec.Grafana.Version = "latest"
-		}},
-	},
-	{
-		name:      "grafana env configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      grafanaTestImage,
-		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
 		},
 	},
 	{
