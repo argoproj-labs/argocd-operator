@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
@@ -1283,5 +1284,11 @@ func logFormat(f string) argoCDOpt {
 func logLevel(l string) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.LogLevel = l
+	}
+}
+
+func appSync(s int) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
 	}
 }

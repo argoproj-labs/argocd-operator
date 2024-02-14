@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,30 +30,6 @@ const (
 	redisHATestImage      = "testing/redis:latest-ha"
 	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
 )
-
-func parallelismLimit(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.ParallelismLimit = n
-	}
-}
-
-func logFormat(f string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogFormat = f
-	}
-}
-
-func logLevel(l string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogLevel = l
-	}
-}
-
-func appSync(s int) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
-	}
-}
 
 var imageTests = []struct {
 	name      string

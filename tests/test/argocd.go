@@ -1,6 +1,8 @@
 package test
 
 import (
+	"time"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,5 +51,11 @@ func ControllerProcessors(n int32) ArgoCDOpt {
 func OperationProcessors(n int32) ArgoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.Processors.Operation = n
+	}
+}
+
+func AppSync(s int) ArgoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
 	}
 }
