@@ -32,11 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func applicationSetDefaultVolumeMounts() []corev1.VolumeMount {
@@ -623,38 +624,61 @@ func TestReconcileApplicationSet_ClusterRBACCreationAndCleanup(t *testing.T) {
 	assert.True(t, apierrors.IsNotFound(err))
 }
 
+// Test creation/cleanup of applicationset-controller role & rolebinding in source namespaces
+// Appset resources are only created if target source ns is subset of apps source namespaces
 func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
 	tests := []struct {
-		name               string
-		appSetField        *argoproj.ArgoCDApplicationSet
-		expectErr          bool
-		foundNamespaces    []string
-		notfoundNamespaces []string
+		name         string
+		argoCDSpec   argoproj.ArgoCDSpec
+		expectErr    bool
+		existInNs    []string
+		notExistInNs []string
 	}{
 		{
-			name: "No source namespaces", // no resources should be created
-			appSetField: &argoproj.ArgoCDApplicationSet{
-				Enabled: boolPtr(true),
+			name: "No appset & app source namespaces", // no resources should be created
+			argoCDSpec: argoproj.ArgoCDSpec{
+				ApplicationSet:   nil,
+				SourceNamespaces: []string(nil),
 			},
 			expectErr: false,
 		},
 		{
-			name: "Source namespaces set", // resources should be created in allowed namespaces
-			appSetField: &argoproj.ArgoCDApplicationSet{
-				SourceNamespaces: []string{"foo", "bar"},
+			name: "appset source ns not subset of app source ns", // resources shouldn't be created in allowed namespaces
+			argoCDSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo", "bar"},
+				},
+				SourceNamespaces: []string(nil),
 			},
-			expectErr:       false,
-			foundNamespaces: []string{"foo", "bar"},
+			expectErr:    false,
+			existInNs:    []string{},
+			notExistInNs: []string{"foo", "bar"},
 		},
 		{
-			name: "Source namespaces set, namespace doesn't exist", // resource creation should be skipped in non existing ns
-			appSetField: &argoproj.ArgoCDApplicationSet{
+			name: "appset source ns subset of app source ns ", // resources should be created is all appset ns
+			argoCDSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo", "bar"},
+				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
-			expectErr:       true,
-			foundNamespaces: []string{"foo"},
+			expectErr:    false,
+			existInNs:    []string{"foo", "bar"},
+			notExistInNs: []string{},
+		},
+		{
+			name: "appset source ns partial subset of app source ns ", // resources should be created only in ns part of app source ns
+			argoCDSpec: argoproj.ArgoCDSpec{
+				ApplicationSet: &argoproj.ArgoCDApplicationSet{
+					SourceNamespaces: []string{"foo", "bar"},
+				},
+				SourceNamespaces: []string{"foo"},
+			},
+			expectErr:    false,
+			existInNs:    []string{"foo"},
+			notExistInNs: []string{"bar"},
 		},
 	}
 
@@ -668,9 +692,9 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 			r := makeTestReconciler(cl, sch)
-			a.Spec.ApplicationSet = test.appSetField
+			a.Spec = test.argoCDSpec
 
-			for _, ns := range test.foundNamespaces {
+			for _, ns := range append(test.existInNs, test.notExistInNs...) {
 				createNamespace(r, ns, "")
 			}
 
@@ -680,7 +704,7 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 			}
 
 			// resources for applicationset-controller should be created in target ns
-			for _, ns := range test.foundNamespaces {
+			for _, ns := range test.existInNs {
 				resName := getResourceNameForApplicationSetSourceNamespaces(a)
 
 				role := &rbacv1.Role{}
@@ -692,21 +716,8 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 				assert.NoError(t, err)
 			}
 
-			// resources for argocd-server should be created in target ns
-			for _, ns := range test.foundNamespaces {
-				resName := getRoleNameForApplicationSourceNamespaces(ns, a)
-
-				role := &rbacv1.Role{}
-				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
-				assert.NoError(t, err)
-
-				roleBinding := &rbacv1.RoleBinding{}
-				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
-				assert.NoError(t, err)
-			}
-
 			// appset tracker label should be added on the target namespace
-			for _, ns := range test.foundNamespaces {
+			for _, ns := range test.existInNs {
 				namespace := &v1.Namespace{}
 				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: ns}, namespace)
 				assert.NoError(t, err)
@@ -715,61 +726,32 @@ func TestReconcileApplicationSet_SourceNamespacesRBACCreation(t *testing.T) {
 				assert.Equal(t, a.Namespace, val)
 			}
 
+			// resources for applicationset-controller shouldn't be created in target ns
+			for _, ns := range test.notExistInNs {
+				resName := getResourceNameForApplicationSetSourceNamespaces(a)
+
+				role := &rbacv1.Role{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
+				assert.Error(t, err)
+				assert.True(t, apierrors.IsNotFound(err))
+
+				roleBinding := &rbacv1.RoleBinding{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
+				assert.Error(t, err)
+				assert.True(t, apierrors.IsNotFound(err))
+			}
+
+			// appset tracker label shouldn't be added on the target namespace
+			for _, ns := range test.notExistInNs {
+				namespace := &v1.Namespace{}
+				err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: ns}, namespace)
+				assert.NoError(t, err)
+				_, found := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+				assert.False(t, found)
+			}
+
 		})
 	}
-}
-
-func TestReconcileApplicationSet_ValidateSourceNamespacesSharedResourceUpdate(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD()
-	ns := "foo"
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	a.Spec = argoproj.ArgoCDSpec{
-		SourceNamespaces: []string{ns},
-	}
-
-	createNamespace(r, "new-ns", "")
-	createNamespace(r, ns, "")
-	resName := getRoleNameForApplicationSourceNamespaces(ns, a)
-
-	// role & rolebinding already exist in the target namespace with permissions for app-in-any-ns
-	r.reconcileRoles(a)
-	r.reconcileRoleBindings(a)
-
-	role := &rbacv1.Role{}
-	err := r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
-	assert.NoError(t, err)
-	assert.Equal(t, role.Rules, policyRuleForServerApplicationSourceNamespaces())
-
-	roleBinding := &rbacv1.RoleBinding{}
-	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
-	assert.NoError(t, err)
-	assert.Equal(t, roleBinding.Subjects, getRoleBindingSubjectsForApplicationSourceNamespaces(a))
-
-	// should update the existing resources to add appsets permissions
-	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
-		SourceNamespaces: []string{ns},
-	}
-	err = r.reconcileApplicationSetSourceNamespacesResources(a)
-	assert.NoError(t, err)
-
-	role = &rbacv1.Role{}
-	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, role)
-	assert.NoError(t, err)
-	rules := append(policyRuleForServerApplicationSetSourceNamespaces(), policyRuleForServerApplicationSourceNamespaces()...)
-	assert.Equal(t, role.Rules, rules)
-
-	roleBinding = &rbacv1.RoleBinding{}
-	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns}, roleBinding)
-	assert.NoError(t, err)
-	assert.Equal(t, roleBinding.Subjects, getRoleBindingSubjectsForApplicationSourceNamespaces(a))
 }
 
 func TestReconcileApplicationSet_Role(t *testing.T) {
@@ -812,6 +794,7 @@ func TestReconcileApplicationSet_Role(t *testing.T) {
 		"applicationsets",
 		"appprojects",
 		"applicationsets/finalizers",
+		"leases",
 	}
 
 	foundResources := []string{}
@@ -1047,4 +1030,159 @@ func TestArgoCDApplicationSetEnv(t *testing.T) {
 		deployment))
 
 	assert.Equal(t, defaultEnv, deployment.Spec.Template.Spec.Containers[0].Env)
+}
+
+func TestArgoCDApplicationSet_getApplicationSetSourceNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		name        string
+		appSetField *argoproj.ArgoCDApplicationSet
+		expected    []string
+	}{
+		{
+			name:        "Appsets not enabled",
+			appSetField: nil,
+			expected:    []string(nil),
+		},
+		{
+			name: "No appset source namespaces",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				Enabled: boolPtr(true),
+			},
+			expected: []string(nil),
+		},
+		{
+			name: "Appset source namespaces",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				SourceNamespaces: []string{"foo", "bar"},
+			},
+			expected: []string{"foo", "bar"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD()
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+			cm := newConfigMapWithName(getCAConfigMapName(a), a)
+			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
+
+			a.Spec.ApplicationSet = test.appSetField
+
+			actual := r.getApplicationSetSourceNamespaces(a)
+			assert.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func TestArgoCDApplicationSet_setManagedApplicationSetSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+			Labels: map[string]string{
+				common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: testNamespace,
+			},
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.setManagedApplicationSetSourceNamespaces(a)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(r.ManagedApplicationSetSourceNamespaces))
+	assert.Contains(t, r.ManagedApplicationSetSourceNamespaces, "test-namespace-1")
+}
+
+func TestArgoCDApplicationSet_removeUnmanagedApplicationSetSourceNamespaceResources(t *testing.T) {
+	ns1 := "foo"
+	ns2 := "bar"
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{ns1, ns2},
+		ApplicationSet: &argoproj.ArgoCDApplicationSet{
+			SourceNamespaces: []string{ns1, ns2},
+		},
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	createNamespace(r, ns1, "")
+	createNamespace(r, ns2, "")
+
+	// create resources
+	err := r.reconcileApplicationSetSourceNamespacesResources(a)
+	assert.NoError(t, err)
+
+	// remove appset ns
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{ns2},
+		ApplicationSet: &argoproj.ArgoCDApplicationSet{
+			SourceNamespaces: []string{ns1, ns2},
+		},
+	}
+
+	// clean up unmanaged namespaces resources
+	err = r.removeUnmanagedApplicationSetSourceNamespaceResources(a)
+	assert.NoError(t, err)
+
+	// resources shouldn't exist in ns1
+	resName := getResourceNameForApplicationSetSourceNamespaces(a)
+
+	role := &rbacv1.Role{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns1}, role)
+	assert.Error(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
+
+	roleBinding := &rbacv1.RoleBinding{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns1}, roleBinding)
+	assert.Error(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
+
+	// appset tracking label should be removed
+	namespace := &v1.Namespace{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: ns1}, namespace)
+	assert.NoError(t, err)
+	_, found := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+	assert.False(t, found)
+
+	// resources in ns2 shouldn't be touched
+
+	role = &rbacv1.Role{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns2}, role)
+	assert.NoError(t, err)
+
+	roleBinding = &rbacv1.RoleBinding{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: resName, Namespace: ns2}, roleBinding)
+	assert.NoError(t, err)
+
+	namespace = &v1.Namespace{}
+	err = r.Client.Get(context.TODO(), cntrlClient.ObjectKey{Name: ns2}, namespace)
+	assert.NoError(t, err)
+	val, found := namespace.Labels[common.ArgoCDApplicationSetManagedByClusterArgoCDLabel]
+	assert.True(t, found)
+	assert.Equal(t, a.Namespace, val)
 }

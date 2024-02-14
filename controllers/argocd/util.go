@@ -1592,10 +1592,3 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
 	return cr.Spec.SourceNamespaces, nil
 }
-
-func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) []string {
-	if cr.Spec.ApplicationSet != nil {
-		return cr.Spec.ApplicationSet.SourceNamespaces
-	}
-	return []string{}
-}

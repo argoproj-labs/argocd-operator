@@ -264,8 +264,19 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				roleBindingExists = false
 			}
 
-			roleBinding.Subjects = getRoleBindingSubjectsForApplicationSourceNamespaces(cr)
-			
+			roleBinding.Subjects = []v1.Subject{
+				{
+					Kind:      v1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
+					Namespace: cr.Namespace,
+				},
+				{
+					Kind:      v1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDApplicationControllerComponent),
+					Namespace: cr.Namespace,
+				},
+			}
+
 			if roleBindingExists {
 				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
 				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n != cr.Namespace {
@@ -379,19 +390,4 @@ func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRo
 		}
 	}
 	return nil
-}
-
-func getRoleBindingSubjectsForApplicationSourceNamespaces(cr *argoproj.ArgoCD) []v1.Subject {
-	return []v1.Subject{
-		{
-			Kind:      v1.ServiceAccountKind,
-			Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
-			Namespace: cr.Namespace,
-		},
-		{
-			Kind:      v1.ServiceAccountKind,
-			Name:      getServiceAccountName(cr.Name, common.ArgoCDApplicationControllerComponent),
-			Namespace: cr.Namespace,
-		},
-	}
 }

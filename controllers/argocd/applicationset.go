@@ -69,6 +69,8 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 		for _, ns := range cr.Spec.ApplicationSet.SourceNamespaces {
 			if contains(appsNamespaces, ns) {
 				appsetsSourceNamespaces = append(appsetsSourceNamespaces, ns)
+			} else {
+				log.V(1).Info(fmt.Sprintf("Apps in target sourceNamespace %s is not enabled, thus skipping the namespace in deployment command.", ns))
 			}
 		}
 	}
@@ -401,6 +403,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetServiceAccount(cr *argoproj.Arg
 	return sa, nil
 }
 
+// reconcileApplicationSetClusterRoleBinding reconciles required clusterrole for appset controller when ArgoCD is cluster-scoped
 func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
 
 	allowed := false
@@ -439,7 +442,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 		},
 	}
 
-	clusterRole := newClusterRole("argocd-applicationset-controller", policyRules, cr)
+	clusterRole := newClusterRole(common.ArgoCDApplicationSetControllerComponent, policyRules, cr)
 	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
 		return nil, err
 	}
@@ -478,6 +481,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRole(cr *argoproj.ArgoCD
 	return existingClusterRole, nil
 }
 
+// reconcileApplicationSetClusterRoleBinding reconciles required clusterrolebinding for appset controller when ArgoCD is cluster-scoped
 func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj.ArgoCD, role *v1.ClusterRole, sa *corev1.ServiceAccount) error {
 
 	allowed := false
@@ -490,7 +494,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 		allowed = false
 	}
 
-	clusterRB := newClusterRoleBindingWithname("argocd-applicationset-controller", cr)
+	clusterRB := newClusterRoleBindingWithname(common.ArgoCDApplicationSetControllerComponent, cr)
 	clusterRB.Subjects = []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
@@ -545,6 +549,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetClusterRoleBinding(cr *argoproj
 	return nil
 }
 
+// reconcileApplicationSetSourceNamespacesResources creates role & rolebinding in target source namespaces for appset controller
+// Appset resources are only created if target source ns is subset of apps source namespaces
 func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *argoproj.ArgoCD) error {
 
 	var reconciliationErrors []error
@@ -564,8 +570,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetSourceNamespacesResources(cr *a
 			continue
 		}
 		if !contains(appsNamespaces, sourceNamespace) {
-			// TODO: log at warning level
-			log.Info(fmt.Sprintf("Skipping reconciliation of resources for namespace %s as Apps in target namespace is not enabled.", sourceNamespace))
+			log.Error(fmt.Errorf("skipping reconciliation of resources for sourceNamespace %s as Apps in target sourceNamespace is not enabled", sourceNamespace), "Warning")
 			continue
 		}
 
@@ -851,6 +856,7 @@ func getResourceNameForApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) strin
 }
 
 // removeUnmanagedApplicationSetSourceNamespaceResources cleansup resources from ApplicationSetSourceNamespaces if namespace is not managed by argocd instance.
+// ManagedApplicationSetSourceNamespaces var keeps track of namespaces with appset resources.
 func (r *ReconcileArgoCD) removeUnmanagedApplicationSetSourceNamespaceResources(cr *argoproj.ArgoCD) error {
 
 	for ns := range r.ManagedApplicationSetSourceNamespaces {
@@ -929,14 +935,18 @@ func (r *ReconcileArgoCD) cleanupUnmanagedApplicationSetSourceNamespaceResources
 	return nil
 }
 
+// setManagedApplicationSetSourceNamespaces populates ManagedApplicationSetSourceNamespaces var with namespaces
+// with "argocd.argoproj.io/applicationset-managed-by-cluster-argocd" label.
 func (r *ReconcileArgoCD) setManagedApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) error {
-	r.ManagedApplicationSetSourceNamespaces = make(map[string]string)
+	if r.ManagedApplicationSetSourceNamespaces == nil {
+		r.ManagedApplicationSetSourceNamespaces = make(map[string]string)
+	}
 	namespaces := &corev1.NamespaceList{}
 	listOption := client.MatchingLabels{
 		common.ArgoCDApplicationSetManagedByClusterArgoCDLabel: cr.Namespace,
 	}
 
-	// get the list of namespaces managed by the Argo CD instance
+	// get the list of namespaces managed with "argocd.argoproj.io/applicationset-managed-by-cluster-argocd" label
 	if err := r.Client.List(context.TODO(), namespaces, listOption); err != nil {
 		return err
 	}
@@ -948,6 +958,7 @@ func (r *ReconcileArgoCD) setManagedApplicationSetSourceNamespaces(cr *argoproj.
 	return nil
 }
 
+// reconcileSourceNamespaceRole creates/updates role
 func (r *ReconcileArgoCD) reconcileSourceNamespaceRole(role v1.Role, cr *argoproj.ArgoCD) error {
 
 	if err := applyReconcilerHook(cr, role, ""); err != nil {
@@ -984,6 +995,7 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceRole(role v1.Role, cr *argopro
 	return nil
 }
 
+// reconcileSourceNamespaceRole creates/updates rolebinding
 func (r *ReconcileArgoCD) reconcileSourceNamespaceRoleBinding(roleBinding v1.RoleBinding, cr *argoproj.ArgoCD) error {
 
 	if err := applyReconcilerHook(cr, roleBinding, ""); err != nil {
@@ -1024,4 +1036,12 @@ func (r *ReconcileArgoCD) reconcileSourceNamespaceRoleBinding(roleBinding v1.Rol
 	}
 
 	return nil
+}
+
+// getApplicationSetSourceNamespaces return list of namespaces from .spec.ApplicationSet.SourceNamespaces
+func (r *ReconcileArgoCD) getApplicationSetSourceNamespaces(cr *argoproj.ArgoCD) []string {
+	if cr.Spec.ApplicationSet != nil {
+		return cr.Spec.ApplicationSet.SourceNamespaces
+	}
+	return []string(nil)
 }
