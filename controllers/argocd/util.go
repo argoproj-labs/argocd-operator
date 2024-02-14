@@ -1414,13 +1414,9 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	}
 
 	for _, namespace := range namespaces.Items {
-
 		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
-
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
-
 		}
-
 	}
 
 	return sourceNamespaces, nil

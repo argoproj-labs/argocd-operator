@@ -165,12 +165,9 @@ func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Ob
 	namespaceName := o.GetName()
 	argocds := &argoproj.ArgoCDList{}
 	if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
-
 		return result
 	}
-
 	for _, argocd := range argocds.Items {
-
 		if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
 			namespacedName := client.ObjectKey{
 				Name:      argocd.Name,
@@ -178,9 +175,7 @@ func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Ob
 			}
 
 			result = append(result, reconcile.Request{NamespacedName: namespacedName})
-
 		}
-
 	}
 
 	return result
