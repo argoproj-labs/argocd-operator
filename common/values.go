@@ -47,12 +47,6 @@ const (
 	// ArgoCDExportStorageBackendLocal is the value for the local storage backend.
 	ArgoCDExportStorageBackendLocal = "local"
 
-	// ArgoCDGrafanaConfigMapSuffix is the default suffix for the Grafana configuration ConfigMap.
-	ArgoCDGrafanaConfigMapSuffix = "grafana-config"
-
-	// ArgoCDGrafanaDashboardConfigMapSuffix is the default suffix for the Grafana dashboards ConfigMap.
-	ArgoCDGrafanaDashboardConfigMapSuffix = "grafana-dashboards"
-
 	// ArgoCDKnownHostsConfigMapName is the upstream hard-coded SSH known hosts data ConfigMap name.
 	ArgoCDKnownHostsConfigMapName = "argocd-ssh-known-hosts-cm"
 

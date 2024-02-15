@@ -36,7 +36,6 @@ var (
 	deploymentNames = []string{
 		"argocd-repo-server",
 		"argocd-dex-server",
-		"argocd-grafana",
 		"argocd-redis",
 		"argocd-server"}
 )
@@ -637,6 +636,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_command(t *testing.T) {
 
 	deployment.Spec.Template.Spec.Containers[0].Command[6] = "debug"
 	err = r.reconcileRepoDeployment(a, false)
+	assert.NoError(t, err)
 
 	assert.Equal(t, "debug", deployment.Spec.Template.Spec.Containers[0].Command[6])
 }
@@ -686,7 +686,6 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Grafana.Enabled = true
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 			Dex: &argoproj.ArgoCDDexSpec{
@@ -1622,24 +1621,6 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	updateNodePlacement(deployment, deployment2, &actualChange)
 	if actualChange == expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-}
-
-func parallelismLimit(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.ParallelismLimit = n
-	}
-}
-
-func logFormat(f string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogFormat = f
-	}
-}
-
-func logLevel(l string) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.LogLevel = l
 	}
 }
 

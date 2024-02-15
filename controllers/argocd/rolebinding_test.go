@@ -88,12 +88,6 @@ func TestReconcileArgoCD_reconcileRoleBinding_for_new_namespace(t *testing.T) {
 	expectedRedisRules := policyRuleForRedis(r.Client)
 	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedRedisRules, a))
 	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
-
-	// check no grafana rolebinding is created for the new namespace with managed-by label
-	workloadIdentifier = common.ArgoCDOperatorGrafanaComponent
-	expectedGrafanaRules := policyRuleForGrafana(r.Client)
-	assert.NoError(t, r.reconcileRoleBinding(workloadIdentifier, expectedGrafanaRules, a))
-	assert.Error(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName, Namespace: "newTestNamespace"}, roleBinding))
 }
 
 // This test validates the behavior of the operator reconciliation when a managed namespace is not properly terminated

@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,6 +27,12 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
+)
+
+const (
+	maxLabelLength    = 63
+	maxHostnameLength = 253
+	minFirstLabelSize = 20
 )
 
 var routeAPIFound = false
@@ -102,6 +109,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
 		}
+		log.Info(grafanaDeprecatedWarning)
 		return nil // Route found, do nothing
 	}
 
@@ -109,51 +117,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
 
-	// Allow override of the Annotations for the Route.
-	if len(cr.Spec.Grafana.Route.Annotations) > 0 {
-		route.Annotations = cr.Spec.Grafana.Route.Annotations
-	}
+	log.Info(grafanaDeprecatedWarning)
 
-	// Allow override of the Labels for the Route.
-	if len(cr.Spec.Grafana.Route.Labels) > 0 {
-		labels := route.Labels
-		for key, val := range cr.Spec.Grafana.Route.Labels {
-			labels[key] = val
-		}
-		route.Labels = labels
-	}
-
-	// Allow override of the Host for the Route.
-	if len(cr.Spec.Grafana.Host) > 0 {
-		route.Spec.Host = cr.Spec.Grafana.Host // TODO: What additional role needed for this?
-	}
-
-	// Allow override of the Path for the Route
-	if len(cr.Spec.Grafana.Route.Path) > 0 {
-		route.Spec.Path = cr.Spec.Grafana.Route.Path
-	}
-
-	route.Spec.Port = &routev1.RoutePort{
-		TargetPort: intstr.FromString("http"),
-	}
-
-	// Allow override of TLS options for the Route
-	if cr.Spec.Grafana.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Grafana.Route.TLS
-	}
-
-	route.Spec.To.Kind = "Service"
-	route.Spec.To.Name = nameWithSuffix("grafana", cr)
-
-	// Allow override of the WildcardPolicy for the Route
-	if cr.Spec.Grafana.Route.WildcardPolicy != nil && len(*cr.Spec.Grafana.Route.WildcardPolicy) > 0 {
-		route.Spec.WildcardPolicy = *cr.Spec.Grafana.Route.WildcardPolicy
-	}
-
-	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), route)
+	return nil
 }
 
 // reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
@@ -248,6 +214,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		route.Spec.Host = cr.Spec.Server.Host // TODO: What additional role needed for this?
 	}
 
+	hostname, err := shortenHostname(route.Spec.Host)
+	if err != nil {
+		return err
+	}
+
+	route.Spec.Host = hostname
+
 	if cr.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
 		route.Spec.Port = &routev1.RoutePort{
@@ -325,6 +298,13 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		route.Spec.Host = cr.Spec.ApplicationSet.WebhookServer.Host
 	}
 
+	hostname, err := shortenHostname(route.Spec.Host)
+	if err != nil {
+		return err
+	}
+
+	route.Spec.Host = hostname
+
 	route.Spec.Port = &routev1.RoutePort{
 		TargetPort: intstr.FromString("webhook"),
 	}
@@ -391,4 +371,54 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		return r.Client.Create(context.TODO(), route)
 	}
 	return r.Client.Update(context.TODO(), route)
+}
+
+// The algorithm used by this function is:
+// - If the FIRST label ("console-openshift-console" in the above case) is longer than 63 characters, shorten (truncate the end) it to 63.
+// - If any other label is longer than 63 characters, return an error
+// - After all the labels are 63 characters or less, check the length of the overall hostname:
+//   - If the overall hostname is > 253, then shorten the FIRST label until the host name is < 253
+//   - After the FIRST label has been shortened, if it is < 20, then return an error (this is a sanity test to ensure the label is likely to be unique)
+func shortenHostname(hostname string) (string, error) {
+	if hostname == "" {
+		return "", nil
+	}
+
+	// Return the hostname as it is if hostname is already within the size limit
+	if len(hostname) <= maxHostnameLength {
+		return hostname, nil
+	}
+
+	// Split the hostname into labels
+	labels := strings.Split(hostname, ".")
+
+	// Check and truncate the FIRST label if longer than 63 characters
+	if len(labels[0]) > maxLabelLength {
+		labels[0] = labels[0][:maxLabelLength]
+	}
+
+	// Check other labels and return an error if any is longer than 63 characters
+	for _, label := range labels[1:] {
+		if len(label) > maxLabelLength {
+			return "", fmt.Errorf("label length exceeds 63 characters")
+		}
+	}
+
+	// Join the labels back into a hostname
+	resultHostname := strings.Join(labels, ".")
+
+	// Check and shorten the overall hostname
+	if len(resultHostname) > maxHostnameLength {
+		// Shorten the first label until the length is less than 253
+		for len(resultHostname) > maxHostnameLength && len(labels[0]) > 20 {
+			labels[0] = labels[0][:len(labels[0])-1]
+			resultHostname = strings.Join(labels, ".")
+		}
+
+		// Check if the first label is still less than 20 characters
+		if len(labels[0]) < minFirstLabelSize {
+			return "", fmt.Errorf("shortened first label is less than 20 characters")
+		}
+	}
+	return resultHostname, nil
 }
