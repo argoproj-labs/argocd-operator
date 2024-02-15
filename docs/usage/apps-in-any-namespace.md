@@ -14,9 +14,9 @@ In order to enable this feature, the Argo CD administrator must reconfigure the 
 
 The `--application-namespaces` parameter takes a comma-separated list of namespaces where Applications are to be allowed in. Each entry of the list supports shell-style wildcards such as `*`, so for example the entry `app-team-*` would match `app-team-one` and `app-team-two`. To enable all namespaces on the cluster where Argo CD is running on, you can just `*`, i.e. `--application-namespaces=*`.
 
-You can set the namespaces for argocd-server and argocd-controller in the ArgoCD yaml by setting `spec.sourceNamespaces`.
+You can set the namespaces for argocd-server and argocd-controller in the ArgoCD yaml by setting `spec.sourceNamespaces`.  This field also supports wildcards, allowing for flexible and dynamic namespace configurations. For example:
 
-## Example
+## Granting Permissions to a Specific Namespace
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -27,6 +27,39 @@ spec:
   sourceNamespaces:
     - some-namespace
 ```
+In this example:
+
+- Permissions are granted only to the specific namespace some-namespace.
+
+## Granting Permissions to Matching Wildcard Pattern
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd-wildcard-pattern
+spec:
+  sourceNamespaces:
+    - app-team-*
+```
+In this example:
+
+- Permissions are granted to namespaces matching the pattern app-team-*, such as app-team-1, app-team-2, etc.
+
+## Granting Permissions for All Namespaces
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd-all-namespaces
+spec:
+  sourceNamespaces:
+    - '*'
+```
+In this example:
+
+- Permissions are granted for all namespaces on the Argo CD cluster using the * wildcard.
 
 When a namespace is specified under `sourceNamespaces`, operator adds `argocd.argoproj.io/managed-by-cluster-argocd` label to the specified namespace. For example, the namespace would look like below:
 
