@@ -31,7 +31,7 @@ In this example:
 
 - Permissions are granted only to the specific namespace some-namespace.
 
-## Granting Permissions to Matching Wildcard Pattern
+## Granting Permissions to Namespaces Matching Wildcard Pattern
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
