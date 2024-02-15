@@ -268,18 +268,18 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 				{
 					Kind:      v1.ServiceAccountKind,
 					Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
-					Namespace: sa.Namespace,
+					Namespace: cr.Namespace,
 				},
 				{
 					Kind:      v1.ServiceAccountKind,
 					Name:      getServiceAccountName(cr.Name, common.ArgoCDApplicationControllerComponent),
-					Namespace: sa.Namespace,
+					Namespace: cr.Namespace,
 				},
 			}
 
 			if roleBindingExists {
 				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
-				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Namespace {
+				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n != cr.Namespace {
 					continue
 				}
 				// if the RoleRef changes, delete the existing role binding and create a new one

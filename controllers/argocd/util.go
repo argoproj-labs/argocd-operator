@@ -792,7 +792,8 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		}
 	}
 
-	if cr.Spec.ApplicationSet != nil {
+	// check ManagedApplicationSetSourceNamespaces for proper cleanup
+	if cr.Spec.ApplicationSet != nil || len(r.ManagedApplicationSetSourceNamespaces) > 0 {
 		log.Info("reconciling ApplicationSet controller")
 		if err := r.reconcileApplicationSetController(cr); err != nil {
 			return err
@@ -1584,4 +1585,12 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
+}
+
+// NOTE: creating this placeholder func to align the changes with ongoing effort
+// to support wildcards in https://github.com/argoproj-labs/argocd-operator/pull/1218.
+//
+//nolint:all
+func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+	return cr.Spec.SourceNamespaces, nil
 }
