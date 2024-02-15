@@ -29,7 +29,7 @@ spec:
 ```
 In this example:
 
-- Permissions are granted only to the specific namespace some-namespace.
+- Permissions are granted only to the specific namespace `some-namespace`.
 
 ## Granting Permissions to Namespaces Matching Wildcard Pattern
 
@@ -44,7 +44,7 @@ spec:
 ```
 In this example:
 
-- Permissions are granted to namespaces matching the pattern app-team-*, such as app-team-1, app-team-2, etc.
+- Permissions are granted to namespaces matching the pattern `app-team-*`, such as `app-team-1`, `app-team-2`, etc.
 
 ## Granting Permissions for All Namespaces
 
@@ -59,7 +59,7 @@ spec:
 ```
 In this example:
 
-- Permissions are granted for all namespaces on the Argo CD cluster using the * wildcard.
+- Permissions are granted for all namespaces on the Argo CD cluster using the `*` wildcard.
 
 When a namespace is specified under `sourceNamespaces`, operator adds `argocd.argoproj.io/managed-by-cluster-argocd` label to the specified namespace. For example, the namespace would look like below:
 
