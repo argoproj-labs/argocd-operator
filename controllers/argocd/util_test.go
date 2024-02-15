@@ -54,6 +54,48 @@ func appSync(s int) argoCDOpt {
 	}
 }
 
+func operationProcessors(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Processors.Operation = n
+	}
+}
+
+func controllerProcessors(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Processors.Status = n
+	}
+}
+
+func enabledSharding(n bool) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Sharding.Enabled = n
+	}
+}
+
+func replicasSharding(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Sharding.Replicas = n
+	}
+}
+
+func minShardsSharding(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Sharding.MinShards = n
+	}
+}
+
+func maxShardsSharding(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Sharding.MaxShards = n
+	}
+}
+
+func clustersPerShardSharding(n int32) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.Sharding.ClustersPerShard = n
+	}
+}
+
 var imageTests = []struct {
 	name      string
 	pre       func(t *testing.T)
@@ -540,6 +582,45 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
+		}
+	}
+}
+
+func TestGetArgoApplicationControllerSharding(t *testing.T) {
+
+	enabled := []v1.EnvVar{
+		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "0", ValueFrom: (*v1.EnvVarSource)(nil)}}
+	disabled := []v1.EnvVar{v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)}}
+
+	cmdTests := []struct {
+		name string
+		opts []argoCDOpt
+		want []v1.EnvVar
+	}{
+		{
+			"configured enabled sharding",
+			[]argoCDOpt{enabledSharding(true)},
+			enabled,
+		},
+		{
+			"configured disabled sharding",
+			[]argoCDOpt{enabledSharding(false)},
+			disabled,
+		},
+		{
+			"configured zero replicas",
+			[]argoCDOpt{enabledSharding(true), minShardsSharding(0)},
+			enabled,
+		},
+	}
+
+	for _, tt := range cmdTests {
+		cr := makeTestArgoCD(tt.opts...)
+		env := getArgoControllerContainerEnv(cr)
+
+		if !reflect.DeepEqual(env, tt.want) {
+			t.Fatalf("got %#v, want %#v", env, tt.want)
 		}
 	}
 }
