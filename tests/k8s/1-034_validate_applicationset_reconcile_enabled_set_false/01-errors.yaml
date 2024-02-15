@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argocd-test-redis
-  namespace: test
+  name: argocd-test1-redis
+  namespace: test1
   
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argocd-test-repo-server
-  namespace: test
+  name: argocd-test1-repo-server
+  namespace: test1
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argocd-test-server
-  namespace: test
+  name: argocd-test1-server
+  namespace: test1
 
 
