@@ -16,4 +16,3 @@ metadata:
 spec:
   sourceNamespaces:
   - test*
-  

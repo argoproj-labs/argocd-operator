@@ -110,4 +110,3 @@ subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
   namespace: default
-
