@@ -569,7 +569,7 @@ func TestReconcileArgoCD_tlsSecretMapperRedis(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapperWithManagedByLabel(t *testing.T) {
 	a := makeTestArgoCD()
 
 	resObjs := []client.Object{a}
@@ -632,7 +632,7 @@ func TestReconcileArgoCD_namespaceResourceMapper(t *testing.T) {
 	}
 }
 
-func TestReconcileArgoCD_sourceNamespaceMapperWithSpecificNamespace(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapperForSpecificNamespaceWithoutManagedByLabel(t *testing.T) {
 	argocd1 := makeTestArgoCD()
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
@@ -685,7 +685,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithSpecificNamespace(t *testing.T
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.sourceNamespaceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
 				t.Errorf("ReconcileArgoCD.sourceNamespaceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})
@@ -693,7 +693,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithSpecificNamespace(t *testing.T
 
 }
 
-func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardPatternNamespace(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapperForWildCardPatternNamespaceWithoutManagedByLabel(t *testing.T) {
 	argocd1 := makeTestArgoCD()
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
@@ -762,7 +762,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardPatternNamespace(t *te
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.sourceNamespaceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
 				t.Errorf("ReconcileArgoCD.sourceNamespaceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})
@@ -770,7 +770,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardPatternNamespace(t *te
 
 }
 
-func TestReconcileArgoCD_sourceNamespaceMapperWithMultipleSourceNamespaces(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWithoutManagedByLabel(t *testing.T) {
 	argocd1 := makeTestArgoCD()
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
@@ -856,7 +856,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithMultipleSourceNamespaces(t *te
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.sourceNamespaceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
 				t.Errorf("ReconcileArgoCD.sourceNamespaceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})
@@ -864,7 +864,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithMultipleSourceNamespaces(t *te
 
 }
 
-func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardNamespace(t *testing.T) {
+func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManagedByLabel(t *testing.T) {
 	argocd1 := makeTestArgoCD()
 	resObjs := []client.Object{argocd1}
 	subresObjs := []client.Object{argocd1}
@@ -940,7 +940,7 @@ func TestReconcileArgoCD_sourceNamespaceMapperWithWildCardNamespace(t *testing.T
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := r.sourceNamespaceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
+			if got := r.namespaceResourceMapper(context.TODO(), tt.o); !assert.ElementsMatch(t, got, tt.want) {
 				t.Errorf("ReconcileArgoCD.sourceNamespaceMapper(), got = %v, want = %v", got, tt.want)
 			}
 		})

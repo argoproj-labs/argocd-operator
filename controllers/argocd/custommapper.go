@@ -132,9 +132,11 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
+	argocds := &argoproj.ArgoCDList{}
 	labels := o.GetLabels()
+	namespaceName := o.GetName()
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-		argocds := &argoproj.ArgoCDList{}
+
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
@@ -151,31 +153,25 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 		result = []reconcile.Request{
 			{NamespacedName: namespacedName},
 		}
-	}
-
-	return result
-}
-
-// sourceNamespaceMapper maps namespace events to ArgoCD reconciliation requests.
-// It checks each ArgoCD instance's sourceNamespace pattern against the observed namespace.
-// If there's a match, it generates a reconcile request for that ArgoCD instance.
-func (r *ReconcileArgoCD) sourceNamespaceMapper(ctx context.Context, o client.Object) []reconcile.Request {
-	var result []reconcile.Request
-
-	namespaceName := o.GetName()
-	argocds := &argoproj.ArgoCDList{}
-	if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
-		return result
-	}
-	for _, argocd := range argocds.Items {
-		if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
-			namespacedName := client.ObjectKey{
-				Name:      argocd.Name,
-				Namespace: argocd.Namespace,
+	} else {
+		// If the namespace does not have the expected managed-by label,
+		// iterate through each ArgoCD instance to identify if the observed namespace
+		// matches any configured sourceNamespace pattern. If a match is found,
+		// generate a reconcile request for the instances.
+		if err := r.Client.List(ctx, argocds, &client.ListOptions{}); err != nil {
+			return result
+		}
+		for _, argocd := range argocds.Items {
+			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
+				namespacedName := client.ObjectKey{
+					Name:      argocd.Name,
+					Namespace: argocd.Namespace,
+				}
+				result = append(result, reconcile.Request{NamespacedName: namespacedName})
 			}
-			result = append(result, reconcile.Request{NamespacedName: namespacedName})
 		}
 	}
+
 	return result
 }
 

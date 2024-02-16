@@ -919,7 +919,7 @@ func removeString(slice []string, s string) []string {
 }
 
 // setResourceWatches will register Watches for each of the supported Resources.
-func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, sourceNamespaceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
 
 	deploymentConfigPred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -1086,10 +1086,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
-
-	sourceNamespaceHandler := handler.EnqueueRequestsFromMapFunc(sourceNamespaceMapper)
-
-	bldr.Watches(&corev1.Namespace{}, sourceNamespaceHandler, builder.WithPredicates(sourceNamespaceFilterPredicate()))
 
 	return bldr
 }
