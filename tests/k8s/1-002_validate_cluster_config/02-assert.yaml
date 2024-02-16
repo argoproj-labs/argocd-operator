@@ -1,10 +1,12 @@
-apiVersion: argoproj.io/v1alpha1
+# validate ssh know hosts configmap creation
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
   namespace: argocd-e2e-cluster-config
 status:
   phase: Available
+  server: Running 
 ---
 apiVersion: v1
 kind: ConfigMap

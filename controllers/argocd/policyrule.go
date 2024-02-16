@@ -275,6 +275,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"applications",
+				"applicationsets",
 			},
 			Verbs: []string{
 				"list",
@@ -379,4 +380,146 @@ func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1
 		rules = append(rules, orules)
 	}
 	return rules
+}
+
+func policyRuleForApplicationSetController() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		// ApplicationSet
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applications",
+				"applicationsets",
+				"applicationsets/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		// ApplicationSet Status
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"applicationsets/status",
+			},
+			Verbs: []string{
+				"get",
+				"patch",
+				"update",
+			},
+		},
+		// AppProjects
+		{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+
+		// Events
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"events",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"watch",
+			},
+		},
+
+		// ConfigMaps
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"create",
+				"update",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"watch",
+			},
+		},
+
+		// Secrets
+		{
+			APIGroups: []string{""},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+
+		// Deployments
+		{
+			APIGroups: []string{"apps", "extensions"},
+			Resources: []string{
+				"deployments",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+
+		// leases
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{
+				"leases",
+			},
+			Verbs: []string{
+				"create",
+				"delete",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+	}
+}
+
+func policyRuleForServerApplicationSetSourceNamespaces() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applicationsets",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+				"delete",
+			},
+		},
+	}
 }

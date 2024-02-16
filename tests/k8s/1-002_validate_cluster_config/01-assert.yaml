@@ -1,4 +1,5 @@
-apiVersion: argoproj.io/v1alpha1
+# validate cluster roles & rolebindings
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
@@ -12,6 +13,16 @@ metadata:
  name: example-argocd-argocd-e2e-cluster-config-argocd-application-controller
 ---
 kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: example-argocd-argocd-e2e-cluster-config-argocd-server
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+ name: example-argocd-argocd-e2e-cluster-config-argocd-application-controller
+---
+kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: example-argocd-argocd-e2e-cluster-config-argocd-server

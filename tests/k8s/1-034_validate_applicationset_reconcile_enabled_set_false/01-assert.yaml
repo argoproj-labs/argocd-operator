@@ -1,8 +1,8 @@
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: argocd-test
-  namespace: test
+  name: argocd-test1
+  namespace: test1
 spec:
   controller:
     enabled: false
@@ -21,26 +21,26 @@ status:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-test-argocd-application-controller
-  namespace: test
+  name: argocd-test1-argocd-application-controller
+  namespace: test1
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-test-argocd-application-controller
-  namespace: test
+  name: argocd-test1-argocd-application-controller
+  namespace: test1
 
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: argocd-test-argocd-server
-  namespace: test
+  name: argocd-test1-argocd-server
+  namespace: test1
 
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: argocd-test-argocd-redis-ha
-  namespace: test
+  name: argocd-test1-argocd-redis-ha
+  namespace: test1
