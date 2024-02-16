@@ -1159,15 +1159,6 @@ type DeprecationEventEmissionStatus struct {
 // This is temporary and can be removed in v0.0.6 when we remove the deprecated fields.
 var DeprecationEventEmissionTracker = make(map[string]DeprecationEventEmissionStatus)
 
-// sourceNamespaceFilterPredicate returns a simple predicate allowing all create events.
-func sourceNamespaceFilterPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(ce event.CreateEvent) bool {
-			return true
-		},
-	}
-}
-
 func namespaceFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
