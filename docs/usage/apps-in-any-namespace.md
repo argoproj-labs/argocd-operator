@@ -11,7 +11,7 @@ Argo CD administrators can define a certain set of namespaces where Application 
 
 ## Using application-namespaces
 
-In order to enable this feature, specify the namespaces where Argo CD should manage applications in the ArgoCD YAML with `spec.sourceNamespaces`. This field also supports wildcards, allowing for flexible and dynamic namespace configurations. For example:
+In order to enable this feature, specify the namespaces where Argo CD should manage applications in the ArgoCD YAML with `spec.sourceNamespaces`. This field also supports wildcards, allowing flexible and dynamic namespace configurations. For example:
 
 ## Enable application creation in a specific namespace
 ```yaml
