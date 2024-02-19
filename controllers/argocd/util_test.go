@@ -841,7 +841,6 @@ func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 2, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
 	assert.Contains(t, sourceNamespaces, "test-namespace-2")
@@ -880,7 +879,6 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 1, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test")
 	assert.NotContains(t, sourceNamespaces, "test-namespace-1")
@@ -925,7 +923,6 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 3, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "test")
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
@@ -965,7 +962,6 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 
 	sourceNamespaces, err := r.getSourceNamespaces(a)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 3, len(sourceNamespaces))
 	assert.Contains(t, sourceNamespaces, "other-namespace")
 	assert.Contains(t, sourceNamespaces, "test-namespace-1")
