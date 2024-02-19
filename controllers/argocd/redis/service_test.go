@@ -112,7 +112,7 @@ func TestReconcileHAProxyService(t *testing.T) {
 				test.MakeTestArgoCD(nil),
 				test.MakeTestService(getDesiredHAProxySvc(),
 					func(svc *corev1.Service) {
-						svc.Name = "test-argocd-redis"
+						svc.Name = "test-argocd-redis-ha-haproxy"
 						// Modify some fields to simulate drift
 						svc.Spec.Ports = []corev1.ServicePort{
 							{
@@ -132,10 +132,10 @@ func TestReconcileHAProxyService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.reconciler.varSetter()
 
-			err := tt.reconciler.reconcileService()
+			err := tt.reconciler.reconcileHAProxyService()
 			assert.NoError(t, err)
 
-			existing, err := networking.GetService("test-argocd-redis", test.TestNamespace, tt.reconciler.Client)
+			existing, err := networking.GetService("test-argocd-redis-ha-haproxy", test.TestNamespace, tt.reconciler.Client)
 
 			if tt.expectedError {
 				assert.Error(t, err, "Expected an error but got none.")
