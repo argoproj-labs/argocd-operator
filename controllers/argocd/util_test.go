@@ -54,12 +54,6 @@ func appSync(s int) argoCDOpt {
 	}
 }
 
-func setEnv(e []v1.EnvVar) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Env = e
-	}
-}
-
 var imageTests = []struct {
 	name      string
 	pre       func(t *testing.T)
@@ -548,122 +542,6 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
 		}
 	}
-}
-
-type EnvVar struct {
-	Spec struct {
-		Controller struct {
-			Env []interface{} `json:"env" env:"env"`
-		} `json:"controller" controller:"controller"`
-	}
-}
-
-type ArgoCD struct {
-	Spec struct {
-		Controller struct {
-			Env []interface{} `json:"env"`
-		} `json:"controller"`
-	}
-}
-
-func TestArgoCDControllerEnv(t *testing.T) {
-
-	validEnv := []v1.EnvVar{
-		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)}}
-
-	_ = []struct {
-		name string
-		opts []argoCDOpt
-		want []v1.EnvVar
-	}{
-		{
-			"configured setenv to test",
-			[]argoCDOpt{setEnv(validEnv)},
-			validEnv,
-		},
-	}
-
-	// Scenario 1: Valid case with two environment variables
-	validArgoCDInstance := ArgoCD{
-		Spec: struct {
-			Controller struct {
-				Env []interface{} `json:"env"`
-			} `json:"controller"`
-		}{
-			Controller: struct {
-				Env []interface{} `json:"env"`
-			}{
-				Env: []interface{}{"test1=value1", "test2=value2"},
-			},
-		},
-	}
-
-	// Assert the length and values of .spec.controller.env
-	if len(validArgoCDInstance.Spec.Controller.Env) != 2 {
-		t.Errorf("Expected 2 elements in .spec.controller.env, but got %d", len(validArgoCDInstance.Spec.Controller.Env))
-	}
-
-	// Assert specific values in the env slice
-	if validArgoCDInstance.Spec.Controller.Env[0] != "test1=value1" {
-		t.Errorf("Expected .spec.controller.env[0] to be 'test1=value1', but got '%s'", validArgoCDInstance.Spec.Controller.Env[0])
-	}
-
-	if validArgoCDInstance.Spec.Controller.Env[1] != "test2=value2" {
-		t.Errorf("Expected .spec.controller.env[1] to be 'test2=value2', but got '%s'", validArgoCDInstance.Spec.Controller.Env[1])
-	}
-
-	// Scenario 2: Empty env slice
-	emptyArgoCDInstance := ArgoCD{
-		Spec: struct {
-			Controller struct {
-				Env []interface{} `json:"env"`
-			} `json:"controller"`
-		}{},
-	}
-
-	// Assert that .spec.controller.env is empty
-	if len(emptyArgoCDInstance.Spec.Controller.Env) != 0 {
-		t.Errorf("Expected an empty .spec.controller.env, but got %v", emptyArgoCDInstance.Spec.Controller.Env)
-	}
-
-	// Scenario 3: Invalid case with non-string values in env slice
-	invalidArgoCDInstance := ArgoCD{
-		Spec: struct {
-			Controller struct {
-				Env []interface{} `json:"env"`
-			} `json:"controller"`
-		}{
-			Controller: struct {
-				Env []interface{} `json:"env"`
-			}{
-				Env: []interface{}{42, true},
-			},
-		},
-	}
-
-	// Assert that .spec.controller.env is an empty slice
-	if len(invalidArgoCDInstance.Spec.Controller.Env) != 0 {
-		t.Errorf("Expected an empty .spec.controller.env due to invalid values, but got %v", invalidArgoCDInstance.Spec.Controller.Env)
-	}
-
-	// Scenario 4: Cases where .spec.controller.env is nil
-	nilArgoCDInstance := ArgoCD{
-		Spec: struct {
-			Controller struct {
-				Env []interface{} `json:"env"`
-			} `json:"controller"`
-		}{
-			Controller: struct {
-				Env []interface{} `json:"env"`
-			}{},
-		},
-	}
-
-	// Assert that .spec.controller.env is nil
-	if !reflect.DeepEqual(nilArgoCDInstance.Spec.Controller.Env, []string{}) {
-		t.Errorf("Expected .spec.controller.env to be nil, but got %v", nilArgoCDInstance.Spec.Controller.Env)
-	}
-
 }
 
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
