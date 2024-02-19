@@ -38,14 +38,32 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
 
-func makeTestArgoCDReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
+// func makeTestArgoCDReconciler(client client.Client, sch *runtime.Scheme) *ArgoCDReconciler {
+// 	return &ArgoCDReconciler{
+// 		Client: client,
+// 		Scheme: sch,
+// 	}
+// }
+
+func makeTestArgoCDReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *ArgoCDReconciler {
+	schemeOpt := func(s *runtime.Scheme) {
+		argoproj.AddToScheme(s)
+	}
+	sch := test.MakeTestReconcilerScheme(schemeOpt)
+
+	client := test.MakeTestReconcilerClient(sch, objs, []client.Object{cr}, []runtime.Object{cr})
+
 	return &ArgoCDReconciler{
-		Client: client,
-		Scheme: sch,
+		Client:   client,
+		Scheme:   sch,
+		Instance: cr,
+		Logger:   util.NewLogger("argocd-controller"),
 	}
 }
 
@@ -396,10 +414,7 @@ func TestReconcileArgoCD_CleanUp(t *testing.T) {
 
 func TestSetResourceManagedNamespaces(t *testing.T) {
 
-	resources := []client.Object{}
-	subresObjs := []client.Object{}
-
-	runtimeObjs := []runtime.Object{
+	objs := []client.Object{
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "instance-1"
 		}),
@@ -432,10 +447,6 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 		}),
 	}
 
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeTestArgoCDReconciler(cl, sch)
-
 	instanceOne := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"
 	})
@@ -448,7 +459,7 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 		"test-ns-1":  "",
 		"test-ns-4":  "",
 	}
-	r.Instance = instanceOne
+	r := makeTestArgoCDReconciler(instanceOne, objs...)
 	r.setResourceManagedNamespaces()
 	assert.Equal(t, expectedNsMap, r.ResourceManagedNamespaces)
 
@@ -464,10 +475,7 @@ func TestSetResourceManagedNamespaces(t *testing.T) {
 
 func TestSetAppManagedNamespaces(t *testing.T) {
 
-	resources := []client.Object{}
-	subresObjs := []client.Object{}
-
-	runtimeObjs := []runtime.Object{
+	objs := []client.Object{
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "instance-1"
 		}),
@@ -497,14 +505,12 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 		}),
 	}
 
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resources, subresObjs, runtimeObjs)
-	r := makeTestArgoCDReconciler(cl, sch)
-
 	instance := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
 		ac.Namespace = "instance-1"
 		ac.Spec.SourceNamespaces = []string{"test-ns-1", "test-ns-2", "test-ns-3"}
 	})
+
+	r := makeTestArgoCDReconciler(instance, objs...)
 
 	// test with namespace scoped instance
 	r.Instance = instance

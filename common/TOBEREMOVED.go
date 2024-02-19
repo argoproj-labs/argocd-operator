@@ -161,6 +161,10 @@ const (
 	// to used for the the Redis container in HA mode.
 	ArgoCDRedisHAImageEnvVar = "ARGOCD_REDIS_HA_IMAGE"
 
+	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
+	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
+	ArgoCDPolicyMatcherMode = "policy.matchMode"
+
 	// ArgoCDDefaultRepoMetricsPort is the default listen port for the Argo CD repo server metrics.
 	ArgoCDDefaultRepoMetricsPort = 8084
 
