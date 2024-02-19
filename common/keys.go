@@ -45,15 +45,6 @@ const (
 	// ArgoCDKeyGAAnonymizeUsers is the configuration key for the Google Analytics user anonymization.
 	ArgoCDKeyGAAnonymizeUsers = "ga.anonymizeusers"
 
-	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
-	ArgoCDKeyGrafanaAdminUsername = "admin.username"
-
-	// ArgoCDKeyGrafanaAdminPassword is the admin password key for labels.
-	ArgoCDKeyGrafanaAdminPassword = "admin.password"
-
-	// ArgoCDKeyGrafanaSecretKey is the "secret key" key for labels.
-	ArgoCDKeyGrafanaSecretKey = "secret.key"
-
 	// ArgoCDKeyHelpChatURL is the congifuration key for the help chat URL.
 	ArgoCDKeyHelpChatURL = "help.chatUrl"
 
@@ -114,18 +105,18 @@ const (
 	// ArgoCDKeyTLSCACert is the key for TLS CA certificates.
 	ArgoCDKeyTLSCACert = "ca.crt"
 
-	// ArgoCDPolicyMatcherMode is the key for matchers function for casbin.
+	// ArgoCDKeyPolicyMatcherMode is the key for matchers function for casbin.
 	// There are two options for this, 'glob' for glob matcher or 'regex' for regex matcher.
-	ArgoCDPolicyMatcherMode = "policy.matchMode"
+	ArgoCDKeyPolicyMatcherMode = "policy.matchMode"
 
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
-	// ArgoCDDefaultServer is the default server address
-	ArgoCDDefaultServer = "https://kubernetes.default.svc"
-
 	// ArgoCDDexSecretKey is used to reference Dex secret from Argo CD secret into Argo CD configmap
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
+
+	ArgoCDKeyKustomizeVersion       = "kustomize.version."
+	ArgoCDKeyResourceCustomizations = "resource.customizations."
 )
 
 // openshift.io keys

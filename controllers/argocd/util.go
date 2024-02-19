@@ -17,7 +17,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -36,6 +35,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -46,6 +46,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+)
+
+const (
+	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
 )
 
 // getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
@@ -193,7 +197,7 @@ func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
 // getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
 func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
 	sp := common.ArgoCDDefaultServerStatusProcessors
-	if cr.Spec.Controller.Processors.Status > sp {
+	if cr.Spec.Controller.Processors.Status > 0 {
 		sp = cr.Spec.Controller.Processors.Status
 	}
 	return sp
@@ -206,38 +210,6 @@ func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
 		pl = cr.Spec.Controller.ParallelismLimit
 	}
 	return pl
-}
-
-// getGrafanaContainerImage will return the container image for the Grafana server.
-func getGrafanaContainerImage(cr *argoproj.ArgoCD) string {
-	defaultTag, defaultImg := false, false
-	img := cr.Spec.Grafana.Image
-	if img == "" {
-		img = common.ArgoCDDefaultGrafanaImage
-		defaultImg = true
-	}
-
-	tag := cr.Spec.Grafana.Version
-	if tag == "" {
-		tag = common.ArgoCDDefaultGrafanaVersion
-		defaultTag = true
-	}
-	if e := os.Getenv(common.ArgoCDGrafanaImageEnvName); e != "" && (defaultTag && defaultImg) {
-		return e
-	}
-	return argoutil.CombineImageTag(img, tag)
-}
-
-// getGrafanaResources will return the ResourceRequirements for the Grafana container.
-func getGrafanaResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Grafana.Resources != nil {
-		resources = *cr.Spec.Grafana.Resources
-	}
-
-	return resources
 }
 
 // reconcileCertificateAuthority will reconcile all Certificate Authority resources.
@@ -852,10 +824,14 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 }
 
 // getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
-func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) string {
+func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 	host := cr.Name
 	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
-		host = cr.Spec.ApplicationSet.WebhookServer.Host
+		hostname, err := shortenHostname(cr.Spec.ApplicationSet.WebhookServer.Host)
+		if err != nil {
+			return "", err
+		}
+		host = hostname
 	}
-	return host
+	return host, nil
 }

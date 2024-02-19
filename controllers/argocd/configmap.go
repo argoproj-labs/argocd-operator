@@ -17,10 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
-	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -309,12 +306,6 @@ func newConfigMapWithName(name string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
 	return cm
 }
 
-// newConfigMapWithName creates a new ConfigMap with the given suffix appended to the name.
-// The name for the CongifMap is based on the name of the given ArgCD.
-func newConfigMapWithSuffix(suffix string, cr *argoproj.ArgoCD) *corev1.ConfigMap {
-	return newConfigMapWithName(fmt.Sprintf("%s-%s", cr.ObjectMeta.Name, suffix), cr)
-}
-
 // reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
 func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	if err := r.reconcileArgoConfigMap(cr); err != nil {
@@ -428,9 +419,8 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	if UseDex(cr) {
 		dexConfig := getDexConfig(cr)
 
-		// If no dexConfig expressed but openShiftOAuth is requested through `.spec.sso.dex`, use default
-		// openshift dex config
-		if dexConfig == "" && (cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
+		// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
 			cfg, err := r.getOpenShiftDexConfig(cr)
 			if err != nil {
 				return err
@@ -489,44 +479,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaConfiguration(cr *argoproj.ArgoCD) err
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	cm := newConfigMapWithSuffix(common.ArgoCDGrafanaConfigMapSuffix, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		return nil // ConfigMap found, do nothing
-	}
+	log.Info(grafanaDeprecatedWarning)
 
-	secret := argoutil.NewSecretWithSuffix(cr, "grafana")
-	secret, err := argoutil.FetchSecret(r.Client, cr.ObjectMeta, secret.Name)
-	if err != nil {
-		return err
-	}
-
-	grafanaConfig := GrafanaConfig{
-		Security: GrafanaSecurityConfig{
-			AdminUser:     string(secret.Data[common.ArgoCDKeyGrafanaAdminUsername]),
-			AdminPassword: string(secret.Data[common.ArgoCDKeyGrafanaAdminPassword]),
-			SecretKey:     string(secret.Data[common.ArgoCDKeyGrafanaSecretKey]),
-		},
-	}
-
-	data, err := loadGrafanaConfigs()
-	if err != nil {
-		return err
-	}
-
-	tmpls, err := loadGrafanaTemplates(&grafanaConfig)
-	if err != nil {
-		return err
-	}
-
-	for key, val := range tmpls {
-		data[key] = val
-	}
-	cm.Data = data
-
-	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), cm)
+	return nil
 }
 
 // reconcileGrafanaDashboards will ensure that the Grafana dashboards ConfigMap is present.
@@ -535,34 +490,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaDashboards(cr *argoproj.ArgoCD) error 
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	cm := newConfigMapWithSuffix(common.ArgoCDGrafanaDashboardConfigMapSuffix, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		return nil // ConfigMap found, do nothing
-	}
+	log.Info(grafanaDeprecatedWarning)
 
-	pattern := filepath.Join(getGrafanaConfigPath(), "dashboards/*.json")
-	dashboards, err := filepath.Glob(pattern)
-	if err != nil {
-		return err
-	}
-
-	data := make(map[string]string)
-	for _, f := range dashboards {
-		dashboard, err := os.ReadFile(f)
-		if err != nil {
-			return err
-		}
-
-		parts := strings.Split(f, "/")
-		filename := parts[len(parts)-1]
-		data[filename] = string(dashboard)
-	}
-	cm.Data = data
-
-	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), cm)
+	return nil
 }
 
 // reconcileRBAC will ensure that the ArgoCD RBAC ConfigMap is present.
@@ -590,8 +520,8 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 	}
 
 	// Default Policy Matcher Mode
-	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
-		cm.Data[common.ArgoCDPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
+	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDKeyPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
+		cm.Data[common.ArgoCDKeyPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
 		changed = true
 	}
 

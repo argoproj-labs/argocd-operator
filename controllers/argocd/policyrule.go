@@ -107,6 +107,17 @@ func policyRuleForServer() []v1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
 	}
 }
 
@@ -192,6 +203,17 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 				"delete",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
 	}
 }
 
@@ -233,17 +255,18 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
 	}
-}
-
-func policyRuleForGrafana(client client.Client) []v1.PolicyRule {
-	rules := []v1.PolicyRule{}
-
-	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
-	// permissions to start
-	rules = appendOpenShiftNonRootSCC(rules, client)
-
-	return rules
 }
 
 func getPolicyRuleList(client client.Client) []struct {
@@ -269,9 +292,6 @@ func getPolicyRuleList(client client.Client) []struct {
 		}, {
 			name:       common.ArgoCDRedisComponent,
 			policyRule: policyRuleForRedis(client),
-		}, {
-			name:       common.ArgoCDOperatorGrafanaComponent,
-			policyRule: policyRuleForGrafana(client),
 		},
 	}
 }

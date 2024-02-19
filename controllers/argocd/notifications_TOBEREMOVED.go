@@ -9,10 +9,12 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -166,6 +168,18 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 		return err
 	}
 
+	log.Info("reconciling notifications metrics service")
+	if err := r.reconcileNotificationsMetricsService(cr); err != nil {
+		return err
+	}
+
+	if prometheusAPIFound {
+		log.Info("reconciling notifications metrics service monitor")
+		if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -192,6 +206,16 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 
 	log.Info("reconciling notifications deployment")
 	if err := r.reconcileNotificationsDeployment(cr, sa); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications service")
+	if err := r.reconcileNotificationsMetricsService(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling notifications service monitor")
+	if err := r.reconcileNotificationsServiceMonitor(cr); err != nil {
 		return err
 	}
 
@@ -545,7 +569,66 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 }
 
-// getDefaultNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
+// reconcileNotificationsService will ensure that the Service for the Notifications controller metrics is present.
+func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.ArgoCD) error {
+
+	var component = "notifications-controller"
+	var suffix = "notifications-controller-metrics"
+
+	svc := newServiceWithSuffix(suffix, component, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		// Service found, do nothing
+		return nil
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix(component, cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "metrics",
+			Port:       common.NotificationsControllerMetricsPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.NotificationsControllerMetricsPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
+}
+
+// reconcileNotificationsServiceMonitor will ensure that the ServiceMonitor for the Notifications controller metrics is present.
+func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.ArgoCD) error {
+
+	name := fmt.Sprintf("%s-%s", cr.Name, "notifications-controller-metrics")
+	serviceMonitor := newServiceMonitorWithName(name, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, serviceMonitor.Name, serviceMonitor) {
+		// Service found, do nothing
+		return nil
+	}
+
+	serviceMonitor.Spec.Selector = v1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: name,
+		},
+	}
+
+	serviceMonitor.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port:     "metrics",
+			Scheme:   "http",
+			Interval: "30s",
+		},
+	}
+
+	return r.Client.Create(context.TODO(), serviceMonitor)
+}
+
+// reconcileNotificationsConfigMap only creates/deletes the argocd-notifications-cm based on whether notifications is enabled/disabled in the CR
+// It does not reconcile/overwrite any fields or information in the configmap itself
 func getDefaultNotificationsConfig() map[string]string {
 
 	notificationsConfig := make(map[string]string)

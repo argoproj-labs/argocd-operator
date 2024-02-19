@@ -1,12 +1,10 @@
 # Insights
 
-The Argo CD Operator aggregates, visualizes and exposes the metrics exported by Argo CD using Prometheus and Grafana.
+The Argo CD Operator aggregates, visualizes and exposes the metrics exported by Argo CD using Prometheus.
 
 ## Overview
 
 Argo CD exports many metrics that can be used to monitor and provide insights into the state and health of the cluster. The operator makes use of the Prometheus Operator to provision a Prometheus instance for string the metrics from both Argo CD and the operator itself.
-
-Currently the Argo CD operator deploys and manages Grafana using a Deployment and does not make use of the Grafana Operator just yet. There are several dashboards provided for visualizing the Argo CD environment.
 
 ## Cluster
 
@@ -64,7 +62,7 @@ prometheus-operator-7f6dfb7686-wb9h2  1/1     Running   0          9m4s
 
 ## Example
 
-The following example shows how to enable Prometheus and Grafana to provide operator insights. This example also enables Ingress for accessing the cluster resources.
+The following example shows how to enable Prometheus to provide operator insights. This example also enables Ingress for accessing the cluster resources.
 
 ``` yaml
 apiVersion: argoproj.io/v1alpha1
@@ -74,8 +72,6 @@ metadata:
   labels:
     example: insights
 spec:
-  grafana:
-    enabled: true
   ingress:
     enabled: true
   prometheus:
@@ -90,14 +86,13 @@ With the Prometheus Operator running in the namespace, create the Argo CD cluste
 kubectl get pods -n argocd
 ```
 
-Look for the Grafana and Prometheus Pods.
+Look for the Prometheus Pods.
 
 ``` bash
 NAME                                                    READY   STATUS    RESTARTS   AGE
 argocd-operator-5fc46479bd-pp9b2                        1/1     Running   0          15h
 example-argocd-application-controller-6c9c8fc6c-27lvv   1/1     Running   0          15h
 example-argocd-dex-server-94477bc6f-lzn8m               1/1     Running   0          15h
-example-argocd-grafana-86ccc6bf9c-l8dqw                 1/1     Running   0          15h
 example-argocd-redis-756b6764-4r2q4                     1/1     Running   0          15h
 example-argocd-repo-server-5ddfd76c48-xmwdt             1/1     Running   0          15h
 example-argocd-server-65dbd7c68b-kbjgr                  1/1     Running   0          15h
@@ -105,7 +100,7 @@ prometheus-example-argocd-0                             3/3     Running   1     
 prometheus-operator-7f6dfb7686-wb9h2                    1/1     Running   0          14m
 ```
 
-Grafana and Prometheus can be accessed via Ingress resources.
+Prometheus can be accessed via Ingress resources.
 
 ``` bash
 kubectl get ing -n argocd
@@ -116,7 +111,6 @@ This example shows the default hostnames that are configured for the resources.
 ``` bash
 NAME                        CLASS    HOSTS                       ADDRESS         PORTS     AGE
 example-argocd              <none>   example-argocd              192.168.39.68   80, 443   15h
-example-argocd-grafana      <none>   example-argocd-grafana      192.168.39.68   80, 443   15h
 example-argocd-grpc         <none>   example-argocd-grpc         192.168.39.68   80, 443   15h
 example-argocd-prometheus   <none>   example-argocd-prometheus   192.168.39.68   80, 443   15h
 ```
@@ -131,8 +125,6 @@ metadata:
   labels:
     example: insights
 spec:
-  grafana:
-    enabled: true
     route:
       enabled: true
   prometheus:
@@ -145,7 +137,7 @@ spec:
       enabled: true
 ```
 
-Initial Password for grafana is stored in the example-argocd-cluster secret. Password can be obtained from the secret by running the below command.
+Password can be obtained from the secret by running the below command.
 ```
 oc -n argocd extract secret/example-argocd-cluster --to=-
 ```

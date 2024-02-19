@@ -11,9 +11,6 @@ COPY build/_output/bin/argocd-operator ${OPERATOR}
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 
-# install grafana artifacts
-COPY grafana /var/lib/grafana
-
 # install redis artifacts
 COPY build/redis /var/lib/redis
 

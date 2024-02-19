@@ -104,6 +104,9 @@ const (
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048
 
+	// ArgoCDDefaultServer is the default server address
+	ArgoCDDefaultServer = "https://kubernetes.default.svc"
+
 	// ArgoCDDefaultSSHKnownHosts is the default SSH Known hosts data.
 	ArgoCDDefaultSSHKnownHosts = `[ssh.github.com]:443 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
 [ssh.github.com]:443 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl

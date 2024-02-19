@@ -32,4 +32,6 @@ const (
 	ArgoCDLabelSelectorEnvVar = "ARGOCD_LABEL_SELECTOR"
 
 	ArgoCDExecTimeoutEnvVar = "ARGOCD_EXEC_TIMEOUT"
+
+	ArgoCDOperatorLogLevelEnvVar = "LOG_LEVEL"
 )
