@@ -136,15 +136,12 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 	labels := o.GetLabels()
 	namespaceName := o.GetName()
 	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-
 		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
 			return result
 		}
-
 		if len(argocds.Items) != 1 {
 			return result
 		}
-
 		argocd := argocds.Items[0]
 		namespacedName := client.ObjectKey{
 			Name:      argocd.Name,

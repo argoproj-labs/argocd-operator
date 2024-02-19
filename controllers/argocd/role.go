@@ -189,19 +189,16 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
 
 	// create policy rules for each source namespace for ArgoCD Server
-
 	sourceNamespaces, err := r.getSourceNamespaces(cr)
 	if err != nil {
 		return err
 	}
 
 	for _, sourceNamespace := range sourceNamespaces {
-
 		namespace := &corev1.Namespace{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 			return err
 		}
-
 		// do not reconcile roles for namespaces already containing managed-by label
 		// as it already contains roles with permissions to manipulate application resources
 		// reconciled during reconcilation of ManagedNamespaces
