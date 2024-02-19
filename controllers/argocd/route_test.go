@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -209,6 +210,90 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantPort, loaded.Spec.Port); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
+	}
+}
+
+func TestReconcileRouteForShorteningHostname(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		testName string
+		expected string
+		hostname string
+	}{
+		{
+			testName: "longHostname",
+			hostname: "myhostnameaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.redhat.com",
+			expected: "myhostnameaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.redhat.com",
+		},
+		{
+			testName: "twentySixLetterHostname",
+			hostname: "myhostnametwentysixletteraaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.redhat.com",
+			expected: "myhostnametwentysixletteraaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.redhat.com",
+		},
+	}
+
+	for _, v := range tests {
+		t.Run(v.testName, func(t *testing.T) {
+
+			argoCD := makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Server.Route.Enabled = true
+				a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+					WebhookServer: argoproj.WebhookServerSpec{
+						Route: argoproj.ArgoCDRouteSpec{
+							Enabled: true,
+						},
+						Host: v.hostname,
+					},
+				}
+			})
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			assert.NoError(t, createNamespace(r, argoCD.Namespace, ""))
+
+			req := reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testArgoCDName,
+					Namespace: testNamespace,
+				},
+			}
+
+			// Check if it returns nil when hostname is empty
+			_, err := r.Reconcile(context.TODO(), req)
+			assert.NoError(t, err)
+
+			// second reconciliation after changing the hostname.
+			err = r.Client.Get(ctx, req.NamespacedName, argoCD)
+			fatalIfError(t, err, "failed to load ArgoCD %q: %s", testArgoCDName+"-server", err)
+
+			argoCD.Spec.Server.Host = v.hostname
+			err = r.Client.Update(ctx, argoCD)
+			fatalIfError(t, err, "failed to update the ArgoCD: %s", err)
+
+			_, err = r.Reconcile(context.TODO(), req)
+			assert.NoError(t, err)
+
+			loaded := &routev1.Route{}
+			err = r.Client.Get(ctx, types.NamespacedName{Name: testArgoCDName + "-server", Namespace: testNamespace}, loaded)
+			fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
+
+			if diff := cmp.Diff(v.expected, loaded.Spec.Host); diff != "" {
+				t.Fatalf("failed to reconcile route:\n%s", diff)
+			}
+
+			// Check if first label is greater than 20
+			labels := strings.Split(loaded.Spec.Host, ".")
+			assert.True(t, len(labels[0]) > 20)
+
+		})
 	}
 }
 

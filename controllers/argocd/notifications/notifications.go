@@ -57,6 +57,8 @@ func (nr *NotificationsReconciler) Reconcile() error {
 		return err
 	}
 
+	// TO DO: add svc & svc monitor
+
 	return nil
 }
 

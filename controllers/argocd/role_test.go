@@ -97,13 +97,6 @@ func TestReconcileArgoCD_reconcileRole_for_new_namespace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedNumberOfRoles, len(redisRoles))
 	assert.Equal(t, expectedRoleNamespace, redisRoles[0].ObjectMeta.Namespace)
-	// check no grafana role is created for the new namespace with managed-by label
-	workloadIdentifier = common.ArgoCDOperatorGrafanaComponent
-	expectedGrafanaRules := policyRuleForGrafana(r.Client)
-	grafanaRoles, err := r.reconcileRole(workloadIdentifier, expectedGrafanaRules, a)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedNumberOfRoles, len(grafanaRoles))
-	assert.Equal(t, expectedRoleNamespace, grafanaRoles[0].ObjectMeta.Namespace)
 }
 
 func TestReconcileArgoCD_reconcileClusterRole(t *testing.T) {

@@ -84,6 +84,22 @@ Operator packaged for use in OLM. For more information on packaging the operator
 kubectl create -n olm -f deploy/catalog_source.yaml
 ```
 
+The `catalog_source.yaml` file can be found [in the `deploy` folder in the
+repository](https://github.com/argoproj-labs/argocd-operator/tree/master/deploy).
+It should look like this:
+
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: argocd-catalog
+spec:
+  sourceType: grpc
+  image: quay.io/argoprojlabs/argocd-operator-registry@sha256:dcf6d07ed5c8b840fb4a6e9019eacd88cd0913bc3c8caa104d3414a2e9972002 # replace with your index image
+  displayName: Argo CD Operators
+  publisher: Argo CD Community
+```
+
 Verify that the Argo CD operator catalog has been created.
 
 ```bash
@@ -112,6 +128,18 @@ argocd-catalog-nxn79   1/1     Running   0          55s
 Create an `OperatorGroup` in the `argocd` namespace that defines the namespaces that the Argo CD Operator will watch for 
 new resources.
 
+Please find the file `operator_group.yaml` in the [git
+repository](https://github.com/argoproj-labs/argocd-operator/blob/master/deploy/operator_group.yaml).
+
+It's content looks like this:
+
+```yaml
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: argocd-operator
+```
+
 ```bash
 kubectl create -n argocd -f deploy/operator_group.yaml
 ```
@@ -131,6 +159,21 @@ argocd-operator   10s
 
 Once the OperatorGroup is present, create a new `Subscription` for the Argo CD Operator in the new `argocd` namespace.
 
+You can use the file [from the git
+repository](https://github.com/argoproj-labs/argocd-operator/blob/master/deploy/subscription.yaml), it looks like this:
+
+```yaml
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: argocd-operator
+spec:
+  channel: alpha
+  name: argocd-operator
+  source: argocd-catalog
+  sourceNamespace: olm
+```
+
 ```bash
 kubectl create -n argocd -f deploy/subscription.yaml
 ```
@@ -140,7 +183,7 @@ Verify that the Subscription was created in the `argocd` namespace.
 kubectl get subscriptions -n argocd
 ```
 
-```bash 
+```bash
 NAME              PACKAGE           SOURCE           CHANNEL
 argocd-operator   argocd-operator   argocd-catalog   alpha
 ```
@@ -167,12 +210,12 @@ NAME                                                  READY   STATUS    RESTARTS
 argocd-operator-controller-manager-74b9ddb78c-lxzq2   2/2     Running   0          2m27s
 ```
 
-## Usage 
+## Usage
 
 Once the operator is installed and running, new ArgoCD resources can be created. See the [usage][docs_usage] 
 documentation to learn how to create new `ArgoCD` resources.
 
-## Cleanup 
+## Cleanup
 
 You can clean up the operator resources by running the following commands.
 

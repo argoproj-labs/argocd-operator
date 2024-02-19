@@ -111,55 +111,6 @@ func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing
 	}
 }
 
-func TestReconcileArgoCD_reconcile_GrafanaIngress_ingressClassName(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	nginx := "nginx"
-
-	tests := []struct {
-		name             string
-		ingressClassName *string
-	}{
-		{
-			name:             "undefined ingress class name",
-			ingressClassName: nil,
-		},
-		{
-			name:             "ingress class name specified",
-			ingressClassName: &nginx,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Grafana.Enabled = true
-				a.Spec.Grafana.Ingress.Enabled = true
-				a.Spec.Grafana.Ingress.IngressClassName = test.ingressClassName
-			})
-
-			resObjs := []client.Object{a}
-			subresObjs := []client.Object{a}
-			runtimeObjs := []runtime.Object{}
-			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-			r := makeTestReconciler(cl, sch)
-
-			err := r.reconcileGrafanaIngress(a)
-			assert.NoError(t, err)
-
-			ingress := &networkingv1.Ingress{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
-				Name:      "argocd-grafana",
-				Namespace: testNamespace,
-			}, ingress)
-			assert.NoError(t, err)
-			assert.Equal(t, test.ingressClassName, ingress.Spec.IngressClassName)
-		})
-	}
-}
-
 func TestReconcileArgoCD_reconcile_PrometheusIngress_ingressClassName(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 

@@ -46,6 +46,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -180,6 +181,18 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	r.Instance = argocd
 	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
 	r.Logger = util.NewLogger(ArgoCDController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
+
+	// Fetch labelSelector from r.LabelSelector (command-line option)
+	labelSelector, err := labels.Parse(r.LabelSelector)
+	if err != nil {
+		r.Logger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
+		return reconcile.Result{}, err
+	}
+	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
+	if !labelSelector.Matches(labels.Set(r.Instance.Labels)) {
+		r.Logger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
+		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
+	}
 
 	// if r.Instance.GetDeletionTimestamp() != nil {
 

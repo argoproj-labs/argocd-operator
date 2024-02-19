@@ -76,23 +76,6 @@ func TestMutationFuncSuccessful(cr *argoproj.ArgoCD, resource interface{}, clien
 	return nil
 }
 
-type argoCDOpt func(*argoproj.ArgoCD)
-
-func MakeTestArgoCD(a *argoproj.ArgoCD, opts ...argoCDOpt) *argoproj.ArgoCD {
-	if a == nil {
-		a = &argoproj.ArgoCD{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      TestArgoCDName,
-				Namespace: TestNamespace,
-			},
-		}
-	}
-	for _, o := range opts {
-		o(a)
-	}
-	return a
-}
-
 type namespaceOpt func(*corev1.Namespace)
 
 func MakeTestNamespace(ns *corev1.Namespace, opts ...namespaceOpt) *corev1.Namespace {
