@@ -99,7 +99,7 @@ jobs:
           set -o pipefail
           make install generate fmt vet
           # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          REDIS_CONFIG_PATH="build/redis" GRAFANA_CONFIG_PATH="grafana" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
+          REDIS_CONFIG_PATH="build/redis" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
       - name: Run tests
         run: |
           set -o pipefail

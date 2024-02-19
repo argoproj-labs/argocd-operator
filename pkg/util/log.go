@@ -34,6 +34,10 @@ func GetLogLevel(lvl string) zapcore.Level {
 		return zapcore.InfoLevel
 	case "debug":
 		return zapcore.DebugLevel
+	case "panic":
+		return zapcore.PanicLevel
+	case "fatal":
+		return zapcore.FatalLevel
 	default:
 		return zapcore.InfoLevel
 	}

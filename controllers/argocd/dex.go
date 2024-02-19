@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -101,9 +101,8 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	actual := cm.Data[common.ArgoCDKeyDexConfig]
 	desired := getDexConfig(cr)
 
-	// If no dexConfig expressed but openShiftOAuth is requested through `.spec.sso.dex`, use default
-	// openshift dex config
-	if len(desired) <= 0 && (cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth) {
+	// Append the default OpenShift dex config if the openShiftOAuth is requested through `.spec.sso.dex`.
+	if cr.Spec.SSO != nil && cr.Spec.SSO.Dex != nil && cr.Spec.SSO.Dex.OpenShiftOAuth {
 		cfg, err := r.getOpenShiftDexConfig(cr)
 		if err != nil {
 			return err
@@ -160,8 +159,31 @@ func (r *ReconcileArgoCD) getOpenShiftDexConfig(cr *argoproj.ArgoCD) (string, er
 	dex := make(map[string]interface{})
 	dex["connectors"] = connectors
 
+	// add dex config from the Argo CD CR.
+	if err := addDexConfigFromCR(cr, dex); err != nil {
+		return "", err
+	}
+
 	bytes, err := yaml.Marshal(dex)
 	return string(bytes), err
+}
+
+func addDexConfigFromCR(cr *argoproj.ArgoCD, dex map[string]interface{}) error {
+	dexCfgStr := getDexConfig(cr)
+	if dexCfgStr == "" {
+		return nil
+	}
+
+	dexCfg := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(dexCfgStr), dexCfg); err != nil {
+		return err
+	}
+
+	for k, v := range dexCfg {
+		dex[k] = v
+	}
+
+	return nil
 }
 
 // reconcileDexServiceAccount will ensure that the Dex ServiceAccount is configured properly for OpenShift OAuth.

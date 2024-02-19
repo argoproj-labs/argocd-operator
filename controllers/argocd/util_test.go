@@ -16,6 +16,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,7 +26,6 @@ import (
 const (
 	dexTestImage          = "testing/dex:latest"
 	argoTestImage         = "testing/argocd:latest"
-	grafanaTestImage      = "testing/grafana:latest"
 	redisTestImage        = "testing/redis:latest"
 	redisHATestImage      = "testing/redis:latest-ha"
 	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
@@ -84,28 +84,6 @@ var imageTests = []struct {
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
-		},
-	},
-	{
-		name:      "grafana default configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      argoutil.CombineImageTag(common.ArgoCDDefaultGrafanaImage, common.ArgoCDDefaultGrafanaVersion),
-	},
-	{
-		name:      "grafana spec configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      grafanaTestImage,
-		opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
-			a.Spec.Grafana.Image = "testing/grafana"
-			a.Spec.Grafana.Version = "latest"
-		}},
-	},
-	{
-		name:      "grafana env configuration",
-		imageFunc: getGrafanaContainerImage,
-		want:      grafanaTestImage,
-		pre: func(t *testing.T) {
-			t.Setenv(common.ArgoCDGrafanaImageEnvName, grafanaTestImage)
 		},
 	},
 	{
@@ -315,6 +293,125 @@ func TestArgoCDInstanceSelector(t *testing.T) {
 }
 
 func TestGetArgoApplicationControllerCommand(t *testing.T) {
+
+	defaultResult := []string{
+		"argocd-application-controller",
+		"--operation-processors",
+		"10",
+		"--redis",
+		"argocd-redis.argocd.svc.cluster.local:6379",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--status-processors",
+		"20",
+		"--kubectl-parallelism-limit",
+		"10",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
+	controllerProcesorsChangedResult := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			"10",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			n,
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+		}
+	}
+
+	operationProcesorsChangedResult := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			n,
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+		}
+	}
+
+	parallelismLimitChangedResult := func(n string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			"10",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			n,
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+		}
+	}
+
+	logFormatChangedResult := func(f string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			"10",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			f,
+		}
+	}
+
+	logLevelChangedResult := func(l string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			"10",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			l,
+			"--logformat",
+			"text",
+		}
+	}
+
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
@@ -323,128 +420,87 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"defaults",
 			[]argoCDOpt{},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			defaultResult,
 		},
 		{
 			"configured status processors",
 			[]argoCDOpt{controllerProcessors(30)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"30",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			controllerProcesorsChangedResult("30"),
+		},
+		{
+			"configured status processors to zero",
+			[]argoCDOpt{controllerProcessors(0)},
+			defaultResult,
+		},
+		{
+			"configured status processors to be between zero and default",
+			[]argoCDOpt{controllerProcessors(10)},
+			controllerProcesorsChangedResult("10"),
 		},
 		{
 			"configured operation processors",
 			[]argoCDOpt{operationProcessors(15)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"15",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			operationProcesorsChangedResult("15"),
 		},
 		{
 			"configured operation processors to zero",
 			[]argoCDOpt{operationProcessors(0)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			defaultResult,
 		},
 		{
 			"configured operation processors to be between zero and ten",
 			[]argoCDOpt{operationProcessors(5)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"5",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"10",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			operationProcesorsChangedResult("5"),
 		},
 		{
 			"configured parallelism limit",
 			[]argoCDOpt{parallelismLimit(30)},
-			[]string{
-				"argocd-application-controller",
-				"--operation-processors",
-				"10",
-				"--redis",
-				"argocd-redis.argocd.svc.cluster.local:6379",
-				"--repo-server",
-				"argocd-repo-server.argocd.svc.cluster.local:8081",
-				"--status-processors",
-				"20",
-				"--kubectl-parallelism-limit",
-				"30",
-				"--loglevel",
-				"info",
-				"--logformat",
-				"text",
-			},
+			parallelismLimitChangedResult("30"),
+		},
+		{
+			"configured parallelism limit to zero",
+			[]argoCDOpt{parallelismLimit(0)},
+			defaultResult,
+		},
+		{
+			"configured invalid logformat",
+			[]argoCDOpt{logFormat("arbitrary")},
+			defaultResult,
+		},
+		{
+			"configured json logformat",
+			[]argoCDOpt{logFormat("json")},
+			logFormatChangedResult("json"),
+		},
+		{
+			"configured text logformat",
+			[]argoCDOpt{logFormat("text")},
+			logFormatChangedResult("text"),
+		},
+		{
+			"configured invalid loglevel",
+			[]argoCDOpt{logLevel("arbitrary")},
+			defaultResult,
+		},
+		{
+			"configured debug loglevel",
+			[]argoCDOpt{logLevel("debug")},
+			logLevelChangedResult("debug"),
+		},
+		{
+			"configured info loglevel",
+			[]argoCDOpt{logLevel("info")},
+			logLevelChangedResult("info"),
+		},
+		{
+			"configured warn loglevel",
+			[]argoCDOpt{logLevel("warn")},
+			logLevelChangedResult("warn"),
+		},
+		{
+			"configured error loglevel",
+			[]argoCDOpt{logLevel("error")},
+			logLevelChangedResult("error"),
 		},
 	}
 
@@ -454,6 +510,34 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 
 		if !reflect.DeepEqual(cmd, tt.want) {
 			t.Fatalf("got %#v, want %#v", cmd, tt.want)
+		}
+	}
+}
+
+func TestGetArgoApplicationContainerEnv(t *testing.T) {
+
+	sync60s := []v1.EnvVar{
+		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+
+	cmdTests := []struct {
+		name string
+		opts []argoCDOpt
+		want []v1.EnvVar
+	}{
+		{
+			"configured apsync to 60s",
+			[]argoCDOpt{appSync(60)},
+			sync60s,
+		},
+	}
+
+	for _, tt := range cmdTests {
+		cr := makeTestArgoCD(tt.opts...)
+		env := getArgoControllerContainerEnv(cr)
+
+		if !reflect.DeepEqual(env, tt.want) {
+			t.Fatalf("got %#v, want %#v", env, tt.want)
 		}
 	}
 }

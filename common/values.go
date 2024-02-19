@@ -48,6 +48,8 @@ const (
 
 	ArgoCDStatusRunning = "Running"
 
+	ArgoCDStatusFailed = "Failed"
+
 	ArgoCDStatusAvailable = "Available"
 
 	PrometheusOperator = "prometheus-operator"
