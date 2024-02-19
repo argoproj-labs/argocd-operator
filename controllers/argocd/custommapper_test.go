@@ -690,7 +690,6 @@ func TestReconcileArgoCD_namespaceResourceMapperForSpecificNamespaceWithoutManag
 			}
 		})
 	}
-
 }
 
 func TestReconcileArgoCD_namespaceResourceMapperForWildCardPatternNamespaceWithoutManagedByLabel(t *testing.T) {
@@ -767,7 +766,6 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardPatternNamespaceWitho
 			}
 		})
 	}
-
 }
 
 func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWithoutManagedByLabel(t *testing.T) {
@@ -842,7 +840,6 @@ func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWitho
 				},
 			},
 		},
-
 		{
 			name: "No Reconcile for Namespace 'prod-namespace-1'",
 			o: &corev1.Namespace{
@@ -861,7 +858,6 @@ func TestReconcileArgoCD_namespaceResourceMapperForMultipleSourceNamespacesWitho
 			}
 		})
 	}
-
 }
 
 func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManagedByLabel(t *testing.T) {
@@ -945,5 +941,4 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManag
 			}
 		})
 	}
-
 }

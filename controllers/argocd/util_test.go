@@ -860,7 +860,6 @@ func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
 			Name: "test",
 		},
 	}
-
 	ns2 := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
@@ -901,19 +900,16 @@ func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
 			Name: "test",
 		},
 	}
-
 	ns2 := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-1",
 		},
 	}
-
 	ns3 := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dev-namespace-1",
 		},
 	}
-
 	ns4 := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "other-namespace",
@@ -949,7 +945,6 @@ func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
 			Name: "test-namespace-1",
 		},
 	}
-
 	ns2 := v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-namespace-2",

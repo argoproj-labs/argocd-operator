@@ -481,19 +481,16 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			a := makeTestArgoCD()
-
 			ns1 := v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "foo",
 				},
 			}
-
 			ns2 := v1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "bar",
 				},
 			}
-
 			resObjs := []client.Object{a, &ns1, &ns2}
 			subresObjs := []client.Object{a}
 			runtimeObjs := []runtime.Object{}
