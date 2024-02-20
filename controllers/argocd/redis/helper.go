@@ -44,7 +44,7 @@ func (rr *RedisReconciler) GetServerAddress() string {
 	if rr.Instance.Spec.HA.Enabled {
 		return rr.GetHAProxyAddress()
 	}
-	return argoutil.FqdnServiceRef(resourceName, rr.Instance.Namespace, common.DefaultRedisPort)
+	return argoutil.FQDNwithPort(resourceName, rr.Instance.Namespace, common.DefaultRedisPort)
 }
 
 // getContainerImage will return the container image for the Redis server.

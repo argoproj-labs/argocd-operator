@@ -5,6 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,105 +14,98 @@ import (
 
 func (rr *RedisReconciler) reconcileRole() error {
 	req := permissions.RoleRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Rules:      getPolicyRules(),
 		Client:     rr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Instance:   rr.Instance,
 	}
 
-	desired, err := permissions.RequestRole(permissions.RoleRequest(req))
-	if err != nil {
-		return errors.Wrapf(err, "reconcileRole: failed to request role %s", desired.Name)
-	}
-
-	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileRole: failed to set owner reference for role", "name", desired.Name)
-	}
-
-	existing, err := permissions.GetRole(desired.Name, desired.Namespace, rr.Client)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileRole: failed to retrieve role %s", desired.Name)
+	ignoreDrift := false
+	updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
 		}
 
-		if err = permissions.CreateRole(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileRole: failed to create role %s", desired.Name)
-		}
-		rr.Logger.Info("role created", "name", desired.Name, "namespace", desired.Namespace)
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 		return nil
 	}
-
-	changed := false
-
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-		{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
-	}
-
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
-
-	if !changed {
-		return nil
-	}
-
-	if err = permissions.UpdateRole(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileRole: failed to update role %s", existing.Name)
-	}
-
-	rr.Logger.Info("role updated", "name", existing.Name, "namespace", existing.Namespace)
-	return nil
+	return rr.reconRole(req, argocdcommon.UpdateFnRole(updateFn), ignoreDrift)
 }
 
 func (rr *RedisReconciler) reconcileHARole() error {
 	req := permissions.RoleRequest{
-		ObjectMeta: argoutil.GetObjMeta(HAResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(HAResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Rules:      getHAPolicyRules(),
 		Client:     rr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Instance:   rr.Instance,
 	}
 
-	desired, err := permissions.RequestRole(permissions.RoleRequest(req))
+	ignoreDrift := false
+	updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
+		}
+
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return rr.reconRole(req, argocdcommon.UpdateFnRole(updateFn), ignoreDrift)
+}
+
+func (rr *RedisReconciler) reconRole(req permissions.RoleRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := permissions.RequestRole(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHARole: failed to request role %s", desired.Name)
+		rr.Logger.Debug("reconRole: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHARole: failed to set owner reference for role", "name", desired.Name)
+		rr.Logger.Error(err, "reconRole: failed to set owner reference for Role", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
 	existing, err := permissions.GetRole(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHARole: failed to retrieve role %s", desired.Name)
+			return errors.Wrapf(err, "reconRole: failed to retrieve Role %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = permissions.CreateRole(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHARole: failed to create role %s", desired.Name)
+			return errors.Wrapf(err, "reconRole: failed to create Role %s in namespace %s", desired.Name, desired.Namespace)
 		}
 		rr.Logger.Info("role created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	changed := false
-
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-		{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
+	// Role found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
 	}
 
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnRole); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconRole: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
 
 	if !changed {
 		return nil
 	}
 
 	if err = permissions.UpdateRole(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHARole: failed to update role %s", existing.Name)
+		return errors.Wrapf(err, "reconRole: failed to update Role %s", existing.Name)
 	}
+
 	rr.Logger.Info("role updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }

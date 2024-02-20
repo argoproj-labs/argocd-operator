@@ -47,68 +47,87 @@ var (
 func (rr *RedisReconciler) reconcileHAStatefulSet() error {
 	req := rr.getStatefulSetRequest()
 
+	ignoreDrift := false
+	updateFn := func(existing, desired *appsv1.StatefulSet, changed *bool) error {
+		for i := range existing.Spec.Template.Spec.Containers {
+
+			fieldsToCompare := []argocdcommon.FieldToCompare{
+				{Existing: &existing.Spec.Template.Spec.Containers[i].Image, Desired: &desired.Spec.Template.Spec.Containers[i].Image,
+					ExtraAction: func() {
+						if existing.Spec.Template.ObjectMeta.Labels == nil {
+							existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
+						}
+						existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+					},
+				},
+				{Existing: &existing.Spec.Template.Spec.Containers[i].Resources, Desired: &desired.Spec.Template.Spec.Containers[i].Resources, ExtraAction: nil},
+				{Existing: &existing.Spec.Template.Spec.Containers[i].SecurityContext, Desired: &desired.Spec.Template.Spec.Containers[i].SecurityContext, ExtraAction: nil},
+			}
+
+			argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		}
+
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.InitContainers[0].Resources, Desired: &desired.Spec.Template.Spec.InitContainers[0].Resources, ExtraAction: nil},
+		}
+
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+
+	return rr.reconStatefulSet(req, argocdcommon.UpdateFnSs(updateFn), ignoreDrift)
+}
+
+func (rr *RedisReconciler) reconStatefulSet(req workloads.StatefulSetRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := workloads.RequestStatefulSet(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to reconcile statefulset %s", desired.Name)
+		rr.Logger.Debug("reconStatefulSet: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconStatefulSet: failed to request StatefulSet %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAStatefulSet: failed to set owner reference for statefulset", "name", desired.Name, "namespace", desired.Namespace)
+		rr.Logger.Error(err, "reconStatefulSet: failed to set owner reference for StatefulSet", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
 	existing, err := workloads.GetStatefulSet(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to retrieve statefulset %s", desired.Name)
+			return errors.Wrapf(err, "reconStatefulSet: failed to retrieve StatefulSet %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = workloads.CreateStatefulSet(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAStatefulSet: failed to create statefulset %s in namespace %s", desired.Name, desired.Namespace)
+			return errors.Wrapf(err, "reconStatefulSet: failed to create StatefulSet %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("statefulset created", "name", desired.Name, "namespace", desired.Namespace)
+		rr.Logger.Info("StatefulSet created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// StatefulSet found, no update required - nothing to do
+	if ignoreDrift {
 		return nil
 	}
 
 	changed := false
 
-	for i := range existing.Spec.Template.Spec.Containers {
-
-		fieldsToCompare := []argocdcommon.FieldToCompare{
-			{Existing: &existing.Spec.Template.Spec.Containers[i].Image, Desired: &desired.Spec.Template.Spec.Containers[i].Image,
-				ExtraAction: func() {
-					if existing.Spec.Template.ObjectMeta.Labels == nil {
-						existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
-					}
-					existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-				},
-			},
-			{Existing: &existing.Spec.Template.Spec.Containers[i].Resources, Desired: &desired.Spec.Template.Spec.Containers[i].Resources, ExtraAction: nil},
-			{Existing: &existing.Spec.Template.Spec.Containers[i].SecurityContext, Desired: &desired.Spec.Template.Spec.Containers[i].SecurityContext, ExtraAction: nil},
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnSs); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconStatefulSet: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
 		}
-
-		argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 	}
-
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Spec.Template.Spec.InitContainers[0].Resources, Desired: &desired.Spec.Template.Spec.InitContainers[0].Resources, ExtraAction: nil},
-	}
-
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
 	if !changed {
 		return nil
 	}
 
 	if err = workloads.UpdateStatefulSet(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHAStatefulSet: failed to update statefulset %s", existing.Name)
+		return errors.Wrapf(err, "reconStatefulSet: failed to update StatefulSet %s", existing.Name)
 	}
 
-	rr.Logger.Info("statefulset updated", "name", existing.Name, "namespace", existing.Namespace)
+	rr.Logger.Info("StatefulSet updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
-}
-
-func (rr *RedisReconciler) TriggerStatefulSetRollout(name, namespace, key string) error {
-	return argocdcommon.TriggerStatefulSetRollout(name, namespace, key, rr.Client)
 }
 
 func (rr *RedisReconciler) deleteStatefulSet(name, namespace string) error {
@@ -122,9 +141,13 @@ func (rr *RedisReconciler) deleteStatefulSet(name, namespace string) error {
 	return nil
 }
 
+func (rr *RedisReconciler) TriggerStatefulSetRollout(name, namespace, key string) error {
+	return argocdcommon.TriggerStatefulSetRollout(name, namespace, key, rr.Client)
+}
+
 func (rr *RedisReconciler) getStatefulSetRequest() workloads.StatefulSetRequest {
 	ssReq := workloads.StatefulSetRequest{
-		ObjectMeta: argoutil.GetObjMeta(HAServerResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(HAServerResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: appsv1.StatefulSetSpec{
 			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
 			Replicas:            getHAReplicas(),

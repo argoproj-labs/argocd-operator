@@ -18,7 +18,7 @@ const (
 
 // GetHAProxyAddress will return the Redis HA Proxy service address for the given ArgoCD instance
 func (rr *RedisReconciler) GetHAProxyAddress() string {
-	return argoutil.FqdnServiceRef(HAProxyResourceName, rr.Instance.Namespace, common.DefaultRedisPort)
+	return argoutil.FQDNwithPort(HAProxyResourceName, rr.Instance.Namespace, common.DefaultRedisPort)
 }
 
 // getHAProxyContainerImage will return the container image for the Redis HA Proxy.

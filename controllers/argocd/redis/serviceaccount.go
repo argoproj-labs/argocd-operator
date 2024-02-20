@@ -1,37 +1,68 @@
 package redis
 
 import (
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (rr *RedisReconciler) reconcileServiceAccount() error {
-
 	req := permissions.ServiceAccountRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 	}
+	ignoreDrift := true
+	return rr.reconServiceAccount(req, nil, ignoreDrift)
+}
 
+func (rr *RedisReconciler) reconServiceAccount(req permissions.ServiceAccountRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired := permissions.RequestServiceAccount(req)
 
 	if err := controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileServiceAccount: failed to set owner reference for serviceaccount")
+		rr.Logger.Error(err, "reconServiceAccount: failed to set owner reference for ServiceAccount", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	_, err := permissions.GetServiceAccount(desired.Name, desired.Namespace, rr.Client)
+	existing, err := permissions.GetServiceAccount(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileServiceAccount: failed to retrieve serviceaccount")
+			return errors.Wrapf(err, "reconServiceAccount: failed to retrieve ServiceAccount %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = permissions.CreateServiceAccount(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileServiceAccount: failed to create serviceaccount")
+			return errors.Wrapf(err, "reconServiceAccount: failed to create ServiceAccount %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("serviceaccount created", "name", desired.Name, "namespace", desired.Namespace)
+		rr.Logger.Info("service account created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
+
+	// ServiceAccount found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnSa); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconServiceAccount: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+
+	if err = permissions.UpdateServiceAccount(existing, rr.Client); err != nil {
+		return errors.Wrapf(err, "reconServiceAccount: failed to update ServiceAccount %s", existing.Name)
+	}
+
+	rr.Logger.Info("service account updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

@@ -13,30 +13,32 @@ import (
 func (rr *RedisReconciler) ReconcileStatus() error {
 	status := common.ArgoCDStatusUnknown
 
-	if !rr.Instance.Spec.HA.Enabled {
-		deploy, err := workloads.GetDeployment(resourceName, rr.Instance.Namespace, rr.Client)
-		if err != nil {
-			return errors.Wrapf(err, "failed to retrieve deployment %s", resourceName)
-		}
-
-		status = common.ArgoCDStatusPending
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = common.ArgoCDStatusRunning
+	if rr.Instance.Spec.Redis.IsEnabled() {
+		if rr.Instance.Spec.HA.Enabled {
+			ss, err := workloads.GetStatefulSet(HAServerResourceName, rr.Instance.Namespace, rr.Client)
+			if err != nil {
+				return errors.Wrapf(err, "failed to retrieve statefulset %s", HAServerResourceName)
 			}
-		}
-	} else {
-		ss, err := workloads.GetStatefulSet(HAServerResourceName, rr.Instance.Namespace, rr.Client)
-		if err != nil {
-			return errors.Wrapf(err, "failed to retrieve statefulset %s", HAServerResourceName)
-		}
 
-		status = common.ArgoCDStatusPending
+			status = common.ArgoCDStatusPending
 
-		if ss.Spec.Replicas != nil {
-			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
-				status = common.ArgoCDStatusRunning
+			if ss.Spec.Replicas != nil {
+				if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
+					status = common.ArgoCDStatusRunning
+				}
+			}
+		} else {
+			deploy, err := workloads.GetDeployment(resourceName, rr.Instance.Namespace, rr.Client)
+			if err != nil {
+				return errors.Wrapf(err, "failed to retrieve deployment %s", resourceName)
+			}
+
+			status = common.ArgoCDStatusPending
+
+			if deploy.Spec.Replicas != nil {
+				if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+					status = common.ArgoCDStatusRunning
+				}
 			}
 		}
 	}

@@ -25,140 +25,153 @@ const (
 func (rr *RedisReconciler) reconcileDeployment() error {
 	req := rr.getDeploymentRequest()
 
-	desired, err := workloads.RequestDeployment(req)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to reconcile deployment %s", desired.Name)
-	}
-
-	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desired.Name, "namespace", desired.Namespace)
-	}
-
-	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, rr.Client)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s", desired.Name)
-		}
-
-		if err = workloads.CreateDeployment(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desired.Name, desired.Namespace)
-		}
-		rr.Logger.Info("deployment created", "name", desired.Name, "namespace", desired.Namespace)
-		return nil
-	}
-
-	changed := false
-
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
-			ExtraAction: func() {
-				if existing.Spec.Template.ObjectMeta.Labels == nil {
-					existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
-				}
-				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+	ignoreDrift := false
+	updateFn := func(existing, desired *appsv1.Deployment, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
+				ExtraAction: func() {
+					if existing.Spec.Template.ObjectMeta.Labels == nil {
+						existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
+					}
+					existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				},
 			},
-		},
-		{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Args, Desired: &desired.Spec.Template.Spec.Containers[0].Args, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
-		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-	}
+			{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Args, Desired: &desired.Spec.Template.Spec.Containers[0].Args, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
+			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		}
 
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
-
-	if !changed {
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 		return nil
 	}
 
-	if err = workloads.UpdateDeployment(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s", existing.Name)
-	}
-
-	rr.Logger.Info("deployment updated", "name", existing.Name, "namespace", existing.Namespace)
-	return nil
+	return rr.reconDeployment(req, argocdcommon.UpdateFnDep(updateFn), ignoreDrift)
 }
 
 func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 	req := rr.getHAProxyDeploymentRequest()
 
+	ignoreDrift := false
+	updateFn := func(existing, desired *appsv1.Deployment, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
+				ExtraAction: func() {
+					if existing.Spec.Template.ObjectMeta.Labels == nil {
+						existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
+					}
+					existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				},
+			},
+			{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Args, Desired: &desired.Spec.Template.Spec.Containers[0].Args, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
+			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+		}
+
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return rr.reconDeployment(req, argocdcommon.UpdateFnDep(updateFn), ignoreDrift)
+}
+
+func (rr *RedisReconciler) reconDeployment(req workloads.DeploymentRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := workloads.RequestDeployment(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to reconcile deployment %s", desired.Name)
+		rr.Logger.Debug("reconDeployment: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconDeployment: failed to request Deployment %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
 	if err = controllerutil.SetControllerReference(rr.Instance, desired, rr.Scheme); err != nil {
-		rr.Logger.Error(err, "reconcileHAProxyDeployment: failed to set owner reference for deployment", "name", desired.Name, "namespace", desired.Namespace)
+		rr.Logger.Error(err, "reconDeployment: failed to set owner reference for Deployment", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
 	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to retrieve deployment %s", desired.Name)
+			return errors.Wrapf(err, "reconDeployment: failed to retrieve Deployment %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = workloads.CreateDeployment(desired, rr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHAProxyDeployment: failed to create deployment %s in namespace %s", desired.Name, desired.Namespace)
+			return errors.Wrapf(err, "reconDeployment: failed to create Deployment %s in namespace %s", desired.Name, desired.Namespace)
 		}
-		rr.Logger.Info("deployment created", "name", desired.Name, "namespace", desired.Namespace)
+		rr.Logger.Info("Deployment created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// Deployment found, no update required - nothing to do
+	if ignoreDrift {
 		return nil
 	}
 
 	changed := false
 
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
-			ExtraAction: func() {
-				if existing.Spec.Template.ObjectMeta.Labels == nil {
-					existing.Spec.Template.ObjectMeta.Labels = map[string]string{}
-				}
-				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-			},
-		},
-		{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Args, Desired: &desired.Spec.Template.Spec.Containers[0].Args, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
-		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnDep); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconDeployment: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
 	}
-
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
 	if !changed {
 		return nil
 	}
 
 	if err = workloads.UpdateDeployment(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHADeployment: failed to update deployment %s", existing.Name)
+		return errors.Wrapf(err, "reconDeployment: failed to update Deployment %s", existing.Name)
 	}
 
-	rr.Logger.Info("deployment updated", "name", existing.Name, "namespace", existing.Namespace)
+	rr.Logger.Info("Deployment updated", "name", existing.Name, "namespace", existing.Namespace)
+	return nil
+}
+
+func (rr *RedisReconciler) deleteDeployment(name, namespace string) error {
+	if err := workloads.DeleteDeployment(name, namespace, rr.Client); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s", name)
+	}
+	rr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
+	return nil
+}
+
+// TriggerDeploymentRollout starts redis deployment rollout by updating the given key
+func (rr *RedisReconciler) TriggerDeploymentRollout(name, namespace, key string) error {
+	err := argocdcommon.TriggerDeploymentRollout(name, namespace, key, rr.Client)
+	if err != nil {
+		return errors.Wrapf(err, "TriggerDeploymentRollout: failed to rollout deployment %s in namespace %s", name, namespace)
+	}
 	return nil
 }
 
 func (rr *RedisReconciler) getDeploymentRequest() workloads.DeploymentRequest {
 	req := workloads.DeploymentRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -236,7 +249,7 @@ func (rr *RedisReconciler) getDeploymentContainers() []corev1.Container {
 
 func (rr *RedisReconciler) getHAProxyDeploymentRequest() workloads.DeploymentRequest {
 	depReq := workloads.DeploymentRequest{
-		ObjectMeta: argoutil.GetObjMeta(HAProxyResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(HAProxyResourceName, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -426,24 +439,4 @@ func (rr *RedisReconciler) getHAProxyDeploymentInitContainers() []corev1.Contain
 
 	containers = append(containers, initc)
 	return containers
-}
-
-// TriggerDeploymentRollout starts redis deployment rollout by updating the given key
-func (rr *RedisReconciler) TriggerDeploymentRollout(name, namespace, key string) error {
-	err := argocdcommon.TriggerDeploymentRollout(name, namespace, key, rr.Client)
-	if err != nil {
-		return errors.Wrapf(err, "TriggerDeploymentRollout: failed to rollout deployment %s in namespace %s", name, namespace)
-	}
-	return nil
-}
-
-func (rr *RedisReconciler) deleteDeployment(name, namespace string) error {
-	if err := workloads.DeleteDeployment(name, namespace, rr.Client); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return errors.Wrapf(err, "deleteDeployment: failed to delete deployment %s", name)
-	}
-	rr.Logger.Info("deployment deleted", "name", name, "namespace", namespace)
-	return nil
 }
