@@ -36,7 +36,6 @@ var (
 	deploymentNames = []string{
 		"argocd-repo-server",
 		"argocd-dex-server",
-		"argocd-grafana",
 		"argocd-redis",
 		"argocd-server"}
 )
@@ -687,7 +686,6 @@ func TestReconcileArgoCD_reconcileDeployments_proxy_update_existing(t *testing.T
 	logf.SetLogger(ZapLogger(true))
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Grafana.Enabled = true
 		a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 			Provider: argoproj.SSOProviderTypeDex,
 			Dex: &argoproj.ArgoCDDexSpec{
@@ -1561,12 +1559,6 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
-func operationProcessors(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Processors.Operation = n
-	}
-}
-
 func Test_UpdateNodePlacement(t *testing.T) {
 
 	deployment := &appsv1.Deployment{
@@ -1626,12 +1618,6 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 }
 
-func parallelismLimit(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.ParallelismLimit = n
-	}
-}
-
 func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 	t.Helper()
 	deployment := &appsv1.Deployment{}
@@ -1687,12 +1673,6 @@ func refuteDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 func assertNotFound(t *testing.T, err error) {
 	t.Helper()
 	assert.True(t, apierrors.IsNotFound(err))
-}
-
-func controllerProcessors(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Processors.Status = n
-	}
 }
 
 // repoServerVolumes returns the list of expected default volumes for the repo server
@@ -2005,4 +1985,88 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		deployment))
 
 	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+}
+
+func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	tests := []struct {
+		testName                      string
+		serviceAccountName            string
+		expectedServiceAccountName    string
+		isServiceAccountNameChanged   bool
+		newServiceAccountName         string
+		newExpectedServiceAccountName string
+	}{
+		{
+			testName:                   "serviceAccountName field in the spec should reflect provided value",
+			serviceAccountName:         "deployer",
+			expectedServiceAccountName: "deployer",
+		}, {
+			testName:                      "serviceAccountName field in the spec should have updated value",
+			serviceAccountName:            "deployer",
+			expectedServiceAccountName:    "deployer",
+			isServiceAccountNameChanged:   true,
+			newServiceAccountName:         "builder",
+			newExpectedServiceAccountName: "builder",
+		}, {
+			testName:                      "Empty serviceAccountName field in the spec should have updated value",
+			serviceAccountName:            "",
+			expectedServiceAccountName:    "",
+			isServiceAccountNameChanged:   true,
+			newServiceAccountName:         "builder",
+			newExpectedServiceAccountName: "builder",
+		}, {
+			testName:                      "serviceAccountName field in the spec should be changed to empty",
+			serviceAccountName:            "builder",
+			expectedServiceAccountName:    "builder",
+			isServiceAccountNameChanged:   true,
+			newServiceAccountName:         "",
+			newExpectedServiceAccountName: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.testName, func(t *testing.T) {
+
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Repo.ServiceAccount = test.serviceAccountName
+			})
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			err := r.reconcileRepoDeployment(a, false)
+			assert.NoError(t, err)
+
+			deployment := &appsv1.Deployment{}
+			key := types.NamespacedName{
+				Name:      "argocd-repo-server",
+				Namespace: testNamespace,
+			}
+
+			err = r.Client.Get(context.TODO(), key, deployment)
+
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
+
+			// check if SA name is changed
+			if test.isServiceAccountNameChanged {
+
+				a.Spec.Repo.ServiceAccount = test.newServiceAccountName
+
+				err = r.reconcileRepoDeployment(a, false)
+				assert.NoError(t, err)
+
+				err = r.Client.Get(context.TODO(), key, deployment)
+
+				assert.NoError(t, err)
+				assert.Equal(t, test.newExpectedServiceAccountName, deployment.Spec.Template.Spec.ServiceAccountName)
+			}
+		})
+	}
 }

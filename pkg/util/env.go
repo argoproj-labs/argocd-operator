@@ -46,6 +46,13 @@ func EnvMerge(existing []corev1.EnvVar, merge []corev1.EnvVar, override bool) []
 	return ret
 }
 
+func GetEnv(s string) string {
+	if v := os.Getenv(s); v != "" {
+		return v
+	}
+	return ""
+}
+
 func CaseInsensitiveGetenv(s string) (string, string) {
 	if v := os.Getenv(s); v != "" {
 		return s, v

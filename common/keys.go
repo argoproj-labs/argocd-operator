@@ -45,15 +45,6 @@ const (
 	// ArgoCDKeyGAAnonymizeUsers is the configuration key for the Google Analytics user anonymization.
 	ArgoCDKeyGAAnonymizeUsers = "ga.anonymizeusers"
 
-	// ArgoCDKeyGrafanaAdminUsername is the admin username key for labels.
-	ArgoCDKeyGrafanaAdminUsername = "admin.username"
-
-	// ArgoCDKeyGrafanaAdminPassword is the admin password key for labels.
-	ArgoCDKeyGrafanaAdminPassword = "admin.password"
-
-	// ArgoCDKeyGrafanaSecretKey is the "secret key" key for labels.
-	ArgoCDKeyGrafanaSecretKey = "secret.key"
-
 	// ArgoCDKeyHelpChatURL is the congifuration key for the help chat URL.
 	ArgoCDKeyHelpChatURL = "help.chatUrl"
 

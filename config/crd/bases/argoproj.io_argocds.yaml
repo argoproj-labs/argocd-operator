@@ -716,7 +716,8 @@ spec:
                 description: GATrackingID is the google analytics tracking ID to use.
                 type: string
               grafana:
-                description: Grafana defines the Grafana server options for ArgoCD.
+                description: 'Deprecated: Grafana defines the Grafana server options
+                  for ArgoCD.'
                 properties:
                   enabled:
                     description: Enabled will toggle Grafana support globally for
@@ -7588,7 +7589,8 @@ spec:
                 description: GATrackingID is the google analytics tracking ID to use.
                 type: string
               grafana:
-                description: Grafana defines the Grafana server options for ArgoCD.
+                description: 'Deprecated: Grafana defines the Grafana server options
+                  for ArgoCD.'
                 properties:
                   enabled:
                     description: Enabled will toggle Grafana support globally for

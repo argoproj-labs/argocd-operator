@@ -119,10 +119,10 @@ Add entries to the `/etc/hosts` file on the local machine, which is needed to ac
 minikube.
 
 ```bash
-echo "`minikube ip -p argocd` example-argocd example-argocd-grpc example-argocd-grafana example-argocd-prometheus" | sudo tee -a /etc/hosts
+echo "`minikube ip -p argocd` example-argocd example-argocd-grpc example-argocd-prometheus" | sudo tee -a /etc/hosts
 ```
 ```text
-192.168.39.234 example-argocd example-argocd-grpc example-argocd-grafana example-argocd-prometheus
+192.168.39.234 example-argocd example-argocd-grpc example-argocd-prometheus
 ```
 
 ### GRPC

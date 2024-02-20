@@ -18,10 +18,9 @@ import (
 )
 
 var (
-	caResourceName                 string
-	tlsResourceName                string
 	adminCredsResourceName         string
 	clusterPermissionsResourceName string
+	tlsResourceName                string
 )
 
 const (
@@ -44,57 +43,71 @@ func (r *ArgoCDReconciler) reconcileSecrets() error {
 	err = r.reconcileClusterPermissionsSecret()
 	reconErrs.Append(err)
 
-	// err = r.reconcileArgoCDSecret()
-	// reconErrs.Append(err)
+	err = r.reconcileArgoCDSecret()
+	reconErrs.Append(err)
 
 	return reconErrs.ErrOrNil()
 }
 
 func (r *ArgoCDReconciler) reconcileArgoCDSecret() error {
 	ignoreUpdate := false
-	clusterPermSecret, err := workloads.GetSecret(adminCredsResourceName, r.Instance.Namespace, r.Client)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve secret %s in namespace %s", adminCredsResourceName, r.Instance.Namespace)
-	}
-
-	tlsSecret, err := workloads.GetSecret(tlsResourceName, r.Instance.Namespace, r.Client)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve tls secret %s in namespace %s", tlsResourceName, r.Instance.Namespace)
-	}
-
-	hashedPwd, err := argopass.HashPassword(string(clusterPermSecret.Data[common.ArgoCDKeyAdminPassword]))
-	if err != nil {
-		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to encrypt admin password")
-	}
-
-	// sessionKey, err := generateArgoServerSessionKey()
-	// if err != nil {
-	// 	return errors.Wrapf(err, "reconcileArgoCDSecret: failed to generate server session key")
-	// }
 
 	req := workloads.SecretRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDSecretName, r.Instance.Namespace, r.Instance.Name, r.Instance.Namespace, "", util.EmptyMap(), util.EmptyMap()),
-		Data: map[string][]byte{
-			common.ArgoCDKeyAdminPassword: []byte(hashedPwd),
-			// common.ArgoCDKeyAdminPasswordMTime: util.NowBytes(),
-			// common.ArgoCDKeyServerSecretKey:    sessionKey,
-			common.ArgoCDKeyTLSCert:       tlsSecret.Data[common.ArgoCDKeyTLSCert],
-			common.ArgoCDKeyTLSPrivateKey: tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
+		Data:       map[string][]byte{
 			// TO DO: skip dex secret config
 		},
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	updateFn := func(existing, desired *corev1.Secret, changed *bool) error {
+		clusterPermSecret, err := workloads.GetSecret(adminCredsResourceName, r.Instance.Namespace, r.Client)
+		if err != nil {
+			return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve secret %s in namespace %s", adminCredsResourceName, r.Instance.Namespace)
 		}
+
+		tlsSecret, err := workloads.GetSecret(tlsResourceName, r.Instance.Namespace, r.Client)
+		if err != nil {
+			return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve tls secret %s in namespace %s", tlsResourceName, r.Instance.Namespace)
+		}
+
+		if existing.Data == nil {
+			existing.Data = make(map[string][]byte)
+		}
+
+		if existing.Data[common.ArgoCDKeyServerSecretKey] == nil {
+			sessionKey, err := argoutil.GenerateArgoServerSessionKey()
+			if err != nil {
+				return errors.Wrapf(err, "reconcileArgoCDSecret: failed to generate server session key")
+			}
+			existing.Data[common.ArgoCDKeyServerSecretKey] = sessionKey
+		}
+
+		if argoutil.HasArgoAdminPasswordChanged(existing, clusterPermSecret) {
+			pwBytes, ok := clusterPermSecret.Data[common.ArgoCDKeyAdminPassword]
+			if ok {
+				hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
+				if err != nil {
+					return errors.Wrapf(err, "reconcileArgoCDSecret: failed to encrypt admin password")
+				}
+
+				existing.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
+				existing.Data[common.ArgoCDKeyAdminPasswordMTime] = util.NowBytes()
+				*changed = true
+			}
+		}
+
+		if argoutil.HasArgoTLSChanged(existing, tlsSecret) {
+			existing.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
+			existing.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
+			*changed = true
+		}
+
+		return nil
 	}
 
-	return r.reconcileSecret(req, fieldsToCompare, ignoreUpdate)
+	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreUpdate)
 }
 
 func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret() error {
@@ -124,15 +137,19 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret() error {
 		delete(req.Data, "namespaces")
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	updateFn := func(existing, desired *corev1.Secret, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileSecret(req, fieldsToCompare, ignoreUpdate)
+	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreUpdate)
 }
 
 func (r *ArgoCDReconciler) reconcileAdminCredentialsSecret() error {
@@ -151,16 +168,7 @@ func (r *ArgoCDReconciler) reconcileAdminCredentialsSecret() error {
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,
 	}
-
-	fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
-		}
-	}
-
-	return r.reconcileSecret(req, fieldsToCompare, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreUpdate)
 }
 
 // reconcileTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
@@ -199,15 +207,7 @@ func (r *ArgoCDReconciler) reconcileTLSSecret() error {
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
-		}
-	}
-
-	return r.reconcileSecret(req, fieldsToCompare, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreUpdate)
 }
 
 // reconcileCASecret ensures the CA Secret is reconciled for the ArgoCD cluster.
@@ -232,18 +232,10 @@ func (r *ArgoCDReconciler) reconcileCASecret() error {
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.Secret) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
-		}
-	}
-
-	return r.reconcileSecret(req, fieldsToCompare, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreUpdate)
 }
 
-func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, compare argocdcommon.FieldCompFnSecret, ignoreUpdate bool) error {
+func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, updateFn interface{}, ignoreUpdate bool) error {
 	desired, err := workloads.RequestSecret(req)
 	if err != nil {
 		r.Logger.Debug("reconcileSecret: one or more mutations could not be applied")
@@ -274,7 +266,14 @@ func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, compare 
 
 	changed := false
 
-	argocdcommon.UpdateIfChanged(compare(existing, desired), &changed)
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnSecret); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconcileSecret: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
 
 	if !changed {
 		return nil
@@ -300,9 +299,7 @@ func (r *ArgoCDReconciler) deleteSecret(name, namespace string) error {
 }
 
 func (r *ArgoCDReconciler) secretVarSetter() {
-	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.CASuffix)
 	tlsResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.TLSSuffix)
 	adminCredsResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.CLusterSuffix)
 	clusterPermissionsResourceName = argoutil.GenerateResourceName(r.Instance.Name, clusterConfigSuffix)
-
 }

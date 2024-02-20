@@ -73,6 +73,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
 		}
+		log.Info(grafanaDeprecatedWarning)
 		return nil // Service found, do nothing
 	}
 
@@ -80,25 +81,8 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("grafana", cr),
-	}
-
-	svc.Spec.Ports = []corev1.ServicePort{
-		{
-			Name:       "http",
-			Port:       80,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(3000),
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
-		return err
-	}
-
-	log.Info(fmt.Sprintf("creating service %s for Argo CD instance %s in namespace %s", svc.Name, cr.Name, cr.Namespace))
-	return r.Client.Create(context.TODO(), svc)
+	log.Info(grafanaDeprecatedWarning)
+	return nil
 }
 
 // reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.

@@ -29,12 +29,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/configmap"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
@@ -43,8 +43,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	v1 "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -58,6 +59,14 @@ import (
 const (
 	ArgoCDController = "argocd-controller"
 )
+
+var (
+	caResourceName string
+)
+
+func (r *ArgoCDReconciler) varSetter() {
+	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
+}
 
 // blank assignment to verify that ArgoCDReconciler implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
@@ -87,7 +96,6 @@ type ArgoCDReconciler struct {
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
-	ConfigMapController     *configmap.ConfigMapReconciler
 	RedisController         *redis.RedisReconciler
 	ReposerverController    *reposerver.RepoServerReconciler
 	ServerController        *server.ServerReconciler
@@ -133,6 +141,7 @@ var ActiveInstanceMap = make(map[string]string)
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+
 	reconcileStartTS := time.Now()
 	defer func() {
 		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
@@ -178,6 +187,18 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	r.Instance = argocd
 	r.ClusterScoped = IsClusterConfigNs(r.Instance.Namespace)
 	r.Logger = util.NewLogger(ArgoCDController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace)
+
+	// Fetch labelSelector from r.LabelSelector (command-line option)
+	labelSelector, err := labels.Parse(r.LabelSelector)
+	if err != nil {
+		r.Logger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
+		return reconcile.Result{}, err
+	}
+	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
+	if !labelSelector.Matches(labels.Set(r.Instance.Labels)) {
+		r.Logger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
+		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
+	}
 
 	// if r.Instance.GetDeletionTimestamp() != nil {
 
@@ -227,6 +248,8 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	r.InitializeControllerReconcilers()
+
+	r.varSetter()
 
 	if err = r.reconcileControllers(); err != nil {
 		return reconcile.Result{}, err
@@ -365,13 +388,14 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
-	if err := r.ConfigMapController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile configmap controller")
+	// core components, return reconciliation errors
+	if err := r.reconcileSecrets(); err != nil {
+		r.Logger.Error(err, "failed to reconcile required secrets")
 		return err
 	}
 
-	// if err := r.reconcileSecrets(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile required secrets")
+	// if err := r.reconcileConfigMaps(); err != nil {
+	// 	r.Logger.Error(err, "failed to reconcile required config maps")
 	// 	return err
 	// }
 
@@ -434,11 +458,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 }
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
-	configMapController := &configmap.ConfigMapReconciler{
-		Client:   &r.Client,
-		Scheme:   r.Scheme,
-		Instance: r.Instance,
-	}
 
 	redisController := &redis.RedisReconciler{
 		Client:   r.Client,
@@ -511,8 +530,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 
 	r.SSOController = ssoController
 
-	r.ConfigMapController = configMapController
-
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -546,9 +563,9 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder) *builder.Bu
 	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
 
-	bldr.Owns(&v1.Role{})
+	bldr.Owns(&rbacv1.Role{})
 
-	bldr.Owns(&v1.RoleBinding{})
+	bldr.Owns(&rbacv1.RoleBinding{})
 
 	if openshift.IsRouteAPIAvailable() {
 		// Watch OpenShift Route sub-resources owned by ArgoCD instances.

@@ -27,6 +27,8 @@ type FieldCompFnDeployment func(*appsv1.Deployment, *appsv1.Deployment) []FieldT
 // FieldCompFnSecret is a function type for comparing fields of two Secrets.
 type FieldCompFnSecret func(*corev1.Secret, *corev1.Secret) []FieldToCompare
 
+type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
+
 // FieldCompFnService is a function type for comparing fields of two Services.
 type FieldCompFnService func(*corev1.Service, *corev1.Service) []FieldToCompare
 
@@ -87,7 +89,12 @@ func GetValueOrDefault(value interface{}, defaultValue interface{}) interface{} 
 		if reflect.ValueOf(value).IsNil() {
 			return defaultValue
 		}
-		return reflect.ValueOf(value).String()
+		ptVal := reflect.Indirect(reflect.ValueOf(value))
+
+		switch ptVal.Kind() {
+		case reflect.String:
+			return reflect.Indirect(reflect.ValueOf(value)).String()
+		}
 	}
 
 	switch v := value.(type) {
@@ -95,12 +102,12 @@ func GetValueOrDefault(value interface{}, defaultValue interface{}) interface{} 
 		if len(v) > 0 {
 			return v
 		}
-		return defaultValue
+		return defaultValue.(string)
 	case map[string]string:
 		if len(v) > 0 {
 			return v
 		}
-		return defaultValue
+		return defaultValue.(map[string]string)
 	}
 
 	return defaultValue

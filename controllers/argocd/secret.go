@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
@@ -60,60 +59,9 @@ func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
 		return nil // Grafana not enabled, do nothing.
 	}
 
-	clusterSecret := argoutil.NewSecretWithSuffix(cr, "cluster")
-	secret := argoutil.NewSecretWithSuffix(cr, "grafana")
+	log.Info(grafanaDeprecatedWarning)
 
-	if !argoutil.IsObjectFound(r.Client, cr.Namespace, clusterSecret.Name, clusterSecret) {
-		log.Info(fmt.Sprintf("cluster secret [%s] not found, waiting to reconcile grafana secret [%s]", clusterSecret.Name, secret.Name))
-		return nil
-	}
-
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
-		actual := string(secret.Data[common.ArgoCDKeyGrafanaAdminPassword])
-		expected := string(clusterSecret.Data[common.ArgoCDKeyAdminPassword])
-
-		if actual != expected {
-			log.Info("cluster secret changed, updating and reloading grafana")
-			secret.Data[common.ArgoCDKeyGrafanaAdminPassword] = clusterSecret.Data[common.ArgoCDKeyAdminPassword]
-			if err := r.Client.Update(context.TODO(), secret); err != nil {
-				return err
-			}
-
-			// Regenerate the Grafana configuration
-			cm := newConfigMapWithSuffix("grafana-config", cr)
-			if !argoutil.IsObjectFound(r.Client, cm.Namespace, cm.Name, cm) {
-				log.Info("unable to locate grafana-config")
-				return nil
-			}
-
-			if err := r.Client.Delete(context.TODO(), cm); err != nil {
-				return err
-			}
-
-			// Trigger rollout of Grafana Deployment
-			deploy := newDeploymentWithSuffix("grafana", "grafana", cr)
-			return r.triggerRollout(deploy, "admin.password.changed")
-		}
-		return nil // Nothing has changed, move along...
-	}
-
-	// Secret not found, create it...
-
-	secretKey, err := generateGrafanaSecretKey()
-	if err != nil {
-		return err
-	}
-
-	secret.Data = map[string][]byte{
-		common.ArgoCDKeyGrafanaAdminUsername: []byte(common.ArgoCDDefaultGrafanaAdminUsername),
-		common.ArgoCDKeyGrafanaAdminPassword: clusterSecret.Data[common.ArgoCDKeyAdminPassword],
-		common.ArgoCDKeyGrafanaSecretKey:     secretKey,
-	}
-
-	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), secret)
+	return nil
 }
 
 // reconcileRedisTLSSecret checks whether the argocd-operator-redis-tls secret

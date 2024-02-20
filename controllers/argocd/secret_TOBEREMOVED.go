@@ -121,7 +121,7 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 	}
 
 	if cr.Spec.Grafana.Enabled {
-		dnsNames = append(dnsNames, getGrafanaHost(cr))
+		log.Info(grafanaDeprecatedWarning)
 	}
 	if cr.Spec.Prometheus.Enabled {
 		dnsNames = append(dnsNames, getPrometheusHost(cr))

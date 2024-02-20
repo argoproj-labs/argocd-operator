@@ -89,7 +89,7 @@ secret/example-argocd-cluster                      Opaque                       
 secret/example-argocd-tls                          kubernetes.io/tls                     2      33s
 ```
 
-The cluster Secret contains the admin password for authenticating with Argo CD, as well as the Grafana dashboard, if enabled.
+The cluster Secret contains the admin password for authenticating with Argo CD.
 
 ```bash
 apiVersion: v1
@@ -107,7 +107,7 @@ type: Opaque
 ```
 
 The operator will watch for changes to the `admin.password` value. When a change is made the password is synchronized to
-Argo CD and Grafana automatically.
+Argo CD automatically.
 
 Fetch the admin password from the cluster Secret.
 
