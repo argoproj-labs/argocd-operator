@@ -90,12 +90,6 @@ func maxShardsSharding(n int32) argoCDOpt {
 	}
 }
 
-func clustersPerShardSharding(n int32) argoCDOpt {
-	return func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.Sharding.ClustersPerShard = n
-	}
-}
-
 var imageTests = []struct {
 	name      string
 	pre       func(t *testing.T)
@@ -592,6 +586,12 @@ func TestGetArgoApplicationControllerSharding(t *testing.T) {
 		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
 		v1.EnvVar{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "0", ValueFrom: (*v1.EnvVarSource)(nil)}}
 	disabled := []v1.EnvVar{v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)}}
+	replicas0 := []v1.EnvVar{
+		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "0", ValueFrom: (*v1.EnvVarSource)(nil)}}
+	replicas3 := []v1.EnvVar{
+		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3", ValueFrom: (*v1.EnvVarSource)(nil)}}
 
 	cmdTests := []struct {
 		name string
@@ -609,9 +609,29 @@ func TestGetArgoApplicationControllerSharding(t *testing.T) {
 			disabled,
 		},
 		{
-			"configured zero replicas",
+			"configured 0 miShards",
 			[]argoCDOpt{enabledSharding(true), minShardsSharding(0)},
 			enabled,
+		},
+		{
+			"configured 0 replicas",
+			[]argoCDOpt{enabledSharding(true), replicasSharding(0)},
+			replicas0,
+		},
+		{
+			"configured 3 replicas",
+			[]argoCDOpt{enabledSharding(true), replicasSharding(3)},
+			replicas3,
+		},
+		{
+			"configured minShards > maxShards",
+			[]argoCDOpt{enabledSharding(true), minShardsSharding(3), maxShardsSharding(2), replicasSharding(3)},
+			replicas3,
+		},
+		{
+			"configured minShards < maxShards",
+			[]argoCDOpt{enabledSharding(true), minShardsSharding(2), maxShardsSharding(3)},
+			replicas0,
 		},
 	}
 
