@@ -50,7 +50,7 @@ func (rsr *RepoServerReconciler) GetServerAddress() string {
 		return *rsr.Instance.Spec.Repo.Remote
 	}
 
-	return argoutil.FqdnServiceRef(resourceName, rsr.Instance.Namespace, common.DefaultRepoServerPort)
+	return argoutil.FQDNwithPort(resourceName, rsr.Instance.Namespace, common.DefaultRepoServerPort)
 }
 
 // getReplicas will return the size value for the argocd-repo-server replica count if it
