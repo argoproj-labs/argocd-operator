@@ -87,7 +87,7 @@ ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller 
 SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/cert"` path.
 Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
 SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
-SCMProviders|[Empty]|List of allowed SCM provider API URLs.
+SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
 
 ### ApplicationSet Controller Example
 

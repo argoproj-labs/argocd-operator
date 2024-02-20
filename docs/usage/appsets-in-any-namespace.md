@@ -5,40 +5,41 @@
 !!! note
     This feature is considered beta feature in upstream Argo CD as of now. Some of the implementation details may change over the course of time until it is promoted to a stable status.
 
-Argo CD supports managing `ApplicationSet` resources in namespaces other than the control plane's namespace. Argo CD administrators can define a certain set of namespaces where `ApplicationSet` resources may be created, updated and reconciled in. 
+Argo CD supports managing `ApplicationSet` resources in non-control plane namespaces. Argo CD administrators can define a certain set of namespaces to create, update, and reconcile `ApplicationSet` resources.
 
-In order to manage `ApplicationSet` outside the Argo CD's control plane namespace, two prerequisites must be satisfied:
+To manage the `ApplicationSet` resources in non-control plane namespaces i.e outside the Argo CD's namespace, you must satisfy the following prerequisites:
 
-1. The Argo CD should be cluster-scoped
-2. The enabled namespace should be entirely covered by the [Apps in Any Namespace](./apps-in-any-namespace.md)
+1. The Argo CD instance should be cluster-scoped
+2. [Apps in Any Namespace](./apps-in-any-namespace.md) should be enabled on target namespaces
 
 ## Enable ApplicationSets in a namespace
 
 To enable this feature in a namespace, add the namespace name under `.spec.applicationSet.sourceNamespaces` field in ArgoCD CR.
 
+For example, following configuration will allow `example` Argo CD instance to create & manage `ApplicationSet` resource in `foo` namespace. 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: example-argocd
+  name: example
 spec:
   applicationSet:
     sourceNamespaces:
-      - some-namespace
+      - foo
 ```
 
 As of now, wildcards are not supported in `.spec.applicationSet.sourceNamespaces`. 
 
 !!! important 
-    Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is covered under `.spec.sourceNamespaces` in ArgoCD CR.
+    Ensure that [Apps in Any Namespace](./apps-in-any-namespace.md) is enabled on target namespace i.e the target namespace name is part of `.spec.sourceNamespaces` field in ArgoCD CR.
 
-The operator creates/modifies below RBAC resources when ApplicationSets in Any Namespace is enabled
+The Operator creates/modifies below RBAC resources when ApplicationSets in Any Namespace is enabled
 
 |Name|Kind|Purpose|
 |:-|:-|:-|
-|`<argoCDName-argoCDNamespace>-argocd-applicationset-controller`|ClusteRole & ClusterRoleBinding|for `applicationset-controller` to watch & list `ApplicationSets` at cluster-level|
-|`<argoCDName-argoCDNamespace>-applicationset`|Role & RoleBinding|in target namespace for `applicationset-controller` to manage `ApplicationSet` resources|
-|`<argoCDName-targetNamespace>`|Role & RoleBinding|in target namespace for `argocd-server` to manipulate `ApplicationSet` resources via UI, API & CLI|
+|`<argoCDName-argoCDNamespace>-argocd-applicationset-controller`|ClusteRole & ClusterRoleBinding|For ApplicationSet controller to watch and list `ApplicationSet` resources at cluster-level|
+|`<argoCDName-argoCDNamespace>-applicationset`|Role & RoleBinding|For ApplicationSet controller to manage `ApplicationSet` resources in target namespace|
+|`<argoCDName-targetNamespace>`|Role & RoleBinding|For Argo CD server to manage `ApplicationSet` resources in target namespace via UI, API or CLI|
 
 Additionally, it adds `argocd.argoproj.io/applicationset-managed-by-cluster-argocd` label to the target namespace.
 
@@ -46,25 +47,25 @@ Note that generated `Application` can create resources in any namespace. However
 
 ## Allow SCM Providers
 
-By default, whenever ApplicationSets in Any Namespace is enabled, operator disables SCM & PR generators of security reasons. Read upstream [documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration) for more details. 
+By default, whenever you enable the ApplicationSets in Any Namespace feature, the Operator disables Source Code Manager (SCM) Provider generator & Pull Request (PR) generator for security reasons. Read upstream [documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration) for more details. 
 
-To use SCM & PR generators, Argo CD administrators need to explicitly define allowed SCM providers whitelist using `.spec.applicationSet.scmProviders` field in ArgoCD CR. 
+To use SCM Provider & PR generators, Argo CD administrators must explicitly define a list of allowed SCM providers using the `.spec.applicationSet.scmProviders` field in the ArgoCD CR. 
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
-  name: example-argocd
+  name: example
 spec:
   applicationSet:
     sourceNamespaces:
-      - some-namespace
+      - foo
     scmProviders:
       - https://git.mydomain.com/
       - https://gitlab.mydomain.com/
 ```
 
-This will configure `applicationset-controller` to allow SCM & PR generators for whitelisted URLs. If any other url is used, it will be rejected by the `applicationset-controller`.
+This will configure ApplicationSet controller to allow the defined URLs for SCM Provider & PR generators. If any other url is used, it will be rejected by the ApplicationSet controller.
 
 !!! important
     Please read upstream [documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration) carefully. Misconfiguration could lead to potential security issues.
