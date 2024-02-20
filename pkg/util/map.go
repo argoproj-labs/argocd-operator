@@ -25,6 +25,16 @@ func StringMapKeys(m map[string]string) []string {
 	return r
 }
 
+// ByteMapKeys accepts a map with string keys as input and returns a sorted slice of its keys
+func ByteMapKeys(m map[string][]byte) []string {
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
+	}
+	sort.Strings(r)
+	return r
+}
+
 func EmptyMap() map[string]string {
 	return map[string]string{}
 }

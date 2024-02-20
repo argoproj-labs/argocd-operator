@@ -49,12 +49,62 @@ func (r *ArgoCDReconciler) reconcileSecrets() error {
 	return reconErrs.ErrOrNil()
 }
 
+func (r *ArgoCDReconciler) deleteSecrets() error {
+	var delErrs util.MultiError
+
+	err := r.deleteSecret(common.ArgoCDSecretName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteSecret(clusterPermissionsResourceName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteSecret(tlsResourceName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteSecret(caResourceName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	err = r.deleteSecret(adminCredsResourceName, r.Instance.Namespace)
+	delErrs.Append(err)
+
+	return delErrs.ErrOrNil()
+}
+
 func (r *ArgoCDReconciler) reconcileArgoCDSecret() error {
-	ignoreUpdate := false
+	ignoreDrift := false
+
+	clusterPermSecret, err := workloads.GetSecret(adminCredsResourceName, r.Instance.Namespace, r.Client)
+	if err != nil {
+		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve secret %s in namespace %s", adminCredsResourceName, r.Instance.Namespace)
+	}
+
+	tlsSecret, err := workloads.GetSecret(tlsResourceName, r.Instance.Namespace, r.Client)
+	if err != nil {
+		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to retrieve tls secret %s in namespace %s", tlsResourceName, r.Instance.Namespace)
+	}
+
+	sessionKey, err := argoutil.GenerateArgoServerSessionKey()
+	if err != nil {
+		return errors.Wrapf(err, "reconcileArgoCDSecret: failed to generate server session key")
+	}
+
+	var hashedPw string
+	pwBytes, ok := clusterPermSecret.Data[common.ArgoCDKeyAdminPassword]
+	if ok {
+		hashedPw, err = argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
+		if err != nil {
+			return errors.Wrapf(err, "reconcileArgoCDSecret: failed to encrypt admin password")
+		}
+	}
 
 	req := workloads.SecretRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDSecretName, r.Instance.Namespace, r.Instance.Name, r.Instance.Namespace, "", util.EmptyMap(), util.EmptyMap()),
-		Data:       map[string][]byte{
+		Data: map[string][]byte{
+			common.ArgoCDKeyAdminPassword:      []byte(hashedPw),
+			common.ArgoCDKeyAdminPasswordMTime: util.NowBytes(),
+			common.ArgoCDKeyServerSecretKey:    sessionKey,
+			common.ArgoCDKeyTLSCert:            tlsSecret.Data[common.ArgoCDKeyTLSCert],
+			common.ArgoCDKeyTLSPrivateKey:      tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey],
 			// TO DO: skip dex secret config
 		},
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
@@ -107,11 +157,11 @@ func (r *ArgoCDReconciler) reconcileArgoCDSecret() error {
 		return nil
 	}
 
-	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreUpdate)
+	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreDrift)
 }
 
 func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret() error {
-	ignoreUpdate := false
+	ignoreDrift := false
 	nsList := util.StringMapKeys(r.ResourceManagedNamespaces)
 	dataBytes, _ := json.Marshal(map[string]interface{}{
 		"tlsClientConfig": map[string]interface{}{
@@ -149,11 +199,11 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret() error {
 		return nil
 	}
 
-	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreUpdate)
+	return r.reconcileSecret(req, argocdcommon.UpdateFnSecret(updateFn), ignoreDrift)
 }
 
 func (r *ArgoCDReconciler) reconcileAdminCredentialsSecret() error {
-	ignoreUpdate := true
+	ignoreDrift := true
 	adminPwd, err := argoutil.GenerateArgoAdminPassword()
 	if err != nil {
 		return errors.Wrap(err, "reconcileAdminCredentialsSecret: failed to generate admin password")
@@ -168,14 +218,14 @@ func (r *ArgoCDReconciler) reconcileAdminCredentialsSecret() error {
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,
 	}
-	return r.reconcileSecret(req, nil, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreDrift)
 }
 
 // reconcileTLSSecret ensures the TLS Secret is created for the ArgoCD cluster.
 // This secret contains the TLS certificate used by Argo CD components. It is generated using the
 // CA cert and CA key contained within the cluster CA secret
 func (r *ArgoCDReconciler) reconcileTLSSecret() error {
-	ignoreUpdate := true
+	ignoreDrift := true
 	caSecret, err := workloads.GetSecret(caResourceName, r.Instance.Namespace, r.Client)
 	if err != nil {
 		return errors.Wrapf(err, "reconcileClusterTLSSecret: failed to retrieve ca secret %s in namespace %s", caResourceName, r.Instance.Namespace)
@@ -207,14 +257,14 @@ func (r *ArgoCDReconciler) reconcileTLSSecret() error {
 		Client:    r.Client,
 	}
 
-	return r.reconcileSecret(req, nil, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreDrift)
 }
 
 // reconcileCASecret ensures the CA Secret is reconciled for the ArgoCD cluster.
 // This secret contains the self-signed CA certificate and CA key that is used to generate the TLS
 // certificate contained in the cluster TLS secret
 func (r *ArgoCDReconciler) reconcileCASecret() error {
-	ignoreUpdate := true
+	ignoreDrift := true
 	cert, pvtKey, err := argoutil.NewCACertAndKey(r.Instance.Name)
 	if err != nil {
 		return errors.Wrapf(err, "reconcileCLusterCASecret")
@@ -232,10 +282,10 @@ func (r *ArgoCDReconciler) reconcileCASecret() error {
 		Client:    r.Client,
 	}
 
-	return r.reconcileSecret(req, nil, ignoreUpdate)
+	return r.reconcileSecret(req, nil, ignoreDrift)
 }
 
-func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, updateFn interface{}, ignoreUpdate bool) error {
+func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := workloads.RequestSecret(req)
 	if err != nil {
 		r.Logger.Debug("reconcileSecret: one or more mutations could not be applied")
@@ -260,7 +310,7 @@ func (r *ArgoCDReconciler) reconcileSecret(req workloads.SecretRequest, updateFn
 	}
 
 	// secret found, no update required - nothing to do
-	if ignoreUpdate {
+	if ignoreDrift {
 		return nil
 	}
 
