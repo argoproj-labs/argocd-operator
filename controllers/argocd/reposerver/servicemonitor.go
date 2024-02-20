@@ -5,6 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/pkg/errors"
 
@@ -22,7 +23,7 @@ func (rsr *RepoServerReconciler) reconcileServiceMonitor() error {
 	}
 
 	req := monitoring.ServiceMonitorRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceMetricsName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceMetricsName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{

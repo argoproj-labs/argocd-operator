@@ -19,7 +19,7 @@ import (
 
 func (rsr *RepoServerReconciler) reconcileService() error {
 	req := networking.ServiceRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, rsr.Instance.Namespace, rsr.Instance.Name, rsr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{

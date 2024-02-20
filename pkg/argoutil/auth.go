@@ -39,16 +39,3 @@ func HasArgoAdminPasswordChanged(actual *corev1.Secret, expected *corev1.Secret)
 	validPwd, _ := argopass.VerifyPassword(expectedPwd, actualPwd)
 	return !validPwd
 }
-
-// HasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
-func HasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
-	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
-	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
-	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
-	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
-
-	if actualCert != expectedCert || actualKey != expectedKey {
-		return true
-	}
-	return false
-}
