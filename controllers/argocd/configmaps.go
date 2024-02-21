@@ -278,5 +278,5 @@ func (r *ArgoCDReconciler) deleteConfigMap(name, namespace string) error {
 }
 
 func (r *ArgoCDReconciler) cmVarSetter() {
-	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
+	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.CASuffix)
 }

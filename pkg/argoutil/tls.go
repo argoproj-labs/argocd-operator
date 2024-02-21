@@ -20,13 +20,15 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"time"
 
+	"github.com/pkg/errors"
+
 	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )
@@ -75,6 +77,21 @@ func ParsePEMEncodedPrivateKey(pemdata []byte) (*rsa.PrivateKey, error) {
 	return x509.ParsePKCS1PrivateKey(decoded.Bytes)
 }
 
+// NewCACertAndKey returns a private key and self-signed CA certificate based on provided instance name
+func NewCACertAndKey(instanceName string) (*x509.Certificate, *rsa.PrivateKey, error) {
+	pvtKey, err := NewPrivateKey()
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "NewCACertAndKey: failed to generate private key")
+	}
+
+	cert, err := NewSelfSignedCACertificate(instanceName, pvtKey)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "NewCACertAndKey: failed to generate self-signed certificate")
+	}
+
+	return cert, pvtKey, nil
+}
+
 // NewSelfSignedCACertificate returns a self-signed CA certificate based on given configuration and private key.
 // The certificate has one-year lease.
 func NewSelfSignedCACertificate(name string, key *rsa.PrivateKey) (*x509.Certificate, error) {
@@ -97,6 +114,36 @@ func NewSelfSignedCACertificate(name string, key *rsa.PrivateKey) (*x509.Certifi
 		return nil, err
 	}
 	return x509.ParseCertificate(certDERBytes)
+}
+
+// NewTLSCertAndKey returns a TLS cert and private key, based on the supplied secret information, associated Argo CD instance information, supplied CA cert and CA key
+func NewTLSCertAndKey(secretName, instanceName, namespace string, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, *rsa.PrivateKey, error) {
+	pvtKey, err := NewPrivateKey()
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "NewTLSCertAndKey: failed to generate private key")
+	}
+
+	cfg := &tlsutil.CertConfig{
+		CertName:     secretName,
+		CertType:     tlsutil.ClientAndServingCert,
+		CommonName:   secretName,
+		Organization: []string{namespace},
+	}
+
+	dnsNames := []string{
+		instanceName,
+		NameWithSuffix(instanceName, common.GRPCSuffix),
+		FQDN(instanceName, namespace),
+	}
+
+	// skip adding grafana and prometheus hosts
+
+	cert, err := NewSignedCertificate(cfg, dnsNames, pvtKey, caCert, caKey)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "NewTLSCertAndKey: failed to generate certificate")
+	}
+
+	return cert, pvtKey, nil
 }
 
 // NewSignedCertificate signs a certificate using the given private key, CA and returns a signed certificate.
@@ -133,4 +180,17 @@ func NewSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.P
 		return nil, err
 	}
 	return x509.ParseCertificate(certDERBytes)
+}
+
+// HasArgoTLSChanged will return true if the Argo TLS certificate or key have changed.
+func HasArgoTLSChanged(actual *corev1.Secret, expected *corev1.Secret) bool {
+	actualCert := string(actual.Data[common.ArgoCDKeyTLSCert])
+	actualKey := string(actual.Data[common.ArgoCDKeyTLSPrivateKey])
+	expectedCert := string(expected.Data[common.ArgoCDKeyTLSCert])
+	expectedKey := string(expected.Data[common.ArgoCDKeyTLSPrivateKey])
+
+	if actualCert != expectedCert || actualKey != expectedKey {
+		return true
+	}
+	return false
 }

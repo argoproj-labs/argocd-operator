@@ -22,12 +22,17 @@ import (
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
-// FqdnServiceRef will return the FQDN referencing a specific service name, as set up by the operator, with the
-// given port.
-func FqdnServiceRef(serviceName, namespace string, port int) string {
-	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, namespace, port)
+// FQDNwithPort will return the FQDN referencing a specific service name, as set up by the operator, with the given port.
+func FQDNwithPort(name, namespace string, port int) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local:%d", name, namespace, port)
+}
+
+// FQDN will return the FQDN referencing a specific service name, as set up by the operator
+func FQDN(name, namespace string) string {
+	return fmt.Sprintf("%s.%s.svc.cluster.local", name, namespace)
 }
 
 // NameWithSuffix will return a string using the Name from the given ObjectMeta with the provded suffixes appended.
@@ -45,12 +50,12 @@ func GenerateUniqueResourceName(instanceName, instanceNamespace string, suffixes
 	return NameWithSuffix(NameWithSuffix(instanceName, instanceNamespace), suffixes...)
 }
 
-func GetObjMeta(resName, resNs, instanceName, instanceNs, component string) metav1.ObjectMeta {
+func GetObjMeta(resName, resNs, instanceName, instanceNs, component string, labels map[string]string, antns map[string]string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:        resName,
 		Namespace:   resNs,
-		Labels:      common.DefaultResourceLabels(resName, instanceName, component),
-		Annotations: common.DefaultResourceAnnotations(instanceName, instanceNs),
+		Labels:      util.MergeMaps(common.DefaultLabels(resName), labels),
+		Annotations: util.MergeMaps(common.DefaultAnnotations(instanceName, instanceNs), antns),
 	}
 }
 
