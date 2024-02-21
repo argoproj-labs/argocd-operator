@@ -204,7 +204,7 @@ func Test_reconcileArgoCDCm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			err := tt.reconciler.reeconcileArgoCDCm()
+			err := tt.reconciler.reconcileArgoCDCm()
 			assert.NoError(t, err)
 
 			existing, err := workloads.GetConfigMap("argocd-cm", test.TestNamespace, tt.reconciler.Client)

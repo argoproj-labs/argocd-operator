@@ -54,8 +54,8 @@ func GetObjMeta(resName, resNs, instanceName, instanceNs, component string, labe
 	return metav1.ObjectMeta{
 		Name:        resName,
 		Namespace:   resNs,
-		Labels:      util.MergeMaps(common.DefaultLabels(resName), labels),
-		Annotations: util.MergeMaps(common.DefaultAnnotations(instanceName, instanceNs), antns),
+		Labels:      util.MergeMaps(common.DefaultResourceLabels(resName, instanceName, component), labels),
+		Annotations: util.MergeMaps(common.DefaultResourceAnnotations(instanceName, instanceNs), antns),
 	}
 }
 
