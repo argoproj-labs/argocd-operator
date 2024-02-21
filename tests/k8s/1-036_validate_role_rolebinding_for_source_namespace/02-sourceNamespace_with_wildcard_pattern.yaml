@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---   
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: default
+spec:
+  sourceNamespaces:
+  - test*

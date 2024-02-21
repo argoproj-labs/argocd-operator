@@ -31,6 +31,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/argoproj/argo-cd/v2/util/glob"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -1362,6 +1364,25 @@ func (r *ReconcileArgoCD) setManagedNamespaces(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
+// getSourceNamespaces retrieves a list of namespaces that match the sourceNamespaces
+// pattern specified in the given ArgoCD
+func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
+	sourceNamespaces := []string{}
+	namespaces := &corev1.NamespaceList{}
+
+	if err := r.Client.List(context.TODO(), namespaces, &client.ListOptions{}); err != nil {
+		return nil, err
+	}
+
+	for _, namespace := range namespaces.Items {
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
+			sourceNamespaces = append(sourceNamespaces, namespace.Name)
+		}
+	}
+
+	return sourceNamespaces, nil
+}
+
 func (r *ReconcileArgoCD) setManagedSourceNamespaces(cr *argoproj.ArgoCD) error {
 	r.ManagedSourceNamespaces = make(map[string]string)
 	namespaces := &corev1.NamespaceList{}
@@ -1388,7 +1409,11 @@ func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.A
 	for ns := range r.ManagedSourceNamespaces {
 		managedNamespace := false
 		if cr.GetDeletionTimestamp() == nil {
-			for _, namespace := range cr.Spec.SourceNamespaces {
+			sourceNamespaces, err := r.getSourceNamespaces(cr)
+			if err != nil {
+				return err
+			}
+			for _, namespace := range sourceNamespaces {
 				if namespace == ns {
 					managedNamespace = true
 					break
@@ -1585,12 +1610,4 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
-}
-
-// NOTE: creating this placeholder func to align the changes with ongoing effort
-// to support wildcards in https://github.com/argoproj-labs/argocd-operator/pull/1218.
-//
-//nolint:all
-func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, error) {
-	return cr.Spec.SourceNamespaces, nil
 }

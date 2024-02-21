@@ -1,0 +1,8 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 60
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-ns-1

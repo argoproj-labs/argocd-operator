@@ -220,7 +220,11 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	if name == common.ArgoCDServerComponent {
 
 		// reconcile rolebindings for all source namespaces for argocd-server
-		for _, sourceNamespace := range cr.Spec.SourceNamespaces {
+		sourceNamespaces, err := r.getSourceNamespaces(cr)
+		if err != nil {
+			return err
+		}
+		for _, sourceNamespace := range sourceNamespaces {
 			namespace := &corev1.Namespace{}
 			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
 				return err

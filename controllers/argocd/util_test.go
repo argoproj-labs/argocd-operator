@@ -808,6 +808,166 @@ func TestSetManagedSourceNamespaces(t *testing.T) {
 	assert.Contains(t, r.ManagedSourceNamespaces, "test-namespace-1")
 }
 
+func TestGetSourceNamespacesWithWildcardPatternNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test*",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-namespace",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "test-namespace-1")
+	assert.Contains(t, sourceNamespaces, "test-namespace-2")
+	assert.NotContains(t, sourceNamespaces, "other-namespace")
+}
+
+func TestGetSourceNamespacesWithSpecificNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-namespace",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "test")
+	assert.NotContains(t, sourceNamespaces, "test-namespace-1")
+	assert.NotContains(t, sourceNamespaces, "other-namespace")
+}
+
+func TestGetSourceNamespacesWithMultipleSourceNamespaces(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"test*",
+			"dev*",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dev-namespace-1",
+		},
+	}
+	ns4 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-namespace",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3, &ns4}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "test")
+	assert.Contains(t, sourceNamespaces, "test-namespace-1")
+	assert.Contains(t, sourceNamespaces, "dev-namespace-1")
+	assert.NotContains(t, sourceNamespaces, "other-namespace")
+}
+
+func TestGetSourceNamespacesWithWildCardNamespace(t *testing.T) {
+	a := makeTestArgoCD()
+	a.Spec = argoproj.ArgoCDSpec{
+		SourceNamespaces: []string{
+			"*",
+		},
+	}
+	ns1 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-1",
+		},
+	}
+	ns2 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-namespace-2",
+		},
+	}
+	ns3 := v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-namespace",
+		},
+	}
+
+	resObjs := []client.Object{a, &ns1, &ns2, &ns3}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sourceNamespaces, err := r.getSourceNamespaces(a)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(sourceNamespaces))
+	assert.Contains(t, sourceNamespaces, "other-namespace")
+	assert.Contains(t, sourceNamespaces, "test-namespace-1")
+	assert.Contains(t, sourceNamespaces, "test-namespace-2")
+}
+
 func TestGenerateRandomString(t *testing.T) {
 
 	// verify the creation of unique strings

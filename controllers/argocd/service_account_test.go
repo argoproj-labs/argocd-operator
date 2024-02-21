@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -28,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 )
 
 func TestReconcileArgoCD_reconcileServiceAccountPermissions(t *testing.T) {
