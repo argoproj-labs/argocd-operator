@@ -25,11 +25,12 @@ import (
 )
 
 const (
-	dexTestImage          = "testing/dex:latest"
-	argoTestImage         = "testing/argocd:latest"
-	redisTestImage        = "testing/redis:latest"
-	redisHATestImage      = "testing/redis:latest-ha"
-	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
+	dexTestImage              = "testing/dex:latest"
+	argoTestImage             = "testing/argocd:latest"
+	argoTestImageOtherVersion = "testing/argocd:test"
+	redisTestImage            = "testing/redis:latest"
+	redisHATestImage          = "testing/redis:latest-ha"
+	redisHAProxyTestImage     = "testing/redis-ha-haproxy:latest-ha"
 )
 
 func parallelismLimit(n int32) argoCDOpt {
@@ -106,6 +107,35 @@ var imageTests = []struct {
 	{
 		name:      "argo env configuration",
 		imageFunc: getArgoContainerImage,
+		want:      argoTestImage,
+		pre: func(t *testing.T) {
+			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+		},
+	},
+	{
+		name:      "repo default configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+	},
+	{
+		name:      "repo spec configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImage, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Repo.Image = "testing/argocd"
+			a.Spec.Repo.Version = "latest"
+		}},
+	},
+	{
+		name:      "repo configuration fallback spec",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImageOtherVersion, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Image = "testing/argocd"
+			a.Spec.Version = "test"
+		}},
+	},
+	{
+		name:      "argo env configuration",
+		imageFunc: getRepoServerContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
