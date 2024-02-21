@@ -72,7 +72,7 @@ This will configure ApplicationSet controller to allow the defined URLs for SCM 
 
 ### Things to consider
 
-- No namespace can be managed by multiple argo-cd instances (cluster scoped or namespace scoped) i.e, only one of either `managed-by` or `applicationset-managed-by-cluster-argocd` labels can be applied to a given namespace. We will be prioritizing `managed-by` label in case of a conflict as this feature is currently in beta, so the new roles/rolebindings will not be created if namespace is already labelled with `managed-by` label, and they will be deleted if a namespace is first added to the `.spec.applicationSet.sourceNamespacs` list and is later also labelled with `managed-by` label.
+Only one of either `managed-by` or `applicationset-managed-by-cluster-argocd` labels can be applied to a given namespace. We will be prioritizing `managed-by` label in case of a conflict as this feature is currently in beta, so the new roles/rolebindings will not be created if namespace is already labelled with `managed-by` label, and they will be deleted if a namespace is first added to the `.spec.applicationSet.sourceNamespaces` list and is later also labelled with `managed-by` label.
 
 
 
