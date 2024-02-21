@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-014-validate-parallelism-limit
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - script:
+        content: sleep 30
+    - script:
+        content: |
+          set -e
+          expected=10
+          wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
+          if ! echo "$wlCommand" | grep -qPz -- "--kubectl-parallelism-limit\\n${expected}(\$|\\n)"; then
+            echo "Incorrect or missing --kubectl-parallelism-limit detected."
+            echo "$wlCommand"
+            exit 1
+          fi
+  - name: step-03
+    try:
+    - apply:
+        file: 03-change-limit.yaml
+  - name: step-04
+    try:
+    - script:
+        content: sleep 30
+    - script:
+        content: |
+          set -e
+          expected=20
+          wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
+          if ! echo "$wlCommand" | grep -qPz -- "--kubectl-parallelism-limit\\n${expected}(\$|\\n)"; then
+            echo "Incorrect or missing --kubectl-parallelism-limit detected."
+            echo "$wlCommand"
+            exit 1
+          fi
+  - name: step-05
+    try:
+    - apply:
+        file: 05-change-back-to-default.yaml
+  - name: step-06
+    try:
+    - script:
+        content: |
+          set -e
+          kubectl patch -n $NAMESPACE argocds/argocd --type=json --patch '[{"op": "remove", "path": "/spec/controller/parallelismLimit"}]'
+    - script:
+        content: sleep 30
+    - script:
+        content: |
+          set -e
+          expected=10
+          wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
+          if ! echo "$wlCommand" | grep -qPz -- "--kubectl-parallelism-limit\\n${expected}(\$|\\n)"; then
+            echo "Incorrect or missing --kubectl-parallelism-limit detected."
+            echo "$wlCommand"
+            exit 1
+          fi

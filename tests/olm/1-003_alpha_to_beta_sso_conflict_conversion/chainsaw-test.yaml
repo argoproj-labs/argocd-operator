@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-003-alpha-to-beta-sso-conflict-conversion
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-argocd-dex-keycloak-conflict.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - delete:
+        ref:
+          apiVersion: argoproj.io/v1alpha1
+          kind: ArgoCD
+          name: argocd
+    - error:
+        file: 02-errors.yaml

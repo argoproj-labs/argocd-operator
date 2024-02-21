@@ -1,4 +1,3 @@
----
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -12,16 +11,3 @@ metadata:
   name: argocd-application-controller
 status:
   replicas: 4
----
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 720
-commands:
-- script: |
-    stsReplicas=$(kubectl get sts argocd-application-controller -n $NAMESPACE -o jsonpath='{.status.replicas}')
-    echo "$stsReplicas"
-    if test "$stsReplicas" != "4"; then
-      echo "FAILED! Number of replicas not equal to maxShards"
-      exit 1
-    fi
-    exit 0

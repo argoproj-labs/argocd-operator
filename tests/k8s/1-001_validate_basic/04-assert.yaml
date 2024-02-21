@@ -1,9 +1,3 @@
-# Increase the timeout for this test because it needs to download
-# a large container image
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 720
----
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:

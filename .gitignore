@@ -29,8 +29,6 @@ vendor/
 # transient build artifacts
 build/_output
 
-kubeconfig
-kuttl-test.json
 e2e.json
 
 # Desktop Services Store in macOS system

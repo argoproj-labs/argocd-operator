@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-036-validate-role-rolebinding-for-source-namespace
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-sourcenamespace_without_wildcard.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: 02-sourceNamespace_with_wildcard_pattern.yaml
+    - assert:
+        file: 02-assert.yaml
+    - error:
+        file: 02-errors.yaml
+  - name: step-03
+    try:
+    - apply:
+        file: 03-new_namespace_with_match_pattern.yaml
+    - assert:
+        file: 03-assert.yaml
+  - name: step-04
+    try:
+    - apply:
+        file: 04-soureNamespace_with_wildcard.yaml
+    - assert:
+        file: 04-assert.yaml
+  - name: step-05
+    try:
+    - apply:
+        file: 05-multiple_sourcenamespace.yaml
+    - assert:
+        file: 05-assert.yaml
+    - error:
+        file: 05-errors.yaml
+  - name: step-06
+    try:
+    - apply:
+        file: 06-validate_labels_role_rolebinding_after_removing_namespace_from_sourcenamespace.yaml
+    - assert:
+        file: 06-assert.yaml
+    - error:
+        file: 06-errors.yaml

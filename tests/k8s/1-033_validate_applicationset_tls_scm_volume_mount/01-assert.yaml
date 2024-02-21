@@ -1,7 +1,3 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 120
----
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
@@ -16,13 +12,13 @@ status:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argocd-applicationset-controller
-  namespace: test-1-32-appsets-scm-tls-mount
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/managed-by: argocd
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd-applicationset
+  name: argocd-applicationset-controller
+  namespace: test-1-32-appsets-scm-tls-mount
 spec:
   selector:
     matchLabels:
@@ -30,28 +26,28 @@ spec:
   template:
     spec:
       containers:
-        - command:
-          - entrypoint.sh
-          - argocd-applicationset-controller
-          - --argocd-repo-server
-          - argocd-repo-server.test-1-32-appsets-scm-tls-mount.svc.cluster.local:8081
-          - --loglevel
-          - info
-          - --scm-root-ca-path
-          - /app/tls/scm/cert
-          volumeMounts:
-          - mountPath: /app/config/ssh
-            name: ssh-known-hosts
-          - mountPath: /app/config/tls
-            name: tls-certs
-          - mountPath: /app/config/gpg/source
-            name: gpg-keys
-          - mountPath: /app/config/gpg/keys
-            name: gpg-keyring
-          - mountPath: /tmp
-            name: tmp
-          - mountPath: /app/tls/scm/cert
-            name: appset-gitlab-scm-tls-cert
+      - command:
+        - entrypoint.sh
+        - argocd-applicationset-controller
+        - --argocd-repo-server
+        - argocd-repo-server.test-1-32-appsets-scm-tls-mount.svc.cluster.local:8081
+        - --loglevel
+        - info
+        - --scm-root-ca-path
+        - /app/tls/scm/cert
+        volumeMounts:
+        - mountPath: /app/config/ssh
+          name: ssh-known-hosts
+        - mountPath: /app/config/tls
+          name: tls-certs
+        - mountPath: /app/config/gpg/source
+          name: gpg-keys
+        - mountPath: /app/config/gpg/keys
+          name: gpg-keyring
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /app/tls/scm/cert
+          name: appset-gitlab-scm-tls-cert
       volumes:
       - configMap:
           defaultMode: 420

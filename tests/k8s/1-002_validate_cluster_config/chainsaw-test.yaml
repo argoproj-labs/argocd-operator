@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-002-validate-cluster-config
+spec:
+  steps:
+  - name: step-00
+    try:
+    - apply:
+        file: 00-cluster-scoped-argocd.yaml
+  - name: step-01
+    try:
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - assert:
+        file: 02-assert.yaml
+  - name: step-03
+    try:
+    - apply:
+        file: 03-enable-appset-in-any-namespace.yaml
+    - assert:
+        file: 03-assert.yaml
+  - name: step-99
+    try:
+    - delete:
+        ref:
+          apiVersion: v1
+          kind: Namespace
+          name: argocd-e2e-cluster-config

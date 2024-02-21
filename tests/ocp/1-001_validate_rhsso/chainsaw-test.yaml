@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-001-validate-rhsso
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-argocd-rhsso.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - script:
+        content: sleep 60
+  - name: step-03
+    try:
+    - script:
+        content: "issuer=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\\.config}'
+          -n $NAMESPACE | grep issuer | awk -F' ' '{print $2}')\nkeycloakRoute=$(kubectl
+          get route keycloak -n $NAMESPACE -o jsonpath='{.spec.host}')\nif [[ \"${issuer}\"
+          == \"https://${keycloakRoute}/auth/realms/argocd\" ]]; then \n  echo \"issuer
+          matched\"\nelse \n  echo \"issuer mismatched\"\n  echo \"${issuer} not equals
+          ${keycloakRoute}/auth/realms/argocd\"\n  exit 1\nfi  \n"
+    - script:
+        content: "clientid=$(kubectl get configmap argocd-cm -o jsonpath='{.data.oidc\\.config}'
+          -n $NAMESPACE | grep clientid | awk -F' ' '{print $2}')\nname=$(kubectl
+          get configmap argocd-cm -o jsonpath='{.data.oidc\\.config}' -n $NAMESPACE
+          | grep name | awk -F' ' '{print $2}')\nrootCA=$(kubectl get configmap argocd-cm
+          -o jsonpath='{.data.oidc\\.config}' -n $NAMESPACE | grep rootca | awk -F'
+          ' '{print $2}')\n\nif [[ \"${clientid}\" == \"argocd\" && \"${name}\" ==
+          \"Keycloak\" && \"${rootCA}\" == \"'---BEGIN---END---'\"  ]]; then \n  echo
+          \"oidc name, clientid and rootCA matched\"\nelse \n  echo \"oidc name, clientid
+          or rootCA mismatched\"\n  echo \"${clientid}, ${name} and ${rootCA}\"\n
+          \ exit 1\nfi\n"
+  - name: step-04
+    try:
+    - script:
+        content: |
+          # Set the needed parameter for the authorization
+          KEYCLOAK_URL=$(oc get route keycloak -n $NAMESPACE -o jsonpath='{.spec.host}')
+          tenant=argocd
+          USER=$(oc get secret keycloak-secret -n $NAMESPACE -o jsonpath='{.data.SSO_USERNAME}' | base64 --decode)
+          PASSWORD=$(oc get secret keycloak-secret -n $NAMESPACE -o jsonpath='{.data.SSO_PASSWORD}' | base64 --decode)
+          GRANT_TYPE=password
+          CLIENT_ID=admin-cli
+
+          # Execute the CURL command to request the access-token
+          access_token=$(curl -d "client_id=$CLIENT_ID" -d "username=$USER" -d "password=$PASSWORD" -d "grant_type=$GRANT_TYPE" "https://$KEYCLOAK_URL/auth/realms/master/protocol/openid-connect/token" -k | sed -n 's|.*"access_token":"\([^"]*\)".*|\1|p')
+
+          # Execute the CURL command to verify the realm and client creation
+          clientFound=$(curl -H "Content-Type: application/json" -H "Authorization: bearer $access_token" "https://$KEYCLOAK_URL/auth/admin/realms/$tenant/clients" -k | grep '"clientId":"argocd"')
+          if ! [ "$clientFound" = "" ]; then
+            echo "argocd realm and client creation verified"
+          else
+            echo "argocd client not found"
+            exit 1
+          fi
+
+          # Verify OpenShift-v4 IdP creation
+          IdPFound=$(curl -H "Content-Type: application/json" -H "Authorization: bearer $access_token" "https://$KEYCLOAK_URL/auth/admin/realms/$tenant/identity-provider/instances" -k | grep -i OpenShift-v4)
+          if ! [ "$IdPFound" = "" ]; then
+            echo "OpenShift-v4 IdP creation verified"
+          else
+            echo "OpenShift-v4 IdP not found"
+            exit 1
+          fi
+
+          # Verify OpenShift-v4 IdP creation
+          syncModeVerified=$(curl -H "Content-Type: application/json" -H "Authorization: bearer $access_token" "https://$KEYCLOAK_URL/auth/admin/realms/$tenant/identity-provider/instances" -k | grep -i '"syncMode":"FORCE"')
+          if ! [ "$syncModeVerified" = "" ]; then
+            echo "syncMode set to Force, verified"
+          else
+            echo "syncMode not set to Force"
+            exit 1
+          fi
+  - name: step-99
+    try:
+    - command:
+        args:
+        - delete
+        - argocd
+        - example-argocd-keycloak
+        - -n
+        - $NAMESPACE
+        entrypoint: oc

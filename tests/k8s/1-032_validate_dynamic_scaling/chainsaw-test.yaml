@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-032-validate-dynamic-scaling
+spec:
+  steps:
+  - name: step-01
+    try:
+    - command:
+        args:
+        - 30s
+        entrypoint: sleep
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - command:
+        args:
+        - 30s
+        entrypoint: sleep
+    - apply:
+        file: 02-add-cluster-secrets.yaml
+    - assert:
+        file: 02-assert.yaml
+  - name: step-03
+    try:
+    - command:
+        args:
+        - 60s
+        entrypoint: sleep
+    - apply:
+        file: 03-cluster-secrets-exceed-maxShards.yaml
+    - script:
+        content: |
+          stsReplicas=$(kubectl get sts argocd-application-controller -n $NAMESPACE -o jsonpath='{.status.replicas}')
+          echo "$stsReplicas"
+          if test "$stsReplicas" != "4"; then
+            echo "FAILED! Number of replicas not equal to maxShards"
+            exit 1
+          fi
+          exit 0
+    - assert:
+        file: 03-assert.yaml
+  - name: step-04
+    try:
+    - command:
+        args:
+        - 60s
+        entrypoint: sleep
+    - command:
+        args:
+        - delete
+        - Secret
+        - cluster-2
+        - cluster-3
+        - cluster-4
+        - cluster-5
+        - cluster-6
+        - -n
+        - $NAMESPACE
+        entrypoint: kubectl
+    - command:
+        args:
+        - 30s
+        entrypoint: sleep
+    - assert:
+        file: 04-assert.yaml

@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-015-validate-sso-status
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: 02-provider-dex-no-dex-spec.yaml
+    - assert:
+        file: 02-assert.yaml
+    - error:
+        file: 02-errors.yaml
+  - name: step-03
+    try:
+    - apply:
+        file: 03-dex-spec-sso.yaml
+    - assert:
+        file: 03-assert.yaml
+  - name: step-04
+    try:
+    - script:
+        content: |
+          kubectl patch -n $NAMESPACE argocd/argocd --type='json' -p='[{"op": "remove", "path": "/spec/sso"}]'
+    - script:
+        content: sleep 10
+    - assert:
+        file: 04-assert.yaml
+    - error:
+        file: 04-errors.yaml
+  - name: step-05
+    try:
+    - apply:
+        file: 05-provider-keycloak-dex-spec.yaml
+    - assert:
+        file: 05-assert.yaml
+  - name: step-06
+    try:
+    - script:
+        content: |
+          kubectl patch -n $NAMESPACE argocd/argocd --type='json' -p='[{"op":"add","path":"/spec/sso","value":{}},{"op":"add","path":"/spec/sso/provider","value":"dex"},{"op":"add","path":"/spec/sso/dex","value":{}},{"op":"add","path":"/spec/sso/dex/config","value":"test-config"},{"op":"add","path":"/spec/sso/dex/env","value":[]},{"op":"add","path":"/spec/sso/dex/env/0","value":{"name":"ARGO_WORKFLOWS_SSO_CLIENT_SECRET","valueFrom":{"secretKeyRef":{"name":"argo-workflows-sso","key":"client-secret"}}}}]'
+    - script:
+        content: sleep 10
+    - apply:
+        file: 06-dex-spec-sso-env.yaml
+    - assert:
+        file: 06-assert.yaml

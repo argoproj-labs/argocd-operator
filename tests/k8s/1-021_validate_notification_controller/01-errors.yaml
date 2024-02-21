@@ -3,4 +3,4 @@ kind: ArgoCD
 metadata:
   name: example-argocd
 status:
-  notificationsController:
+  (notificationsController != null): true

@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-004-validate-dex-clientsecret
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - script:
+        content: "# This test validates the Dex Client Secret copied by the operator
+          from dex serviceaccount token secret in to argocd-secret.\n# To verify the
+          behavior we should first get the token secret name of the dex service account.\nsecret=$(oc
+          get -n $NAMESPACE sa example-argocd-argocd-dex-server -o json | jq -r '.secrets'
+          | grep token | sed 's/    \"name\": \"//g' | sed 's/\"//g')\n\n# Extract
+          the clientSecret \nexpectedClientSecret=$(oc get secret $secret -n $NAMESPACE
+          -o json | jq -r '.data.token')\n\n# actualClientSecret is the value of the
+          secret in argocd-secret where argocd-operator should copy the secret from\nactualClientSecret=$(oc
+          get secret argocd-secret -o json -n $NAMESPACE | jq -r '.data.\"oidc.dex.clientSecret\"')\n\n#
+          Verify\nif $expectedClientSecret != $actualClientSecret; then\n  echo \"Error:
+          Dex Client Secret for OIDC is not valid\"\n  exit 1\nfi\n"

@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-022-validate-notifications
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+  - name: step-02
+    try:
+    - script:
+        content: sleep 15
+    - script:
+        content: "set -e \n\nkubectl patch cm argocd-notifications-cm -n $NAMESPACE
+          --type merge -p '{\"data\": {\"service.email.gmail\": \"{host: smtp4dev,
+          port: 2525, from: fake@email.com }\" }}'\n"
+    - script:
+        content: sleep 5
+  - name: step-03
+    try:
+    - script:
+        content: |
+          set -e
+
+          cat << EOF | kubectl apply -f -
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: my-app-3
+            namespace: $NAMESPACE
+            annotations:
+              "notifications.argoproj.io/subscribe.on-created.gmail": "jdfake@email.com"
+          spec:
+            destination:
+              namespace: $NAMESPACE
+              server: https://kubernetes.default.svc
+            project: default
+            source:
+              repoURL: https://github.com/redhat-developer/gitops-operator
+              path: test/examples/nginx
+              targetRevision: HEAD
+          EOF
+    - script:
+        content: sleep 5
+  - name: step-04
+    try:
+    - script:
+        content: "set -e \n\nkubectl delete -n $NAMESPACE application.argoproj.io
+          my-app-3\n"
+    - script:
+        content: sleep 5
+  - name: step-05
+    try:
+    - script:
+        content: |
+          set -e
+          smtp4dev_pod=$(kubectl get pod -l=app=smtp4dev -o NAME -n $NAMESPACE)
+          exit_code=$(kubectl -n $NAMESPACE exec -i --stdin "${smtp4dev_pod}" -- /bin/bash \
+          -c 'if [[ $(grep -rnw /tmp -e "Subject: Application my-app-3 has been created.") ]]; then
+          exit 0; else
+          exit 1;
+          fi')
+
+          if [ $exit_code=0 ]; then
+              exit 0
+          else
+              exit 1
+          fi

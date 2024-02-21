@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-006-validate-managed-by-chain
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - script:
+        content: kubectl label ns test-1-12-custom argocd.argoproj.io/managed-by=$NAMESPACE
+    - script:
+        content: sleep 30
+    - assert:
+        file: 02-assert.yaml
+  - name: step-03
+    try:
+    - script:
+        content: |
+          namespaces=$(kubectl get secret -n $NAMESPACE argocd-default-cluster-config -o jsonpath='{.data.namespaces}' | base64 -d)
+          if test "$namespaces" != "$NAMESPACE,test-1-12-custom"; then
+            echo "Assertion for cluster secret failed!"
+            exit 1
+          fi
+          exit 0
+  - name: step-04
+    try:
+    - apply:
+        file: 04-create-application.yaml
+    - assert:
+        file: 04-assert.yaml
+  - name: step-07
+    try:
+    - script:
+        content: kubectl label ns test-1-12-custom2 argocd.argoproj.io/managed-by=$NAMESPACE
+    - assert:
+        file: 07-assert.yaml
+  - name: step-08
+    try:
+    - apply:
+        file: 08-create-application.yaml
+    - assert:
+        file: 08-assert.yaml
+  - name: step-09
+    try:
+    - script:
+        content: sleep 5
+    - delete:
+        ref:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          name: test-1-12-custom
+    - delete:
+        ref:
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          name: test-1-12-custom2
+    - delete:
+        ref:
+          apiVersion: v1
+          kind: Namespace
+          name: test-1-12-custom
+  - name: step-10
+    try:
+    - script:
+        content: |
+          should="$NAMESPACE,test-1-12-custom2"
+          namespaces=$(kubectl get secret -n $NAMESPACE argocd-default-cluster-config -o jsonpath='{.data.namespaces}' | base64 -d)
+          if test "$namespaces" != "$should"; then
+            echo "Assertion for cluster secret failed! '$namespaces' != '$should'"
+            # 1.2.0 doesn't reconcile the cluster secret on namespace deletion
+            if test GITOPS_TARGET_VERSION = "1.2.0"; then
+              exit 0
+            else
+              exit 1
+            fi
+          fi
+          exit 0
+  - name: step-11
+    try:
+    - apply:
+        file: 11-recreate-applications.yaml
+    - assert:
+        file: 11-assert.yaml
+  - name: step-99
+    try:
+    - delete:
+        ref:
+          apiVersion: v1
+          kind: Namespace
+          name: test-1-12-custom
+    - delete:
+        ref:
+          apiVersion: v1
+          kind: Namespace
+          name: test-1-12-custom2

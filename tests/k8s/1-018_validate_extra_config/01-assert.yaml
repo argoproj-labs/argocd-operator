@@ -1,7 +1,3 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 120
----
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -10,8 +6,8 @@ status:
   phase: Available
 ---
 apiVersion: v1
+data:
+  admin.enabled: "true"
 kind: ConfigMap
 metadata:
   name: argocd-cm
-data:
-  admin.enabled: "true"

@@ -1,9 +1,3 @@
-# Increase the timeout for the first test because it needs to download
-# a number of container images
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 720
----
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
 metadata:
@@ -23,9 +17,8 @@ status:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: guestbook
-  namespace: test-1-17-custom
   annotations:
     Bar: baz
     Foo: myfoo
-
+  name: guestbook
+  namespace: test-1-17-custom

@@ -13,7 +13,7 @@ See the [documentation][docs] for installation and usage of the operator.
 
 ## E2E testing
 
-E2E tests are written using [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli). Please Install [KUTTL](https://kuttl.dev/docs/#install-kuttl-cli) to run the tests.
+E2E tests are written using [chainsaw](https://kyverno.github.io/chainsaw). Please Install [chainsaw](https://kyverno.github.io/chainsaw/latest/install/) to run the tests.
 
 Note that the e2e tests for Redis HA mode require a cluster with at least three worker nodes.  A local three-worker node
 cluster can be created using [k3d](https://k3d.io/)

@@ -1,7 +1,3 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 720
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:

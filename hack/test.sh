@@ -18,4 +18,4 @@
 
 set -e 
 
-kubectl kuttl test ./tests/k8s ./tests/ha --config ./tests/kuttl-tests.yaml 
+chainsaw test ./tests/k8s ./tests/ha

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: 1-010-validate-resource-limit-changes
+spec:
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: 01-install.yaml
+    - assert:
+        file: 01-assert.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: 02-change-limits.yaml
+  - name: step-04
+    try:
+    - script:
+        content: sleep 30
+    - script:
+        content: |
+          set -e
+          for wl in deployments/argocd-server deployments/argocd-repo-server statefulsets/argocd-application-controller; do
+            res=$(kubectl get -n $NAMESPACE $wl -o jsonpath='{.spec.template.spec.containers[0].resources.limits.cpu}')
+            if test "$res" != "2"; then
+              echo "Reconciliation of resources for $wl failed: Should be 2, is '$res'"
+              exit 1
+            fi
+          done
