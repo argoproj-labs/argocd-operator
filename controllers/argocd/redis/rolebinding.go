@@ -35,7 +35,7 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 	updateFn := func(existing, desired *rbacv1.RoleBinding, changed *bool) error {
 		// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
 		if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
-			rr.Logger.Info("detected drift in roleRef for rolebinding", "name", existing.Name, "namespace", existing.Namespace)
+			rr.Logger.Debug("detected drift in roleRef for rolebinding", "name", existing.Name, "namespace", existing.Namespace)
 			if err := rr.deleteRoleBinding(resourceName, rr.Instance.Namespace); err != nil {
 				return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existing.Name)
 			}
@@ -44,7 +44,7 @@ func (rr *RedisReconciler) reconcileRoleBinding() error {
 
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
 		}
 

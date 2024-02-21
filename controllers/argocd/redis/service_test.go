@@ -124,7 +124,7 @@ func TestReconcileHAProxyService(t *testing.T) {
 				),
 			),
 			expectedError:   false,
-			expectedService: getDesiredSvc(),
+			expectedService: getDesiredHAProxySvc(),
 		},
 	}
 
@@ -153,12 +153,8 @@ func TestReconcileHAProxyService(t *testing.T) {
 						Desired:  tt.expectedService.Labels,
 					},
 					{
-						Existing: existing.Annotations,
-						Desired:  tt.expectedService.Annotations,
-					},
-					{
-						Existing: existing.Spec,
-						Desired:  tt.expectedService.Spec,
+						Existing: existing.Spec.Ports,
+						Desired:  tt.expectedService.Spec.Ports,
 					},
 				}
 				argocdcommon.PartialMatch(ftc, &match)

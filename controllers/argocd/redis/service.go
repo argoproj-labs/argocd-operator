@@ -45,7 +45,7 @@ func (rr *RedisReconciler) reconcileService() error {
 	updateFn := func(existing, desired *corev1.Service, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
 			{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 		}
@@ -84,7 +84,7 @@ func (rr *RedisReconciler) reconcileHAProxyService() error {
 	updateFn := func(existing, desired *corev1.Service, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
 			{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 		}
@@ -121,7 +121,7 @@ func (rr *RedisReconciler) reconcileHAMasterService() error {
 	updateFn := func(existing, desired *corev1.Service, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
 			{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 		}
@@ -135,7 +135,7 @@ func (rr *RedisReconciler) reconcileHAAnnounceServices() error {
 	var reconcileErrs util.MultiError
 
 	for i := int32(0); i < common.DefaultRedisHAReplicas; i++ {
-		name := argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAAnnouceSuffix, string(i))
+		name := argoutil.GenerateResourceName(rr.Instance.Name, common.RedisHAAnnouceSuffix, strconv.Itoa(int(i)))
 
 		req := networking.ServiceRequest{
 			ObjectMeta: argoutil.GetObjMeta(name, rr.Instance.Namespace, rr.Instance.Name, rr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
@@ -167,7 +167,7 @@ func (rr *RedisReconciler) reconcileHAAnnounceServices() error {
 		updateFn := func(existing, desired *corev1.Service, changed *bool) error {
 			fieldsToCompare := []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
 				{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 			}

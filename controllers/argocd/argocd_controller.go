@@ -378,7 +378,6 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
-	// core components, return reconciliation errors
 	if err := r.reconcileConfigMaps(); err != nil {
 		r.Logger.Error(err, "failed to reconcile required config maps")
 		return err
@@ -405,8 +404,9 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 			return err
 		}
 	} else {
+		r.Logger.Info("redis disabled; deleting resources")
 		if err := r.RedisController.DeleteResources(); err != nil {
-			r.Logger.Error(err, "failed to delete redis controller")
+			r.Logger.Error(err, "failed to delete redis resources")
 			return err
 		}
 	}

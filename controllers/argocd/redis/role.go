@@ -25,7 +25,7 @@ func (rr *RedisReconciler) reconcileRole() error {
 	updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
 		}
 
@@ -48,7 +48,7 @@ func (rr *RedisReconciler) reconcileHARole() error {
 	updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
 		}
 

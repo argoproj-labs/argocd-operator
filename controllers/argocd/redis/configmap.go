@@ -40,7 +40,7 @@ func (rr *RedisReconciler) reconcileHAConfigMap() error {
 	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 		}
 
@@ -66,7 +66,7 @@ func (rr *RedisReconciler) reconcileHAHealthConfigMap() error {
 	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 		}
 

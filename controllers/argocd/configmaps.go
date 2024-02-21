@@ -107,7 +107,7 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}
@@ -140,7 +140,7 @@ func (r *ArgoCDReconciler) reconcileCACm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}
@@ -164,7 +164,7 @@ func (r *ArgoCDReconciler) reconcileGPGKeysCm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}
@@ -189,7 +189,7 @@ func (r *ArgoCDReconciler) reconcileTLSCertsCm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}
@@ -216,7 +216,7 @@ func (r *ArgoCDReconciler) reconcileSSHKnownHostsCm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}
@@ -247,7 +247,7 @@ func (r *ArgoCDReconciler) reconcileRBACCm() error {
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+
 				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
 			}
 		}

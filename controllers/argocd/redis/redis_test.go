@@ -1,6 +1,8 @@
 package redis
 
 import (
+	"testing"
+
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -22,5 +24,21 @@ func makeTestRedisReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *RedisR
 		Scheme:   sch,
 		Instance: cr,
 		Logger:   util.NewLogger(common.RedisComponent),
+	}
+}
+
+func Test_reconcile(t *testing.T) {
+	tests := []struct {
+		name              string
+		reconciler        *RedisReconciler
+		expectedResources []client.Object
+	}{
+		{
+			name: "non HA mode",
+			reconciler: makeTestRedisReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectedResources: []client.Object{},
+		},
 	}
 }
