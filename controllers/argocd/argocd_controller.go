@@ -32,9 +32,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/secret"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
@@ -59,6 +59,14 @@ import (
 const (
 	ArgoCDController = "argocd-controller"
 )
+
+var (
+	caResourceName string
+)
+
+func (r *ArgoCDReconciler) varSetter() {
+	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.ArgoCDCASuffix)
+}
 
 // blank assignment to verify that ArgoCDReconciler implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ArgoCDReconciler{}
@@ -88,7 +96,6 @@ type ArgoCDReconciler struct {
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
-	SecretController        *secret.SecretReconciler
 	RedisController         *redis.RedisReconciler
 	ReposerverController    *reposerver.RepoServerReconciler
 	ServerController        *server.ServerReconciler
@@ -134,6 +141,7 @@ var ActiveInstanceMap = make(map[string]string)
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 
 func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+
 	reconcileStartTS := time.Now()
 	defer func() {
 		ReconcileTime.WithLabelValues(request.Namespace).Observe(time.Since(reconcileStartTS).Seconds())
@@ -240,6 +248,8 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	}
 
 	r.InitializeControllerReconcilers()
+
+	r.varSetter()
 
 	if err = r.reconcileControllers(); err != nil {
 		return reconcile.Result{}, err
@@ -379,15 +389,15 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
 	// core components, return reconciliation errors
-	if err := r.reconcileConfigMaps(); err != nil {
-		r.Logger.Error(err, "failed to reconcile required config maps")
+	if err := r.reconcileSecrets(); err != nil {
+		r.Logger.Error(err, "failed to reconcile required secrets")
 		return err
 	}
 
-	if err := r.SecretController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile secret controller")
-		return err
-	}
+	// if err := r.reconcileConfigMaps(); err != nil {
+	// 	r.Logger.Error(err, "failed to reconcile required config maps")
+	// 	return err
+	// }
 
 	if err := r.AppController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile application controller")
@@ -448,14 +458,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 }
 
 func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
-
-	secretController := &secret.SecretReconciler{
-		Client:            r.Client,
-		Scheme:            r.Scheme,
-		Instance:          r.Instance,
-		ClusterScoped:     r.ClusterScoped,
-		ManagedNamespaces: r.ResourceManagedNamespaces,
-	}
 
 	redisController := &redis.RedisReconciler{
 		Client:   r.Client,
@@ -527,8 +529,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.NotificationsController = notificationsController
 
 	r.SSOController = ssoController
-
-	r.SecretController = secretController
 
 }
 

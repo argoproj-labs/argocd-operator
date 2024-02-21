@@ -15,6 +15,8 @@ type FieldToCompare struct {
 	ExtraAction func()
 }
 
+type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
+
 type UpdateFnCm func(*corev1.ConfigMap, *corev1.ConfigMap, *bool) error
 
 // UpdateIfChanged accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields, updating any fields and setting the bool ptr to true if a drift is detected

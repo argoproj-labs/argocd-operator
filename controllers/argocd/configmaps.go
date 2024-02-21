@@ -13,13 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var (
-	caResourceName string
-)
-
 func (r *ArgoCDReconciler) reconcileConfigMaps() error {
 	var reconErrs util.MultiError
-	r.cmVarSetter()
 
 	err := r.reconcileRBACCm()
 	reconErrs.Append(err)
@@ -319,8 +314,4 @@ func (r *ArgoCDReconciler) deleteConfigMap(name, namespace string) error {
 	}
 	r.Logger.Info("config map deleted", "name", name, "namespace", namespace)
 	return nil
-}
-
-func (r *ArgoCDReconciler) cmVarSetter() {
-	caResourceName = argoutil.GenerateResourceName(r.Instance.Name, common.CASuffix)
 }
