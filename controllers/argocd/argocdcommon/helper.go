@@ -31,6 +31,8 @@ type UpdateFnSs func(*appsv1.StatefulSet, *appsv1.StatefulSet, *bool) error
 
 type UpdateFnDep func(*appsv1.Deployment, *appsv1.Deployment, *bool) error
 
+type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
+
 // UpdateIfChanged accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields, updating any fields and setting the bool ptr to true if a drift is detected
 func UpdateIfChanged(ftc []FieldToCompare, changed *bool) {
 	for _, field := range ftc {

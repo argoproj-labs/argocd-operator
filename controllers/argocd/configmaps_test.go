@@ -126,7 +126,7 @@ func Test_deleteConfigMaps(t *testing.T) {
 		resources...,
 	)
 
-	reconciler.cmVarSetter()
+	reconciler.varSetter()
 
 	err := reconciler.deleteConfigMaps()
 	assert.NoError(t, err)
@@ -308,7 +308,7 @@ func Test_reconcileCaCm(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.reconciler.cmVarSetter()
+			tt.reconciler.varSetter()
 
 			err := tt.reconciler.reconcileCACm()
 			if tt.expectedError {
