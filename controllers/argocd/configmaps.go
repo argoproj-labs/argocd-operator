@@ -31,7 +31,7 @@ func (r *ArgoCDReconciler) reconcileConfigMaps() error {
 	err = r.reconcileCACm()
 	reconErrs.Append(err)
 
-	err = r.reeconcileArgoCDCm()
+	err = r.reconcileArgoCDCm()
 	reconErrs.Append(err)
 
 	return reconErrs.ErrOrNil()
@@ -62,7 +62,7 @@ func (r *ArgoCDReconciler) deleteConfigMaps() error {
 }
 
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
-func (r *ArgoCDReconciler) reeconcileArgoCDCm() error {
+func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 	req := workloads.ConfigMapRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDConfigMapName, r.Instance.Namespace, r.Instance.Name, r.Instance.Namespace, "", util.EmptyMap(), util.EmptyMap()),
 		Data: map[string]string{
@@ -97,15 +97,20 @@ func (r *ArgoCDReconciler) reeconcileArgoCDCm() error {
 	req.Data = util.MergeMaps(req.Data, r.getBanner())
 	req.Data = util.MergeMaps(req.Data, r.getExtraConfig())
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
 // reconcileCAConfigMap will ensure that the Certificate Authority ConfigMap is present.
@@ -125,15 +130,20 @@ func (r *ArgoCDReconciler) reconcileCACm() error {
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
 // reconcileGPGKeysConfigMap creates a gpg-keys config map
@@ -144,15 +154,20 @@ func (r *ArgoCDReconciler) reconcileGPGKeysCm() error {
 		Client:     r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
 // reconcileTLSCerts will ensure that the ArgoCD TLS Certs ConfigMap is present.
@@ -164,15 +179,20 @@ func (r *ArgoCDReconciler) reconcileTLSCertsCm() error {
 		Client:     r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
 // reconcileSSHKnownHosts will ensure that the ArgoCD SSH Known Hosts ConfigMap is present.
@@ -186,19 +206,25 @@ func (r *ArgoCDReconciler) reconcileSSHKnownHostsCm() error {
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
 // reconcileRBACCm will ensure that the Redis HA ConfigMap is present for the given ArgoCD instance
 func (r *ArgoCDReconciler) reconcileRBACCm() error {
+
 	req := workloads.ConfigMapRequest{
 		ObjectMeta: argoutil.GetObjMeta(common.ArgoCDRBACConfigMapName, r.Instance.Namespace, r.Instance.Name, r.Instance.Namespace, "", util.EmptyMap(), util.EmptyMap()),
 		Data: map[string]string{
@@ -211,18 +237,23 @@ func (r *ArgoCDReconciler) reconcileRBACCm() error {
 		Client:    r.Client,
 	}
 
-	fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
-		return []argocdcommon.FieldToCompare{
-			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
-			{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
+			return []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+				{Existing: &existing.Data, Desired: &desired.Data, ExtraAction: nil},
+			}
 		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare(existing, desired), changed)
+		return nil
 	}
 
-	return r.reconcileCM(req, fieldsToCompare)
+	return r.reconcileCM(req, argocdcommon.UpdateFnCm(updateFn), ignoreDrift)
 }
 
-func (r *ArgoCDReconciler) reconcileCM(req workloads.ConfigMapRequest, compare argocdcommon.FieldCompFnCm) error {
+func (r *ArgoCDReconciler) reconcileCM(req workloads.ConfigMapRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := workloads.RequestConfigMap(req)
 	if err != nil {
 		r.Logger.Debug("reconcileCM: one or more mutations could not be applied")
@@ -245,9 +276,22 @@ func (r *ArgoCDReconciler) reconcileCM(req workloads.ConfigMapRequest, compare a
 		r.Logger.Info("config map created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
+
+	// cm found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
 	changed := false
 
-	argocdcommon.UpdateIfChanged(compare(existing, desired), &changed)
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnCm); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconcileCM: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
 
 	if !changed {
 		return nil
