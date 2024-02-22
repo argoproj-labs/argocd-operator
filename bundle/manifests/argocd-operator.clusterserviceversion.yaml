@@ -1507,6 +1507,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
+    - kind: NotificationsConfiguration
+      name: notificationsconfigurations.argoproj.io
+      version: v1alpha1
   description: |
     ## Overview
 
@@ -1561,6 +1564,18 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - ""
           resources:

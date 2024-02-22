@@ -369,38 +369,6 @@ func TestReconcileNotifications_CreateSecret(t *testing.T) {
 	assertNotFound(t, err)
 }
 
-func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Notifications.Enabled = true
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	err := r.reconcileNotificationsConfigMap(a)
-	assert.NoError(t, err)
-
-	testCm := &corev1.ConfigMap{}
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      "argocd-notifications-cm",
-		Namespace: a.Namespace,
-	}, testCm))
-
-	assert.True(t, len(testCm.Data) > 0)
-
-	a.Spec.Notifications.Enabled = false
-	err = r.reconcileNotificationsConfigMap(a)
-	assert.NoError(t, err)
-	testCm = &corev1.ConfigMap{}
-	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-notifications-cm", Namespace: a.Namespace}, testCm)
-	assertNotFound(t, err)
-}
-
 func TestReconcileNotifications_testEnvVars(t *testing.T) {
 
 	envMap := []corev1.EnvVar{
