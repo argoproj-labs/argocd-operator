@@ -85,6 +85,9 @@ LogLevel | info | The log level to be used by the ArgoCD Application Controller 
 LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller (`--kubectl-parallelism-limit` flag)
 SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/cert"` path.
+Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
+SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
+SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
 
 ### ApplicationSet Controller Example
 
