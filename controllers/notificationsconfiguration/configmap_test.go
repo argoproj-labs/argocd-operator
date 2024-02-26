@@ -75,9 +75,29 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
+	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		// Add a default template for test
+		Templates: map[string]string{
+			"template.app-created": `email:
+			subject: Application {{.app.metadata.name}} has been created.
+		  message: Application {{.app.metadata.name}} has been created.
+		  teams:
+			title: Application {{.app.metadata.name}} has been created.`,
+		},
+		// Add a default template for test
+		Triggers: map[string]string{
+			"trigger.on-created": `- description: Application is created.
+			oncePer: app.metadata.name
+			send:
+			- app-created
+			when: "true"`,
+		},
+	}
+
 	err := r.reconcileNotificationsConfigmap(a)
 	assert.NoError(t, err)
 
+	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -87,8 +107,11 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 		},
 		testCM))
 
-	expectedDefaultConfig := getDefaultNotificationsConfig()
-	assert.Equal(t, expectedDefaultConfig, testCM.Data)
+	// Verify that the configmap has the default template
+	assert.NotEqual(t, testCM.Data["template.app-created"], "")
+
+	// Verify that the configmap has the default trigger
+	assert.NotEqual(t, testCM.Data["trigger.on-created"], "")
 }
 
 func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
@@ -103,19 +126,29 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	err := r.reconcileNotificationsConfigmap(a)
-	assert.NoError(t, err)
-
-	// Update the NotificationsConfiguration
 	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		// Add a default template for test
+		Templates: map[string]string{
+			"template.app-created": `email:
+			subject: Application {{.app.metadata.name}} has been created.
+		  message: Application {{.app.metadata.name}} has been created.
+		  teams:
+			title: Application {{.app.metadata.name}} has been created.`,
+		},
+		// Add a default template for test
 		Triggers: map[string]string{
-			"trigger.on-sync-status-test": "- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]",
+			"trigger.on-created": `- description: Application is created.
+			oncePer: app.metadata.name
+			send:
+			- app-created
+			when: "true"`,
 		},
 	}
 
-	err = r.reconcileNotificationsConfigmap(a)
+	err := r.reconcileNotificationsConfigmap(a)
 	assert.NoError(t, err)
 
+	// Verify if the ConfigMap is created
 	testCM := &corev1.ConfigMap{}
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -125,6 +158,22 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 		},
 		testCM))
 
+	// Update the NotificationsConfiguration
+	a.Spec.Triggers["trigger.on-sync-status-test"] = "- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]"
+
+	err = r.reconcileNotificationsConfigmap(a)
+	assert.NoError(t, err)
+
+	testCM = &corev1.ConfigMap{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      ArgoCDNotificationsConfigMap,
+			Namespace: a.Namespace,
+		},
+		testCM))
+
+	// Verify that the updated configuration
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
 }

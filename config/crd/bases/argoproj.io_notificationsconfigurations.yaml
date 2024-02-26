@@ -64,13 +64,6 @@ spec:
                   and destination notification service.
                 type: object
             type: object
-          status:
-            description: NotificationsConfigurationStatus defines the observed state
-              of NotificationsConfiguration
-            properties:
-              notificationsconfiguration:
-                type: string
-            type: object
         type: object
     served: true
     storage: true

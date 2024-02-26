@@ -33,8 +33,7 @@ type NotificationsConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   NotificationsConfigurationSpec   `json:"spec,omitempty"`
-	Status NotificationsConfigurationStatus `json:"status,omitempty"`
+	Spec NotificationsConfigurationSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -58,9 +57,4 @@ type NotificationsConfigurationSpec struct {
 	Services map[string]string `json:"services,omitempty"`
 	// Subscriptions contain centrally managed global application subscriptions
 	Subscriptions map[string]string `json:"subscriptions,omitempty"`
-}
-
-// NotificationsConfigurationStatus defines the observed state of NotificationsConfiguration
-type NotificationsConfigurationStatus struct {
-	NotificationsConfiguration string `json:"notificationsconfiguration,omitempty"`
 }

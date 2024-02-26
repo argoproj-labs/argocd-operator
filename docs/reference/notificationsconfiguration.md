@@ -10,12 +10,12 @@ The `NotificationsConfiguration` Custom Resource consists of the following prope
 
 Name | Default | Description
 --- | --- | ---
-[**Templates**](#argocd) | [Empty] | Triggers define the condition when the notification should be sent and list of templates required to generate the message.
-[**Triggers**](#image) | [Empty] | Templates are used to generate the notification template message.
-[**Services**](#schedule) | [Empty] | Services are used to deliver message.
-[**Subscriptions**](#storage-options) | [Empty] | Subscriptions contain centrally managed global application subscriptions.
+**Templates** | [Empty] | Triggers define the condition when the notification should be sent and list of templates required to generate the message.
+**Triggers** | [Empty] | Templates are used to generate the notification template message.
+**Services** | [Empty] | Services are used to deliver message.
+**Subscriptions** | [Empty] | Subscriptions contain centrally managed global application subscriptions.
 
-### Templates Example
+## Templates Example
 
 The following example shows how to add templates to the `argocd-notification-cm` using the `default-notifications-configuration` custom resource.
 
@@ -32,7 +32,7 @@ spec:
 
 ```
 
-### Triggers Example
+## Triggers Example
 
 The following example shows how to add Triggers to the `argocd-notification-cm` using the `default-notifications-configuration` custom resource.
 

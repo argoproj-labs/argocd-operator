@@ -20,8 +20,6 @@ const (
 // reconcileNotificationsConfigmap will ensure that the notifications configuration is updated
 func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(cr *v1alpha1.NotificationsConfiguration) error {
 
-	defaultNotifcations := getDefaultNotificationsConfig()
-
 	NotificationsConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ArgoCDNotificationsConfigMap,
@@ -37,7 +35,6 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 			return err
 		}
 
-		NotificationsConfigMap.Data = defaultNotifcations
 		err := r.Client.Create(context.TODO(), NotificationsConfigMap)
 		if err != nil {
 			return err
@@ -46,9 +43,6 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 
 	// Verify if Notifications Configmap data is up to date with NotificationsConfiguration CR data
 	expectedConfiguration := make(map[string]string)
-	for k, v := range defaultNotifcations {
-		expectedConfiguration[k] = v
-	}
 
 	for k, v := range cr.Spec.Triggers {
 		expectedConfiguration[k] = v
