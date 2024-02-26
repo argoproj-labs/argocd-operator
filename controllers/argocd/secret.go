@@ -313,9 +313,10 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 		secret.Data[common.ArgoCDKeyServerSecretKey] = sessionKey
 	}
 
+	// reset the value to default only when secret.data field is nil
 	if hasArgoAdminPasswordChanged(secret, clusterSecret) {
 		pwBytes, ok := clusterSecret.Data[common.ArgoCDKeyAdminPassword]
-		if ok {
+		if ok && secret.Data[common.ArgoCDKeyAdminPassword] == nil {
 			hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
 			if err != nil {
 				return err
