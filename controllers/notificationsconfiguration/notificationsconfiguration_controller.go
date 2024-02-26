@@ -39,8 +39,6 @@ type NotificationsConfigurationReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-var log = logr.Log.WithName("controller_notificationsconfiguration")
-
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;delete;patch;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
