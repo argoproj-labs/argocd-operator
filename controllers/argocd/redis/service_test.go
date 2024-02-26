@@ -165,6 +165,80 @@ func TestReconcileHAProxyService(t *testing.T) {
 	}
 }
 
+func TestReconcileHAMasterService(t *testing.T) {
+	tests := []struct {
+		name            string
+		reconciler      *RedisReconciler
+		expectedError   bool
+		expectedService *corev1.Service
+	}{
+		{
+			name: "Service does not exist",
+			reconciler: makeTestRedisReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectedError:   false,
+			expectedService: getDesiredHAMasterSvc(),
+		},
+		{
+			name: "Service drift",
+			reconciler: makeTestRedisReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestService(getDesiredHAMasterSvc(),
+					func(svc *corev1.Service) {
+						svc.Name = "test-argocd-redis-ha"
+						// Modify some fields to simulate drift
+						svc.Spec.Ports = []corev1.ServicePort{
+							{
+								Name: "server",
+								Port: 8087,
+							},
+						}
+					},
+				),
+			),
+			expectedError:   false,
+			expectedService: getDesiredHAMasterSvc(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.varSetter()
+
+			err := tt.reconciler.reconcileHAMasterService()
+			assert.NoError(t, err)
+
+			existing, err := networking.GetService("test-argocd-redis-ha", test.TestNamespace, tt.reconciler.Client)
+
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
+
+			if tt.expectedService != nil {
+				match := true
+
+				// Check for partial match on relevant fields
+				ftc := []argocdcommon.FieldToCompare{
+					{
+						Existing: existing.Labels,
+						Desired:  tt.expectedService.Labels,
+					},
+					{
+						Existing: existing.Spec.Ports,
+						Desired:  tt.expectedService.Spec.Ports,
+					},
+				}
+				argocdcommon.PartialMatch(ftc, &match)
+				assert.True(t, match)
+			}
+
+		})
+	}
+}
+
 func TestDeleteService(t *testing.T) {
 	tests := []struct {
 		name          string

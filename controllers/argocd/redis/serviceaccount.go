@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -25,7 +24,7 @@ func (rr *RedisReconciler) reconServiceAccount(req permissions.ServiceAccountReq
 		rr.Logger.Error(err, "reconServiceAccount: failed to set owner reference for ServiceAccount", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	existing, err := permissions.GetServiceAccount(desired.Name, desired.Namespace, rr.Client)
+	_, err := permissions.GetServiceAccount(desired.Name, desired.Namespace, rr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconServiceAccount: failed to retrieve ServiceAccount %s in namespace %s", desired.Name, desired.Namespace)
@@ -39,30 +38,6 @@ func (rr *RedisReconciler) reconServiceAccount(req permissions.ServiceAccountReq
 	}
 
 	// ServiceAccount found, no update required - nothing to do
-	if ignoreDrift {
-		return nil
-	}
-
-	changed := false
-
-	// execute supplied update function
-	if updateFn != nil {
-		if fn, ok := updateFn.(argocdcommon.UpdateFnSa); ok {
-			if err := fn(existing, desired, &changed); err != nil {
-				return errors.Wrapf(err, "reconServiceAccount: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
-			}
-		}
-	}
-
-	if !changed {
-		return nil
-	}
-
-	if err = permissions.UpdateServiceAccount(existing, rr.Client); err != nil {
-		return errors.Wrapf(err, "reconServiceAccount: failed to update ServiceAccount %s", existing.Name)
-	}
-
-	rr.Logger.Info("service account updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
