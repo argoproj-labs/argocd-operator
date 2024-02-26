@@ -136,16 +136,6 @@ spec:
     SCMRootCAConfigMap: example-gitlab-scm-tls-cert
 ```
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-=======
->>>>>>> aa399a55abf577809d487fdc2811219cebb1cb35
-=======
->>>>>>> d424ebd71f4d1e67ade00a8b329e3a6e8688950d
-=======
->>>>>>> 648f98c06185519193e214bea6a077169e04007e
 ## Config Management Plugins
 
 Configuration to add a config management plugin. This property maps directly to the `configManagementPlugins` field in the `argocd-cm` ConfigMap.
@@ -908,10 +898,6 @@ spec:
 
 Resource behavior can be customized using subkeys (`resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions`). Each of the subkeys maps directly to their own field in the `argocd-cm`. `resourceHealthChecks` will map to `resource.customizations.health`, `resourceIgnoreDifferences` to `resource.customizations.ignoreDifferences`, and `resourceActions` to `resource.customizations.actions`.
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 648f98c06185519193e214bea6a077169e04007e
 !!! note
     `.spec.resourceCustomizations` field is no longer in support from Argo CD Operator v0.8.0 onward. Consider using `resourceHealthChecks`, `resourceIgnoreDifferences`, and `resourceActions` instead.
 
