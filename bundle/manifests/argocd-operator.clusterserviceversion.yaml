@@ -1507,8 +1507,92 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
-    - kind: NotificationsConfiguration
+    - description: NotificationsConfiguration is the Schema for the notificationsconfiguration
+        API
+      displayName: NotificationsConfiguration
+      kind: NotificationsConfiguration
       name: notificationsconfigurations.argoproj.io
+      resources:
+      - kind: ArgoCD
+        name: ""
+        version: v1alpha1
+      - kind: ArgoCDExport
+        name: ""
+        version: v1alpha1
+      - kind: NotificationsConfiguration
+        name: ""
+        version: v1alpha1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      - kind: CronJob
+        name: ""
+        version: v1
+      - kind: Deployment
+        name: ""
+        version: v1
+      - kind: Ingress
+        name: ""
+        version: v1
+      - kind: Job
+        name: ""
+        version: v1
+      - kind: PersistentVolumeClaim
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Prometheus
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: v1
+      - kind: Route
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ServiceMonitor
+        name: ""
+        version: v1
+      - kind: StatefulSet
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Argocd is the name of the ArgoCD instance to export.
+        displayName: ArgoCD
+        path: argocd
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
+        displayName: Schedule
+        path: schedule
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Storage defines the storage configuration options.
+        displayName: Storage
+        path: storage
+      statusDescriptors:
+      - description: 'Phase is a simple, high-level summary of where the ArgoCDExport
+          is in its lifecycle. There are five possible phase values: Pending: The
+          ArgoCDExport has been accepted by the Kubernetes system, but one or more
+          of the required resources have not been created. Running: All of the containers
+          for the ArgoCDExport are still running, or in the process of starting or
+          restarting. Succeeded: All containers for the ArgoCDExport have terminated
+          in success, and will not be restarted. Failed: At least one container has
+          terminated in failure, either exited with non-zero status or was terminated
+          by the system. Unknown: For some reason the state of the ArgoCDExport could
+          not be obtained.'
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       version: v1alpha1
   description: |
     ## Overview

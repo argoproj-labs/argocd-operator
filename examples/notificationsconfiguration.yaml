@@ -1,32 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: NotificationsConfiguration
 metadata:
- name: test-notifications-cm
+ name: default-notifications-configuration
 spec:
  triggers:
-  trigger.on-sync-status-unknown-abhishek: |
+  trigger.on-sync-status-unknown: |
     - when: app.status.sync.status == 'Unknown'
-      send: [my-customized-template]  
-  trigger.on-deployed-abhishek: |
-    - when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
-      oncePer: app.status.sync.revision
-      send: [app-sync-succeeded]
+      send: [my-custom-template]
  templates:
-  template.my-custom-template-abhishek: |
+  template.my-custom-template: |
     message: |
       Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}.
-
-  # Templates might have notification service specific fields. E.g. slack message might include annotations
-  template.my-custom-template-slack-template-abhishek: |
-    message: |
-      Application {{.app.metadata.name}} sync is {{.app.status.sync.status}}.
-      Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}.
-    email:
-      subject: Application {{.app.metadata.name}} sync status is {{.app.status.sync.status}}
-    slack:
-      attachments: |
-        [{
-          "title": "{{.app.metadata.name}}",
-          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
-          "color": "#18be52"
-        }]

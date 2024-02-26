@@ -13,6 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+const (
+	ArgoCDNotificationsConfigMap = "argocd-notifications-cm"
+)
+
 // reconcileNotificationsConfigmap will ensure that the notifications configuration is updated
 func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(cr *v1alpha1.NotificationsConfiguration) error {
 
@@ -20,7 +24,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 
 	NotificationsConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "argocd-notifications-cm",
+			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: cr.Namespace,
 		},
 	}

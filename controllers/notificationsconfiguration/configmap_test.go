@@ -82,7 +82,7 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-notifications-cm",
+			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
@@ -120,7 +120,7 @@ func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-notifications-cm",
+			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))
@@ -154,7 +154,7 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 	// Delete the Notifications ConfigMap
 	testCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "argocd-notifications-cm",
+			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 	}
@@ -168,7 +168,7 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      "argocd-notifications-cm",
+			Name:      ArgoCDNotificationsConfigMap,
 			Namespace: a.Namespace,
 		},
 		testCM))

@@ -23,6 +23,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
+const (
+	DefaultNotificationsConfigurationInstanceName = "default-notifications-configuration"
+)
+
 func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) error {
 
 	log.Info("reconciling notifications serviceaccount")
@@ -76,7 +80,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 
 	defaultNotificationsConfigurationCR := &v1alpha1.NotificationsConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default-notifications-configuration",
+			Name:      DefaultNotificationsConfigurationInstanceName,
 			Namespace: cr.Namespace,
 		},
 	}
@@ -86,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 		return r.Client.Delete(context.TODO(), defaultNotificationsConfigurationCR)
 	}
 
-	if err := argoutil.FetchObject(r.Client, cr.Namespace, "default-notifications-configuration",
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, DefaultNotificationsConfigurationInstanceName,
 		defaultNotificationsConfigurationCR); err != nil {
 
 		if !errors.IsNotFound(err) {
