@@ -90,3 +90,90 @@ func TestReconcileNotifications_CreateConfigMap(t *testing.T) {
 	expectedDefaultConfig := getDefaultNotificationsConfig()
 	assert.Equal(t, expectedDefaultConfig, testCM.Data)
 }
+
+func TestReconcileNotifications_UpdateConfigMap(t *testing.T) {
+
+	a := makeTestNotificationsConfiguration(func(a *v1alpha1.NotificationsConfiguration) {
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileNotificationsConfigmap(a)
+	assert.NoError(t, err)
+
+	// Update the NotificationsConfiguration
+	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		Triggers: map[string]string{
+			"trigger.on-sync-status-test": "- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]",
+		},
+	}
+
+	err = r.reconcileNotificationsConfigmap(a)
+	assert.NoError(t, err)
+
+	testCM := &corev1.ConfigMap{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-notifications-cm",
+			Namespace: a.Namespace,
+		},
+		testCM))
+
+	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
+		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
+}
+
+func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
+
+	a := makeTestNotificationsConfiguration(func(a *v1alpha1.NotificationsConfiguration) {
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(v1alpha1.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Update the NotificationsConfiguration
+	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		Triggers: map[string]string{
+			"trigger.on-sync-status-test": "- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]",
+		},
+	}
+
+	err := r.reconcileNotificationsConfigmap(a)
+	assert.NoError(t, err)
+
+	// Delete the Notifications ConfigMap
+	testCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-notifications-cm",
+			Namespace: a.Namespace,
+		},
+	}
+	assert.NoError(t, r.Client.Delete(
+		context.TODO(), testCM))
+
+	// Reconcile to check if the ConfigMap is recreated
+	err = r.reconcileNotificationsConfigmap(a)
+	assert.NoError(t, err)
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-notifications-cm",
+			Namespace: a.Namespace,
+		},
+		testCM))
+
+	// Verify if ConfigMap is created with required data
+	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
+		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
+}

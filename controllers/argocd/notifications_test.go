@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -304,6 +305,7 @@ func TestReconcileNotifications_CreateServiceMonitor(t *testing.T) {
 	runtimeObjs := []runtime.Object{}
 	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
 	monitoringv1.AddToScheme(sch)
+	v1alpha1.AddToScheme(sch)
 
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)

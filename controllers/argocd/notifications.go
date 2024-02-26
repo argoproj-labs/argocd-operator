@@ -42,8 +42,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 		return err
 	}
 
-	log.Info("creating notificationsconfiguration custom resource")
-	if err := r.createNotificationsConfigurationCR(cr); err != nil {
+	log.Info("reconciling NotificationsConfiguration")
+	if err := r.reconcileNotificationsConfigurationCR(cr); err != nil {
 		return err
 	}
 
@@ -72,7 +72,8 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 	return nil
 }
 
-func (r *ReconcileArgoCD) createNotificationsConfigurationCR(cr *argoproj.ArgoCD) error {
+func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.ArgoCD) error {
+
 	defaultNotificationsConfigurationCR := &v1alpha1.NotificationsConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default-notifications-configuration",
@@ -80,14 +81,27 @@ func (r *ReconcileArgoCD) createNotificationsConfigurationCR(cr *argoproj.ArgoCD
 		},
 	}
 
+	if !cr.Spec.Notifications.Enabled {
+		log.Info("Deleting NotificationsConfiguration as notifications is disabled")
+		return r.Client.Delete(context.TODO(), defaultNotificationsConfigurationCR)
+	}
+
 	if err := argoutil.FetchObject(r.Client, cr.Namespace, "default-notifications-configuration",
 		defaultNotificationsConfigurationCR); err != nil {
 
-		if errors.IsNotFound(err) {
-			err := r.Client.Create(context.TODO(), defaultNotificationsConfigurationCR)
-			if err != nil {
-				return err
-			}
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the NotificationsConfiguration associated with %s : %s",
+				cr.Name, err)
+		}
+
+		// NotificationsConfiguration doesn't exist and shouldn't, nothing to do here
+		if !cr.Spec.Notifications.Enabled {
+			return nil
+		}
+
+		err := r.Client.Create(context.TODO(), defaultNotificationsConfigurationCR)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -148,6 +162,12 @@ func (r *ReconcileArgoCD) deleteNotificationsResources(cr *argoproj.ArgoCD) erro
 
 	log.Info("reconciling notifications serviceaccount")
 	_, err = r.reconcileNotificationsServiceAccount(cr)
+	if err != nil {
+		return err
+	}
+
+	log.Info("reconciling notificationsconfiguration")
+	err = r.reconcileNotificationsConfigurationCR(cr)
 	if err != nil {
 		return err
 	}
