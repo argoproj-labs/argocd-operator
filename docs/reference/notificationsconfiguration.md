@@ -4,7 +4,9 @@ The `NotificationsConfiguration` resource is a Kubernetes Custom Resource (CRD) 
 
 A `NotificationsConfiguration` custom resource with name `default-notifications-configuration` is created **OOTB** with default configuration. Users should update this custom resource with their templates, triggers, services, subscriptios or any other configuration.
 
-**Note:** Any modifications to the `argocd-notifications-cm` will be reconciled back by the `NotificationsConfiguration` controller of the Argo CD operator instance.
+**Note:** 
+- Any configuration changes should be made to the `default-notifications-configuration` only. At this point, we do not support any custom resources of kind `NotificationsConfiguration` created by the users.
+- Any modifications to the `argocd-notifications-cm` will be reconciled back by the `NotificationsConfiguration` controller of the Argo CD operator instance.
 
 The `NotificationsConfiguration` Custom Resource consists of the following properties.
 
