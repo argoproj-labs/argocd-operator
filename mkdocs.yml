@@ -61,6 +61,7 @@ nav:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
     - API Docs: reference/api.html.md
+    - NotificationsConfiguration: reference/notificationsconfiguration.md
   - Contributing: 
       - Contributing: developer-guide/contributing.md
       - Development: 

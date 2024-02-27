@@ -10,6 +10,18 @@ rules:
   - ""
   resources:
   - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
   - endpoints
   - events
   - namespaces
@@ -72,6 +84,13 @@ rules:
   - argocds
   - argocds/finalizers
   - argocds/status
+  verbs:
+  - '*'
+- apiGroups:
+  - argoproj.io
+  resources:
+  - notificationsconfigurations
+  - notificationsconfigurations/finalizers
   verbs:
   - '*'
 - apiGroups:

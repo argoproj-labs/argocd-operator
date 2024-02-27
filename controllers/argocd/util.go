@@ -33,6 +33,7 @@ import (
 
 	"github.com/argoproj/argo-cd/v2/util/glob"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -1082,6 +1083,9 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
 
 	}
+
+	// Watch for changes to NotificationsConfiguration CR
+	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
 
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
 
