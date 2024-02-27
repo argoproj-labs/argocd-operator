@@ -2,8 +2,6 @@ module github.com/argoproj-labs/argocd-operator
 
 go 1.21
 
-toolchain go1.21.4
-
 require (
 	github.com/argoproj/argo-cd/v2 v2.10.1
 	github.com/coreos/prometheus-operator v0.40.0
