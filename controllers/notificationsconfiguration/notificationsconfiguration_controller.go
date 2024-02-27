@@ -46,6 +46,10 @@ type NotificationsConfigurationReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
+
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;clusterrolebindings,verbs=*
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
+// +kubebuilder:rbac:groups=argoproj.io,resources=notificationsconfiguration,verbs=*
 func (r *NotificationsConfigurationReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 
 	reqLogger := logr.FromContext(ctx, "Request.Namespace", request.Namespace, "Request.Name", request.Name)
