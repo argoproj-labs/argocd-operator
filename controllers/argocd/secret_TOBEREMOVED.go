@@ -370,3 +370,52 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 	}
 	return r.Client.Create(context.TODO(), secret)
 }
+
+// reconcileClusterSecrets will reconcile all Secret resources for the ArgoCD cluster.
+func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileClusterMainSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterCASecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterTLSSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileClusterPermissionsSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileGrafanaSecret(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileGrafanaSecret will ensure that the Grafana Secret is present.
+func (r *ReconcileArgoCD) reconcileGrafanaSecret(cr *argoproj.ArgoCD) error {
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
+	log.Info(grafanaDeprecatedWarning)
+
+	return nil
+}
+
+// reconcileSecrets will reconcile all ArgoCD Secret resources.
+func (r *ReconcileArgoCD) reconcileSecrets(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileClusterSecrets(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoSecret(cr); err != nil {
+		return err
+	}
+
+	return nil
+}

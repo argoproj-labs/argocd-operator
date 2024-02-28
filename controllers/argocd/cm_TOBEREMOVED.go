@@ -518,3 +518,28 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	return r.Client.Create(context.TODO(), cm)
 }
+
+// reconcileConfigMaps will ensure that all ArgoCD ConfigMaps are present.
+func (r *ReconcileArgoCD) reconcileConfigMaps(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	if err := r.reconcileArgoConfigMap(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisConfiguration(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRBAC(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileSSHKnownHosts(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileTLSCerts(cr); err != nil {
+		return err
+	}
+
+	return r.reconcileGPGKeysConfigMap(cr)
+}
