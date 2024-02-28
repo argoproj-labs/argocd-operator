@@ -582,6 +582,119 @@ func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
 	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
+// triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
+func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
+	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
+		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", deployment.Name))
+		return nil
+	}
+
+	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	return r.Client.Update(context.TODO(), deployment)
+}
+
+// triggerStatefulSetRollout will update the label with the given key to trigger a new rollout of the StatefulSet.
+func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key string) error {
+	if !argoutil.IsObjectFound(r.Client, sts.Namespace, sts.Name, sts) {
+		log.Info(fmt.Sprintf("unable to locate deployment with name: %s", sts.Name))
+		return nil
+	}
+
+	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	return r.Client.Update(context.TODO(), sts)
+}
+
+// triggerRollout will trigger a rollout of a Kubernetes resource specified as
+// obj. It currently supports Deployment and StatefulSet resources.
+func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
+	switch res := obj.(type) {
+	case *appsv1.Deployment:
+		return r.triggerDeploymentRollout(res, key)
+	case *appsv1.StatefulSet:
+		return r.triggerStatefulSetRollout(res, key)
+	default:
+		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
+	}
+}
+
+// ensureAutoTLSAnnotation ensures that the service svc has the desired state
+// of the auto TLS annotation set, which is either set (when enabled is true)
+// or unset (when enabled is false).
+//
+// Returns true when annotations have been updated, otherwise returns false.
+//
+// When this method returns true, the svc resource will need to be updated on
+// the cluster.
+func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled bool) bool {
+	var autoTLSAnnotationName, autoTLSAnnotationValue string
+
+	// We currently only support OpenShift for automatic TLS
+	if IsRouteAPIAvailable() {
+		autoTLSAnnotationName = common.AnnotationOpenShiftServiceCA
+		if svc.Annotations == nil {
+			svc.Annotations = make(map[string]string)
+		}
+		autoTLSAnnotationValue = secretName
+	}
+
+	if autoTLSAnnotationName != "" {
+		val, ok := svc.Annotations[autoTLSAnnotationName]
+		if enabled {
+			if !ok || val != secretName {
+				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
+				svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
+				return true
+			}
+		} else {
+			if ok {
+				log.Info(fmt.Sprintf("removing AutoTLS from service %s", svc.ObjectMeta.Name))
+				delete(svc.Annotations, autoTLSAnnotationName)
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func appendOpenShiftNonRootSCC(rules []v1.PolicyRule, client client.Client) []v1.PolicyRule {
+	if IsVersionAPIAvailable() {
+		// Starting with OpenShift 4.11, we need to use the resource name "nonroot-v2" instead of "nonroot"
+		resourceName := "nonroot"
+		version, err := getClusterVersion(client)
+		if err != nil {
+			log.Error(err, "couldn't get OpenShift version")
+		}
+		if version == "" || semver.Compare(fmt.Sprintf("v%s", version), "v4.10.999") > 0 {
+			resourceName = "nonroot-v2"
+		}
+		orules := v1.PolicyRule{
+			APIGroups: []string{
+				"security.openshift.io",
+			},
+			ResourceNames: []string{
+				resourceName,
+			},
+			Resources: []string{
+				"securitycontextconstraints",
+			},
+			Verbs: []string{
+				"use",
+			},
+		}
+		rules = append(rules, orules)
+	}
+	return rules
+}
+
+func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
+	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := r.Client.Update(context.TODO(), argocd); err != nil {
+		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+	}
+	return nil
+}
+
 // old reconcile function - leave as is
 func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 
@@ -704,26 +817,6 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 
 	// Return and don't requeue
 	return reconcile.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
-	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
-	return bldr.Complete(r)
-}
-
-// triggerRollout will trigger a rollout of a Kubernetes resource specified as
-// obj. It currently supports Deployment and StatefulSet resources.
-func (r *ReconcileArgoCD) triggerRollout(obj interface{}, key string) error {
-	switch res := obj.(type) {
-	case *appsv1.Deployment:
-		return r.triggerDeploymentRollout(res, key)
-	case *appsv1.StatefulSet:
-		return r.triggerStatefulSetRollout(res, key)
-	default:
-		return fmt.Errorf("resource of unknown type %T, cannot trigger rollout", res)
-	}
 }
 
 func namespaceFilterPredicate() predicate.Predicate {

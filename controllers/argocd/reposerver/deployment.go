@@ -78,7 +78,6 @@ func (rsr *RepoServerReconciler) reconcileDeployment() error {
 		},
 		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
 		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
 	}
 
 	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)

@@ -5,7 +5,9 @@ import (
 	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 // FieldToCompare contains a field from an existing resource, the same field in the desired state of the resource, and an action to be taken after comparison
@@ -15,9 +17,21 @@ type FieldToCompare struct {
 	ExtraAction func()
 }
 
-type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
-
 type UpdateFnCm func(*corev1.ConfigMap, *corev1.ConfigMap, *bool) error
+
+type UpdateFnRole func(*rbacv1.Role, *rbacv1.Role, *bool) error
+
+type UpdateFnRb func(*rbacv1.RoleBinding, *rbacv1.RoleBinding, *bool) error
+
+type UpdateFnSvc func(*corev1.Service, *corev1.Service, *bool) error
+
+type UpdateFnSa func(*corev1.ServiceAccount, *corev1.ServiceAccount, *bool) error
+
+type UpdateFnSs func(*appsv1.StatefulSet, *appsv1.StatefulSet, *bool) error
+
+type UpdateFnDep func(*appsv1.Deployment, *appsv1.Deployment, *bool) error
+
+type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
 
 // UpdateIfChanged accepts a slice of fields to be compared, along with a bool ptr. It compares all the provided fields, updating any fields and setting the bool ptr to true if a drift is detected
 func UpdateIfChanged(ftc []FieldToCompare, changed *bool) {
