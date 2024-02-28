@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,9 +14,10 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
-	setTestResourceNameAndLabels(sr)
+	sr := makeTestServerReconciler(
+		test.MakeTestArgoCD(nil),
+	)
+	sr.varSetter()
 
 	nginx := "nginx"
 
@@ -33,7 +34,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
@@ -48,7 +49,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -60,15 +61,16 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
-	setTestResourceNameAndLabels(sr)
+	sr := makeTestServerReconciler(
+		test.MakeTestArgoCD(nil),
+	)
+	sr.varSetter()
 
 	nginx := "nginx"
 
@@ -83,7 +85,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be created
 	ingress := &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server-grpc", Namespace: test.TestNamespace}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, &nginx, ingress.Spec.IngressClassName)
 
@@ -98,7 +100,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be updated
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server-grpc", Namespace: test.TestNamespace}, ingress)
 	assert.NoError(t, err)
 	assert.Equal(t, nilClass, ingress.Spec.IngressClassName)
 	assert.Equal(t, ann, ingress.ObjectMeta.Annotations)
@@ -110,7 +112,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// ingress resource should be deleted
 	ingress = &networkingv1.Ingress{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server-grpc", Namespace: "argocd"}, ingress)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server-grpc", Namespace: test.TestNamespace}, ingress)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }

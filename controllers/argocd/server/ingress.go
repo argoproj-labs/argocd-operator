@@ -37,11 +37,11 @@ func (sr *ServerReconciler) reconcileServerIngress() error {
 	if !sr.Instance.Spec.Server.Ingress.Enabled {
 		return sr.deleteIngress(resourceName, sr.Instance.Namespace)
 	}
-	
+
 	ingressReq := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component),
-		Client:    sr.Client,
-		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		Client:     sr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
 	// add ingress labels
@@ -109,9 +109,9 @@ func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
 	}
 
 	ingressReq := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(ingressName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component),
-		Client:    sr.Client,
-		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+		ObjectMeta: argoutil.GetObjMeta(ingressName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		Client:     sr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
 	// add ingress annotations
@@ -168,59 +168,52 @@ func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
 }
 
 // reconcileIngress will ensure that provided ingressRequest resource is created or updated.
-func (sr *ServerReconciler) reconcileIngress(ingressReq networking.IngressRequest) error {
+func (sr *ServerReconciler) reconcileIngress(req networking.IngressRequest) error {
 
-	desiredIngress, err := networking.RequestIngress(ingressReq)
+	desired, err := networking.RequestIngress(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileIngress: failed to request ingress %s in namespace %s", desiredIngress.Name, desiredIngress.Namespace)
+		return errors.Wrapf(err, "reconcileIngress: failed to request ingress %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	if err := controllerutil.SetControllerReference(sr.Instance, desiredIngress, sr.Scheme); err != nil {
-		sr.Logger.Error(err, "reconcileIngress: failed to set owner reference for ingress", "name", desiredIngress.Name, "namespace", desiredIngress.Namespace)
+	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileIngress: failed to set owner reference for ingress", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
 	// ingress doesn't exist in the namespace, create it
-	existingIngress, err := networking.GetIngress(desiredIngress.Name, desiredIngress.Namespace, sr.Client)
+	existing, err := networking.GetIngress(desired.Name, desired.Namespace, sr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileIngress: failed to retrieve ingress %s in namespace %s", desiredIngress.Name, desiredIngress.Namespace)
+			return errors.Wrapf(err, "reconcileIngress: failed to retrieve ingress %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = networking.CreateIngress(desiredIngress, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileIngress: failed to create ingress %s in namespace %s", desiredIngress.Name, desiredIngress.Namespace)
+		if err = networking.CreateIngress(desired, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileIngress: failed to create ingress %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		sr.Logger.V(0).Info("ingress created", "name", desiredIngress.Name, "namespace", desiredIngress.Namespace)
+		sr.Logger.Info("ingress created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
 	// difference in existing & desired ingress, update it
 	changed := false
-
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingIngress.ObjectMeta.Annotations, &desiredIngress.ObjectMeta.Annotations, nil},
-		{&existingIngress.Spec.IngressClassName, &desiredIngress.Spec.IngressClassName, nil},
-		{&existingIngress.Spec.Rules, &desiredIngress.Spec.Rules, nil},
-		{&existingIngress.Spec.TLS, &desiredIngress.Spec.TLS, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.ObjectMeta.Annotations, Desired: &desired.ObjectMeta.Annotations, ExtraAction: nil},
+		{Existing: &existing.Spec.IngressClassName, Desired: &desired.Spec.IngressClassName, ExtraAction: nil},
+		{Existing: &existing.Spec.Rules, Desired: &desired.Spec.Rules, ExtraAction: nil},
+		{Existing: &existing.Spec.TLS, Desired: &desired.Spec.TLS, ExtraAction: nil},
 	}
-
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
 	// nothing changed, exit reconciliation
 	if !changed {
 		return nil
 	}
 
-	if err = networking.UpdateIngress(existingIngress, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileIngress: failed to update ingress %s in namespace %s", existingIngress.Name, existingIngress.Namespace)
+	if err = networking.UpdateIngress(existing, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileIngress: failed to update ingress %s in namespace %s", existing.Name, existing.Namespace)
 	}
 
-	sr.Logger.V(0).Info("reconcileIngress: ingress updated", "name", existingIngress.Name, "namespace", existingIngress.Namespace)
+	sr.Logger.Info("reconcileIngress: ingress updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
@@ -250,6 +243,6 @@ func (sr *ServerReconciler) deleteIngress(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteIngress: failed to delete ingress %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("ingress deleted", "name", name, "namespace", namespace)
+	sr.Logger.Info("ingress deleted", "name", name, "namespace", namespace)
 	return nil
 }

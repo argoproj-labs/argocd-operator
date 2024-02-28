@@ -1,36 +1,102 @@
 package server
 
 import (
-	"context"
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-func TestServerReconciler_createAndDeleteServiceAccount(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
+func TestReconcileServiceAccount(t *testing.T) {
+	tests := []struct {
+		name          string
+		reconciler    *ServerReconciler
+		expectedError bool
+	}{
+		{
+			name: "ServiceAccount does not exist",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectedError: false,
+		},
+		{
+			name: "ServiceAccount exists",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestServiceAccount(
+					func(sa *corev1.ServiceAccount) {
+						sa.Name = "test-argocd-server"
+					},
+				),
+			),
+			expectedError: false,
+		},
+	}
 
-	setTestResourceNameAndLabels(sr)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.reconciler.varSetter()
+			err := tt.reconciler.reconcileServiceAccount()
+			assert.NoError(t, err)
 
-	// create service account
-	err := sr.reconcileServiceAccount()
-	assert.NoError(t, err)
+			_, err = permissions.GetServiceAccount("test-argocd-server", test.TestNamespace, tt.reconciler.Client)
 
-	// service account should be created
-	currentServiceAccount := &corev1.ServiceAccount{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
-	assert.NoError(t, err)
+			// Validate the error condition
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
 
-	// delete service account
-	err = sr.deleteServiceAccount(resourceName, sr.Instance.Namespace)
-	assert.NoError(t, err)
+		})
+	}
+}
 
-	// sa should not exist
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: argocdcommon.TestNamespace}, currentServiceAccount)
-	assert.Equal(t, true, errors.IsNotFound(err))
+func TestDeleteServiceAccount(t *testing.T) {
+	tests := []struct {
+		name                string
+		reconciler          *ServerReconciler
+		serviceAccountExist bool
+		expectedError       bool
+	}{
+		{
+			name: "ServiceAccount exists",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+				test.MakeTestServiceAccount(),
+			),
+			serviceAccountExist: true,
+			expectedError:       false,
+		},
+		{
+			name: "ServiceAccount does not exist",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			serviceAccountExist: false,
+			expectedError:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			err := tt.reconciler.deleteServiceAccount(test.TestName, test.TestNamespace)
+
+			if tt.serviceAccountExist {
+				_, err := permissions.GetServiceAccount(test.TestName, test.TestNamespace, tt.reconciler.Client)
+				assert.True(t, apierrors.IsNotFound(err))
+			}
+
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error but got none.")
+			} else {
+				assert.NoError(t, err, "Expected no error but got one.")
+			}
+		})
+	}
 }

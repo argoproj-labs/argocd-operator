@@ -1,33 +1,98 @@
 package server
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
-
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+
 	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// reconcileRoleBindings will ensure all ArgoCD Server rolebindings are present
-func (sr *ServerReconciler) reconcileRoleBindings() error {
-	var reconErrs util.MultiError
+// reconcileRoleBinding will ensure ArgoCD Server rolebinding is present
+func (sr *ServerReconciler) reconcileRoleBinding() error {
 
-	// reconcile roleBindings for managed namespaces
-	if err := sr.reconcileManagedRoleBindings(); err != nil {
-		reconErrs.Append(err)
+	req := permissions.RoleBindingRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     common.RoleKind,
+			Name:     resourceName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      rbacv1.ServiceAccountKind,
+				Name:      resourceName,
+				Namespace: sr.Instance.Namespace,
+			},
+		},
 	}
 
-	// reconcile roleBindings for source namespaces
-	if err := sr.reconcileSourceRoleBindings(); err != nil {
-		reconErrs.Append(err)
+	// override default role binding if custom role is set
+	if getCustomRoleName() != "" {
+		req.RoleRef = rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     common.ClusterRoleKind,
+			Name:     getCustomRoleName(),
+		}
 	}
 
-	return reconErrs.ErrOrNil()
+	desired := permissions.RequestRoleBinding(req)
+
+	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileRoleBinding: failed to set owner reference for roleBinding", "name", desired.Name, "namespace", desired.Namespace)
+	}
+
+	// rolebinding doesn't exist in the namespace, create it
+	existing, err := permissions.GetRoleBinding(desired.Name, desired.Namespace, sr.Client)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileRoleBinding: failed to retrieve roleBinding %s in namespace %s", desired.Name, desired.Namespace)
+		}
+
+		if err = permissions.CreateRoleBinding(desired, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileRoleBinding: failed to create roleBinding %s in namespace %s", desired.Name, desired.Namespace)
+		}
+
+		sr.Logger.Info("role binding created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
+	if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
+		if err := sr.deleteRoleBinding(resourceName, sr.Instance.Namespace); err != nil {
+			return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s in namespace %s", existing.Name, existing.Namespace)
+		}
+		// re-trigger reconciliation to create the deleted rolebinding
+		return fmt.Errorf("detected drift in roleRef for rolebinding %s, recreating it", existing.Name)
+	}
+
+	// difference in existing & desired rolebinding, update it
+	changed := false
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
+	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+
+	// nothing changed
+	if !changed {
+		return nil
+	}
+
+	if err = permissions.UpdateRoleBinding(existing, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileRoleBinding: failed to update roleBinding %s in namespace %s", existing.Name, existing.Namespace)
+	}
+
+	sr.Logger.Info("rolebinding updated", "name", existing.Name, "namespace", existing.Namespace)
+	return nil
 }
 
 // deleteRoleBinding will delete rolebinding with given name.
@@ -38,228 +103,6 @@ func (sr *ServerReconciler) deleteRoleBinding(name, namespace string) error {
 		}
 		return errors.Wrapf(err, "deleteRoleBinding: failed to delete role %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("rolebinding deleted", "name", name, "namespace", namespace)
+	sr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
-}
-
-// reconcileManagedRoleBindings manages rolebindings in ArgoCD managed namespaces
-func (sr *ServerReconciler) reconcileManagedRoleBindings() error {
-	var reconErrs util.MultiError
-
-	for nsName := range sr.ManagedNamespaces {
-
-		rbReq := permissions.RoleBindingRequest{
-			ObjectMeta: argoutil.GetObjMeta(resourceName, nsName, sr.Instance.Name, sr.Instance.Namespace, component),
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     common.RoleKind,
-				Name:     resourceName,
-			},
-			Subjects: []rbacv1.Subject{
-				{
-					Kind:      rbacv1.ServiceAccountKind,
-					Name:      resourceName,	// argocd server sa
-					Namespace: sr.Instance.Namespace,
-				},
-			},
-		}
-
-		// override default role binding if custom role is set
-		if getCustomRoleName() != "" {
-			rbReq.RoleRef = rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     common.ClusterRoleKind,
-				Name:     getCustomRoleName(),
-			}
-		}
-
-		// for non control-plane namespace, add special resource management label to rolebinding
-		if nsName != sr.Instance.Namespace {
-			if len(rbReq.ObjectMeta.Labels) == 0 {
-				rbReq.ObjectMeta.Labels = make(map[string]string)
-			}
-			rbReq.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeResourceMananagement
-		}
-
-		desiredRb := permissions.RequestRoleBinding(rbReq)
-
-		// Only set ownerReferences for roles in same namespace as ArgoCD CR
-		if sr.Instance.Namespace == desiredRb.Namespace {
-			if err := controllerutil.SetControllerReference(sr.Instance, desiredRb, sr.Scheme); err != nil {
-				sr.Logger.Error(err, "reconcileManagedRoleBindings: failed to set owner reference for rolebinding", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
-			}
-		}
-
-		// rolebinding doesn't exist in the namespace, create it
-		existingRb, err := permissions.GetRoleBinding(desiredRb.Name, desiredRb.Namespace, sr.Client)
-		if err != nil {
-			if !apierrors.IsNotFound(err) {
-				reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoleBindings: failed to retrieve rolebinding %s in namespace %s", desiredRb.Name, desiredRb.Namespace))
-				continue
-			}
-
-			if err = permissions.CreateRoleBinding(desiredRb, sr.Client); err != nil {
-				reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoleBindings: failed to create rolebinding %s in namespace %s", desiredRb.Name, desiredRb.Namespace))
-				continue
-			}
-
-			sr.Logger.V(0).Info("rolebinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
-			continue
-		}
-
-		// difference in existing & desired rolebinding, update it
-		changed := false
-
-		fieldsToCompare := []struct {
-			existing, desired interface{}
-			extraAction       func()
-		}{
-			{
-				&existingRb.RoleRef,
-				&desiredRb.RoleRef,
-				nil,
-			},
-			{
-				&existingRb.Subjects,
-				&desiredRb.Subjects,
-				nil,
-			},
-		}
-
-		for _, field := range fieldsToCompare {
-			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
-		}
-	
-		// nothing changed
-		if !changed {
-			continue
-		}
-	
-		if err = permissions.UpdateRoleBinding(existingRb, sr.Client); err != nil {
-			reconErrs.Append(errors.Wrapf(err, "reconcileManagedRoleBindings: failed to update rolebinding %s in namespace %s", existingRb.Name, existingRb.Namespace))
-			continue
-		}
-
-		sr.Logger.V(0).Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
-		continue
-	}
-
-	return reconErrs.ErrOrNil()
-}
-
-// reconcileSourceRoleBindings manages rolebindings for app in namespaces feature
-func (sr *ServerReconciler) reconcileSourceRoleBindings() error {
-	var reconErrs util.MultiError
-
-	for nsName := range sr.SourceNamespaces {
-
-		rbReq := permissions.RoleBindingRequest{
-			ObjectMeta: argoutil.GetObjMeta(uniqueResourceName, nsName, sr.Instance.Name, sr.Instance.Namespace, component),
-			RoleRef: rbacv1.RoleRef{
-				APIGroup: rbacv1.GroupName,
-				Kind:     common.RoleKind,
-				Name:     uniqueResourceName,
-			},
-			Subjects: []rbacv1.Subject{
-				{
-					Kind:      rbacv1.ServiceAccountKind,
-					Name:      resourceName,	// argocd server sa
-					Namespace: sr.Instance.Namespace,
-				},
-				{
-					Kind:      rbacv1.ServiceAccountKind,
-					Name:      appcontrollerResourceName,	// argocd appcontroller sa
-					Namespace: sr.Instance.Namespace,
-				},
-			},
-		}
-
-		// for non control-plane namespace, add special app management label to rolebinding
-		if nsName != sr.Instance.Namespace {
-			if len(rbReq.ObjectMeta.Labels) == 0 {
-				rbReq.ObjectMeta.Labels = make(map[string]string)
-			}
-			rbReq.ObjectMeta.Labels[common.ArgoCDKeyRBACType] = common.ArgoCDRBACTypeAppManagement
-		}
-
-		desiredRb := permissions.RequestRoleBinding(rbReq)
-
-		// rolebinding doesn't exist in the namespace, create it
-		existingRb, err := permissions.GetRoleBinding(desiredRb.Name, desiredRb.Namespace, sr.Client)
-		if err != nil {
-			if !apierrors.IsNotFound(err) {
-				reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoleBindings: failed to retrieve rolebinding %s in namespace %s", desiredRb.Name, desiredRb.Namespace))
-                continue
-			}
-
-			if err = permissions.CreateRoleBinding(desiredRb, sr.Client); err != nil {
-				reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoleBindings: failed to create rolebinding %s in namespace %s", desiredRb.Name, desiredRb.Namespace))
-                continue
-			}
-
-			sr.Logger.V(0).Info("rolebinding created", "name", desiredRb.Name, "namespace", desiredRb.Namespace)
-			continue
-		}
-
-		// difference in existing & desired rolebinding, update it
-		changed := false
-
-		fieldsToCompare := []struct {
-			existing, desired interface{}
-			extraAction       func()
-		}{
-			{
-				&existingRb.RoleRef,
-				&desiredRb.RoleRef,
-				nil,
-			},
-			{
-				&existingRb.Subjects,
-				&desiredRb.Subjects,
-				nil,
-			},
-		}
-
-		for _, field := range fieldsToCompare {
-			argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
-		}
-	
-		// nothing changed
-		if !changed {
-			continue
-		}
-	
-		if err = permissions.UpdateRoleBinding(existingRb, sr.Client); err != nil {
-			reconErrs.Append(errors.Wrapf(err, "reconcileSourceRoleBindings: failed to update rolebinding %s in namespace %s", existingRb.Name, existingRb.Namespace))
-			continue
-		}
-
-		sr.Logger.V(0).Info("rolebinding updated", "name", existingRb.Name, "namespace", existingRb.Namespace)
-		continue
-	}
-
-	return reconErrs.ErrOrNil()
-}
-
-// deleteRoleBindings will delete all ArgoCD Server rolebindings
-func (sr *ServerReconciler) deleteRoleBindings(mngNsRoleName, srcNsRoleName string) error {
-	var reconErrs util.MultiError
-
-	// delete managed ns rolebindings
-	for nsName := range sr.ManagedNamespaces {
-		err := sr.deleteRoleBinding(mngNsRoleName, nsName)
-		if err != nil {
-			reconErrs.Append(err)
-		}
-	}
-
-	// delete source ns rolebindings
-	for nsName := range sr.SourceNamespaces {
-		err := sr.deleteRoleBinding(srcNsRoleName, nsName)
-		if err != nil {
-			reconErrs.Append(err)
-		}
-	}
-
-	return reconErrs.ErrOrNil()
 }

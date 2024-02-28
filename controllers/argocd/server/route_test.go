@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,9 +15,10 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
-	setTestResourceNameAndLabels(sr)
+	sr := makeTestServerReconciler(
+		test.MakeTestArgoCD(nil),
+	)
+	sr.varSetter()
 	routev1.Install(sr.Scheme)
 
 	ann := map[string]string{"example.com": "test"}
@@ -33,7 +34,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be created
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, ann, route.ObjectMeta.Annotations)
 
@@ -45,7 +46,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be updated
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, policy, route.Spec.WildcardPolicy)
 
@@ -56,15 +57,16 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 
 	// route resource should be deleted
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, route)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }
 
 func TestServerReconciler_routeTLS(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
-	setTestResourceNameAndLabels(sr)
+	sr := makeTestServerReconciler(
+		test.MakeTestArgoCD(nil),
+	)
+	sr.varSetter()
 	routev1.Install(sr.Scheme)
 
 	secureTLSConfig := &routev1.TLSConfig{
@@ -93,7 +95,7 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 
 	// route resource should be created with default tls config
 	route := &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, secureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, secureRoutePort, route.Spec.Port)
@@ -105,9 +107,8 @@ func TestServerReconciler_routeTLS(t *testing.T) {
 
 	// route resource should be updated to use insecure tls configs
 	route = &routev1.Route{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, route)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, route)
 	assert.NoError(t, err)
 	assert.Equal(t, insecureTLSConfig, route.Spec.TLS)
 	assert.Equal(t, insecureRoutePort, route.Spec.Port)
-
 }

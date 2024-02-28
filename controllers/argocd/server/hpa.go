@@ -5,6 +5,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,8 +28,8 @@ func (sr *ServerReconciler) reconcileHorizontalPodAutoscaler() error {
 		return sr.deleteHorizontalPodAutoscaler(resourceName, sr.Instance.Namespace)
 	}
 
-	hpaReq := workloads.HorizontalPodAutoscalerRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component),
+	req := workloads.HorizontalPodAutoscalerRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Spec: autoscaling.HorizontalPodAutoscalerSpec{
 			MaxReplicas:                    maxReplicas,
 			MinReplicas:                    &minReplicas,
@@ -45,57 +46,51 @@ func (sr *ServerReconciler) reconcileHorizontalPodAutoscaler() error {
 
 	// HPA spec provided in ArgoCD CR, override default spec
 	if sr.Instance.Spec.Server.Autoscale.HPA != nil {
-		hpaReq.Spec = *sr.Instance.Spec.Server.Autoscale.HPA
+		req.Spec = *sr.Instance.Spec.Server.Autoscale.HPA
 	}
 
-	desiredHPA, err := workloads.RequestHorizontalPodAutoscaler(hpaReq)
+	desired, err := workloads.RequestHorizontalPodAutoscaler(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to request hpa %s in namespace %s", desiredHPA.Name, desiredHPA.Namespace)
+		return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to request hpa %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	if err := controllerutil.SetControllerReference(sr.Instance, desiredHPA, sr.Scheme); err != nil {
-		sr.Logger.Error(err, "reconcileHorizontalPodAutoscaler: failed to set owner reference for hpa", "name", desiredHPA.Name, "namespace", desiredHPA.Namespace)
+	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconcileHorizontalPodAutoscaler: failed to set owner reference for hpa", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
 	// hpa doesn't exist in the namespace, create it
-	existingHPA, err := workloads.GetHorizontalPodAutoscaler(desiredHPA.Name, desiredHPA.Namespace, sr.Client)
+	existing, err := workloads.GetHorizontalPodAutoscaler(desired.Name, desired.Namespace, sr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to retrieve hpa %s in namespace %s", desiredHPA.Name, desiredHPA.Namespace)
+			return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to retrieve hpa %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = workloads.CreateHorizontalPodAutoscaler(desiredHPA, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to create hpa %s in namespace %s", desiredHPA.Name, desiredHPA.Namespace)
+		if err = workloads.CreateHorizontalPodAutoscaler(desired, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to create hpa %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		sr.Logger.V(0).Info("hpa created", "name", desiredHPA.Name, "namespace", desiredHPA.Namespace)
+		sr.Logger.Info("hpa created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
 	// difference in existing & desired hpa, update it
 	changed := false
-
-	fieldsToCompare := []struct {
-		existing, desired interface{}
-		extraAction       func()
-	}{
-		{&existingHPA.Spec, &desiredHPA.Spec, nil},
+	fieldsToCompare := []argocdcommon.FieldToCompare{
+		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
 	}
-
-	for _, field := range fieldsToCompare {
-		argocdcommon.UpdateIfChanged(field.existing, field.desired, field.extraAction, &changed)
-	}
+	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
 	// nothing changed, exit reconciliation
 	if !changed {
 		return nil
 	}
 
-	if err = workloads.UpdateHorizontalPodAutoscaler(existingHPA, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to update hpa %s in namespace %s", existingHPA.Name, existingHPA.Namespace)
+	if err = workloads.UpdateHorizontalPodAutoscaler(existing, sr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileHorizontalPodAutoscaler: failed to update hpa %s in namespace %s", existing.Name, existing.Namespace)
 	}
 
-	sr.Logger.V(0).Info("hpa updated", "name", existingHPA.Name, "namespace", existingHPA.Namespace)
+	sr.Logger.Info("hpa updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 
 }
@@ -108,6 +103,6 @@ func (sr *ServerReconciler) deleteHorizontalPodAutoscaler(name, namespace string
 		}
 		return errors.Wrapf(err, "deleteHorizontalPodAutoscaler: failed to delete hpa %s in namespace %s", name, namespace)
 	}
-	sr.Logger.V(0).Info("hpa deleted", "name", name, "namespace", namespace)
+	sr.Logger.Info("hpa deleted", "name", name, "namespace", namespace)
 	return nil
 }

@@ -5,60 +5,75 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func makeTestServerReconciler(t *testing.T, objs ...runtime.Object) *ServerReconciler {
-	s := scheme.Scheme
-	assert.NoError(t, argoproj.AddToScheme(s))
+func makeTestServerReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *ServerReconciler {
+	schemeOpt := func(s *runtime.Scheme) {
+		argoproj.AddToScheme(s)
+	}
+	sch := test.MakeTestReconcilerScheme(schemeOpt)
 
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
-	logger := ctrl.Log.WithName(ServerControllerComponent)
+	client := test.MakeTestReconcilerClient(sch, objs, []client.Object{cr}, []runtime.Object{cr})
+
+	reposerverController := &reposerver.RepoServerReconciler{
+		Client:   client,
+		Scheme:   sch,
+		Instance: cr,
+		Logger:   util.NewLogger(common.RepoServerController, "instance", cr.Name, "instance-namespace", cr.Namespace),
+	}
+
+	redisController := &redis.RedisReconciler{
+		Client:   client,
+		Scheme:   sch,
+		Instance: cr,
+		Logger:   util.NewLogger(common.RedisController, "instance", cr.Name, "instance-namespace", cr.Namespace),
+	}
+
+	dexController := &dex.DexReconciler{
+		Client:   client,
+		Scheme:   sch,
+		Instance: cr,
+	}
 
 	return &ServerReconciler{
-		Client:   cl,
-		Scheme:   s,
-		Instance: argocdcommon.MakeTestArgoCD(),
-		Logger:   logger,
+		Client:     client,
+		Scheme:     sch,
+		Instance:   cr,
+		Logger:     util.NewLogger(common.RedisComponent),
+		RepoServer: reposerverController,
+		Redis:      redisController,
+		Dex:        dexController,
 	}
-}
-
-func setTestResourceNameAndLabels(sr *ServerReconciler) {
-	component = common.ArgoCDServerComponent
-	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, component)
-	uniqueResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, component)
 }
 
 func TestServerReconciler_Reconcile(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	//resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *ServerReconciler
-		wantErr      bool
+		name        string
+		reconciler  *ServerReconciler
+		expectError bool
 	}{
 		{
-			name:         "successful reconcile",
-			resourceName: argocdcommon.TestArgoCDName,
-			setupClient: func() *ServerReconciler {
-				return makeTestServerReconciler(t, ns)
-			},
-			wantErr: false,
+			name: "successful reconcile",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
-		nr := tt.setupClient()
-		err := nr.Reconcile()
+		tt.reconciler.varSetter()
+		err := tt.reconciler.Reconcile()
 		assert.NoError(t, err)
-		if (err != nil) != tt.wantErr {
-			if tt.wantErr {
+		if (err != nil) != tt.expectError {
+			if tt.expectError {
 				t.Errorf("Expected error but did not get one")
 			} else {
 				t.Errorf("Unexpected error: %v", err)
@@ -68,27 +83,26 @@ func TestServerReconciler_Reconcile(t *testing.T) {
 }
 
 func TestServerReconciler_DeleteResources(t *testing.T) {
-	//resourceName = argocdcommon.TestArgoCDName
 	tests := []struct {
-		name         string
-		resourceName string
-		setupClient  func() *ServerReconciler
-		wantErr      bool
+		name        string
+		reconciler  *ServerReconciler
+		expectError bool
 	}{
 		{
-			name:         "successful delete",
-			resourceName: argocdcommon.TestArgoCDName,
-			setupClient: func() *ServerReconciler {
-				return makeTestServerReconciler(t)
-			},
-			wantErr: false,
+			name: "successful delete",
+			reconciler: makeTestServerReconciler(
+				test.MakeTestArgoCD(nil),
+			),
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sr := tt.setupClient()
-			if err := sr.DeleteResources(); (err != nil) != tt.wantErr {
-				if tt.wantErr {
+			tt.reconciler.varSetter()
+			tt.reconciler.Reconcile()
+
+			if err := tt.reconciler.DeleteResources(); (err != nil) != tt.expectError {
+				if tt.expectError {
 					t.Errorf("Expected error but did not get one")
 				} else {
 					t.Errorf("Unexpected error: %v", err)

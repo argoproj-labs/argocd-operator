@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,9 +14,10 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
-	ns := argocdcommon.MakeTestNamespace()
-	sr := makeTestServerReconciler(t, ns)
-	setTestResourceNameAndLabels(sr)
+	sr := makeTestServerReconciler(
+		test.MakeTestArgoCD(nil),
+	)
+	sr.varSetter()
 
 	// configure autoscale in ArgoCD
 	sr.Instance.Spec.Server.Autoscale = argoproj.ArgoCDServerAutoscaleSpec{
@@ -28,7 +29,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be created with default values
 	hpa := &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, hpa)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(3), hpa.Spec.MaxReplicas)
 
@@ -45,7 +46,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be updated
 	hpa = &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, hpa)
 	assert.NoError(t, err)
 	assert.Equal(t, int32(2), hpa.Spec.MaxReplicas)
 
@@ -56,7 +57,7 @@ func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
 
 	// hpa resource should be deleted
 	hpa = &autoscaling.HorizontalPodAutoscaler{}
-	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-argocd-server", Namespace: "argocd"}, hpa)
+	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: test.TestNamespace}, hpa)
 	assert.Error(t, err)
 	assert.True(t, errors.IsNotFound(err))
 }

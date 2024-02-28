@@ -4,10 +4,9 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -17,27 +16,24 @@ type ServerReconciler struct {
 	Client            client.Client
 	Scheme            *runtime.Scheme
 	Instance          *argoproj.ArgoCD
-	Logger            logr.Logger
+	Logger            *util.Logger
 	ClusterScoped     bool
 	ManagedNamespaces map[string]string
 	SourceNamespaces  map[string]string
+
+	RepoServer RepoServerController
+	Redis      RedisController
+	Dex        DexController
 }
 
 var (
-	resourceName   				string
-	uniqueResourceName 			string
-	component      				string
-	appcontrollerResourceName 	string
+	resourceName        string
+	clusterResourceName string
+	component           string
 )
 
 func (sr *ServerReconciler) Reconcile() error {
-
-	sr.Logger = ctrl.Log.WithName(common.ArgoCDServerController).WithValues("instance", sr.Instance.Name, "instance-namespace", sr.Instance.Namespace)
-
-	component = common.ArgoCDServerComponent
-	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, component)
-	uniqueResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, component)
-	appcontrollerResourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ArgoCDApplicationControllerComponent)
+	sr.varSetter()
 
 	// perform resource reconciliation
 	if err := sr.reconcileServiceAccount(); err != nil {
@@ -52,11 +48,11 @@ func (sr *ServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if err := sr.reconcileRoles(); err != nil {
+	if err := sr.reconcileRole(); err != nil {
 		return err
 	}
 
-	if err := sr.reconcileRoleBindings(); err != nil {
+	if err := sr.reconcileRoleBinding(); err != nil {
 		return err
 	}
 
@@ -85,11 +81,6 @@ func (sr *ServerReconciler) Reconcile() error {
 	return nil
 }
 
-// TO DO: fix this
-func (acr *ServerReconciler) TriggerRollout(key string) error {
-	return acr.TriggerDeploymentRollout("", "", key)
-}
-
 func (sr *ServerReconciler) DeleteResources() error {
 
 	if openshift.IsRouteAPIAvailable() {
@@ -98,35 +89,35 @@ func (sr *ServerReconciler) DeleteResources() error {
 		}
 	}
 
-	if err := sr.deleteIngresses(resourceName,  sr.Instance.Namespace); err != nil {
+	if err := sr.deleteIngresses(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteHorizontalPodAutoscaler(resourceName,  sr.Instance.Namespace); err != nil {
+	if err := sr.deleteHorizontalPodAutoscaler(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteService(resourceName,  sr.Instance.Namespace); err != nil {
+	if err := sr.deleteService(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteDeployment(resourceName,  sr.Instance.Namespace); err != nil {
+	if err := sr.deleteDeployment(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteRoleBindings(resourceName, uniqueResourceName); err != nil {
+	if err := sr.deleteRoleBinding(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteRoles(resourceName, uniqueResourceName); err != nil {
+	if err := sr.deleteRole(resourceName, sr.Instance.Namespace); err != nil {
 		return err
 	}
 
-	if err := sr.deleteClusterRoleBinding(uniqueResourceName); err != nil {
+	if err := sr.deleteClusterRoleBinding(clusterResourceName); err != nil {
 		return err
 	}
 
-	if err := sr.deleteClusterRole(uniqueResourceName); err != nil {
+	if err := sr.deleteClusterRole(clusterResourceName); err != nil {
 		return err
 	}
 
@@ -135,4 +126,15 @@ func (sr *ServerReconciler) DeleteResources() error {
 	}
 
 	return nil
+}
+
+func (sr *ServerReconciler) varSetter() {
+	component = common.ServerComponent
+	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ServerSuffix)
+	clusterResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, common.ServerSuffix)
+}
+
+// TO DO: fix this
+func (acr *ServerReconciler) TriggerRollout(key string) error {
+	return acr.TriggerDeploymentRollout("", "", key)
 }
