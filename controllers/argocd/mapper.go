@@ -271,7 +271,7 @@ func getAppSetControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.S
 //     AND
 //  2. rbac-type = one of the elements in the supplied rbacTypeReq
 func getServerControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.Selector, error) {
-	serverControllerComponentReq, err := labels.NewRequirement(common.AppK8sKeyComponent, selection.Equals, []string{common.ServerControllerComponent})
+	serverControllerComponentReq, err := labels.NewRequirement(common.AppK8sKeyComponent, selection.Equals, []string{common.ServerComponent})
 	if err != nil {
 		return nil, errors.Wrap(err, "getServerControllerLabelSelector: failed to generate label selector")
 	}

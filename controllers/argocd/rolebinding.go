@@ -16,6 +16,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
@@ -313,7 +314,7 @@ func getCustomRoleName(name string) string {
 		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
 	}
 	if name == common.ArgoCDServerComponent {
-		return os.Getenv(common.ArgoCDServerClusterRoleEnvName)
+		return os.Getenv(server.ArgoCDServerClusterRoleEnvVar)
 	}
 	return ""
 }

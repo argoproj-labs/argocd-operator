@@ -15,12 +15,10 @@
 package argocd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"reflect"
 	"strings"
-	"time"
 
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -30,20 +28,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-// getArgoCDServerReplicas will return the size value for the argocd-server replica count if it
-// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0. If Autoscale is enabled, the value for replicas in the argocd CR will be ignored.
-func getArgoCDServerReplicas(cr *argoproj.ArgoCD) *int32 {
-	if !cr.Spec.Server.Autoscale.Enabled && cr.Spec.Server.Replicas != nil && *cr.Spec.Server.Replicas >= 0 {
-		return cr.Spec.Server.Replicas
-	}
-	return nil
-}
 
 func (r *ReconcileArgoCD) getArgoCDExport(cr *argoproj.ArgoCD) *argoprojv1alpha1.ArgoCDExport {
 	if cr.Spec.Import == nil {
@@ -195,65 +181,6 @@ func getArgoImportVolumes(cr *argoprojv1alpha1.ArgoCDExport) []corev1.Volume {
 	return volumes
 }
 
-// getArgoServerCommand will return the command for the ArgoCD server component.
-func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-server")
-
-	if getArgoServerInsecure(cr) {
-		cmd = append(cmd, "--insecure")
-	}
-
-	if isRepoServerTLSVerificationRequested(cr) {
-		cmd = append(cmd, "--repo-server-strict-tls")
-	}
-
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
-
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, getDexServerAddress(cr))
-
-	if cr.Spec.Repo.IsEnabled() {
-		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
-	} else {
-		log.Info("Repo Server is disabled. This would affect the functioning of ArgoCD Server.")
-	}
-
-	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
-	} else {
-		log.Info("Redis is Disabled. Skipping adding Redis configuration to ArgoCD Server.")
-	}
-
-	if useTLSForRedis {
-		cmd = append(cmd, "--redis-use-tls")
-		if isRedisTLSVerificationDisabled(cr) {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
-		}
-	}
-
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
-
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
-
-	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
-	}
-
-	cmd = append(cmd, extraArgs...)
-	return cmd
-}
-
 // getDexServerAddress will return the Dex server address.
 func getDexServerAddress(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
@@ -352,182 +279,6 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 	}
 	log.Info(grafanaDeprecatedWarning)
 	return nil
-}
-
-// reconcileServerDeployment will ensure the Deployment resource is present for the ArgoCD Server component.
-func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	deploy := newDeploymentWithSuffix("server", "server", cr)
-	serverEnv := cr.Spec.Server.Env
-	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
-	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
-	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
-		Command:         getArgoServerCommand(cr, useTLSForRedis),
-		Image:           getArgoContainerImage(cr),
-		ImagePullPolicy: corev1.PullAlways,
-		Env:             serverEnv,
-		LivenessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8080),
-				},
-			},
-			InitialDelaySeconds: 3,
-			PeriodSeconds:       30,
-		},
-		Name: "argocd-server",
-		Ports: []corev1.ContainerPort{
-			{
-				ContainerPort: 8080,
-			}, {
-				ContainerPort: 8083,
-			},
-		},
-		ReadinessProbe: &corev1.Probe{
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8080),
-				},
-			},
-			InitialDelaySeconds: 3,
-			PeriodSeconds:       30,
-		},
-		Resources: getArgoServerResources(cr),
-		SecurityContext: &corev1.SecurityContext{
-			AllowPrivilegeEscalation: boolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{
-					"ALL",
-				},
-			},
-			RunAsNonRoot: boolPtr(true),
-		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			}, {
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/server/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/server/tls/redis",
-			},
-		},
-	}}
-	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
-		{
-			Name: "ssh-known-hosts",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDKnownHostsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "tls-certs",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: common.ArgoCDTLSCertsConfigMapName,
-					},
-				},
-			},
-		},
-		{
-			Name: "argocd-repo-server-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRepoServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
-			},
-		},
-		{
-			Name: common.ArgoCDRedisServerTLSSecretName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: common.ArgoCDRedisServerTLSSecretName,
-					Optional:   boolPtr(true),
-				},
-			},
-		},
-	}
-
-	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
-		deploy.Spec.Replicas = replicas
-	}
-
-	existing := newDeploymentWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
-		if !cr.Spec.Server.IsEnabled() {
-			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
-			// Delete existing deployment for ArgoCD Server, if any ..
-			return r.Client.Delete(context.TODO(), existing)
-		}
-		actualImage := existing.Spec.Template.Spec.Containers[0].Image
-		desiredImage := getArgoContainerImage(cr)
-		changed := false
-		if actualImage != desiredImage {
-			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
-			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
-			changed = true
-		}
-		updateNodePlacement(existing, deploy, &changed)
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
-			deploy.Spec.Template.Spec.Containers[0].Env) {
-			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
-			changed = true
-		}
-		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
-			deploy.Spec.Template.Spec.Containers[0].Command) {
-			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
-			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
-			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
-			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
-			existing.Spec.Template.Spec.Containers[0].Resources) {
-			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
-			if !cr.Spec.Server.Autoscale.Enabled {
-				existing.Spec.Replicas = deploy.Spec.Replicas
-				changed = true
-			}
-		}
-		if changed {
-			return r.Client.Update(context.TODO(), existing)
-		}
-		return nil // Deployment found with nothing to do, move along...
-	}
-
-	if !cr.Spec.Server.IsEnabled() {
-		log.Info("ArgoCD Server disabled. Skipping starting argocd server.")
-		return nil
-	}
-
-	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), deploy)
 }
 
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {

@@ -39,6 +39,9 @@ const (
 	// K8sOSLinux is the value for kubernetes.io/os key for linux pods
 	K8sOSLinux = "linux"
 
+	// ArgoCDRedisServerTLS is the redis server tls value.
+	ArgoCDRedisServerTLS = "argocd-operator-redis-tls"
+
 	// ArgoCDMetrics is the resource metrics key for labels.
 	ArgoCDMetrics = "metrics"
 
@@ -99,6 +102,7 @@ const (
 	ServiceKind        = "Service"
 	ServiceAccountKind = "ServiceAccount"
 	ArgoCDKind         = "ArgoCD"
+	ClusterRoleKind    = "ClusterRole"
 )
 
 // Commnds

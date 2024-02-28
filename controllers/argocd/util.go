@@ -34,7 +34,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -103,54 +102,6 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
 
 	return cmd
-}
-
-// getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
-func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
-	return cr.Spec.Server.Insecure
-}
-
-// getArgoServerGRPCHost will return the GRPC host for the given ArgoCD.
-func getArgoServerGRPCHost(cr *argoproj.ArgoCD) string {
-	host := nameWithSuffix("grpc", cr)
-	if len(cr.Spec.Server.GRPC.Host) > 0 {
-		host = cr.Spec.Server.GRPC.Host
-	}
-	return host
-}
-
-// getArgoServerHost will return the host for the given ArgoCD.
-func getArgoServerHost(cr *argoproj.ArgoCD) string {
-	host := cr.Name
-	if len(cr.Spec.Server.Host) > 0 {
-		host = cr.Spec.Server.Host
-	}
-	return host
-}
-
-// getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
-func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	if cr.Spec.Server.Autoscale.Enabled {
-		resources = corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceLimitCPU),
-				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceLimitMemory),
-			},
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(common.ArgoCDDefaultServerResourceRequestCPU),
-				corev1.ResourceMemory: resource.MustParse(common.ArgoCDDefaultServerResourceRequestMemory),
-			},
-		}
-	}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Server.Resources != nil {
-		resources = *cr.Spec.Server.Resources
-	}
-
-	return resources
 }
 
 // getArgoServerURI will return the URI for the ArgoCD server.
