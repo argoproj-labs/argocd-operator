@@ -6,11 +6,13 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -89,6 +91,14 @@ func (asr *ApplicationSetReconciler) deleteRole(name, namespace string) error {
 	}
 	asr.Logger.Info("role deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+func (asr *ApplicationSetReconciler) DeleteRoles(roles []types.NamespacedName) error {
+	var deletionErr util.MultiError
+	for _, role := range roles {
+		deletionErr.Append(asr.deleteRole(role.Name, role.Namespace))
+	}
+	return deletionErr.ErrOrNil()
 }
 
 func getPolicyRules() []rbacv1.PolicyRule {

@@ -190,11 +190,17 @@ const (
 	// ArgoCDArgoprojKeySecretType is needed for cluster secrets
 	ArgoCDArgoprojKeySecretType = "argocd.argoproj.io/secret-type"
 
+	// ArgoCDArgoprojKeyRBACType is the label to describe if what the rbac resource is meant for in non-control plane namespaces
+	ArgoCDArgoprojKeyRBACType = "argocds.argoproj.io/rbac-type"
+
 	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
 	ArgoCDArgoprojKeyManagedBy = "argocd.argoproj.io/managed-by"
 
-	// ArgoCDArgoprojKeyManagedByClusterArgoCD is needed to identify namespace mentioned as sourceNamespace on ArgoCD
-	ArgoCDArgoprojKeyManagedByClusterArgoCD = "argocd.argoproj.io/managed-by-cluster-argocd"
+	// ArgoCDArgoprojKeyAppsManagedBy is needed to identify namespace mentioned as an app sourceNamespace on ArgoCD
+	ArgoCDArgoprojKeyAppsManagedBy = "argocd.argoproj.io/apps-managed-by"
+
+	// ArgoCDArgoprojKeyAppSetsManagedBy is needed to identify namespace mentioned as an appset sourceNamespace on ArgoCD
+	ArgoCDArgoprojKeyAppSetsManagedBy = "argocd.argoproj.io/appsets-managed-by"
 )
 
 // misc

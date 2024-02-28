@@ -2,8 +2,7 @@ package common
 
 // names
 const (
-	// ArgoCDServerComponent is the name of the Dex server control plane component
-	ArgoCDServerComponent = "argocd-server"
+	ServerControllerComponent = "server"
 
 	// ArgoCDServerTLSSecretName is the name of the TLS secret for the argocd-server
 	ArgoCDServerTLSSecretName = "argocd-server-tls"

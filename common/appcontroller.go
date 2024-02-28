@@ -2,8 +2,7 @@ package common
 
 // app-controller
 const (
-	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
-	ArgoCDApplicationControllerComponent = "argocd-application-controller"
+	AppControllerComponent = "application-controller"
 
 	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
 	ArgocdApplicationControllerDefaultReplicas = 1

@@ -7,11 +7,13 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -120,4 +122,13 @@ func (asr *ApplicationSetReconciler) deleteRoleBinding(name, namespace string) e
 	}
 	asr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+// DeleteRoleBindings deletes multiple RoleBindings based on the provided list of NamespacedName.
+func (asr *ApplicationSetReconciler) DeleteRoleBindings(roleBindings []types.NamespacedName) error {
+	var deletionErr util.MultiError
+	for _, roleBinding := range roleBindings {
+		deletionErr.Append(asr.deleteRoleBinding(roleBinding.Name, roleBinding.Namespace))
+	}
+	return deletionErr.ErrOrNil()
 }

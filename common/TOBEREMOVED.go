@@ -173,6 +173,15 @@ const (
 
 	// ArgoCDKeyRelease is the prometheus release key for labels.
 	ArgoCDKeyRelease = "release"
+
+	// ArgoCDArgoprojKeyManagedByClusterArgoCD is needed to identify namespace mentioned as sourceNamespace on ArgoCD
+	ArgoCDArgoprojKeyManagedByClusterArgoCD = "argocd.argoproj.io/managed-by-cluster-argocd"
+
+	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
+	ArgoCDApplicationControllerComponent = "argocd-application-controller"
+
+	// ArgoCDServerComponent is the name of the Dex server control plane component
+	ArgoCDServerComponent = "argocd-server"
 )
 
 // DefaultLabels returns the default set of labels for controllers.
