@@ -173,6 +173,9 @@ const (
 
 	// ArgoCDKeyRelease is the prometheus release key for labels.
 	ArgoCDKeyRelease = "release"
+
+	// ArgoCDServerComponent is the name of the Argo CD server control plane component
+	ArgoCDServerComponent = "argocd-server"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

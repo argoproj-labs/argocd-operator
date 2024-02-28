@@ -195,6 +195,10 @@ const (
 
 	// ArgoCDArgoprojKeyManagedByClusterArgoCD is needed to identify namespace mentioned as sourceNamespace on ArgoCD
 	ArgoCDArgoprojKeyManagedByClusterArgoCD = "argocd.argoproj.io/managed-by-cluster-argocd"
+
+	// ArgoCDKeyRBACType is the label to describe if the rbac resource is meant for resource management
+	// or application management
+	ArgoCDKeyRBACType = "argocds.argoproj.io/rbac-type"
 )
 
 // misc

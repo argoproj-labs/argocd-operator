@@ -28,14 +28,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
-// getArgoServerServiceType will return the server Service type for the ArgoCD.
-func getArgoServerServiceType(cr *argoproj.ArgoCD) corev1.ServiceType {
-	if len(cr.Spec.Server.Service.Type) > 0 {
-		return cr.Spec.Server.Service.Type
-	}
-	return corev1.ServiceTypeClusterIP
-}
-
 // newService returns a new Service for the given ArgoCD instance.
 func newService(cr *argoproj.ArgoCD) *corev1.Service {
 	return &corev1.Service{
@@ -131,51 +123,6 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 			TargetPort: intstr.FromInt(8083),
 		},
 	}
-
-	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), svc)
-}
-
-// reconcileServerService will ensure that the Service is present for the Argo CD server component.
-func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
-	svc := newServiceWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if !cr.Spec.Server.IsEnabled() {
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
-		}
-		return nil // Service found, do nothing
-	}
-
-	if !cr.Spec.Repo.IsEnabled() {
-		return nil
-	}
-
-	ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
-
-	svc.Spec.Ports = []corev1.ServicePort{
-		{
-			Name:       "http",
-			Port:       80,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8080),
-		}, {
-			Name:       "https",
-			Port:       443,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8080),
-		},
-	}
-
-	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("server", cr),
-	}
-
-	svc.Spec.Type = getArgoServerServiceType(cr)
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err

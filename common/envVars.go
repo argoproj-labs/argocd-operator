@@ -21,9 +21,6 @@ const (
 	// ArgoCDControllerClusterRoleEnvVar is an environment variable to specify a custom cluster role for Argo CD application controller
 	ArgoCDControllerClusterRoleEnvVar = "CONTROLLER_CLUSTER_ROLE"
 
-	// ArgoCDServerClusterRoleEnvVar is an environment variable to specify a custom cluster role for Argo CD server
-	ArgoCDServerClusterRoleEnvVar = "SERVER_CLUSTER_ROLE"
-
 	// ArgoCDClusterConfigNamespacesEnvVar is the environment variable that contains the list of namespaces allowed to host cluster config
 	// instances
 	ArgoCDClusterConfigNamespacesEnvVar = "ARGOCD_CLUSTER_CONFIG_NAMESPACES"

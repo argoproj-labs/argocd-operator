@@ -7,6 +7,14 @@ const (
 
 	// ArgoCDDefaultDexServiceAccountName is the default Service Account name for the Dex server.
 	ArgoCDDefaultDexServiceAccountName = "argocd-dex-server"
+
+	// RedisComponentName is the Redis control plane component
+	DexComponent = "dex"
+)
+
+// suffix
+const (
+	DexSuffix = "dex"
 )
 
 // keys

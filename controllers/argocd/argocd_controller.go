@@ -34,6 +34,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
@@ -403,9 +404,16 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.ServerController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile server")
-		return err
+	if r.Instance.Spec.Server.IsEnabled() {
+		if err := r.ServerController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile server controller")
+			return err
+		}
+	} else {
+		r.Logger.Info("server disabled; deleting resources")
+		if err := r.ServerController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete server resources")
+		}
 	}
 
 	if r.Instance.Spec.Redis.IsEnabled() {
@@ -484,6 +492,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:            r.Client,
 		Scheme:            r.Scheme,
 		Instance:          r.Instance,
+		Logger:            util.NewLogger(common.ServerController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 		ClusterScoped:     r.ClusterScoped,
 		ManagedNamespaces: r.ResourceManagedNamespaces,
 		SourceNamespaces:  r.AppManagedNamespaces,
@@ -522,6 +531,14 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.AppController = appController
 
 	r.ServerController = serverController
+	r.ServerController.Redis = redisController
+	r.ServerController.RepoServer = reposerverController
+	// TODO: use sso abstraction
+	r.ServerController.Dex = &dex.DexReconciler{
+		Client:   r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+	}
 
 	r.ReposerverController = reposerverController
 	r.ReposerverController.Appcontroller = appController
