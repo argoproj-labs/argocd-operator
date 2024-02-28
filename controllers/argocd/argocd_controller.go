@@ -388,16 +388,15 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 
 func (r *ArgoCDReconciler) reconcileControllers() error {
 
-	// core components, return reconciliation errors
 	if err := r.reconcileSecrets(); err != nil {
 		r.Logger.Error(err, "failed to reconcile required secrets")
 		return err
 	}
 
-	// if err := r.reconcileConfigMaps(); err != nil {
-	// 	r.Logger.Error(err, "failed to reconcile required config maps")
-	// 	return err
-	// }
+	if err := r.reconcileConfigMaps(); err != nil {
+		r.Logger.Error(err, "failed to reconcile required config maps")
+		return err
+	}
 
 	if err := r.AppController.Reconcile(); err != nil {
 		r.Logger.Error(err, "failed to reconcile application controller")
@@ -409,9 +408,17 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.RedisController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile redis controller")
-		return err
+	if r.Instance.Spec.Redis.IsEnabled() {
+		if err := r.RedisController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile redis controller")
+			return err
+		}
+	} else {
+		r.Logger.Info("redis disabled; deleting resources")
+		if err := r.RedisController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete redis resources")
+			return err
+		}
 	}
 
 	if r.Instance.Spec.Repo.IsEnabled() {
@@ -525,6 +532,9 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.AppsetController.RepoServer = reposerverController
 
 	r.RedisController = redisController
+	r.RedisController.Appcontroller = appController
+	r.RedisController.Server = serverController
+	r.RedisController.RepoServer = reposerverController
 
 	r.NotificationsController = notificationsController
 

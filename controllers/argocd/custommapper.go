@@ -9,7 +9,6 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -42,22 +41,6 @@ func isSecretOfInterest(o client.Object) bool {
 		return true
 	}
 	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
-		return true
-	}
-	return false
-}
-
-// isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
-// may have been made the owner of the tls secret created by the OpenShift service CA, used
-// to secure communication amongst the Argo CD components.
-func isOwnerOfInterest(owner v1.OwnerReference) bool {
-	if owner.Kind != "Service" {
-		return false
-	}
-	if strings.HasSuffix(owner.Name, "-repo-server") {
-		return true
-	}
-	if strings.HasSuffix(owner.Name, "-redis") {
 		return true
 	}
 	return false
