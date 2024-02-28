@@ -312,7 +312,7 @@ func (sr *ServerReconciler) getArgoServerCommand() []string {
 
 	// extra args should always be added at the end
 	extraArgs := sr.Instance.Spec.Server.ExtraCommandArgs
-	err := util.IsMergable(extraArgs, cmd)
+	err := argocdcommon.IsMergable(extraArgs, cmd)
 	if err != nil {
 		return cmd
 	}

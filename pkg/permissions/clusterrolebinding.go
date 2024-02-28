@@ -5,6 +5,7 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	rbacv1 "k8s.io/api/rbac/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
