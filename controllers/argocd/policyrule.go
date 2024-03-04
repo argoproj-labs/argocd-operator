@@ -119,6 +119,7 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"applications",
+				"applicationsets",
 				"appprojects",
 			},
 			Verbs: []string{
