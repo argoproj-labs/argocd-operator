@@ -24,6 +24,7 @@ Name | Default | Description
 [**HelpChatText**](#help-chat-text) | `Chat now!` | The text for getting chat help.
 [**Image**](#image) | `argoproj/argocd` | The container image for all Argo CD components. This overrides the `ARGOCD_IMAGE` environment variable.
 [**Import**](#import-options) | [Object] | Import configuration options.
+[**InClusterName**](#in-cluster-name) | `in-cluster` | Represents the name of the cluster where Argo CD is deployed.
 [**Ingress**](#ingress-options) | [Object] | Ingress configuration options.
 [**InitialRepositories**](#initial-repositories) | [Empty] | Initial git repositories to configure Argo CD to use upon creation of the cluster.
 [**Notifications**](#notifications-controller-options) | [Object] | Notifications controller configuration options.
@@ -464,6 +465,25 @@ loading argo-cd backup
 /Secret argocd-secret updated
 argoproj.io/AppProject default unchanged
 argo-cd import complete
+```
+
+## In-Cluster Name
+
+The `inClusterName` property specifies the name of the cluster where Argo CD is deployed. Its default value is `in-cluster`.
+
+### In-Cluster Name Example
+
+The following example sets the cluster name to `example-cluster` in the `<argocd-name>-default-cluster-config` secret.
+
+``` yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: in-cluster-name
+spec:
+  inClusterName: example-cluster
 ```
 
 ## Initial Repositories

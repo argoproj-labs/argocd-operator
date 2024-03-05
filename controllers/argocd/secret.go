@@ -399,9 +399,14 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 	}
 	sort.Strings(namespaces)
 
+	inClusterName := "in-cluster"
+	if cr.Spec.InClusterName != "" {
+		inClusterName = cr.Spec.InClusterName
+	}
+
 	secret.Data = map[string][]byte{
 		"config":     dataBytes,
-		"name":       []byte("in-cluster"),
+		"name":       []byte(inClusterName),
 		"server":     []byte(common.ArgoCDDefaultServer),
 		"namespaces": []byte(strings.Join(namespaces, ",")),
 	}
@@ -433,6 +438,9 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 				sort.Strings(ns)
 				s.Data["namespaces"] = []byte(strings.Join(ns, ","))
 			}
+			// update Argo CD cluster name
+			s.Data["name"] = []byte(inClusterName)
+
 			return r.Client.Update(context.TODO(), &s)
 		}
 	}

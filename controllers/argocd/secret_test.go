@@ -549,4 +549,18 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	//TODO: https://github.com/stretchr/testify/pull/1022 introduced ErrorContains, but is not yet available in a tagged release. Revert to ErrorContains once this becomes available
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Nil(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+
+	customClusterName := "custom-cluster-name"
+	a.Spec.InClusterName = customClusterName
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Equal(t, customClusterName, string(testSecret.Data["name"]))
+
+	// Reset InClusterName and test for default value
+	a.Spec.InClusterName = ""
+	assert.NoError(t, r.reconcileClusterPermissionsSecret(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{
+		Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
+	assert.Equal(t, "in-cluster", string(testSecret.Data["name"]))
 }

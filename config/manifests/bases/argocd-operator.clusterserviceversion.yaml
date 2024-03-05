@@ -420,6 +420,13 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Import
         - urn:alm:descriptor:com.tectonic.ui:text
+      - description: InClusterName represents the name of the cluster where Argo CD
+          is deployed
+        displayName: In-Cluster Name
+        path: inClusterName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: InitialRepositories to configure Argo CD with upon creation of
           the cluster.
         displayName: Initial Repositories'

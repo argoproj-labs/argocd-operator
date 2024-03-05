@@ -7901,6 +7901,10 @@ spec:
                 required:
                 - name
                 type: object
+              inClusterName:
+                description: InClusterName represents the name of the cluster where
+                  Argo CD is deployed
+                type: string
               initialRepositories:
                 description: InitialRepositories to configure Argo CD with upon creation
                   of the cluster.

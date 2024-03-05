@@ -759,6 +759,10 @@ type ArgoCDSpec struct {
 	// Import is the import/restore options for ArgoCD.
 	Import *ArgoCDImportSpec `json:"import,omitempty"`
 
+	// InClusterName represents the name of the cluster where Argo CD is deployed
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="In-Cluster Name",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
+	InClusterName string `json:"inClusterName,omitempty"`
+
 	// InitialRepositories to configure Argo CD with upon creation of the cluster.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Initial Repositories'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	InitialRepositories string `json:"initialRepositories,omitempty"`
