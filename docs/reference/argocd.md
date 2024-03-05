@@ -840,8 +840,8 @@ MountSAToken | false | Whether the ServiceAccount token should be mounted to the
 ServiceAccount | "" | The name of the ServiceAccount to use with the repo-server pod.
 VerifyTLS | false | Whether to enforce strict TLS checking on all components when communicating with repo server
 AutoTLS | "" | Provider to use for setting up TLS the repo-server's gRPC TLS certificate (one of: `openshift`). Currently only available for OpenShift.
-Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_REPOSERVER_IMAGE` environment variable.
-Version | same as `.spec.Version` | The tag to use with the ArgoCD Repo Server.
+Image | `argoproj/argocd` | The container image for ArgoCD Repo Server. This overrides the `ARGOCD_IMAGE` environment variable for the repo server.
+Version | same as `.spec.Version` | The tag to use with the ArgoCD Repo Server. Fallsback to `.spec.Version` and the default image version in that order if not specified. 
 LogLevel | info | The log level to be used by the ArgoCD Repo Server. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid options are text or json.
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
