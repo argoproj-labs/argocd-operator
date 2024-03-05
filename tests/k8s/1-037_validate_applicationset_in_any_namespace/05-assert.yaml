@@ -20,8 +20,11 @@ rules:
   - batch
   resources:
   - jobs
+  - cronjobs
+  - cronjobs/finalizers
   verbs:
   - create
+  - update
 - apiGroups:
   - argoproj.io
   resources:
@@ -94,8 +97,11 @@ rules:
   - batch
   resources:
   - jobs
+  - cronjobs
+  - cronjobs/finalizers
   verbs:
   - create
+  - update
 - apiGroups:
   - argoproj.io
   resources:
