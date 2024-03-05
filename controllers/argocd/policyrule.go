@@ -150,9 +150,12 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
 			},
 			Verbs: []string{
 				"create",
+				"update",
 			},
 		},
 	}
@@ -246,9 +249,12 @@ func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
 			},
 			Verbs: []string{
 				"create",
+				"update",
 			},
 		},
 	}
@@ -299,9 +305,12 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 			},
 			Resources: []string{
 				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
 			},
 			Verbs: []string{
 				"create",
+				"update",
 			},
 		},
 	}
