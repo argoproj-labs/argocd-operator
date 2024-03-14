@@ -8,12 +8,35 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	cntrlClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func GetClusterSecrets(ns string, cl client.Client) (*corev1.SecretList, error) {
+	clusterSecretReq, err := GetLabelRequirements(common.ArgoCDSecretTypeLabel, selection.Equals, []string{common.ArgoCDSecretTypeCluster})
+	if err != nil {
+		return nil, errors.Wrap(err, "GetClusterSecrets: failed to generate requirement")
+	}
+
+	clusterSecretLs := GetLabelSelector(*clusterSecretReq)
+	clusterSecrets, err := workloads.ListSecrets(ns, cl, []client.ListOption{
+		&client.ListOptions{
+			LabelSelector: clusterSecretLs,
+			Namespace:     ns,
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "GetClusterSecrets: failed to generate labelSelector")
+	}
+
+	return clusterSecrets, nil
+}
 
 // TLSSecretChecksum retrieves a specified TLS secret and calculates its checksum value and returns it. If a secret is determined to be of type other than TLS it returns an empty string
 func TLSSecretChecksum(secretRef types.NamespacedName, client cntrlClient.Client) (string, error) {

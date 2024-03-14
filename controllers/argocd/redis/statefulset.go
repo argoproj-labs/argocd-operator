@@ -208,6 +208,12 @@ func (rr *RedisReconciler) getStatefulSetPodSpec() corev1.PodSpec {
 	podspec.ServiceAccountName = resourceName
 	podspec.TerminationGracePeriodSeconds = util.Int64Ptr(terminationGracePeriodSeconds)
 	podspec.Volumes = getStatefulSetVolumes()
+	podspec.NodeSelector = common.DefaultNodeSelector()
+
+	if rr.Instance.Spec.NodePlacement != nil {
+		podspec.NodeSelector = util.MergeMaps(podspec.NodeSelector, rr.Instance.Spec.NodePlacement.NodeSelector)
+		podspec.Tolerations = rr.Instance.Spec.NodePlacement.Tolerations
+	}
 
 	return *podspec
 }

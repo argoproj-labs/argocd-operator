@@ -21,7 +21,11 @@ type UpdateFnCm func(*corev1.ConfigMap, *corev1.ConfigMap, *bool) error
 
 type UpdateFnRole func(*rbacv1.Role, *rbacv1.Role, *bool) error
 
+type UpdateFnClusterRole func(*rbacv1.ClusterRole, *rbacv1.ClusterRole, *bool) error
+
 type UpdateFnRb func(*rbacv1.RoleBinding, *rbacv1.RoleBinding, *bool) error
+
+type UpdateFnCrb func(*rbacv1.ClusterRoleBinding, *rbacv1.ClusterRoleBinding, *bool) error
 
 type UpdateFnSvc func(*corev1.Service, *corev1.Service, *bool) error
 

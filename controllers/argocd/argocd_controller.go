@@ -387,9 +387,16 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.AppController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile application controller")
-		return err
+	if r.Instance.Spec.Controller.IsEnabled() {
+		if err := r.AppController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile application controller")
+			return err
+		}
+	} else {
+		r.Logger.Info("app controller disabled; deleting resources")
+		if err := r.AppController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete app controller resources")
+		}
 	}
 
 	if r.Instance.Spec.Server.IsEnabled() {

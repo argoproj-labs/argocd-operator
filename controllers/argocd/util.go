@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
@@ -47,62 +46,6 @@ import (
 const (
 	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
 )
-
-// getArgoApplicationControllerResources will return the ResourceRequirements for the Argo CD application controller container.
-func getArgoApplicationControllerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
-	resources := corev1.ResourceRequirements{}
-
-	// Allow override of resource requirements from CR
-	if cr.Spec.Controller.Resources != nil {
-		resources = *cr.Spec.Controller.Resources
-	}
-
-	return resources
-}
-
-// getArgoApplicationControllerCommand will return the command for the ArgoCD Application Controller component.
-func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
-	cmd := []string{
-		"argocd-application-controller",
-		"--operation-processors", fmt.Sprint(getArgoServerOperationProcessors(cr)),
-	}
-
-	if cr.Spec.Redis.IsEnabled() {
-		cmd = append(cmd, "--redis", getRedisServerAddress(cr))
-	} else {
-		log.Info("Redis is Disabled. Skipping adding Redis configuration to Application Controller.")
-	}
-
-	if useTLSForRedis {
-		cmd = append(cmd, "--redis-use-tls")
-		if isRedisTLSVerificationDisabled(cr) {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/controller/tls/redis/tls.crt")
-		}
-	}
-
-	if cr.Spec.Repo.IsEnabled() {
-		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
-	} else {
-		log.Info("Repo Server is disabled. This would affect the functioning of Application Controller.")
-	}
-
-	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
-	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
-
-	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
-	}
-
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Controller.LogLevel))
-
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
-
-	return cmd
-}
 
 // getArgoServerURI will return the URI for the ArgoCD server.
 // The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
