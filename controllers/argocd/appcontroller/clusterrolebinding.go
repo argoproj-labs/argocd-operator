@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (acr *AppControllerReconciler) reconcileClusterRoleBinding() error {
@@ -55,10 +54,6 @@ func (acr *AppControllerReconciler) reconcileClusterRoleBinding() error {
 
 func (acr *AppControllerReconciler) reconClusterRoleBinding(req permissions.ClusterRoleBindingRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired := permissions.RequestClusterRoleBinding(req)
-
-	if err := controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
-		acr.Logger.Error(err, "reconClusterRoleBinding: failed to set owner reference for ClusterRoleBinding", "name", desired.Name, "namespace", desired.Namespace)
-	}
 
 	existing, err := permissions.GetClusterRoleBinding(desired.Name, acr.Client)
 	if err != nil {

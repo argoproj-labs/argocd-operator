@@ -10,7 +10,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (acr *AppControllerReconciler) reconcileClusterRole() error {
@@ -39,10 +38,6 @@ func (acr *AppControllerReconciler) reconClusterRole(req permissions.ClusterRole
 	if err != nil {
 		acr.Logger.Debug("reconClusterRole: one or more mutations could not be applied")
 		return errors.Wrapf(err, "reconClusterRole: failed to request ClusterRole %s", desired.Name)
-	}
-
-	if err = controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
-		acr.Logger.Error(err, "reconClusterRole: failed to set owner reference for ClusterRole", "name", desired.Name)
 	}
 
 	existing, err := permissions.GetClusterRole(desired.Name, acr.Client)

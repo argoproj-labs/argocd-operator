@@ -507,6 +507,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		ClusterScoped:     r.ClusterScoped,
 		ManagedNamespaces: r.ResourceManagedNamespaces,
 		SourceNamespaces:  r.AppManagedNamespaces,
+		Logger:            util.NewLogger(common.AppControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	appsetController := &applicationset.ApplicationSetReconciler{
@@ -547,6 +548,9 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.RedisController.Appcontroller = appController
 	r.RedisController.Server = serverController
 	r.RedisController.RepoServer = reposerverController
+
+	r.AppController.Redis = redisController
+	r.AppController.RepoServer = reposerverController
 
 	r.NotificationsController = notificationsController
 
