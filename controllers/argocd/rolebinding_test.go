@@ -163,7 +163,8 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
-	workloadIdentifier := "x"
+	//workloadIdentifier := "x"
+	workloadIdentifier := common.ArgoCDApplicationControllerComponent
 	expectedClusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}}
 
 	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
@@ -182,6 +183,21 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 
 	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+
+	// set custom role
+	customClusterRoleName := "custom-argocd-controller"
+	t.Setenv(common.ArgoCDControllerClusterScopeRoleEnvName, customClusterRoleName)
+
+	// Test that RoleBinding is updated for custom role
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
+	clusterRoleBinding = &rbacv1.ClusterRoleBinding{}
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+	expectedRoleRef := rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     customClusterRoleName,
+	}
+	assert.Equal(t, clusterRoleBinding.RoleRef, expectedRoleRef)
 }
 
 func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
