@@ -101,8 +101,10 @@ func (acr *AppControllerReconciler) reconRole(req permissions.RoleRequest, updat
 		return errors.Wrapf(err, "reconRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	if err = controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
-		acr.Logger.Error(err, "reconRole: failed to set owner reference for Role", "name", desired.Name, "namespace", desired.Namespace)
+	if desired.Namespace == acr.Instance.Namespace {
+		if err = controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
+			acr.Logger.Error(err, "reconRole: failed to set owner reference for Role", "name", desired.Name, "namespace", desired.Namespace)
+		}
 	}
 
 	// get custom role name if any

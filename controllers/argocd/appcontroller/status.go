@@ -13,21 +13,23 @@ import (
 func (acr *AppControllerReconciler) ReconcileStatus() error {
 	status := common.ArgoCDStatusUnknown
 
-	ss, err := workloads.GetStatefulSet(resourceName, acr.Instance.Namespace, acr.Client)
-	if err != nil {
-		return errors.Wrapf(err, "failed to retrieve statefulset %s", resourceName)
-	}
+	if acr.Instance.Spec.Controller.IsEnabled() {
+		ss, err := workloads.GetStatefulSet(resourceName, acr.Instance.Namespace, acr.Client)
+		if err != nil {
+			return errors.Wrapf(err, "failed to retrieve statefulset %s", resourceName)
+		}
 
-	status = common.ArgoCDStatusPending
+		status = common.ArgoCDStatusPending
 
-	if ss.Spec.Replicas != nil {
-		if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
-			status = common.ArgoCDStatusRunning
+		if ss.Spec.Replicas != nil {
+			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
+				status = common.ArgoCDStatusRunning
+			}
 		}
 	}
 
-	if acr.Instance.Status.Redis != status {
-		acr.Instance.Status.Redis = status
+	if acr.Instance.Status.ApplicationController != status {
+		acr.Instance.Status.ApplicationController = status
 	}
 
 	return acr.updateInstanceStatus()

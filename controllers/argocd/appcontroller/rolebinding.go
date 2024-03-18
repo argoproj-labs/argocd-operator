@@ -152,8 +152,10 @@ func (acr *AppControllerReconciler) reconcileManagedNsRB() error {
 func (acr *AppControllerReconciler) reconRoleBinding(req permissions.RoleBindingRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired := permissions.RequestRoleBinding(req)
 
-	if err := controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
-		acr.Logger.Error(err, "reconRoleBinding: failed to set owner reference for RoleBinding", "name", desired.Name, "namespace", desired.Namespace)
+	if desired.Namespace == acr.Instance.Namespace {
+		if err := controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {
+			acr.Logger.Error(err, "reconRoleBinding: failed to set owner reference for RoleBinding", "name", desired.Name, "namespace", desired.Namespace)
+		}
 	}
 
 	existing, err := permissions.GetRoleBinding(desired.Name, desired.Namespace, acr.Client)
