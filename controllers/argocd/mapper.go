@@ -5,15 +5,14 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
-	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -89,11 +88,7 @@ func (r *ArgoCDReconciler) namespaceMapper(ctx context.Context, obj client.Objec
 	for _, nsOpt := range nsOpts {
 		if nsOpt.ResourceDeletionLabelValue == common.ArgoCDRBACTypeResourceMananagement {
 			// get previously managing instance and queue it for reconciliation
-			if objs, err := resource.ListObjects(affectedNs.Name, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{
-				&client.ListOptions{
-					Namespace: nsOpt.PrevManagingNs,
-				},
-			}); err == nil {
+			if objs, err := resource.ListObjects(nsOpt.PrevManagingNs, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{}); err == nil {
 				if instances, ok := objs.(*argoproj.ArgoCDList); ok {
 					if len(instances.Items) > 0 {
 						argocd := instances.Items[0]
@@ -112,12 +107,8 @@ func (r *ArgoCDReconciler) namespaceMapper(ctx context.Context, obj client.Objec
 	}
 
 	// trigger reconciliation for new managing namespaces so required resources are created for those instances
-	for key, _ := range newManagingNamespaces {
-		if objs, err := resource.ListObjects(affectedNs.Name, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{
-			&client.ListOptions{
-				Namespace: key,
-			},
-		}); err == nil {
+	for newManagingNs, _ := range newManagingNamespaces {
+		if objs, err := resource.ListObjects(newManagingNs, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{}); err == nil {
 			if instances, ok := objs.(*argoproj.ArgoCDList); ok {
 				if len(instances.Items) > 0 {
 					argocd := instances.Items[0]
@@ -167,7 +158,7 @@ func (r *ArgoCDReconciler) deleteNonControlPlaneResources(ns string, resourceDel
 	var deletionErr util.MultiError
 
 	// delete app-controller resources
-	roles, rolebindings := r.getResourcesToBeDeleted(ns, appControllerLS)
+	roles, rolebindings := argocdcommon.GetRBACToBeDeleted(ns, appControllerLS, r.Client, r.Logger)
 	err = r.AppController.DeleteRoles(roles)
 	deletionErr.Append(err)
 
@@ -175,7 +166,7 @@ func (r *ArgoCDReconciler) deleteNonControlPlaneResources(ns string, resourceDel
 	deletionErr.Append(err)
 
 	// delete appset-controller resources
-	roles, rolebindings = r.getResourcesToBeDeleted(ns, appsetControllerLS)
+	roles, rolebindings = argocdcommon.GetRBACToBeDeleted(ns, appsetControllerLS, r.Client, r.Logger)
 	err = r.AppsetController.DeleteRoles(roles)
 	deletionErr.Append(err)
 
@@ -183,7 +174,7 @@ func (r *ArgoCDReconciler) deleteNonControlPlaneResources(ns string, resourceDel
 	deletionErr.Append(err)
 
 	// delete server-controller resources
-	roles, rolebindings = r.getResourcesToBeDeleted(ns, serverControllerLS)
+	roles, rolebindings = argocdcommon.GetRBACToBeDeleted(ns, serverControllerLS, r.Client, r.Logger)
 	err = r.ServerController.DeleteRoles(roles)
 	deletionErr.Append(err)
 
@@ -194,49 +185,13 @@ func (r *ArgoCDReconciler) deleteNonControlPlaneResources(ns string, resourceDel
 
 }
 
-func (r *ArgoCDReconciler) getResourcesToBeDeleted(ns string, ls labels.Selector) ([]types.NamespacedName, []types.NamespacedName) {
-	roleList, err := permissions.ListRoles(ns, r.Client, []client.ListOption{
-		&client.ListOptions{
-			Namespace:     ns,
-			LabelSelector: ls,
-		},
-	})
-	if err != nil {
-		r.Logger.Error(err, "deleteNonControlPlaneResources: failed to list app-controller roles", "namespace", ns)
-	}
-
-	rbList, err := permissions.ListRoleBindings(ns, r.Client, []client.ListOption{
-		&client.ListOptions{
-			Namespace:     ns,
-			LabelSelector: ls,
-		},
-	})
-	if err != nil {
-		r.Logger.Error(err, "deleteNonControlPlaneResources: failed to list app-controller rolebindings", "namespace", ns)
-	}
-
-	roles := []types.NamespacedName{}
-	rolebindings := []types.NamespacedName{}
-
-	for _, r := range roleList.Items {
-		roles = append(roles, types.NamespacedName{Name: r.Name, Namespace: r.Namespace})
-	}
-
-	for _, r := range rbList.Items {
-		rolebindings = append(rolebindings, types.NamespacedName{Name: r.Name, Namespace: r.Namespace})
-	}
-
-	return roles, rolebindings
-}
-
 // getRbacTypeReq returns an rbac type label requirement. The requirement is the existence of the label
 // "argocd.argoproj.io/rbac-type", and the value of this key being present in the supplied resourceDeletionLabelValues
 func getRbacTypeReq(resourceDeletionLabelValues []string) (*labels.Requirement, error) {
-	rbacTypeReq, err := labels.NewRequirement(common.ArgoCDArgoprojKeyRBACType, selection.In, resourceDeletionLabelValues)
+	rbacTypeReq, err := argocdcommon.GetLabelRequirements(common.ArgoCDArgoprojKeyRBACType, selection.In, resourceDeletionLabelValues)
 	if err != nil {
-		return nil, errors.Wrap(err, "getRbacTypeReq: failed to generate label selector")
+		return nil, errors.Wrap(err, "getRbacTypeReq: failed to generate requirement")
 	}
-
 	return rbacTypeReq, nil
 }
 
@@ -245,12 +200,12 @@ func getRbacTypeReq(resourceDeletionLabelValues []string) (*labels.Requirement, 
 //     AND
 //  2. rbac-type = one of the elements in the supplied rbacTypeReq
 func getAppControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.Selector, error) {
-	appControllerComponentReq, err := labels.NewRequirement(common.AppK8sKeyComponent, selection.Equals, []string{common.AppControllerComponent})
+	appControllerComponentReq, err := argocdcommon.GetLabelRequirements(common.AppK8sKeyComponent, selection.Equals, []string{common.AppControllerComponent})
 	if err != nil {
 		return nil, errors.Wrap(err, "getAppControllerLabelSelector: failed to generate label selector")
 	}
-
-	return labels.NewSelector().Add(*appControllerComponentReq, *rbacTypeReq), nil
+	appControllerLS := argocdcommon.GetLabelSelector(*rbacTypeReq, *appControllerComponentReq)
+	return appControllerLS, nil
 }
 
 // getAppSetControllerLabelSelector returns a label selector that looks for resources carrying:
@@ -258,12 +213,12 @@ func getAppControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.Sele
 //     AND
 //  2. rbac-type = one of the elements in the supplied rbacTypeReq
 func getAppSetControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.Selector, error) {
-	appsetControllerComponentReq, err := labels.NewRequirement(common.AppK8sKeyComponent, selection.Equals, []string{common.AppSetControllerComponent})
+	appsetControllerComponentReq, err := argocdcommon.GetLabelRequirements(common.AppK8sKeyComponent, selection.Equals, []string{common.AppSetControllerComponent})
 	if err != nil {
 		return nil, errors.Wrap(err, "getAppSetControllerLabelSelector: failed to generate label selector")
 	}
-
-	return labels.NewSelector().Add(*appsetControllerComponentReq, *rbacTypeReq), nil
+	appsetControllerLS := argocdcommon.GetLabelSelector(*rbacTypeReq, *appsetControllerComponentReq)
+	return appsetControllerLS, nil
 }
 
 // getServerControllerLabelSelector returns a label selector that looks for resources carrying:
@@ -271,10 +226,10 @@ func getAppSetControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.S
 //     AND
 //  2. rbac-type = one of the elements in the supplied rbacTypeReq
 func getServerControllerLabelSelector(rbacTypeReq *labels.Requirement) (labels.Selector, error) {
-	serverControllerComponentReq, err := labels.NewRequirement(common.AppK8sKeyComponent, selection.Equals, []string{common.ServerComponent})
+	serverControllerComponentReq, err := argocdcommon.GetLabelRequirements(common.AppK8sKeyComponent, selection.Equals, []string{common.ServerComponent})
 	if err != nil {
 		return nil, errors.Wrap(err, "getServerControllerLabelSelector: failed to generate label selector")
 	}
-
-	return labels.NewSelector().Add(*serverControllerComponentReq, *rbacTypeReq), nil
+	serverControllerLS := argocdcommon.GetLabelSelector(*rbacTypeReq, *serverControllerComponentReq)
+	return serverControllerLS, nil
 }

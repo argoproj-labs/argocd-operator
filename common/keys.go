@@ -191,7 +191,7 @@ const (
 	ArgoCDArgoprojKeySecretType = "argocd.argoproj.io/secret-type"
 
 	// ArgoCDArgoprojKeyRBACType is the label to describe if what the rbac resource is meant for in non-control plane namespaces
-	ArgoCDArgoprojKeyRBACType = "argocds.argoproj.io/rbac-type"
+	ArgoCDArgoprojKeyRBACType = "argocd.argoproj.io/rbac-type"
 
 	// ArgoCDManagedByLabel is needed to identify namespace managed by an instance on ArgoCD
 	ArgoCDArgoprojKeyManagedBy = "argocd.argoproj.io/managed-by"

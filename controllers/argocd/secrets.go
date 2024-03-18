@@ -171,7 +171,7 @@ func (r *ArgoCDReconciler) reconcileClusterPermissionsSecret() error {
 
 	req := workloads.SecretRequest{
 		ObjectMeta: argoutil.GetObjMeta(clusterPermissionsResourceName, r.Instance.Namespace, r.Instance.Name, r.Instance.Namespace, "", map[string]string{
-			common.ArgoCDSecretTypeLabel: common.SecretTypeCluster,
+			common.ArgoCDSecretTypeLabel: common.ArgoCDSecretTypeCluster,
 		}, util.EmptyMap()),
 		Data: map[string][]byte{
 			"config":     dataBytes,

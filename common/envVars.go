@@ -18,9 +18,6 @@ const (
 	// to used for the Grafana container.
 	ArgoCDGrafanaImageEnvVar = "ARGOCD_GRAFANA_IMAGE"
 
-	// ArgoCDControllerClusterRoleEnvVar is an environment variable to specify a custom cluster role for Argo CD application controller
-	ArgoCDControllerClusterRoleEnvVar = "CONTROLLER_CLUSTER_ROLE"
-
 	// ArgoCDClusterConfigNamespacesEnvVar is the environment variable that contains the list of namespaces allowed to host cluster config
 	// instances
 	ArgoCDClusterConfigNamespacesEnvVar = "ARGOCD_CLUSTER_CONFIG_NAMESPACES"
@@ -31,4 +28,6 @@ const (
 	ArgoCDExecTimeoutEnvVar = "ARGOCD_EXEC_TIMEOUT"
 
 	ArgoCDOperatorLogLevelEnvVar = "LOG_LEVEL"
+
+	ArgoCDReconciliationTImeOutEnvVar = "ARGOCD_RECONCILIATION_TIMEOUT"
 )

@@ -49,6 +49,9 @@ func InitializeScheduledForRBACDeletion() {
 // namespacePredicate defines how we filter events on namespaces to decide if a new round of reconciliation should be triggered or not.
 func (r *ArgoCDReconciler) namespacePredicate() predicate.Predicate {
 	return predicate.Funcs{
+		CreateFunc: func(ce event.CreateEvent) bool {
+			return true
+		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// processEvent decides if this event reaches the event handler or not
 			processEvent := false
@@ -117,8 +120,8 @@ func ignoreDeletionPredicate() predicate.Predicate {
 // 1. Check if oldMeta had the label or not. If not ==> no change, ignore this event.
 // 2. If yes, namespace is no longer managed. Schedule for rbac deletion and process event
 func shouldProcessLabelEventForUpdate(e event.UpdateEvent, label, resourceDeletionLabelVal string) bool {
-	lock.Lock()
-	defer lock.Unlock()
+	// lock.Lock()
+	// defer lock.Unlock()
 
 	// processEvent decides if this event reaches the event handler or not
 	processEvent := false
@@ -173,9 +176,6 @@ func shouldProcessLabelEventForUpdate(e event.UpdateEvent, label, resourceDeleti
 // shouldProcessLabelEventForDelete decides if a given namespace deletion event should be processed or not. Only deletion events involving namespaces carrying specific labels are considered for processing.
 // Processing of such events involves cleaning up existing resources in the namespace, and/or removal from a previously managing instance's cluster secret
 func (r *ArgoCDReconciler) shouldProcessLabelEventForDelete(e event.DeleteEvent, label, resourceDeletionLabelVal string) bool {
-	lock.Lock()
-	defer lock.Unlock()
-
 	processEvent := false
 	affectedNs := e.Object.GetName()
 
@@ -215,7 +215,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMa
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceMapper)
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{})
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(ignoreDeletionPredicate()))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
