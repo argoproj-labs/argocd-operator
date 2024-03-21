@@ -157,7 +157,7 @@ func (sr *ServerReconciler) getCmd() []string {
 	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogLevel))
 
 	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogFormat))
+	cmd = append(cmd, argoutil.GetLogFormat(sr.Instance.Spec.Server.LogFormat))
 
 	// set source namespaces
 	if sr.Instance.Spec.SourceNamespaces != nil && len(sr.Instance.Spec.SourceNamespaces) > 0 {
