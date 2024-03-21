@@ -144,7 +144,7 @@ func (acr *AppControllerReconciler) reconcileManagedNsRB() error {
 			argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 			return nil
 		}
-		return acr.reconRoleBinding(req, argocdcommon.UpdateFnRb(updateFn), ignoreDrift)
+		reconcileErrs.Append(acr.reconRoleBinding(req, argocdcommon.UpdateFnRb(updateFn), ignoreDrift))
 	}
 	return reconcileErrs.ErrOrNil()
 }

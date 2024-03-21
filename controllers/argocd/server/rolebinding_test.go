@@ -18,7 +18,7 @@ func TestServerReconciler_createAndDeleteRoleBindings(t *testing.T) {
 	sr.varSetter()
 
 	// create role bindings
-	err := sr.reconcileRoleBinding()
+	err := sr.reconcileRoleBindings()
 	assert.NoError(t, err)
 
 	// rolebindings should be created in argocd namespace
@@ -44,7 +44,7 @@ func TestServerReconciler_roleBindingWithCustomRole(t *testing.T) {
 	sr.varSetter()
 
 	// create argocd rolebinding
-	err := sr.reconcileRoleBinding()
+	err := sr.reconcileRoleBindings()
 	assert.NoError(t, err)
 
 	// argocd default rolebinding with default role ref should be created in argoCD ns
@@ -57,10 +57,10 @@ func TestServerReconciler_roleBindingWithCustomRole(t *testing.T) {
 	t.Setenv("SERVER_CLUSTER_ROLE", "my-role")
 
 	// update rolebinding
-	err = sr.reconcileRoleBinding()
+	err = sr.reconcileRoleBindings()
 	// expect error as the roleref is updated so rolebinding is deleted and recreated again on next reconciliation
 	assert.Error(t, err)
-	err = sr.reconcileRoleBinding()
+	err = sr.reconcileRoleBindings()
 	assert.NoError(t, err)
 
 	// rolebinding should reference custom role

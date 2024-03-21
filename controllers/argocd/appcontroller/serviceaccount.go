@@ -13,11 +13,11 @@ func (acr *AppControllerReconciler) reconcileServiceAccount() error {
 	req := permissions.ServiceAccountRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, acr.Instance.Namespace, acr.Instance.Name, acr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 	}
-	ignoreDrift := true
-	return acr.reconServiceAccount(req, nil, ignoreDrift)
+
+	return acr.reconServiceAccount(req)
 }
 
-func (acr *AppControllerReconciler) reconServiceAccount(req permissions.ServiceAccountRequest, updateFn interface{}, ignoreDrift bool) error {
+func (acr *AppControllerReconciler) reconServiceAccount(req permissions.ServiceAccountRequest) error {
 	desired := permissions.RequestServiceAccount(req)
 
 	if err := controllerutil.SetControllerReference(acr.Instance, desired, acr.Scheme); err != nil {

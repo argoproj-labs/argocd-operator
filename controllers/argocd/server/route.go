@@ -18,11 +18,6 @@ import (
 // reconcileRoute will ensure that ArgoCD .Spec.Server.Route resource is present.
 func (sr *ServerReconciler) reconcileRoute() error {
 
-	// route disabled, cleanup any existing route and exit
-	if !sr.Instance.Spec.Server.Route.Enabled {
-		return sr.deleteRoute(resourceName, sr.Instance.Namespace)
-	}
-
 	req := openshift.RouteRequest{
 		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Client:     sr.Client,
@@ -47,6 +42,12 @@ func (sr *ServerReconciler) reconcileRoute() error {
 	if len(sr.Instance.Spec.Server.Host) > 0 {
 		req.Spec.Host = sr.Instance.Spec.Server.Host // TODO: What additional role needed for this?
 	}
+
+	hostname, err := argocdcommon.ShortenHostname(req.Spec.Host)
+	if err != nil {
+		return err
+	}
+	req.Spec.Host = hostname
 
 	if sr.Instance.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
@@ -81,49 +82,67 @@ func (sr *ServerReconciler) reconcileRoute() error {
 		req.Spec.WildcardPolicy = *sr.Instance.Spec.Server.Route.WildcardPolicy
 	}
 
+	ignoreDrift := false
+	updateFn := func(existing, desired *routev1.Route, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return sr.reconRoute(req, argocdcommon.UpdateFnRoute(updateFn), ignoreDrift)
+}
+
+func (sr *ServerReconciler) reconRoute(req openshift.RouteRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := openshift.RequestRoute(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileRoute: failed to request route %s in namespace %s", desired.Name, desired.Namespace)
+		sr.Logger.Debug("reconRoute: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconRoute: failed to request Route %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
-		sr.Logger.Error(err, "reconcileRoute: failed to set owner reference for route", "name", desired.Name, "namespace", desired.Namespace)
+	if err = controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconRoute: failed to set owner reference for Route", "name", desired.Name, "namespace", desired.Namespace)
 	}
 
-	// route doesn't exist in the namespace, create it
 	existing, err := openshift.GetRoute(desired.Name, desired.Namespace, sr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileRoute: failed to retrieve route %s in namespace %s", desired.Name, desired.Namespace)
+			return errors.Wrapf(err, "reconRoute: failed to retrieve Route %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = openshift.CreateRoute(desired, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileRoute: failed to create route %s in namespace %s", desired.Name, desired.Namespace)
+			return errors.Wrapf(err, "reconRoute: failed to create Route %s in namespace %s", desired.Name, desired.Namespace)
 		}
-
-		sr.Logger.V(0).Info("route created", "name", desired.Name, "namespace", desired.Namespace)
+		sr.Logger.Info("Route created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	// difference in existing & desired ingress, update it
-	changed := false
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.ObjectMeta.Labels, Desired: &desired.ObjectMeta.Labels, ExtraAction: nil},
-		{Existing: &existing.ObjectMeta.Annotations, Desired: &desired.ObjectMeta.Annotations, ExtraAction: nil},
-		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+	// Route found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
 	}
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	// nothing changed, exit reconciliation
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnRoute); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconRoute: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
 	if !changed {
 		return nil
 	}
 
 	if err = openshift.UpdateRoute(existing, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileRoute: failed to update route %s in namespace %s", existing.Name, existing.Namespace)
+		return errors.Wrapf(err, "reconRoute: failed to update Route %s", existing.Name)
 	}
 
-	sr.Logger.Info("route updated", "name", existing.Name, "namespace", existing.Namespace)
+	sr.Logger.Info("Route updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

@@ -187,10 +187,13 @@ func (acr *AppControllerReconciler) getManagedRBACToBeDeleted() ([]types.Namespa
 	if err != nil {
 		return nil, nil, err
 	}
-	ls, err := argocdcommon.GetResourceMgmtResourceLabelSelector(compReq)
+
+	rbacReq, err := argocdcommon.GetRbacTypeLabelRequirement(common.ArgoCDRBACTypeResourceMananagement)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	ls := argocdcommon.GetLabelSelector(*compReq, *rbacReq)
 
 	for ns := range acr.ManagedNamespaces {
 		nsRoles, nsRbs := argocdcommon.GetRBACToBeDeleted(ns, ls, acr.Client, acr.Logger)

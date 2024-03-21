@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -16,12 +15,6 @@ import (
 )
 
 func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
-
-	// ArgoCD instance is not cluster scoped, cleanup any existing clusterrolebindings & exit
-	if !sr.ClusterScoped {
-		return sr.deleteClusterRoleBinding(clusterResourceName)
-	}
-
 	req := permissions.ClusterRoleBindingRequest{
 		ObjectMeta: argoutil.GetObjMeta(clusterResourceName, "", sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		RoleRef: rbacv1.RoleRef{
@@ -38,50 +31,69 @@ func (sr *ServerReconciler) reconcileClusterRoleBinding() error {
 		},
 	}
 
+	ignoreDrift := false
+	updateFn := func(existing, desired *rbacv1.ClusterRoleBinding, changed *bool) error {
+		// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
+		if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
+			sr.Logger.Debug("detected drift in roleRef for clusterrolebinding", "name", existing.Name, "namespace", existing.Namespace)
+			if err := sr.deleteClusterRoleBinding(resourceName); err != nil {
+				return errors.Wrapf(err, "reconcileClusterRoleBinding: unable to delete obsolete rolebinding %s", existing.Name)
+			}
+			return nil
+		}
+
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
+		}
+
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return sr.reconClusterRoleBinding(req, argocdcommon.UpdateFnCrb(updateFn), ignoreDrift)
+}
+
+func (sr *ServerReconciler) reconClusterRoleBinding(req permissions.ClusterRoleBindingRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired := permissions.RequestClusterRoleBinding(req)
 
-	// clusterrolebinding doesn't exist in the namespace, create it
 	existing, err := permissions.GetClusterRoleBinding(desired.Name, sr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to retrieve clusterrolebinding %s", desired.Name)
+			return errors.Wrapf(err, "reconClusterRoleBinding: failed to retrieve ClusterRoleBinding %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		if err = permissions.CreateClusterRoleBinding(desired, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to create clusterrolebinding %s", desired.Name)
+			return errors.Wrapf(err, "reconClusterRoleBinding: failed to create ClusterRoleBinding %s in namespace %s", desired.Name, desired.Namespace)
 		}
-
-		sr.Logger.Info("clusterrolebinding created", "name", desired.Name)
+		sr.Logger.Info("cluster role binding created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
-	if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
-		if err := sr.deleteClusterRoleBinding(resourceName); err != nil {
-			return errors.Wrapf(err, "reconcileClusterRoleBinding: unable to delete obsolete clusterrolebinding %s", existing.Name)
-		}
-		// re-trigger reconciliation to create the deleted clusterrolebinding
-		return fmt.Errorf("detected drift in roleRef for clusterrolebinding %s, recreating it", existing.Name)
+	// ClusterRoleBinding found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
 	}
 
-	// difference in existing & desired clusterrolebinding, update it
 	changed := false
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
-	}
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	// nothing changed, exit reconciliation
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnCrb); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconClusterRoleBinding: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
 	if !changed {
 		return nil
 	}
 
 	if err = permissions.UpdateClusterRoleBinding(existing, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileClusterRoleBinding: failed to update clusterrolebinding %s", existing.Name)
+		return errors.Wrapf(err, "reconClusterRoleBinding: failed to update ClusterRoleBinding %s", existing.Name)
 	}
 
-	sr.Logger.Info("clusterrolebinding updated", "name", existing.Name)
+	sr.Logger.Info("cluster role binding updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 

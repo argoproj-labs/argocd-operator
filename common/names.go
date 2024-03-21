@@ -44,4 +44,10 @@ const (
 	CLusterSuffix = "cluster"
 
 	MetricsSuffix = "metrics"
+
+	AppMgmtSuffix = "app-mgmt"
+
+	AppsetMgmtSuffix = "appset-mgmt"
+
+	ResourceMgmtSuffix = "resource-mgmt"
 )

@@ -29,6 +29,10 @@ const (
 
 	// VolumeMountPathRedisServerTLS is the path to mount redis tls certs
 	VolumeMountPathRedisServerTLS = "/app/config/server/tls/redis"
+
+	ServerMetricsPort = 8083
+
+	ServerPort = 8080
 )
 
 // defaults

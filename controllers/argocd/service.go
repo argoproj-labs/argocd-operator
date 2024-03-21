@@ -91,9 +91,9 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
 			Name:       "metrics",
-			Port:       8083,
+			Port:       common.ServerMetricsPort,
 			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8083),
+			TargetPort: intstr.FromInt(common.ServerMetricsPort),
 		},
 	}
 
