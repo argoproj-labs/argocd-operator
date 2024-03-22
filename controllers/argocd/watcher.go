@@ -41,16 +41,23 @@ type ManagedNsOpts struct {
 var ScheduledForRBACDeletion map[string][]ManagedNsOpts
 
 func InitializeScheduledForRBACDeletion() {
-	if len(ScheduledForRBACDeletion) == 0 {
-		ScheduledForRBACDeletion = make(map[string][]ManagedNsOpts)
-	}
+	ScheduledForRBACDeletion = make(map[string][]ManagedNsOpts)
 }
 
 // namespacePredicate defines how we filter events on namespaces to decide if a new round of reconciliation should be triggered or not.
 func (r *ArgoCDReconciler) namespacePredicate() predicate.Predicate {
 	return predicate.Funcs{
-		CreateFunc: func(ce event.CreateEvent) bool {
-			return true
+		CreateFunc: func(e event.CreateEvent) bool {
+			processEvent := false
+
+			// for now only process namespace create events if namespace is created with the
+			// managed by label. This behavior might change if in the future we change namespace
+			// management to go through the CR instead of letting users directly label the ns
+			if _, ok := e.Object.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok {
+				processEvent = true
+			}
+
+			return processEvent
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// processEvent decides if this event reaches the event handler or not

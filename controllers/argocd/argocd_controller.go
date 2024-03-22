@@ -551,7 +551,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
 	r.setResourceWatches(bldr, r.namespaceMapper)
-	bldr.WithEventFilter(ignoreDeletionPredicate())
 	return bldr.Complete(r)
 }
 

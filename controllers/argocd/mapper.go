@@ -52,7 +52,7 @@ func (r *ArgoCDReconciler) namespaceMapper(ctx context.Context, obj client.Objec
 			}
 		}
 
-		// remove any labels from terminating namespaces
+		// remove any labels from terminating namespaces if they exist
 		delete(affectedNs.Labels, common.ArgoCDArgoprojKeyManagedBy)
 		delete(affectedNs.Labels, common.ArgoCDArgoprojKeyAppsManagedBy)
 		delete(affectedNs.Labels, common.ArgoCDArgoprojKeyAppSetsManagedBy)
@@ -62,47 +62,60 @@ func (r *ArgoCDReconciler) namespaceMapper(ctx context.Context, obj client.Objec
 		}
 	}
 
-	if _, ok := ScheduledForRBACDeletion[affectedNs.Name]; !ok {
-		// namespace does not need any resource deletion. nothing to do
-		return result
-	}
-
-	nsOpts := ScheduledForRBACDeletion[affectedNs.Name]
-
-	resourceDeletionLabelVals := map[string]string{}
 	newManagingNamespaces := map[string]string{}
 
-	// consolidate nsOpts by field in maps, to track unique rbac-type label values
-	for _, nsOpt := range nsOpts {
-		resourceDeletionLabelVals[nsOpt.ResourceDeletionLabelValue] = ""
-		newManagingNamespaces[nsOpt.NewManagingNs] = ""
-	}
+	if _, ok := ScheduledForRBACDeletion[affectedNs.Name]; ok {
+		// some kind of clean up is required in affected namespace
+		resourceDeletionLabelVals := map[string]string{}
 
-	// delete roles and rolebindings from affected namespace
-	err := r.deleteNonControlPlaneResources(affectedNs.Name, util.StringMapKeys(resourceDeletionLabelVals), nsOpts)
-	if err != nil {
-		r.Logger.Error(err, "namespaceMapper: failed to delete resources", "namespace", affectedNs.Name)
-	}
+		nsOpts := ScheduledForRBACDeletion[affectedNs.Name]
 
-	// delete namespace from previously managing instance's cluster secret by triggering reconciliation of instance
-	for _, nsOpt := range nsOpts {
-		if nsOpt.ResourceDeletionLabelValue == common.ArgoCDRBACTypeResourceMananagement {
-			// get previously managing instance and queue it for reconciliation
-			if objs, err := resource.ListObjects(nsOpt.PrevManagingNs, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{}); err == nil {
-				if instances, ok := objs.(*argoproj.ArgoCDList); ok {
-					if len(instances.Items) > 0 {
-						argocd := instances.Items[0]
+		// consolidate nsOpts by field in maps, to track unique rbac-type label values
+		for _, nsOpt := range nsOpts {
+			resourceDeletionLabelVals[nsOpt.ResourceDeletionLabelValue] = ""
+			newManagingNamespaces[nsOpt.NewManagingNs] = ""
+		}
 
-						namespacedName := client.ObjectKey{
-							Name:      argocd.Name,
-							Namespace: argocd.Namespace,
+		// delete roles and rolebindings from affected namespace
+		err := r.deleteNonControlPlaneResources(affectedNs.Name, util.StringMapKeys(resourceDeletionLabelVals), nsOpts)
+		if err != nil {
+			r.Logger.Error(err, "namespaceMapper: failed to delete resources", "namespace", affectedNs.Name)
+		}
+
+		// delete namespace from previously managing instance's cluster secret by triggering reconciliation of instance
+		for _, nsOpt := range nsOpts {
+			if nsOpt.ResourceDeletionLabelValue == common.ArgoCDRBACTypeResourceMananagement {
+				// get previously managing instance and queue it for reconciliation
+				if objs, err := resource.ListObjects(nsOpt.PrevManagingNs, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{}); err == nil {
+					if instances, ok := objs.(*argoproj.ArgoCDList); ok {
+						if len(instances.Items) > 0 {
+							argocd := instances.Items[0]
+
+							namespacedName := client.ObjectKey{
+								Name:      argocd.Name,
+								Namespace: argocd.Namespace,
+							}
+							result = append(result, reconcile.Request{
+								NamespacedName: namespacedName,
+							})
 						}
-						result = append(result, reconcile.Request{
-							NamespacedName: namespacedName,
-						})
 					}
 				}
 			}
+		}
+	} else {
+		// no clean up required, but we may have a newly managed namespace that needs to be reconciled. Add any managing Namespaces to the set
+		// of namespaces to be reconciled
+		if val, ok := affectedNs.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok {
+			newManagingNamespaces[val] = ""
+		}
+
+		if val, ok := affectedNs.Labels[common.ArgoCDArgoprojKeyAppsManagedBy]; ok {
+			newManagingNamespaces[val] = ""
+		}
+
+		if val, ok := affectedNs.Labels[common.ArgoCDArgoprojKeyAppSetsManagedBy]; ok {
+			newManagingNamespaces[val] = ""
 		}
 	}
 
