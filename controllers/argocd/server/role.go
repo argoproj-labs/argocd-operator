@@ -113,7 +113,7 @@ func (sr *ServerReconciler) reconcileManagedNsRoles() error {
 		}
 
 		req := permissions.RoleRequest{
-			ObjectMeta: argoutil.GetObjMeta(managedNsResourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+			ObjectMeta: argoutil.GetObjMeta(managedNsResourceName, managedNs, sr.Instance.Name, sr.Instance.Namespace, component, argocdcommon.GetResourceManagementLabel(), util.EmptyMap()),
 			Rules:      getManagedNsPolicyRules(),
 			Instance:   sr.Instance,
 			Client:     sr.Client,
@@ -146,25 +146,25 @@ func (sr *ServerReconciler) reconcileManagedNsRoles() error {
 func (sr *ServerReconciler) reconcileSourceNsRoles() error {
 	var reconcileErrs util.MultiError
 
-	for managedNs := range sr.SourceNamespaces {
+	for sourceNs := range sr.SourceNamespaces {
 		// Skip namespace if can't be retrieved or in terminating state
-		ns, err := cluster.GetNamespace(managedNs, sr.Client)
+		ns, err := cluster.GetNamespace(sourceNs, sr.Client)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileSourceNsRoles: unable to retrieve namesapce", "name", managedNs)
+			sr.Logger.Error(err, "reconcileSourceNsRoles: unable to retrieve namesapce", "name", sourceNs)
 			continue
 		}
 		if ns.DeletionTimestamp != nil {
-			sr.Logger.Debug("reconcileSourceNsRoles: skipping namespace in terminating state", "name", managedNs)
+			sr.Logger.Debug("reconcileSourceNsRoles: skipping namespace in terminating state", "name", sourceNs)
 			continue
 		}
 
 		// Skip control plane namespace
-		if managedNs == sr.Instance.Namespace {
+		if sourceNs == sr.Instance.Namespace {
 			continue
 		}
 
 		req := permissions.RoleRequest{
-			ObjectMeta: argoutil.GetObjMeta(sourceNsResourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+			ObjectMeta: argoutil.GetObjMeta(sourceNsResourceName, sourceNs, sr.Instance.Name, sr.Instance.Namespace, component, argocdcommon.GetAppManagementLabel(), util.EmptyMap()),
 			Rules:      getSourceNsPolicyRules(),
 			Instance:   sr.Instance,
 			Client:     sr.Client,
