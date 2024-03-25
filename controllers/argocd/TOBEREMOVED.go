@@ -1231,35 +1231,6 @@ func shortenHostname(hostname string) (string, error) {
 	return resultHostname, nil
 }
 
-// newService returns a new Service for the given ArgoCD instance.
-func newService(cr *argoproj.ArgoCD) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name,
-			Namespace: cr.Namespace,
-			Labels:    argoutil.LabelsForCluster(cr),
-		},
-	}
-}
-
-// newServiceWithName returns a new Service instance for the given ArgoCD using the given name.
-func newServiceWithName(name string, component string, cr *argoproj.ArgoCD) *corev1.Service {
-	svc := newService(cr)
-	svc.ObjectMeta.Name = name
-
-	lbls := svc.ObjectMeta.Labels
-	lbls[common.ArgoCDKeyName] = name
-	lbls[common.ArgoCDKeyComponent] = component
-	svc.ObjectMeta.Labels = lbls
-
-	return svc
-}
-
-// newServiceWithSuffix returns a new Service instance for the given ArgoCD using the given suffix.
-func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *corev1.Service {
-	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
-}
-
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
