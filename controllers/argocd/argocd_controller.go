@@ -387,9 +387,16 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		return err
 	}
 
-	if err := r.AppController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile application controller")
-		return err
+	if r.Instance.Spec.Controller.IsEnabled() {
+		if err := r.AppController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile application controller")
+			return err
+		}
+	} else {
+		r.Logger.Info("app controller disabled; deleting resources")
+		if err := r.AppController.DeleteResources(); err != nil {
+			r.Logger.Error(err, "failed to delete app controller resources")
+		}
 	}
 
 	if r.Instance.Spec.Server.IsEnabled() {
@@ -500,6 +507,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		ClusterScoped:     r.ClusterScoped,
 		ManagedNamespaces: r.ResourceManagedNamespaces,
 		SourceNamespaces:  r.AppManagedNamespaces,
+		Logger:            util.NewLogger(common.AppControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	appsetController := &applicationset.ApplicationSetReconciler{
@@ -540,6 +548,9 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.RedisController.Appcontroller = appController
 	r.RedisController.Server = serverController
 	r.RedisController.RepoServer = reposerverController
+
+	r.AppController.Redis = redisController
+	r.AppController.RepoServer = reposerverController
 
 	r.NotificationsController = notificationsController
 

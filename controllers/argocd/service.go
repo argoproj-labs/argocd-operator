@@ -77,33 +77,6 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcileMetricsService will ensure that the Service for the Argo CD application controller metrics is present.
-func (r *ReconcileArgoCD) reconcileMetricsService(cr *argoproj.ArgoCD) error {
-	svc := newServiceWithSuffix("metrics", "metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		// Service found, do nothing
-		return nil
-	}
-
-	svc.Spec.Selector = map[string]string{
-		common.ArgoCDKeyName: nameWithSuffix("application-controller", cr),
-	}
-
-	svc.Spec.Ports = []corev1.ServicePort{
-		{
-			Name:       "metrics",
-			Port:       8082,
-			Protocol:   corev1.ProtocolTCP,
-			TargetPort: intstr.FromInt(8082),
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), svc)
-}
-
 // reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
 func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server-metrics", "server", cr)

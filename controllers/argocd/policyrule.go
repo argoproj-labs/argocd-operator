@@ -7,23 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func policyRuleForApplicationController() []v1.PolicyRule {
-
-	return []v1.PolicyRule{
-		{
-			APIGroups: []string{
-				"*",
-			},
-			Resources: []string{
-				"*",
-			},
-			Verbs: []string{
-				"*",
-			},
-		},
-	}
-}
-
 func policyRuleForDexServer() []v1.PolicyRule {
 
 	return []v1.PolicyRule{

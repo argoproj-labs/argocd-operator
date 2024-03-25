@@ -1122,3 +1122,55 @@ func applyReconcilerHook(cr *argoproj.ArgoCD, i interface{}, hint string) error 
 	}
 	return nil
 }
+
+// newStatefulSet returns a new StatefulSet instance for the given ArgoCD instance.
+func newStatefulSet(cr *argoproj.ArgoCD) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newStatefulSetWithName returns a new StatefulSet instance for the given ArgoCD using the given name.
+func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
+	ss := newStatefulSet(cr)
+	ss.ObjectMeta.Name = name
+
+	lbls := ss.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
+	ss.ObjectMeta.Labels = lbls
+
+	ss.Spec = appsv1.StatefulSetSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				common.ArgoCDKeyName: name,
+			},
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.ArgoCDKeyName: name,
+				},
+			},
+			Spec: corev1.PodSpec{
+				NodeSelector: common.DefaultNodeSelector(),
+			},
+		},
+	}
+	if cr.Spec.NodePlacement != nil {
+		ss.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(ss.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		ss.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
+	ss.Spec.ServiceName = name
+
+	return ss
+}
+
+// newStatefulSetWithSuffix returns a new StatefulSet instance for the given ArgoCD using the given suffix.
+func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
+	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+}

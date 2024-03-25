@@ -1,11 +1,13 @@
 package appcontroller
 
 import (
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
 type AppControllerReconciler struct {
@@ -13,18 +15,146 @@ type AppControllerReconciler struct {
 	Scheme            *runtime.Scheme
 	Instance          *argoproj.ArgoCD
 	ClusterScoped     bool
-	Logger            logr.Logger
+	Logger            *util.Logger
 	ManagedNamespaces map[string]string
 	SourceNamespaces  map[string]string
+
+	Redis      RedisController
+	RepoServer RepoServerController
 }
 
-func (acr *AppControllerReconciler) Reconcile() error {
+var (
+	resourceName          string
+	metricsResourceName   string
+	managedNsResourceName string
+	clusterResourceName   string
+	component             string
+)
 
-	// controller logic goes here
+const (
+	appMgmtSuffix      = "app-mgmt"
+	resourceMgmtSuffix = "resource-mgmt"
+)
+
+func (acr *AppControllerReconciler) Reconcile() error {
+	acr.varSetter()
+
+	if err := acr.reconcileServiceAccount(); err != nil {
+		acr.Logger.Error(err, "failed to reconcile service account")
+		return err
+	}
+
+	if acr.ClusterScoped {
+		// delete namespaced RBAC and reconcile cluster RBAC
+		var deletionErr util.MultiError
+		err := acr.deleteRoleBinding(resourceName, acr.Instance.Namespace)
+		deletionErr.Append(err)
+
+		err = acr.deleteRole(resourceName, acr.Instance.Namespace)
+		deletionErr.Append(err)
+
+		roles, rbs, err := acr.getManagedRBACToBeDeleted()
+		if err != nil {
+			acr.Logger.Error(err, "failed to retrieve one or more namespaced rbac resources to be deleted")
+		} else {
+
+			deletionErr.Append(acr.DeleteRoleBindings(rbs))
+			deletionErr.Append(acr.DeleteRoles(roles))
+			if !deletionErr.IsNil() {
+				acr.Logger.Error(deletionErr, "failed to delete one or more managed namespaced rbac resources")
+			}
+		}
+
+		if err := acr.reconcileClusterRole(); err != nil {
+			acr.Logger.Error(err, "failed to reconcile clusterRole")
+			return err
+		}
+
+		if err := acr.reconcileClusterRoleBinding(); err != nil {
+			acr.Logger.Error(err, "failed to reconcile clusterRolebinding")
+			return err
+		}
+
+	} else {
+		// delete cluster RBAC and source ns resources, reconcile namespaced RBAC
+
+		if err := acr.deleteClusterRole(clusterResourceName); err != nil {
+			acr.Logger.Error(err, "failed to delete cluster role")
+		}
+
+		if err := acr.deleteClusterRoleBinding(clusterResourceName); err != nil {
+			acr.Logger.Error(err, "failed to delete cluster role")
+		}
+
+		if err := acr.reconcileRoles(); err != nil {
+			acr.Logger.Error(err, "failed to reconcile one or more roles")
+		}
+
+		if err := acr.reconcileRoleBindings(); err != nil {
+			acr.Logger.Error(err, "failed to reconcile one or more rolebindings")
+		}
+	}
+
+	if err := acr.reconcileMetricsService(); err != nil {
+		acr.Logger.Error(err, "failed to reconcile metrics service")
+	}
+
+	if err := acr.reconcileStatefulSet(); err != nil {
+		acr.Logger.Error(err, "failed to reconcile statefulset")
+	}
+
 	return nil
 }
 
-// TO DO: finish this
+func (acr *AppControllerReconciler) DeleteResources() error {
+	var deletionErr util.MultiError
+
+	err := acr.deleteStatefulSet(resourceName, acr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	err = acr.deleteService(metricsResourceName, acr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	if err := acr.deleteClusterRole(clusterResourceName); err != nil {
+		acr.Logger.Error(err, "failed to delete cluster role")
+	}
+
+	if err := acr.deleteClusterRoleBinding(clusterResourceName); err != nil {
+		acr.Logger.Error(err, "failed to delete cluster role")
+	}
+
+	err = acr.deleteRoleBinding(resourceName, acr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	err = acr.deleteRole(resourceName, acr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	roles, rbs, err := acr.getManagedRBACToBeDeleted()
+	if err != nil {
+		acr.Logger.Error(err, "failed to retrieve one or more namespaced rbac resources to be deleted")
+	} else {
+
+		deletionErr.Append(acr.DeleteRoleBindings(rbs))
+		deletionErr.Append(acr.DeleteRoles(roles))
+		if !deletionErr.IsNil() {
+			acr.Logger.Error(deletionErr, "failed to delete one or more managed namespaced rbac resources")
+		}
+	}
+
+	err = acr.deleteServiceAccount(resourceName, acr.Instance.Namespace)
+	deletionErr.Append(err)
+
+	return deletionErr.ErrOrNil()
+}
+
 func (acr *AppControllerReconciler) TriggerRollout(key string) error {
-	return acr.TriggerStatefulSetRollout("", "", key)
+	return acr.TriggerStatefulSetRollout(resourceName, acr.Instance.Namespace, key)
+}
+
+func (acr *AppControllerReconciler) varSetter() {
+	component = common.AppControllerComponent
+	resourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix)
+	metricsResourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix, common.MetricsSuffix)
+	managedNsResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix, resourceMgmtSuffix)
+	clusterResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix)
 }
