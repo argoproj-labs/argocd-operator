@@ -470,7 +470,6 @@ func getSourceNsPolicyRules() []rbacv1.PolicyRule {
 		},
 	}
 }
-<<<<<<< HEAD
 
 // getPolicyRules returns rules for non control plane ns application management
 func getAppsetSourceNsPolicyRules() []rbacv1.PolicyRule {
@@ -494,5 +493,3 @@ func getAppsetSourceNsPolicyRules() []rbacv1.PolicyRule {
 		},
 	}
 }
-=======
->>>>>>> db40ad542f1778d894a1ac14c3d20c6399f9fb32
