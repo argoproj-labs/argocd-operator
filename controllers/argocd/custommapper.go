@@ -3,7 +3,6 @@ package argocd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -32,18 +31,6 @@ func (r *ReconcileArgoCD) clusterResourceMapper(ctx context.Context, o client.Ob
 		}
 	}
 	return result
-}
-
-// isSecretOfInterest returns true if the name of the given secret matches one of the
-// well-known tls secrets used to secure communication amongst the Argo CD components.
-func isSecretOfInterest(o client.Object) bool {
-	if strings.HasSuffix(o.GetName(), "-repo-server-tls") {
-		return true
-	}
-	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
-		return true
-	}
-	return false
 }
 
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
@@ -102,35 +89,6 @@ func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) 
 			result = []reconcile.Request{
 				{NamespacedName: namespacedArgoCDObject},
 			}
-		}
-	}
-
-	return result
-}
-
-// namespaceResourceMapper maps a watch event on a namespace, back to the
-// ArgoCD object that we want to reconcile.
-func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
-	var result = []reconcile.Request{}
-
-	labels := o.GetLabels()
-	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
-		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
-			return result
-		}
-
-		if len(argocds.Items) != 1 {
-			return result
-		}
-
-		argocd := argocds.Items[0]
-		namespacedName := client.ObjectKey{
-			Name:      argocd.Name,
-			Namespace: argocd.Namespace,
-		}
-		result = []reconcile.Request{
-			{NamespacedName: namespacedName},
 		}
 	}
 

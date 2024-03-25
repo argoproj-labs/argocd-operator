@@ -487,7 +487,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-2"
-			n.Labels[common.ArgoCDArgoprojKeyManagedByClusterArgoCD] = "instance-2"
+			n.Labels[common.ArgoCDArgoprojKeyAppsManagedBy] = "instance-2"
 		}),
 		makeTestNs(func(n *corev1.Namespace) {
 			n.Name = "test-ns-3"
@@ -522,7 +522,7 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels{
-			common.ArgoCDArgoprojKeyManagedByClusterArgoCD: r.Instance.Namespace,
+			common.ArgoCDArgoprojKeyAppsManagedBy: r.Instance.Namespace,
 		},
 	}
 	existingManagedNamespaces, _ := cluster.ListNamespaces(r.Client, listOptions)

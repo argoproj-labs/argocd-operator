@@ -2,8 +2,11 @@ package common
 
 // app-controller
 const (
-	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
-	ArgoCDApplicationControllerComponent = "argocd-application-controller"
+	AppControllerComponent = "application-controller"
+
+	AppControllerSuffix = "application-controller"
+
+	AppControllerMetricsPort = 8082
 
 	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
 	ArgocdApplicationControllerDefaultReplicas = 1
@@ -26,4 +29,12 @@ const (
 	// ArgoCDDefaultControllerResourceRequestMemory is the default memory requested when not specified for the Argo CD
 	// application controller contianer.
 	ArgoCDDefaultControllerResourceRequestMemory = "32Mi"
+)
+
+// env vars
+const (
+	// AppControllerClusterRoleEnvVar is an environment variable to specify a custom cluster role for Argo CD application controller
+	AppControllerClusterRoleEnvVar = "CONTROLLER_CLUSTER_ROLE"
+
+	AppControllerReplicasEnvVar = "ARGOCD_CONTROLLER_REPLICAS"
 )

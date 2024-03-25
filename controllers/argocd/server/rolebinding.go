@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -105,4 +106,13 @@ func (sr *ServerReconciler) deleteRoleBinding(name, namespace string) error {
 	}
 	sr.Logger.Info("roleBinding deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+// DeleteRoleBindings deletes multiple RoleBindings based on the provided list of NamespacedName.
+func (sr *ServerReconciler) DeleteRoleBindings(roleBindings []types.NamespacedName) error {
+	var deletionErr util.MultiError
+	for _, roleBinding := range roleBindings {
+		deletionErr.Append(sr.deleteRoleBinding(roleBinding.Name, roleBinding.Namespace))
+	}
+	return deletionErr.ErrOrNil()
 }

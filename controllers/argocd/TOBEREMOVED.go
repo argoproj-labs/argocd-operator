@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -32,7 +34,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -579,22 +583,6 @@ func newRouteWithSuffix(suffix string, cr *argoproj.ArgoCD) *routev1.Route {
 	return newRouteWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
-// isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
-// may have been made the owner of the tls secret created by the OpenShift service CA, used
-// to secure communication amongst the Argo CD components.
-func isOwnerOfInterest(owner metav1.OwnerReference) bool {
-	if owner.Kind != "Service" {
-		return false
-	}
-	if strings.HasSuffix(owner.Name, "-repo-server") {
-		return true
-	}
-	if strings.HasSuffix(owner.Name, "-redis") {
-		return true
-	}
-	return false
-}
-
 // triggerDeploymentRollout will update the label with the given key to trigger a new rollout of the Deployment.
 func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment, key string) error {
 	if !argoutil.IsObjectFound(r.Client, deployment.Namespace, deployment.Name, deployment) {
@@ -832,9 +820,305 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	return reconcile.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *ReconcileArgoCD) SetupWithManager(mgr ctrl.Manager) error {
-	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.clusterResourceMapper, r.tlsSecretMapper, r.namespaceResourceMapper, r.clusterSecretResourceMapper, r.applicationSetSCMTLSConfigMapMapper)
-	return bldr.Complete(r)
+func namespaceFilterPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// This checks if ArgoCDManagedByLabel exists in newMeta, if exists then -
+			// 1. Check if oldMeta had the label or not? if no, return true
+			// 2. if yes, check if the old and new values are different, if yes,
+			// first deleteRBACs for the old value & return true.
+			// Event is then handled by the reconciler, which would create appropriate RBACs.
+			if valNew, ok := e.ObjectNew.GetLabels()[common.ArgoCDManagedByLabel]; ok {
+				if valOld, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && valOld != valNew {
+					k8sClient, err := initK8sClient()
+					if err != nil {
+						return false
+					}
+					if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
+						log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
+					} else {
+						log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
+					}
+
+					// Delete namespace from cluster secret of previously managing argocd instance
+					if err = deleteManagedNamespaceFromClusterSecret(valOld, e.ObjectOld.GetName(), k8sClient); err != nil {
+						log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
+					} else {
+						log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
+					}
+				}
+				return true
+			}
+			// This checks if the old meta had the label, if it did, delete the RBACs for the namespace
+			// which were created when the label was added to the namespace.
+			if ns, ok := e.ObjectOld.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
+				k8sClient, err := initK8sClient()
+				if err != nil {
+					return false
+				}
+				if err := deleteRBACsForNamespace(e.ObjectOld.GetName(), k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("failed to delete RBACs for namespace: %s", e.ObjectOld.GetName()))
+				} else {
+					log.Info(fmt.Sprintf("Successfully removed the RBACs for namespace: %s", e.ObjectOld.GetName()))
+				}
+
+				// Delete managed namespace from cluster secret
+				if err = deleteManagedNamespaceFromClusterSecret(ns, e.ObjectOld.GetName(), k8sClient); err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.ObjectOld.GetName()))
+				} else {
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.ObjectOld.GetName()))
+				}
+
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if ns, ok := e.Object.GetLabels()[common.ArgoCDManagedByLabel]; ok && ns != "" {
+				k8sClient, err := initK8sClient()
+
+				if err != nil {
+					return false
+				}
+				// Delete managed namespace from cluster secret
+				err = deleteManagedNamespaceFromClusterSecret(ns, e.Object.GetName(), k8sClient)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("unable to delete namespace %s from cluster secret", e.Object.GetName()))
+				} else {
+					log.Info(fmt.Sprintf("Successfully deleted namespace %s from cluster secret", e.Object.GetName()))
+				}
+			}
+
+			// if a namespace is deleted, remove it from deprecationEventEmissionTracker (if exists) so that if a namespace with the same name
+			// is created in the future and contains an Argo CD instance, it will be tracked appropriately
+			delete(DeprecationEventEmissionTracker, e.Object.GetName())
+			return false
+		},
+	}
+}
+
+// deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
+func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) error {
+	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
+
+	// List all the roles created for ArgoCD using the label selector
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
+	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to list roles for namespace: %s", sourceNS))
+		return err
+	}
+
+	// Delete all the retrieved roles
+	for _, role := range roles.Items {
+		err = k8sClient.RbacV1().Roles(sourceNS).Delete(context.TODO(), role.Name, metav1.DeleteOptions{})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to delete roles for namespace: %s", sourceNS))
+		}
+	}
+
+	// List all the roles bindings created for ArgoCD using the label selector
+	roleBindings, err := k8sClient.RbacV1().RoleBindings(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS))
+		return err
+	}
+
+	// Delete all the retrieved role bindings
+	for _, roleBinding := range roleBindings.Items {
+		err = k8sClient.RbacV1().RoleBindings(sourceNS).Delete(context.TODO(), roleBinding.Name, metav1.DeleteOptions{})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to delete role binding for namespace: %s", sourceNS))
+		}
+	}
+
+	return nil
+}
+
+func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient kubernetes.Interface) error {
+
+	// Get the cluster secret used for configuring ArgoCD
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
+	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))
+		return err
+	}
+	for _, secret := range secrets.Items {
+		if string(secret.Data["server"]) != common.ArgoCDDefaultServer {
+			continue
+		}
+		if namespaces, ok := secret.Data["namespaces"]; ok {
+			namespaceList := strings.Split(string(namespaces), ",")
+			var result []string
+
+			for _, n := range namespaceList {
+				// remove the namespace from the list of namespaces
+				if strings.TrimSpace(n) == sourceNS {
+					continue
+				}
+				result = append(result, strings.TrimSpace(n))
+				sort.Strings(result)
+				secret.Data["namespaces"] = []byte(strings.Join(result, ","))
+			}
+			// Update the secret with the updated list of namespaces
+			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
+				log.Error(err, fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS))
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// removeUnmanagedSourceNamespaceResources cleansup resources from SourceNamespaces if namespace is not managed by argocd instance.
+// It also removes the managed-by-cluster-argocd label from the namespace
+func (r *ReconcileArgoCD) removeUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD) error {
+
+	for ns := range r.ManagedSourceNamespaces {
+		managedNamespace := false
+		if cr.GetDeletionTimestamp() == nil {
+			for _, namespace := range cr.Spec.SourceNamespaces {
+				if namespace == ns {
+					managedNamespace = true
+					break
+				}
+			}
+		}
+
+		if !managedNamespace {
+			if err := r.cleanupUnmanagedSourceNamespaceResources(cr, ns); err != nil {
+				log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", ns))
+				continue
+			}
+			delete(r.ManagedSourceNamespaces, ns)
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.ArgoCD, ns string) error {
+	namespace := corev1.Namespace{}
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: ns}, &namespace); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		return nil
+	}
+	// Remove managed-by-cluster-argocd from the namespace
+	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
+	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
+		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
+	}
+
+	// Delete Roles for SourceNamespaces
+	existingRole := v1.Role{}
+	roleName := getRoleNameForApplicationSourceNamespaces(namespace.Name, cr)
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace.Name}, &existingRole); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to fetch the role for the service account associated with %s : %s", common.ArgoCDServerComponent, err)
+		}
+	}
+	if existingRole.Name != "" {
+		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+			return err
+		}
+	}
+	// Delete RoleBindings for SourceNamespaces
+	existingRoleBinding := &v1.RoleBinding{}
+	roleBindingName := getRoleBindingNameForSourceNamespaces(cr.Name, namespace.Name)
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace.Name}, existingRoleBinding); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to get the rolebinding associated with %s : %s", common.ArgoCDServerComponent, err)
+		}
+	}
+	if existingRoleBinding.Name != "" {
+		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// isSecretOfInterest returns true if the name of the given secret matches one of the
+// well-known tls secrets used to secure communication amongst the Argo CD components.
+func isSecretOfInterest(o client.Object) bool {
+	if strings.HasSuffix(o.GetName(), "-repo-server-tls") {
+		return true
+	}
+	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
+		return true
+	}
+	return false
+}
+
+// isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
+// may have been made the owner of the tls secret created by the OpenShift service CA, used
+// to secure communication amongst the Argo CD components.
+func isOwnerOfInterest(owner metav1.OwnerReference) bool {
+	if owner.Kind != "Service" {
+		return false
+	}
+	if strings.HasSuffix(owner.Name, "-repo-server") {
+		return true
+	}
+	if strings.HasSuffix(owner.Name, "-redis") {
+		return true
+	}
+	return false
+}
+
+// namespaceResourceMapper maps a watch event on a namespace, back to the
+// ArgoCD object that we want to reconcile.
+func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.Object) []reconcile.Request {
+	var result = []reconcile.Request{}
+
+	labels := o.GetLabels()
+	if v, ok := labels[common.ArgoCDManagedByLabel]; ok {
+		argocds := &argoproj.ArgoCDList{}
+		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: v}); err != nil {
+			return result
+		}
+
+		if len(argocds.Items) != 1 {
+			return result
+		}
+
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
+		}
+	}
+
+	return result
+}
+
+var (
+	mutex sync.RWMutex
+	hooks = []Hook{}
+)
+
+// Hook changes resources as they are created or updated by the reconciler.
+type Hook func(*argoproj.ArgoCD, interface{}, string) error
+
+// Register adds a modifier for updating resources during reconciliation.
+func Register(h ...Hook) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	hooks = append(hooks, h...)
+}
+
+// nolint:unparam
+func applyReconcilerHook(cr *argoproj.ArgoCD, i interface{}, hint string) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+	for _, v := range hooks {
+		if err := v(cr, i, hint); err != nil {
+			return err
+		}
+	}
+	return nil
 }

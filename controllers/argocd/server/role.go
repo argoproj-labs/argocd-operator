@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -85,6 +86,14 @@ func (sr *ServerReconciler) deleteRole(name, namespace string) error {
 	}
 	sr.Logger.Info("role deleted", "name", name, "namespace", namespace)
 	return nil
+}
+
+func (sr *ServerReconciler) DeleteRoles(roles []types.NamespacedName) error {
+	var deletionErr util.MultiError
+	for _, role := range roles {
+		deletionErr.Append(sr.deleteRole(role.Name, role.Namespace))
+	}
+	return deletionErr.ErrOrNil()
 }
 
 // getPolicyRulesForArgoCDNamespace returns rules for argocd ns
