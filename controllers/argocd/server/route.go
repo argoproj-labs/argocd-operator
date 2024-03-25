@@ -43,6 +43,12 @@ func (sr *ServerReconciler) reconcileRoute() error {
 		req.Spec.Host = sr.getHost() // TODO: What additional role needed for this?
 	}
 
+	hostname, err := argocdcommon.ShortenHostname(req.Spec.Host)
+	if err != nil {
+		return err
+	}
+	req.Spec.Host = hostname
+
 	if sr.Instance.Spec.Server.Insecure {
 		// Disable TLS and rely on the cluster certificate.
 		req.Spec.Port = &routev1.RoutePort{
