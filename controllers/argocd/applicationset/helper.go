@@ -1,11 +1,21 @@
 package applicationset
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+)
+
+const (
+	SCMRootCAPathCmd = "--scm-root-ca-path"
+
+	GitlabSCMTlsCertPath = "/app/tls/scm/cert"
 )
 
 // getHost will return the host for the given ArgoCD.
@@ -73,8 +83,32 @@ func (asr *ApplicationSetReconciler) getCmd() []string {
 	cmd = append(cmd, EntryPointSh)
 	cmd = append(cmd, AppSetController)
 
-	cmd = append(cmd, ArgoCDRepoServer)
-	cmd = append(cmd, asr.RepoServer.GetServerAddress())
+	if asr.Instance.Spec.Repo.IsEnabled() {
+		cmd = append(cmd, ArgoCDRepoServer)
+		cmd = append(cmd, asr.RepoServer.GetServerAddress())
+	} else {
+		asr.Logger.Debug("getCmd: repo-server disabled; skipping repo-server configuration")
+	}
+
+	if asr.Instance.Spec.ApplicationSet.SCMRootCAConfigMap != "" {
+		cmd = append(cmd, SCMRootCAPathCmd)
+		cmd = append(cmd, GitlabSCMTlsCertPath)
+	}
+
+	if len(asr.AppsetSourceNamespaces) > 0 {
+		cmd = append(cmd, "--applicationset-namespaces", fmt.Sprint(strings.Join(util.StringMapKeys(asr.AppsetSourceNamespaces), ",")))
+	}
+
+	if len(asr.Instance.Spec.ApplicationSet.SCMProviders) > 0 {
+		cmd = append(cmd, "--allowed-scm-providers", fmt.Sprint(strings.Join(asr.Instance.Spec.ApplicationSet.SCMProviders, ",")))
+	}
+
+	// appset in any ns is enabled and no scmProviders allow list is specified,
+	// disables scm & PR generators to prevent potential security issues
+	// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
+	if len(asr.AppsetSourceNamespaces) > 0 && !(len(asr.Instance.Spec.ApplicationSet.SCMProviders) > 0) {
+		cmd = append(cmd, "--enable-scm-providers=false")
+	}
 
 	cmd = append(cmd, common.LogLevelCmd)
 	cmd = append(cmd, argoutil.GetLogLevel(asr.Instance.Spec.ApplicationSet.LogLevel))

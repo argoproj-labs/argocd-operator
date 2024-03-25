@@ -236,8 +236,11 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	if err = r.setResourceManagedNamespaces(); err != nil {
 		return reconcile.Result{}, err
 	}
-
 	if err = r.setAppSourceNamespaces(); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err = r.setAppsetSourceNamespaces(); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -642,6 +645,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:                 r.Client,
 		Scheme:                 r.Scheme,
 		Instance:               r.Instance,
+		ClusterScoped:          r.ClusterScoped,
 		AppsetSourceNamespaces: r.AppsetSourceNamespaces,
 		Logger:                 util.NewLogger(common.AppSetControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}

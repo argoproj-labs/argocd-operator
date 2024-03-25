@@ -63,21 +63,22 @@ func (acr *AppControllerReconciler) getCmd() []string {
 		"--operation-processors", fmt.Sprint(acr.getOperationProcessors()),
 	}
 
+	// redis flags
 	if acr.Instance.Spec.Redis.IsEnabled() {
 		cmd = append(cmd, common.RedisCmd, acr.Redis.GetServerAddress())
+		if acr.Redis.UseTLS() {
+			cmd = append(cmd, common.RedisUseTLSCmd)
+			if acr.Instance.Spec.Redis.DisableTLSVerification {
+				cmd = append(cmd, common.RedisInsecureSkipTLSVerifyCmd)
+			} else {
+				cmd = append(cmd, common.RedisCACertificate, redisTLSCertPath)
+			}
+		}
 	} else {
 		acr.Logger.Debug("redis is disabled; skipping redis configuration")
 	}
 
-	if acr.Redis.UseTLS() {
-		cmd = append(cmd, common.RedisUseTLSCmd)
-		if acr.Instance.Spec.Redis.DisableTLSVerification {
-			cmd = append(cmd, common.RedisInsecureSkipTLSVerifyCmd)
-		} else {
-			cmd = append(cmd, common.RedisCACertificate, redisTLSCertPath)
-		}
-	}
-
+	// repo-server flags
 	if acr.Instance.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", acr.RepoServer.GetServerAddress())
 		if acr.RepoServer.TLSVerificationRequested() {

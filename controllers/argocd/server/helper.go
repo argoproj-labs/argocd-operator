@@ -145,28 +145,35 @@ func (sr *ServerReconciler) getCmd() []string {
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
+	// TO DO: check if dex enabled
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, sr.Dex.GetServerAddress())
 
 	// reposerver flags
-	if sr.RepoServer.UseTLS() {
-		cmd = append(cmd, "--repo-server-strict-tls")
+	if sr.Instance.Spec.Repo.IsEnabled() {
+		if sr.RepoServer.UseTLS() {
+			cmd = append(cmd, "--repo-server-strict-tls")
+		}
+		cmd = append(cmd, "--repo-server")
+		cmd = append(cmd, sr.RepoServer.GetServerAddress())
+	} else {
+		sr.Logger.Debug("getCmd: repo server disabled; skipping repo server configuration")
 	}
 
-	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, sr.RepoServer.GetServerAddress())
-
 	// redis flags
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, sr.Redis.GetServerAddress())
-
-	if sr.Redis.UseTLS() {
-		cmd = append(cmd, "--redis-use-tls")
-		if sr.Redis.TLSVerificationDisabled() {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
+	if sr.Instance.Spec.Redis.IsEnabled() {
+		cmd = append(cmd, "--redis")
+		cmd = append(cmd, sr.Redis.GetServerAddress())
+		if sr.Redis.UseTLS() {
+			cmd = append(cmd, "--redis-use-tls")
+			if sr.Redis.TLSVerificationDisabled() {
+				cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+			} else {
+				cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
+			}
 		}
+	} else {
+		sr.Logger.Debug("getCmd: redis disabled; skipping redis configuration")
 	}
 
 	// set log level & format

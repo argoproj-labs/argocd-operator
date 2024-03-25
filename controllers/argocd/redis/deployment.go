@@ -211,7 +211,7 @@ func (rr *RedisReconciler) getDeploymentContainers() []corev1.Container {
 	containers := []corev1.Container{}
 
 	redisContainer := corev1.Container{
-		Args:            rr.getArgs(),
+		Args:            rr.getCmd(),
 		Image:           rr.getContainerImage(),
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            redisName,
