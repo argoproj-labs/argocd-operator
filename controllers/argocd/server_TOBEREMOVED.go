@@ -17,6 +17,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -810,4 +811,69 @@ func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 // getArgoServerInsecure returns the insecure value for the ArgoCD Server component.
 func getArgoServerInsecure(cr *argoproj.ArgoCD) bool {
 	return cr.Spec.Server.Insecure
+}
+
+var (
+	maxReplicas int32 = 3
+	minReplicas int32 = 1
+	tcup        int32 = 50
+)
+
+func newHorizontalPodAutoscaler(cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+	return &autoscaling.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+func newHorizontalPodAutoscalerWithName(name string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+	hpa := newHorizontalPodAutoscaler(cr)
+	hpa.ObjectMeta.Name = name
+
+	lbls := hpa.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	hpa.ObjectMeta.Labels = lbls
+
+	return hpa
+}
+
+func newHorizontalPodAutoscalerWithSuffix(suffix string, cr *argoproj.ArgoCD) *autoscaling.HorizontalPodAutoscaler {
+	return newHorizontalPodAutoscalerWithName(nameWithSuffix(suffix, cr), cr)
+}
+
+// reconcileAutoscalers will ensure that all HorizontalPodAutoscalers are present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileAutoscalers(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileServerHPA(cr); err != nil {
+		return err
+	}
+	return nil
+}
+
+// reconcileServerMetricsService will ensure that the Service for the Argo CD server metrics is present.
+func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) error {
+	svc := newServiceWithSuffix("server-metrics", "server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		return nil // Service found, do nothing
+	}
+
+	svc.Spec.Selector = map[string]string{
+		common.ArgoCDKeyName: nameWithSuffix("server", cr),
+	}
+
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Name:       "metrics",
+			Port:       common.ServerMetricsPort,
+			Protocol:   corev1.ProtocolTCP,
+			TargetPort: intstr.FromInt(common.ServerMetricsPort),
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), svc)
 }

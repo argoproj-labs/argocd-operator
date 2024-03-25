@@ -51,7 +51,7 @@ func TestServerReconciler_customRole(t *testing.T) {
 	argoCDRole := &rbacv1.Role{}
 	err = sr.Client.Get(context.TODO(), types.NamespacedName{Name: "test-argocd-server", Namespace: sr.Instance.Namespace}, argoCDRole)
 	assert.NoError(t, err)
-	assert.Equal(t, getPolicyRulesForArgoCDNamespace(), argoCDRole.Rules)
+	assert.Equal(t, getPolicyRules(), argoCDRole.Rules)
 
 	// use custom role for argocd server
 	t.Setenv("SERVER_CLUSTER_ROLE", "my-role")

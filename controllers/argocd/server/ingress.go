@@ -18,47 +18,49 @@ func (sr *ServerReconciler) reconcileIngresses() error {
 	var reconErrs util.MultiError
 
 	// reconcile ingress for server
-	if err := sr.reconcileServerIngress(); err != nil {
-		reconErrs.Append(err)
+	if sr.Instance.Spec.Server.Ingress.Enabled {
+		if err := sr.reconcileIngress(); err != nil {
+			reconErrs.Append(err)
+		}
+	} else {
+		if err := sr.deleteIngress(resourceName, sr.Instance.Namespace); err != nil {
+			reconErrs.Append(err)
+		}
 	}
 
 	// reconcile ingress for server grpc
-	if err := sr.reconcileServerGRPCIngress(); err != nil {
-		reconErrs.Append(err)
+	if sr.Instance.Spec.Server.GRPC.Ingress.Enabled {
+		if err := sr.reconcileGRPCIngress(); err != nil {
+			reconErrs.Append(err)
+		}
+	} else {
+		if err := sr.deleteIngress(grpcResourceName, sr.Instance.Namespace); err != nil {
+			reconErrs.Append(err)
+		}
 	}
 
 	return reconErrs.ErrOrNil()
 }
 
-// reconcileIngresses will ensure that ArgoCD .Spec.Server.Ingress resource is present.
-func (sr *ServerReconciler) reconcileServerIngress() error {
-
-	// ingress disabled, cleanup and exit
-	if !sr.Instance.Spec.Server.Ingress.Enabled {
-		return sr.deleteIngress(resourceName, sr.Instance.Namespace)
-	}
-
-	ingressReq := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+// reconcileIngress will ensure that ArgoCD .Spec.Server.Ingress resource is present.
+func (sr *ServerReconciler) reconcileIngress() error {
+	req := networking.IngressRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, getIngressLabels(), util.EmptyMap()),
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
-	// add ingress labels
-	ingressReq.ObjectMeta.Labels[common.NginxIngressK8sKeyForceSSLRedirect] = "true"
-	ingressReq.ObjectMeta.Labels[common.NginxIngressK8sKeyBackendProtocol] = "true"
-
 	// override default annotations if specified
 	if len(sr.Instance.Spec.Server.Ingress.Annotations) > 0 {
-		ingressReq.ObjectMeta.Annotations = sr.Instance.Spec.Server.Ingress.Annotations
+		req.ObjectMeta.Annotations = sr.Instance.Spec.Server.Ingress.Annotations
 	}
 
-	ingressReq.Spec.IngressClassName = sr.Instance.Spec.Server.Ingress.IngressClassName
+	req.Spec.IngressClassName = sr.Instance.Spec.Server.Ingress.IngressClassName
 
 	pathType := networkingv1.PathTypeImplementationSpecific
-	ingressReq.Spec.Rules = []networkingv1.IngressRule{
+	req.Spec.Rules = []networkingv1.IngressRule{
 		{
-			Host: getHost(sr.Instance),
+			Host: sr.getHost(),
 			IngressRuleValue: networkingv1.IngressRuleValue{
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
@@ -81,10 +83,10 @@ func (sr *ServerReconciler) reconcileServerIngress() error {
 	}
 
 	// add default TLS options
-	ingressReq.Spec.TLS = []networkingv1.IngressTLS{
+	req.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts: []string{
-				getHost(sr.Instance),
+				sr.getHost(),
 			},
 			SecretName: common.ArgoCDSecretName,
 		},
@@ -92,42 +94,43 @@ func (sr *ServerReconciler) reconcileServerIngress() error {
 
 	// override TLS options if specified
 	if len(sr.Instance.Spec.Server.Ingress.TLS) > 0 {
-		ingressReq.Spec.TLS = sr.Instance.Spec.Server.Ingress.TLS
+		req.Spec.TLS = sr.Instance.Spec.Server.Ingress.TLS
 	}
 
-	return sr.reconcileIngress(ingressReq)
+	ignoreDrift := false
+	updateFn := func(desired, existing *networkingv1.Ingress, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.IngressClassName, Desired: &desired.Spec.IngressClassName, ExtraAction: nil},
+			{Existing: &existing.Spec.Rules, Desired: &desired.Spec.Rules, ExtraAction: nil},
+			{Existing: &existing.Spec.TLS, Desired: &desired.Spec.TLS, ExtraAction: nil},
+		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+
+	return sr.reconIngress(req, argocdcommon.UpdateFnIngress(updateFn), ignoreDrift)
 }
 
-// reconcileIngresses will ensure that ArgoCD .Spec.Server.GRPC.Ingress resource is present.
-func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
+// reconcileGRPCIngress will ensure that ArgoCD .Spec.Server.GRPC.Ingress resource is present.
+func (sr *ServerReconciler) reconcileGRPCIngress() error {
 
-	ingressName := resourceName + "-grpc"
-
-	// ingress disabled, cleanup and exit
-	if !sr.Instance.Spec.Server.GRPC.Ingress.Enabled {
-		return sr.deleteIngress(ingressName, sr.Instance.Namespace)
-	}
-
-	ingressReq := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(ingressName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+	req := networking.IngressRequest{
+		ObjectMeta: argoutil.GetObjMeta(grpcResourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, getGRPCIngressLabels(), util.EmptyMap()),
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
-	// add ingress annotations
-	ingressReq.ObjectMeta.Labels[common.NginxIngressK8sKeyBackendProtocol] = "GRPC"
-
 	// override default annotations if specified
 	if len(sr.Instance.Spec.Server.GRPC.Ingress.Annotations) > 0 {
-		ingressReq.ObjectMeta.Annotations = sr.Instance.Spec.Server.GRPC.Ingress.Annotations
+		req.ObjectMeta.Annotations = sr.Instance.Spec.Server.GRPC.Ingress.Annotations
 	}
 
-	ingressReq.Spec.IngressClassName = sr.Instance.Spec.Server.GRPC.Ingress.IngressClassName
+	req.Spec.IngressClassName = sr.Instance.Spec.Server.GRPC.Ingress.IngressClassName
 
 	pathType := networkingv1.PathTypeImplementationSpecific
-	ingressReq.Spec.Rules = []networkingv1.IngressRule{
+	req.Spec.Rules = []networkingv1.IngressRule{
 		{
-			Host: getGRPCHost(sr.Instance),
+			Host: sr.getGRPCHost(),
 			IngressRuleValue: networkingv1.IngressRuleValue{
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
@@ -150,10 +153,10 @@ func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
 	}
 
 	// add TLS options
-	ingressReq.Spec.TLS = []networkingv1.IngressTLS{
+	req.Spec.TLS = []networkingv1.IngressTLS{
 		{
 			Hosts: []string{
-				getGRPCHost(sr.Instance),
+				sr.getGRPCHost(),
 			},
 			SecretName: common.ArgoCDSecretName,
 		},
@@ -161,77 +164,73 @@ func (sr *ServerReconciler) reconcileServerGRPCIngress() error {
 
 	// override TLS options if specified
 	if len(sr.Instance.Spec.Server.GRPC.Ingress.TLS) > 0 {
-		ingressReq.Spec.TLS = sr.Instance.Spec.Server.GRPC.Ingress.TLS
+		req.Spec.TLS = sr.Instance.Spec.Server.GRPC.Ingress.TLS
 	}
 
-	return sr.reconcileIngress(ingressReq)
-}
-
-// reconcileIngress will ensure that provided ingressRequest resource is created or updated.
-func (sr *ServerReconciler) reconcileIngress(req networking.IngressRequest) error {
-
-	desired, err := networking.RequestIngress(req)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileIngress: failed to request ingress %s in namespace %s", desired.Name, desired.Namespace)
-	}
-
-	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
-		sr.Logger.Error(err, "reconcileIngress: failed to set owner reference for ingress", "name", desired.Name, "namespace", desired.Namespace)
-	}
-
-	// ingress doesn't exist in the namespace, create it
-	existing, err := networking.GetIngress(desired.Name, desired.Namespace, sr.Client)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileIngress: failed to retrieve ingress %s in namespace %s", desired.Name, desired.Namespace)
+	ignoreDrift := false
+	updateFn := func(desired, existing *networkingv1.Ingress, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.IngressClassName, Desired: &desired.Spec.IngressClassName, ExtraAction: nil},
+			{Existing: &existing.Spec.Rules, Desired: &desired.Spec.Rules, ExtraAction: nil},
+			{Existing: &existing.Spec.TLS, Desired: &desired.Spec.TLS, ExtraAction: nil},
 		}
-
-		if err = networking.CreateIngress(desired, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileIngress: failed to create ingress %s in namespace %s", desired.Name, desired.Namespace)
-		}
-
-		sr.Logger.Info("ingress created", "name", desired.Name, "namespace", desired.Namespace)
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 		return nil
 	}
 
-	// difference in existing & desired ingress, update it
-	changed := false
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.ObjectMeta.Annotations, Desired: &desired.ObjectMeta.Annotations, ExtraAction: nil},
-		{Existing: &existing.Spec.IngressClassName, Desired: &desired.Spec.IngressClassName, ExtraAction: nil},
-		{Existing: &existing.Spec.Rules, Desired: &desired.Spec.Rules, ExtraAction: nil},
-		{Existing: &existing.Spec.TLS, Desired: &desired.Spec.TLS, ExtraAction: nil},
-	}
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+	return sr.reconIngress(req, argocdcommon.UpdateFnIngress(updateFn), ignoreDrift)
+}
 
-	// nothing changed, exit reconciliation
+func (sr *ServerReconciler) reconIngress(req networking.IngressRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := networking.RequestIngress(req)
+	if err != nil {
+		sr.Logger.Debug("reconIngress: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconIngress: failed to request Ingress %s in namespace %s", desired.Name, desired.Namespace)
+	}
+
+	if err = controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconIngress: failed to set owner reference for Ingress", "name", desired.Name, "namespace", desired.Namespace)
+	}
+
+	existing, err := networking.GetIngress(desired.Name, desired.Namespace, sr.Client)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconIngress: failed to retrieve Ingress %s in namespace %s", desired.Name, desired.Namespace)
+		}
+
+		if err = networking.CreateIngress(desired, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconIngress: failed to create Ingress %s in namespace %s", desired.Name, desired.Namespace)
+		}
+		sr.Logger.Info("Ingress created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// Ingress found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnIngress); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconIngress: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
 	if !changed {
 		return nil
 	}
 
 	if err = networking.UpdateIngress(existing, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileIngress: failed to update ingress %s in namespace %s", existing.Name, existing.Namespace)
+		return errors.Wrapf(err, "reconIngress: failed to update Ingress %s", existing.Name)
 	}
 
-	sr.Logger.Info("reconcileIngress: ingress updated", "name", existing.Name, "namespace", existing.Namespace)
+	sr.Logger.Info("Ingress updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
-}
-
-// deleteIngresses will delete all ArgoCD Server Ingress resources
-func (sr *ServerReconciler) deleteIngresses(name, namespace string) error {
-	var reconErrs util.MultiError
-
-	// delete server ingress
-	if err := sr.deleteIngress(name, namespace); err != nil {
-		reconErrs.Append(err)
-	}
-
-	// delete server grpc ingress
-	if err := sr.deleteIngress(name+"-grpc", namespace); err != nil {
-		reconErrs.Append(err)
-	}
-
-	return reconErrs.ErrOrNil()
 }
 
 // deleteIngress will delete ingress with given name.

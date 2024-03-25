@@ -25,42 +25,20 @@ func GetAppsetManagementLabel() map[string]string {
 	}
 }
 
-func GetComponentLabelRequirement(component string) (*labels.Requirement, error) {
-	componentReq, err := GetLabelRequirements(common.AppK8sKeyComponent, selection.Equals, []string{component})
+func GetComponentLabelRequirement(components ...string) (*labels.Requirement, error) {
+	componentReq, err := GetLabelRequirements(common.AppK8sKeyComponent, selection.In, components)
 	if err != nil {
-		return nil, errors.Wrap(err, "getRbacTypeReq: failed to generate requirement")
+		return nil, errors.Wrap(err, "GetComponentLabelRequirement: failed to generate requirement")
 	}
 	return componentReq, nil
 }
 
-func GetResourceMgmtResourceLabelSelector(componentReq *labels.Requirement) (labels.Selector, error) {
-	resMgmtReq, err := GetLabelRequirements(common.ArgoCDArgoprojKeyRBACType, selection.Equals, []string{common.ArgoCDRBACTypeResourceMananagement})
+func GetRbacTypeLabelRequirement(rbacTypes ...string) (*labels.Requirement, error) {
+	componentReq, err := GetLabelRequirements(common.ArgoCDArgoprojKeyRBACType, selection.In, rbacTypes)
 	if err != nil {
-		return nil, errors.Wrap(err, "getResourceMgmtResourceLabelSelector: failed to generate requirement")
+		return nil, errors.Wrap(err, "GetRbacTypeLabelRequirement: failed to generate requirement")
 	}
-
-	resMgmtLs := GetLabelSelector(*resMgmtReq, *componentReq)
-	return resMgmtLs, nil
-}
-
-func GetAppMgmtResourceLabelSelector(componentReq *labels.Requirement) (labels.Selector, error) {
-	appMgmtReq, err := GetLabelRequirements(common.ArgoCDArgoprojKeyRBACType, selection.Equals, []string{common.ArgoCDRBACTypeAppManagement})
-	if err != nil {
-		return nil, errors.Wrap(err, "getAppMgmtResourceLabelSelector: failed to generate requirement")
-	}
-
-	appMgmtLs := GetLabelSelector(*appMgmtReq, *componentReq)
-	return appMgmtLs, nil
-}
-
-func GetAppsetMgmtResourceLabelSelector(componentReq *labels.Requirement) (labels.Selector, error) {
-	resMgmtReq, err := GetLabelRequirements(common.ArgoCDArgoprojKeyRBACType, selection.Equals, []string{common.ArgoCDRBACTypeAppSetManagement})
-	if err != nil {
-		return nil, errors.Wrap(err, "GetAppsetMgmtResourceLabelSelector: failed to generate requirement")
-	}
-
-	resMgmtLs := GetLabelSelector(*resMgmtReq, *componentReq)
-	return resMgmtLs, nil
+	return componentReq, nil
 }
 
 func GetLabelRequirements(key string, op selection.Operator, vals []string) (*labels.Requirement, error) {

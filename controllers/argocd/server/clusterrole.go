@@ -13,12 +13,6 @@ import (
 )
 
 func (sr *ServerReconciler) reconcileClusterRole() error {
-
-	// ArgoCD instance is not cluster scoped, cleanup any existing clusterrole & exit
-	if !sr.ClusterScoped {
-		return sr.deleteClusterRole(clusterResourceName)
-	}
-
 	req := permissions.ClusterRoleRequest{
 		ObjectMeta: argoutil.GetObjMeta(clusterResourceName, "", sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
 		Rules:      getPolicyRuleForClusterRole(),
@@ -27,43 +21,63 @@ func (sr *ServerReconciler) reconcileClusterRole() error {
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
+	ignoreDrift := false
+	updateFn := func(existing, desired *rbacv1.ClusterRole, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
+		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return sr.reconClusterRole(req, argocdcommon.UpdateFnClusterRole(updateFn), ignoreDrift)
+}
+
+func (sr *ServerReconciler) reconClusterRole(req permissions.ClusterRoleRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := permissions.RequestClusterRole(req)
 	if err != nil {
-		return errors.Wrapf(err, "reconcileClusterRole: failed to request clusterrole %s", desired.Name)
+		sr.Logger.Debug("reconClusterRole: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconClusterRole: failed to request ClusterRole %s", desired.Name)
 	}
 
-	// clusterrole doesn't exist, create it
 	existing, err := permissions.GetClusterRole(desired.Name, sr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileClusterRole: failed to retrieve clusterrole %s", desired.Name)
+			return errors.Wrapf(err, "reconClusterRole: failed to retrieve ClusterRole %s", desired.Name)
 		}
 
 		if err = permissions.CreateClusterRole(desired, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileClusterRole: failed to create clusterrole %s", desired.Name)
+			return errors.Wrapf(err, "reconClusterRole: failed to create ClusterRole %s", desired.Name)
 		}
-		sr.Logger.Info("clusterrole created", "name", desired.Name)
+		sr.Logger.Info("cluster role created", "name", desired.Name)
 		return nil
 	}
 
-	// difference in existing & desired clusterrole, update it
-	changed := false
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-		{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
+	// ClusterRole found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
 	}
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
 
-	// nothing changed, exit reconciliation
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnClusterRole); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconClusterRole: failed to execute update function for %s", existing.Name)
+			}
+		}
+	}
+
 	if !changed {
 		return nil
 	}
 
 	if err = permissions.UpdateClusterRole(existing, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileClusterRole: failed to update clusterrole %s", existing.Name)
+		return errors.Wrapf(err, "reconClusterRole: failed to update ClusterRole %s", existing.Name)
 	}
 
-	sr.Logger.Info("clusterrole updated", "name", existing.Name)
+	sr.Logger.Info("cluster role updated", "name", existing.Name)
 	return nil
 }
 

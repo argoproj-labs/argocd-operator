@@ -1174,3 +1174,123 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 func newStatefulSetWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.StatefulSet {
 	return newStatefulSetWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
+
+const (
+	maxLabelLength    = 63
+	maxHostnameLength = 253
+	minFirstLabelSize = 20
+)
+
+// The algorithm used by this function is:
+// - If the FIRST label ("console-openshift-console" in the above case) is longer than 63 characters, shorten (truncate the end) it to 63.
+// - If any other label is longer than 63 characters, return an error
+// - After all the labels are 63 characters or less, check the length of the overall hostname:
+//   - If the overall hostname is > 253, then shorten the FIRST label until the host name is < 253
+//   - After the FIRST label has been shortened, if it is < 20, then return an error (this is a sanity test to ensure the label is likely to be unique)
+func shortenHostname(hostname string) (string, error) {
+	if hostname == "" {
+		return "", nil
+	}
+
+	// Return the hostname as it is if hostname is already within the size limit
+	if len(hostname) <= maxHostnameLength {
+		return hostname, nil
+	}
+
+	// Split the hostname into labels
+	labels := strings.Split(hostname, ".")
+
+	// Check and truncate the FIRST label if longer than 63 characters
+	if len(labels[0]) > maxLabelLength {
+		labels[0] = labels[0][:maxLabelLength]
+	}
+
+	// Check other labels and return an error if any is longer than 63 characters
+	for _, label := range labels[1:] {
+		if len(label) > maxLabelLength {
+			return "", fmt.Errorf("label length exceeds 63 characters")
+		}
+	}
+
+	// Join the labels back into a hostname
+	resultHostname := strings.Join(labels, ".")
+
+	// Check and shorten the overall hostname
+	if len(resultHostname) > maxHostnameLength {
+		// Shorten the first label until the length is less than 253
+		for len(resultHostname) > maxHostnameLength && len(labels[0]) > 20 {
+			labels[0] = labels[0][:len(labels[0])-1]
+			resultHostname = strings.Join(labels, ".")
+		}
+
+		// Check if the first label is still less than 20 characters
+		if len(labels[0]) < minFirstLabelSize {
+			return "", fmt.Errorf("shortened first label is less than 20 characters")
+		}
+	}
+	return resultHostname, nil
+}
+
+// reconcileGrafanaService will ensure that the Service for Grafana is present.
+func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
+	svc := newServiceWithSuffix("grafana", "grafana", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		if !cr.Spec.Grafana.Enabled {
+			// Service exists but enabled flag has been set to false, delete the Service
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		log.Info(grafanaDeprecatedWarning)
+		return nil // Service found, do nothing
+	}
+
+	if !cr.Spec.Grafana.Enabled {
+		return nil // Grafana not enabled, do nothing.
+	}
+
+	log.Info(grafanaDeprecatedWarning)
+	return nil
+}
+
+// reconcileServices will ensure that all Services are present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
+
+	if err := r.reconcileDexService(cr); err != nil {
+		log.Error(err, "error reconciling dex service")
+	}
+
+	err := r.reconcileGrafanaService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileMetricsService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisHAServices(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRepoService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerMetricsService(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerService(cr)
+	if err != nil {
+		return err
+	}
+	return nil
+}

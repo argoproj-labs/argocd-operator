@@ -31,11 +31,6 @@ var (
 	component             string
 )
 
-const (
-	appMgmtSuffix      = "app-mgmt"
-	resourceMgmtSuffix = "resource-mgmt"
-)
-
 func (acr *AppControllerReconciler) Reconcile() error {
 	acr.varSetter()
 
@@ -109,11 +104,15 @@ func (acr *AppControllerReconciler) Reconcile() error {
 func (acr *AppControllerReconciler) DeleteResources() error {
 	var deletionErr util.MultiError
 
-	err := acr.deleteStatefulSet(resourceName, acr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err := acr.deleteStatefulSet(resourceName, acr.Instance.Namespace); err != nil {
+		acr.Logger.Error(err, "failed to delete statefulset")
+		deletionErr.Append(err)
+	}
 
-	err = acr.deleteService(metricsResourceName, acr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err := acr.deleteService(metricsResourceName, acr.Instance.Namespace); err != nil {
+		acr.Logger.Error(err, "failed to delete service", "name", metricsResourceName)
+		deletionErr.Append(err)
+	}
 
 	if err := acr.deleteClusterRole(clusterResourceName); err != nil {
 		acr.Logger.Error(err, "failed to delete cluster role")
@@ -123,17 +122,18 @@ func (acr *AppControllerReconciler) DeleteResources() error {
 		acr.Logger.Error(err, "failed to delete cluster role")
 	}
 
-	err = acr.deleteRoleBinding(resourceName, acr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err := acr.deleteRoleBinding(resourceName, acr.Instance.Namespace); err != nil {
+		acr.Logger.Error(err, "failed to delete rolebinding")
+	}
 
-	err = acr.deleteRole(resourceName, acr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err := acr.deleteRole(resourceName, acr.Instance.Namespace); err != nil {
+		acr.Logger.Error(err, "failed to delete role")
+	}
 
 	roles, rbs, err := acr.getManagedRBACToBeDeleted()
 	if err != nil {
 		acr.Logger.Error(err, "failed to retrieve one or more namespaced rbac resources to be deleted")
 	} else {
-
 		deletionErr.Append(acr.DeleteRoleBindings(rbs))
 		deletionErr.Append(acr.DeleteRoles(roles))
 		if !deletionErr.IsNil() {
@@ -141,8 +141,9 @@ func (acr *AppControllerReconciler) DeleteResources() error {
 		}
 	}
 
-	err = acr.deleteServiceAccount(resourceName, acr.Instance.Namespace)
-	deletionErr.Append(err)
+	if err := acr.deleteServiceAccount(resourceName, acr.Instance.Namespace); err != nil {
+		acr.Logger.Error(err, "failed to delete serviceaccount")
+	}
 
 	return deletionErr.ErrOrNil()
 }
@@ -155,6 +156,6 @@ func (acr *AppControllerReconciler) varSetter() {
 	component = common.AppControllerComponent
 	resourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix)
 	metricsResourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix, common.MetricsSuffix)
-	managedNsResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix, resourceMgmtSuffix)
+	managedNsResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix, common.ResourceMgmtSuffix)
 	clusterResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix)
 }

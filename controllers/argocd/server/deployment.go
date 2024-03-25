@@ -1,8 +1,6 @@
 package server
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -29,71 +27,84 @@ func (sr *ServerReconciler) TriggerDeploymentRollout(name, namespace, key string
 // reconcileDeployment will ensure all ArgoCD Server deployment is present
 func (sr *ServerReconciler) reconcileDeployment() error {
 
-	tmpl := sr.getServerDeploymentTemplate()
+	req := sr.getDeploymentReq()
 
-	req := workloads.DeploymentRequest{
-		ObjectMeta: tmpl.ObjectMeta,
-		Spec:       tmpl.Spec,
-		Client:     sr.Client,
-		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
-
-	desired, err := workloads.RequestDeployment(req)
-	if err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to request deployment %s in namespace %s", desired.Name, desired.Namespace)
-	}
-
-	if err := controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
-		sr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desired.Name, "namespace", desired.Namespace)
-	}
-
-	// deployment doesn't exist in the namespace, create it
-	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, sr.Client)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return errors.Wrapf(err, "reconcileDeployment: failed to retrieve deployment %s in namespace %s", desired.Name, desired.Namespace)
+	ignoreDrift := false
+	updateFn := func(existing, desired *appsv1.Deployment, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image, ExtraAction: func() {
+				existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+			},
+			},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Labels, Desired: &desired.Spec.Template.Labels, ExtraAction: nil},
+			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 		}
-
-		if err = workloads.CreateDeployment(desired, sr.Client); err != nil {
-			return errors.Wrapf(err, "reconcileDeployment: failed to create deployment %s in namespace %s", desired.Name, desired.Namespace)
-		}
-
-		sr.Logger.Info("deployment created", "name", desired.Name, "namespace", desired.Namespace)
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 		return nil
 	}
 
-	// difference in existing & desired deployment, update it
-	changed := false
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image, ExtraAction: func() {
-			existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-		},
-		},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
-		{Existing: &existing.Spec.Template.Labels, Desired: &desired.Spec.Template.Labels, ExtraAction: nil},
-		{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
-		{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
-		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-	}
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
+	return sr.reconDeployment(req, argocdcommon.UpdateFnDep(updateFn), ignoreDrift)
+}
 
-	// nothing changed, exit reconciliation
+func (sr *ServerReconciler) reconDeployment(req workloads.DeploymentRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := workloads.RequestDeployment(req)
+	if err != nil {
+		sr.Logger.Debug("reconDeployment: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconDeployment: failed to request Deployment %s in namespace %s", desired.Name, desired.Namespace)
+	}
+
+	if err = controllerutil.SetControllerReference(sr.Instance, desired, sr.Scheme); err != nil {
+		sr.Logger.Error(err, "reconDeployment: failed to set owner reference for Deployment", "name", desired.Name, "namespace", desired.Namespace)
+	}
+
+	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, sr.Client)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconDeployment: failed to retrieve Deployment %s in namespace %s", desired.Name, desired.Namespace)
+		}
+
+		if err = workloads.CreateDeployment(desired, sr.Client); err != nil {
+			return errors.Wrapf(err, "reconDeployment: failed to create Deployment %s in namespace %s", desired.Name, desired.Namespace)
+		}
+		sr.Logger.Info("Deployment created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// Deployment found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnDep); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconDeployment: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
 	if !changed {
 		return nil
 	}
 
 	if err = workloads.UpdateDeployment(existing, sr.Client); err != nil {
-		return errors.Wrapf(err, "reconcileDeployment: failed to update deployment %s in namespace %s", existing.Name, existing.Namespace)
+		return errors.Wrapf(err, "reconDeployment: failed to update Deployment %s", existing.Name)
 	}
 
-	sr.Logger.Info("deployment updated", "name", existing.Name, "namespace", existing.Namespace)
+	sr.Logger.Info("Deployment updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
@@ -110,11 +121,12 @@ func (sr *ServerReconciler) deleteDeployment(name, namespace string) error {
 	return nil
 }
 
-// getServerDeploymentTemplate returns server deployment object
-func (sr *ServerReconciler) getServerDeploymentTemplate() *appsv1.Deployment {
-
-	// deployment metadata
-	objMeta := argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap())
+func (sr *ServerReconciler) getDeploymentReq() workloads.DeploymentRequest {
+	req := workloads.DeploymentRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		Client:     sr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+	}
 
 	// set deployment params
 	env := sr.Instance.Spec.Server.Env
@@ -174,7 +186,7 @@ func (sr *ServerReconciler) getServerDeploymentTemplate() *appsv1.Deployment {
 			},
 		},
 		Containers: []corev1.Container{{
-			Command:         sr.getArgoServerCommand(),
+			Command:         sr.getCmd(),
 			Image:           argocdcommon.GetArgoContainerImage(sr.Instance),
 			ImagePullPolicy: corev1.PullAlways,
 			Name:            common.ServerComponent,
@@ -236,7 +248,7 @@ func (sr *ServerReconciler) getServerDeploymentTemplate() *appsv1.Deployment {
 		}},
 	}
 
-	deploymentSpec := appsv1.DeploymentSpec{
+	req.Spec = appsv1.DeploymentSpec{
 		Strategy: appsv1.DeploymentStrategy{
 			Type: appsv1.RollingUpdateDeploymentStrategyType,
 		},
@@ -256,67 +268,5 @@ func (sr *ServerReconciler) getServerDeploymentTemplate() *appsv1.Deployment {
 		Replicas: replicas,
 	}
 
-	deployment := &appsv1.Deployment{}
-	deployment.ObjectMeta = objMeta
-	deployment.Spec = deploymentSpec
-	return deployment
-}
-
-// getArgoServerCommand will return the command for the ArgoCD server component.
-func (sr *ServerReconciler) getArgoServerCommand() []string {
-	cmd := make([]string, 0)
-	cmd = append(cmd, "argocd-server")
-
-	if sr.Instance.Spec.Server.Insecure {
-		cmd = append(cmd, "--insecure")
-	}
-
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
-
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, sr.Dex.GetServerAddress())
-
-	// reposerver flags
-	if sr.RepoServer.UseTLS() {
-		cmd = append(cmd, "--repo-server-strict-tls")
-	}
-
-	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, sr.RepoServer.GetServerAddress())
-
-	// redis flags
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, sr.Redis.GetServerAddress())
-
-	if sr.Redis.UseTLS() {
-		cmd = append(cmd, "--redis-use-tls")
-		if sr.Redis.TLSVerificationDisabled() {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
-		}
-	}
-
-	// set log level & format
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogLevel))
-
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, argoutil.GetLogLevel(sr.Instance.Spec.Server.LogFormat))
-
-	// set source namespaces
-	if sr.Instance.Spec.SourceNamespaces != nil && len(sr.Instance.Spec.SourceNamespaces) > 0 {
-		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(sr.Instance.Spec.SourceNamespaces, ",")))
-	}
-
-	// extra args should always be added at the end
-	extraArgs := sr.Instance.Spec.Server.ExtraCommandArgs
-	err := argocdcommon.IsMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-	cmd = append(cmd, extraArgs...)
-
-	return cmd
+	return req
 }

@@ -29,7 +29,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 		},
 	}
 
-	err := sr.reconcileServerIngress()
+	err := sr.reconcileIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be created
@@ -44,7 +44,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 	sr.Instance.Spec.Server.Ingress.IngressClassName = nilClass
 	sr.Instance.Spec.Server.Ingress.Annotations = ann
 
-	err = sr.reconcileServerIngress()
+	err = sr.reconcileIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be updated
@@ -56,7 +56,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 
 	// disable ingress in ArgoCD
 	sr.Instance.Spec.Server.Ingress.Enabled = false
-	err = sr.reconcileServerIngress()
+	err = sr.reconcileIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be deleted
@@ -80,7 +80,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 		IngressClassName: &nginx,
 	}
 
-	err := sr.reconcileServerGRPCIngress()
+	err := sr.reconcileGRPCIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be created
@@ -95,7 +95,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 	sr.Instance.Spec.Server.GRPC.Ingress.IngressClassName = nilClass
 	sr.Instance.Spec.Server.GRPC.Ingress.Annotations = ann
 
-	err = sr.reconcileServerGRPCIngress()
+	err = sr.reconcileGRPCIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be updated
@@ -107,7 +107,7 @@ func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
 
 	// disable grpc ingress in ArgoCD
 	sr.Instance.Spec.Server.GRPC.Ingress.Enabled = false
-	err = sr.reconcileServerGRPCIngress()
+	err = sr.reconcileGRPCIngress()
 	assert.NoError(t, err)
 
 	// ingress resource should be deleted

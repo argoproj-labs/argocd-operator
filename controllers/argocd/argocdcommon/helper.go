@@ -5,8 +5,11 @@ import (
 	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -29,11 +32,17 @@ type UpdateFnCrb func(*rbacv1.ClusterRoleBinding, *rbacv1.ClusterRoleBinding, *b
 
 type UpdateFnSvc func(*corev1.Service, *corev1.Service, *bool) error
 
+type UpdateFnIngress func(*networkingv1.Ingress, *networkingv1.Ingress, *bool) error
+
+type UpdateFnRoute func(*routev1.Route, *routev1.Route, *bool) error
+
 type UpdateFnSa func(*corev1.ServiceAccount, *corev1.ServiceAccount, *bool) error
 
 type UpdateFnSs func(*appsv1.StatefulSet, *appsv1.StatefulSet, *bool) error
 
 type UpdateFnDep func(*appsv1.Deployment, *appsv1.Deployment, *bool) error
+
+type UpdateFnHPA func(*autoscalingv1.HorizontalPodAutoscaler, *autoscalingv1.HorizontalPodAutoscaler, *bool) error
 
 type UpdateFnSecret func(*corev1.Secret, *corev1.Secret, *bool) error
 
