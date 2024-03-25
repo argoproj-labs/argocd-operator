@@ -13,7 +13,6 @@ import (
 func TestApplicationSetReconciler_reconcileServiceAccount(t *testing.T) {
 	ns := test.MakeTestNamespace(nil)
 	resourceName = test.TestArgoCDName
-	resourceLabels = testExpectedLabels
 
 	tests := []struct {
 		name        string

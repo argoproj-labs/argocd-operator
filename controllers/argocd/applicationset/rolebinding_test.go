@@ -56,7 +56,7 @@ func TestApplicationSetReconciler_reconcileRoleBinding(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nr := tt.setupClient()
-			err := nr.reconcileRoleBinding()
+			err := nr.reconcileRolebindings()
 			if (err != nil) != tt.wantErr {
 				if tt.wantErr {
 					t.Errorf("Expected error but did not get one")

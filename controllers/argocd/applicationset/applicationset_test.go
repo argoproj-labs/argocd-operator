@@ -14,7 +14,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
-var testExpectedLabels = common.DefaultResourceLabels(test.TestArgoCDName, test.TestNamespace, AppSetControllerComponent)
+var testExpectedLabels = common.DefaultResourceLabels(test.TestArgoCDName, test.TestNamespace, common.AppSetControllerComponent)
 
 func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bool, objs ...runtime.Object) *ApplicationSetReconciler {
 	s := scheme.Scheme

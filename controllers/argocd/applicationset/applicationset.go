@@ -13,58 +13,91 @@ import (
 )
 
 type ApplicationSetReconciler struct {
-	Client     client.Client
-	Scheme     *runtime.Scheme
-	Instance   *argoproj.ArgoCD
-	Logger     *util.Logger
+	Client                 client.Client
+	Scheme                 *runtime.Scheme
+	Instance               *argoproj.ArgoCD
+	Logger                 *util.Logger
+	ClusterScoped          bool
+	AppsetSourceNamespaces map[string]string
+
 	RepoServer RepoServerController
 }
 
 var (
-	resourceName   string
-	resourceLabels map[string]string
+	resourceName               string
+	clusterResourceName        string
+	component                  string
+	appsetSourceNsResourceName string
+	webhookResourceName        string
 )
 
 func (asr *ApplicationSetReconciler) Reconcile() error {
-	resourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, AppSetControllerComponent)
-	resourceLabels = common.DefaultResourceLabels(resourceName, asr.Instance.Name, AppSetControllerComponent)
+	asr.varSetter()
 
 	if err := asr.reconcileServiceAccount(); err != nil {
 		asr.Logger.Info("reconciling applicationSet serviceaccount")
 		return err
 	}
 
-	if err := asr.reconcileRole(); err != nil {
-		asr.Logger.Info("reconciling applicationSet role")
-		return err
+	if asr.ClusterScoped {
+		if err := asr.reconcileClusterRole(); err != nil {
+			asr.Logger.Error(err, "failed to reconcile clusterrole")
+			return err
+		}
+
+		if err := asr.reconcileClusterRoleBinding(); err != nil {
+			asr.Logger.Error(err, "failed to reconcile clusterrolebinding")
+			return err
+		}
+	} else {
+		if err := asr.deleteClusterRoleBinding(clusterResourceName); err != nil {
+			asr.Logger.Error(err, "failed to delete clusterrolebinding")
+		}
+
+		if err := asr.deleteClusterRole(clusterResourceName); err != nil {
+			asr.Logger.Error(err, "failed to delete clusterrole")
+		}
 	}
 
-	if err := asr.reconcileRoleBinding(); err != nil {
-		asr.Logger.Info("reconciling applicationSet roleBinding")
-		return err
+	if err := asr.reconcileRoles(); err != nil {
+		asr.Logger.Error(err, "failed to reconcile one or more roles")
+	}
+
+	if err := asr.reconcileRolebindings(); err != nil {
+		asr.Logger.Error(err, "failed to reconcile one or more rolebindings")
 	}
 
 	if openshift.IsOpenShiftEnv() {
 		if asr.Instance.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			if err := asr.reconcileWebhookRoute(); err != nil {
-				asr.Logger.Info("reconciling applicationSet webhook route")
+				asr.Logger.Error(err, "failed to reconcile webhook route")
 				return err
 			}
 		} else {
-			if err := asr.deleteWebhookRoute(AppSetWebhookRouteName, asr.Instance.Namespace); err != nil {
-				asr.Logger.Error(err, "deleting applicationSet webhook route: failed to delete webhook route")
-				return err
+			if err := asr.deleteRoute(webhookResourceName, asr.Instance.Namespace); err != nil {
+				asr.Logger.Error(err, "failed to delete webhook route")
 			}
 		}
 	}
 
+	if asr.Instance.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
+		if err := asr.reconcileIngress(); err != nil {
+			asr.Logger.Error(err, "failed to reconcile ingress")
+			return err
+		}
+	} else {
+		if err := asr.deleteIngress(resourceName, asr.Instance.Namespace); err != nil {
+			asr.Logger.Error(err, "failed to delete ingress")
+		}
+	}
+
 	if err := asr.reconcileService(); err != nil {
-		asr.Logger.Info("reconciling applicationSet service")
+		asr.Logger.Error(err, "failed to reconcile service")
 		return err
 	}
 
 	if err := asr.reconcileDeployment(); err != nil {
-		asr.Logger.Info("reconciling applicationSet deployment")
+		asr.Logger.Error(err, "failed to reconcile deployment")
 		return err
 	}
 
@@ -73,39 +106,78 @@ func (asr *ApplicationSetReconciler) Reconcile() error {
 
 func (asr *ApplicationSetReconciler) DeleteResources() error {
 
-	var deletionError error = nil
+	var deletionErr util.MultiError
 
 	if err := asr.deleteDeployment(resourceName, asr.Instance.Namespace); err != nil {
-		asr.Logger.Error(err, "DeleteResources: failed to delete deployment")
-		deletionError = err
+		asr.Logger.Error(err, "failed to delete deployment")
+		deletionErr.Append(err)
 	}
 
 	if err := asr.deleteService(resourceName, asr.Instance.Namespace); err != nil {
-		asr.Logger.Error(err, "DeleteResources: failed to delete service")
-		deletionError = err
+		asr.Logger.Error(err, "failed to delete service")
+		deletionErr.Append(err)
+	}
+
+	if err := asr.deleteIngress(resourceName, asr.Instance.Namespace); err != nil {
+		asr.Logger.Error(err, "failed to delete ingress")
+		deletionErr.Append(err)
 	}
 
 	if openshift.IsOpenShiftEnv() {
-		if err := asr.deleteWebhookRoute(resourceName, asr.Instance.Namespace); err != nil {
-			asr.Logger.Error(err, "DeleteResources: failed to delete webhook service")
-			deletionError = err
+		if err := asr.deleteRoute(webhookResourceName, asr.Instance.Namespace); err != nil {
+			asr.Logger.Error(err, "failed to delete webhook route")
+			deletionErr.Append(err)
 		}
 	}
 
 	if err := asr.deleteRoleBinding(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete roleBinding")
-		deletionError = err
+		deletionErr.Append(err)
 	}
 
 	if err := asr.deleteRole(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete role")
-		deletionError = err
+		deletionErr.Append(err)
+	}
+
+	// delete appset source ns rbac
+	roles, rbs, err := asr.getAppsetSourceNsRBAC()
+	if err != nil {
+		asr.Logger.Error(err, "failed to list one or more appset management namespace rbac resources")
+	} else {
+		if err := asr.DeleteRoleBindings(rbs); err != nil {
+			asr.Logger.Error(err, "failed to delete one or more non control plane rolebindings")
+			deletionErr.Append(err)
+		}
+
+		if err := asr.DeleteRoles(roles); err != nil {
+			asr.Logger.Error(err, "failed to delete one or more non control plane roles")
+			deletionErr.Append(err)
+		}
+	}
+
+	if err := asr.deleteClusterRoleBinding(clusterResourceName); err != nil {
+		asr.Logger.Error(err, "failed to delete deployment")
+		deletionErr.Append(err)
+	}
+
+	if err := asr.deleteClusterRole(clusterResourceName); err != nil {
+		asr.Logger.Error(err, "failed to delete deployment")
+		deletionErr.Append(err)
 	}
 
 	if err := asr.deleteServiceAccount(resourceName, asr.Instance.Namespace); err != nil {
 		asr.Logger.Error(err, "DeleteResources: failed to delete serviceaccount")
-		deletionError = err
+		deletionErr.Append(err)
 	}
 
-	return deletionError
+	return deletionErr.ErrOrNil()
+}
+
+func (asr *ApplicationSetReconciler) varSetter() {
+	component = common.AppSetControllerComponent
+	resourceName = argoutil.GenerateResourceName(asr.Instance.Name, common.AppSetControllerSuffix)
+	webhookResourceName = argoutil.GenerateResourceName(asr.Instance.Name, common.AppSetControllerSuffix, common.WebhookSuffix)
+	appsetSourceNsResourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, common.AppSetControllerSuffix, common.AppsetMgmtSuffix)
+	clusterResourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, common.AppSetControllerSuffix)
 }

@@ -182,6 +182,9 @@ const (
 
 	// ArgoCDServerComponent is the name of the Dex server control plane component
 	ArgoCDServerComponent = "argocd-server"
+
+	//ApplicationSetServiceNameSuffix is the suffix for Apllication Set Controller Service
+	ApplicationSetServiceNameSuffix = "applicationset-controller"
 )
 
 // DefaultLabels returns the default set of labels for controllers.

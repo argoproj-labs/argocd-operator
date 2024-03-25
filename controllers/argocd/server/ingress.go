@@ -45,7 +45,7 @@ func (sr *ServerReconciler) reconcileIngresses() error {
 // reconcileIngress will ensure that ArgoCD .Spec.Server.Ingress resource is present.
 func (sr *ServerReconciler) reconcileIngress() error {
 	req := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, getIngressLabels(), util.EmptyMap()),
+		ObjectMeta: argoutil.GetObjMeta(resourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), argocdcommon.GetIngressNginxAnnotations()),
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
@@ -115,7 +115,7 @@ func (sr *ServerReconciler) reconcileIngress() error {
 func (sr *ServerReconciler) reconcileGRPCIngress() error {
 
 	req := networking.IngressRequest{
-		ObjectMeta: argoutil.GetObjMeta(grpcResourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, getGRPCIngressLabels(), util.EmptyMap()),
+		ObjectMeta: argoutil.GetObjMeta(grpcResourceName, sr.Instance.Namespace, sr.Instance.Name, sr.Instance.Namespace, component, util.EmptyMap(), argocdcommon.GetGRPCIngressNginxAnnotations()),
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}

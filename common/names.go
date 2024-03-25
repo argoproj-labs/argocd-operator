@@ -50,4 +50,6 @@ const (
 	AppsetMgmtSuffix = "appset-mgmt"
 
 	ResourceMgmtSuffix = "resource-mgmt"
+
+	WebhookSuffix = "webhook"
 )
