@@ -45,7 +45,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:8576d347f30fa4c56a0129d1c0a0f5ed1e75662f0499f1ed7e917c405fd909dc" // v2.9.2
+	ArgoCDDefaultArgoVersion = "sha256:a2ce24e264c5be63ce4af478f086a866f6df2b68673ad5e5c8f4574de1d00eae" // v2.10.4
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
