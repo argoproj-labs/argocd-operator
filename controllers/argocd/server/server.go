@@ -126,10 +126,6 @@ func (sr *ServerReconciler) Reconcile() error {
 		}
 	}
 
-	if err := sr.reconcileArgoCDCM(); err != nil {
-		sr.Logger.Error(err, "failed to reconcile Argo CD configmap")
-	}
-
 	return nil
 }
 

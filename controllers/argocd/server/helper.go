@@ -107,7 +107,7 @@ func (sr *ServerReconciler) getHost() string {
 	return host
 }
 
-func (sr *ServerReconciler) getURI() string {
+func (sr *ServerReconciler) GetURI() string {
 	host := resourceName // default to service name
 
 	// Use the external hostname provided by the user
@@ -127,11 +127,13 @@ func (sr *ServerReconciler) getURI() string {
 
 	// Use Route host if available, override Ingress if both exist
 	if openshift.IsOpenShiftEnv() {
-		route, err := openshift.GetRoute(resourceName, sr.Instance.Namespace, sr.Client)
-		if err != nil {
-			sr.Logger.Error(err, "getURI: failed to retrieve route")
-		} else {
-			host = route.Spec.Host
+		if sr.Instance.Spec.Server.Route.Enabled {
+			route, err := openshift.GetRoute(resourceName, sr.Instance.Namespace, sr.Client)
+			if err != nil {
+				sr.Logger.Error(err, "getURI: failed to retrieve route")
+			} else {
+				host = route.Spec.Host
+			}
 		}
 	}
 
