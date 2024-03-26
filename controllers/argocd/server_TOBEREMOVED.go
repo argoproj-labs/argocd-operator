@@ -10,6 +10,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -876,4 +877,69 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 		return err
 	}
 	return r.Client.Create(context.TODO(), svc)
+}
+
+func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+				"delete",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
+	}
+}
+
+// reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
+func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
+	sm := newServiceMonitorWithSuffix("server-metrics", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
 }

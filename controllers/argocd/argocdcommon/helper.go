@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
@@ -31,6 +32,8 @@ type UpdateFnRb func(*rbacv1.RoleBinding, *rbacv1.RoleBinding, *bool) error
 type UpdateFnCrb func(*rbacv1.ClusterRoleBinding, *rbacv1.ClusterRoleBinding, *bool) error
 
 type UpdateFnSvc func(*corev1.Service, *corev1.Service, *bool) error
+
+type UpdateFnSM func(*monitoringv1.ServiceMonitor, *monitoringv1.ServiceMonitor, *bool) error
 
 type UpdateFnIngress func(*networkingv1.Ingress, *networkingv1.Ingress, *bool) error
 

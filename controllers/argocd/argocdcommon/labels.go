@@ -7,6 +7,12 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
+func GetSvcMonitorLabel() map[string]string {
+	return map[string]string{
+		common.PrometheusReleaseKey: common.PrometheusOperator,
+	}
+}
+
 func GetResourceManagementLabel() map[string]string {
 	return map[string]string{
 		common.ArgoCDArgoprojKeyRBACType: common.ArgoCDRBACTypeResourceMananagement,

@@ -7,6 +7,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -24,7 +25,7 @@ type RepoServerReconciler struct {
 
 var (
 	resourceName        string
-	resourceMetricsName string
+	metricsResourceName string
 	component           string
 )
 
@@ -44,16 +45,18 @@ func (rsr *RepoServerReconciler) Reconcile() error {
 		return err
 	}
 
-	if rsr.Instance.Spec.Prometheus.Enabled {
-		if err := rsr.reconcileServiceMonitor(); err != nil {
-			rsr.Logger.Error(err, "failed to reconcile service monitor")
-			return err
+	if monitoring.IsPrometheusAPIAvailable() {
+		if rsr.Instance.Spec.Prometheus.Enabled {
+			if err := rsr.reconcileMetriscServiceMonitor(); err != nil {
+				rsr.Logger.Error(err, "failed to reconcile metrics service monitor")
+			}
+		} else {
+			if err := rsr.deleteServiceMonitor(metricsResourceName, rsr.Instance.Namespace); err != nil {
+				rsr.Logger.Error(err, "failed to delete serviceMonitor")
+			}
 		}
 	} else {
-		if err := rsr.deleteServiceMonitor(resourceMetricsName, rsr.Instance.Namespace); err != nil {
-			rsr.Logger.Error(err, "DeleteResources: failed to delete serviceMonitor")
-			return err
-		}
+		rsr.Logger.Debug("prometheus API unavailable, skipping service monitor reconciliation")
 	}
 
 	if err := rsr.reconcileTLSSecret(); err != nil {
@@ -76,35 +79,35 @@ func (rsr *RepoServerReconciler) DeleteResources() error {
 	// delete deployment
 	err := rsr.deleteDeployment(resourceName, rsr.Instance.Namespace)
 	if err != nil {
-		rsr.Logger.Error(err, "DeleteResources")
+		rsr.Logger.Error(err, "failed to delete deployment")
 		deletionErr.Append(err)
 	}
 
 	// delete service monitor
 	err = rsr.deleteServiceMonitor(resourceName, rsr.Instance.Namespace)
 	if err != nil {
-		rsr.Logger.Error(err, "DeleteResources")
+		rsr.Logger.Error(err, "failed to delete serviceMonitor")
 		deletionErr.Append(err)
 	}
 
 	// delete service
 	err = rsr.deleteService(resourceName, rsr.Instance.Namespace)
 	if err != nil {
-		rsr.Logger.Error(err, "DeleteResources")
+		rsr.Logger.Error(err, "failed to delete service")
 		deletionErr.Append(err)
 	}
 
 	// delete serviceaccount
 	err = rsr.deleteServiceAccount(resourceName, rsr.Instance.Namespace)
 	if err != nil {
-		rsr.Logger.Error(err, "DeleteResources")
+		rsr.Logger.Error(err, "failed to delete serviceaccount")
 		deletionErr.Append(err)
 	}
 
 	// delete TLS secret
 	err = rsr.deleteSecret(common.ArgoCDRepoServerTLSSecretName, rsr.Instance.Namespace)
 	if err != nil {
-		rsr.Logger.Error(err, "DeleteResources")
+		rsr.Logger.Error(err, "failed to delete secret")
 		deletionErr.Append(err)
 	}
 
@@ -122,5 +125,5 @@ func (rsr *RepoServerReconciler) TriggerRollout(key string) error {
 func (rsr *RepoServerReconciler) varSetter() {
 	component = common.RepoServerComponent
 	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
-	resourceMetricsName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix, common.MetricsSuffix)
+	metricsResourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix, common.MetricsSuffix)
 }

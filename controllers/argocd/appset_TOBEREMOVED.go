@@ -11,6 +11,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	routev1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -659,4 +660,86 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		return r.Client.Create(context.TODO(), route)
 	}
 	return r.Client.Update(context.TODO(), route)
+}
+
+// reconcileApplicationSetControllerIngress will ensure that the ApplicationSetController Ingress is present.
+func (r *ReconcileArgoCD) reconcileApplicationSetControllerIngress(cr *argoproj.ArgoCD) error {
+	ingress := newIngressWithSuffix(common.ApplicationSetServiceNameSuffix, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
+	}
+
+	if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Ingress.Enabled {
+		log.Info("not enabled")
+		return nil // Ingress not enabled, move along...
+	}
+
+	// Add annotations
+	atns := make(map[string]string)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations) > 0 {
+		atns = cr.Spec.ApplicationSet.WebhookServer.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	pathType := networkingv1.PathTypeImplementationSpecific
+	httpServerHost, err := getApplicationSetHTTPServerHost(cr)
+	if err != nil {
+		return err
+	}
+
+	// Add rules
+	ingress.Spec.Rules = []networkingv1.IngressRule{
+		{
+			Host: httpServerHost,
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: "/api/webhook",
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: nameWithSuffix(common.ApplicationSetServiceNameSuffix, cr),
+									Port: networkingv1.ServiceBackendPort{
+										Name: "webhook",
+									},
+								},
+							},
+							PathType: &pathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.ApplicationSet.WebhookServer.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.ApplicationSet.WebhookServer.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
+}
+
+// getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
+func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
+	host := cr.Name
+	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
+		hostname, err := shortenHostname(cr.Spec.ApplicationSet.WebhookServer.Host)
+		if err != nil {
+			return "", err
+		}
+		host = hostname
+	}
+	return host, nil
 }

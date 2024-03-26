@@ -8,6 +8,8 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -103,6 +105,37 @@ func (sr *ServerReconciler) getHost() string {
 		}
 	}
 	return host
+}
+
+func (sr *ServerReconciler) getURI() string {
+	host := resourceName // default to service name
+
+	// Use the external hostname provided by the user
+	if sr.Instance.Spec.Server.Host != "" {
+		host = sr.getHost()
+	}
+
+	// Use Ingress host if enabled
+	if sr.Instance.Spec.Server.Ingress.Enabled {
+		ingress, err := networking.GetIngress(resourceName, sr.Instance.Namespace, sr.Client)
+		if err != nil {
+			sr.Logger.Error(err, "getURI: failed to retrieve ingress")
+		} else {
+			host = ingress.Spec.Rules[0].Host
+		}
+	}
+
+	// Use Route host if available, override Ingress if both exist
+	if openshift.IsOpenShiftEnv() {
+		route, err := openshift.GetRoute(resourceName, sr.Instance.Namespace, sr.Client)
+		if err != nil {
+			sr.Logger.Error(err, "getURI: failed to retrieve route")
+		} else {
+			host = route.Spec.Host
+		}
+	}
+
+	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
 }
 
 // getPathOrDefault will return the Ingress Path for the Argo CD component.

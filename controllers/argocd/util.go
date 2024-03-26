@@ -76,47 +76,6 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
 }
 
-// getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
-func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
-	op := common.ArgoCDDefaultServerOperationProcessors
-	if cr.Spec.Controller.Processors.Operation > 0 {
-		op = cr.Spec.Controller.Processors.Operation
-	}
-	return op
-}
-
-// getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
-func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
-	sp := common.ArgoCDDefaultServerStatusProcessors
-	if cr.Spec.Controller.Processors.Status > 0 {
-		sp = cr.Spec.Controller.Processors.Status
-	}
-	return sp
-}
-
-// getArgoControllerParellismLimit returns the parallelism limit for the application controller
-func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
-	pl := common.ArgoCDDefaultControllerParallelismLimit
-	if cr.Spec.Controller.ParallelismLimit > 0 {
-		pl = cr.Spec.Controller.ParallelismLimit
-	}
-	return pl
-}
-
-// reconcileCertificateAuthority will reconcile all Certificate Authority resources.
-func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) error {
-	log.Info("reconciling CA secret")
-	if err := r.reconcileClusterCASecret(cr); err != nil {
-		return err
-	}
-
-	log.Info("reconciling CA config map")
-	if err := r.reconcileCAConfigMap(cr); err != nil {
-		return err
-	}
-	return nil
-}
-
 // reconcileResources will reconcile common ArgoCD resources.
 func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 
@@ -493,17 +452,4 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
-}
-
-// getApplicationSetHTTPServerHost will return the host for the given ArgoCD.
-func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
-	host := cr.Name
-	if len(cr.Spec.ApplicationSet.WebhookServer.Host) > 0 {
-		hostname, err := shortenHostname(cr.Spec.ApplicationSet.WebhookServer.Host)
-		if err != nil {
-			return "", err
-		}
-		host = hostname
-	}
-	return host, nil
 }

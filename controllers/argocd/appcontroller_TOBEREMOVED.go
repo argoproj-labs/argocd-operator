@@ -12,6 +12,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -600,4 +601,63 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
 
 	return cmd
+}
+
+// getArgoServerOperationProcessors will return the numeric Operation Processors value for the ArgoCD Server.
+func getArgoServerOperationProcessors(cr *argoproj.ArgoCD) int32 {
+	op := common.ArgoCDDefaultServerOperationProcessors
+	if cr.Spec.Controller.Processors.Operation > 0 {
+		op = cr.Spec.Controller.Processors.Operation
+	}
+	return op
+}
+
+// getArgoServerStatusProcessors will return the numeric Status Processors value for the ArgoCD Server.
+func getArgoServerStatusProcessors(cr *argoproj.ArgoCD) int32 {
+	sp := common.ArgoCDDefaultServerStatusProcessors
+	if cr.Spec.Controller.Processors.Status > 0 {
+		sp = cr.Spec.Controller.Processors.Status
+	}
+	return sp
+}
+
+// getArgoControllerParellismLimit returns the parallelism limit for the application controller
+func getArgoControllerParellismLimit(cr *argoproj.ArgoCD) int32 {
+	pl := common.ArgoCDDefaultControllerParallelismLimit
+	if cr.Spec.Controller.ParallelismLimit > 0 {
+		pl = cr.Spec.Controller.ParallelismLimit
+	}
+	return pl
+}
+
+// reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
+func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
+	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
 }

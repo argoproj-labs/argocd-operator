@@ -91,7 +91,7 @@ func TestReconcile(t *testing.T) {
 	err = reconciler.Reconcile()
 	assert.NoError(t, err)
 
-	sm, err := resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
+	sm, err := resource.GetObject(metricsResourceName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 
@@ -101,7 +101,7 @@ func TestReconcile(t *testing.T) {
 	err = reconciler.Reconcile()
 	assert.NoError(t, err)
 
-	_, err = resource.GetObject(resourceMetricsName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
+	_, err = resource.GetObject(metricsResourceName, test.TestNamespace, test.MakeTestServiceMonitor(nil), reconciler.Client)
 	assert.True(t, apierrors.IsNotFound(err))
 
 }
@@ -128,7 +128,7 @@ func TestDeleteResources(t *testing.T) {
 				),
 				test.MakeTestServiceMonitor(nil,
 					func(sm *monitoringv1.ServiceMonitor) {
-						sm.Name = resourceMetricsName
+						sm.Name = metricsResourceName
 					},
 				),
 				test.MakeTestSecret(nil,

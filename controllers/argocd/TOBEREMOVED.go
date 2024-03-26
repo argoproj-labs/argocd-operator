@@ -1323,3 +1323,17 @@ func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 	}
 	return nil
 }
+
+// reconcileCertificateAuthority will reconcile all Certificate Authority resources.
+func (r *ReconcileArgoCD) reconcileCertificateAuthority(cr *argoproj.ArgoCD) error {
+	log.Info("reconciling CA secret")
+	if err := r.reconcileClusterCASecret(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling CA config map")
+	if err := r.reconcileCAConfigMap(cr); err != nil {
+		return err
+	}
+	return nil
+}
