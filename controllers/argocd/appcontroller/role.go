@@ -17,11 +17,25 @@ import (
 func (acr *AppControllerReconciler) reconcileRoles() error {
 	var reconcileErrs util.MultiError
 
-	err := acr.reconcileRole()
-	reconcileErrs.Append(err)
+	if acr.ClusterScoped {
+		// delete namespaced RBAC
+		err := acr.deleteRole(resourceName, acr.Instance.Namespace)
+		reconcileErrs.Append(err)
 
-	err = acr.reconcileManagedNsRoles()
-	reconcileErrs.Append(err)
+		roles, _, err := acr.getManagedRBACToBeDeleted()
+		if err != nil {
+			acr.Logger.Error(err, "failed to retrieve one or more namespaced rbac resources to be deleted")
+		} else if len(roles) > 0 {
+			acr.Logger.Debug("reconcileRoles: namespace scoped instance detected; deleting app management rbac resources")
+			reconcileErrs.Append(acr.DeleteRoles(roles))
+		}
+	} else {
+		err := acr.reconcileRole()
+		reconcileErrs.Append(err)
+
+		err = acr.reconcileManagedNsRoles()
+		reconcileErrs.Append(err)
+	}
 
 	return reconcileErrs.ErrOrNil()
 }

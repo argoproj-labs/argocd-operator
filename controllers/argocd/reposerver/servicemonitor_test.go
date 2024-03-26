@@ -60,7 +60,7 @@ func TestReconcileServiceMonitor_create(t *testing.T) {
 			monitoring.SetPrometheusAPIFound(tt.prometheusAPIAvailable)
 			defer monitoring.SetPrometheusAPIFound(false)
 
-			err := tt.reconciler.reconcileServiceMonitor()
+			err := tt.reconciler.reconcileMetriscServiceMonitor()
 			assert.NoError(t, err)
 
 			_, err = monitoring.GetServiceMonitor("test-argocd-repo-server-metrics", test.TestNamespace, tt.reconciler.Client)
@@ -111,7 +111,7 @@ func TestReconcileServiceMonitor_update(t *testing.T) {
 			monitoring.SetPrometheusAPIFound(tt.prometheusAPIAvailable)
 			defer monitoring.SetPrometheusAPIFound(false)
 
-			err := tt.reconciler.reconcileServiceMonitor()
+			err := tt.reconciler.reconcileMetriscServiceMonitor()
 			assert.NoError(t, err)
 
 			existing, err := monitoring.GetServiceMonitor("test-argocd-repo-server-metrics", test.TestNamespace, tt.reconciler.Client)

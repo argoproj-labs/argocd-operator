@@ -10,6 +10,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -876,4 +877,98 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 		return err
 	}
 	return r.Client.Create(context.TODO(), svc)
+}
+
+func policyRuleForServerApplicationSourceNamespaces() []v1.PolicyRule {
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+				"delete",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+			},
+			Verbs: []string{
+				"create",
+			},
+		},
+	}
+}
+
+// reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
+func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
+	sm := newServiceMonitorWithSuffix("server-metrics", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
+		if !cr.Spec.Prometheus.Enabled {
+			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
+			return r.Client.Delete(context.TODO(), sm)
+		}
+		return nil // ServiceMonitor found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	sm.Spec.Selector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
+		},
+	}
+	sm.Spec.Endpoints = []monitoringv1.Endpoint{
+		{
+			Port: common.ArgoCDKeyMetrics,
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), sm)
+}
+
+// getArgoServerURI will return the URI for the ArgoCD server.
+// The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
+func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("server", cr) // Default to service name
+
+	// Use the external hostname provided by the user
+	if cr.Spec.Server.Host != "" {
+		host = cr.Spec.Server.Host
+	}
+
+	// Use Ingress host if enabled
+	if cr.Spec.Server.Ingress.Enabled {
+		ing := newIngressWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
+			host = ing.Spec.Rules[0].Host
+		}
+	}
+
+	// Use Route host if available, override Ingress if both exist
+	if IsRouteAPIAvailable() {
+		route := newRouteWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+			host = route.Spec.Host
+		}
+	}
+
+	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
 }

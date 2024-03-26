@@ -1179,3 +1179,66 @@ func getArgoCDNotificationsControllerReplicas(cr *argoproj.ArgoCD) *int32 {
 
 	return nil
 }
+
+func policyRuleForNotificationsController() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applications",
+				"appprojects",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"patch",
+				"update",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"configmaps",
+				"secrets",
+			},
+			Verbs: []string{
+				"list",
+				"watch",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				"argocd-notifications-cm",
+			},
+			Resources: []string{
+				"configmaps",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			ResourceNames: []string{
+				"argocd-notifications-secret",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+			},
+		},
+	}
+}

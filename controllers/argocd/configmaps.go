@@ -82,7 +82,7 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 			common.ArgoCDKeyRepositoryCredentials:       r.getRepositoryCredentials(),
 			common.ArgoCDKeyStatusBadgeEnabled:          r.getStatusBadgeEnabled(),
 			common.ArgoCDKeyUsersAnonymousEnabled:       r.getUsersAnonymousEnabled(),
-			// TO DO: skipping server URI since that should be handled by server component
+			common.ArgoCDKeyServerURL:                   r.ServerController.GetURI(),
 		},
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,

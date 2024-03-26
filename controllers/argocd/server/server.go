@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
@@ -84,6 +85,20 @@ func (sr *ServerReconciler) Reconcile() error {
 		sr.Logger.Error(err, "failed to reconcile one or more services")
 	}
 
+	if monitoring.IsPrometheusAPIAvailable() {
+		if sr.Instance.Spec.Prometheus.Enabled {
+			if err := sr.reconcileMetricsServiceMonitor(); err != nil {
+				sr.Logger.Error(err, "failed to reconcile metrics service monitor")
+			}
+		} else {
+			if err := sr.deleteServiceMonitor(metricsResourceName, sr.Instance.Namespace); err != nil {
+				sr.Logger.Error(err, "failed to delete serviceMonitor")
+			}
+		}
+	} else {
+		sr.Logger.Debug("prometheus API unavailable, skipping service monitor reconciliation")
+	}
+
 	if sr.Instance.Spec.Server.Autoscale.Enabled {
 		if err := sr.reconcileHorizontalPodAutoscaler(); err != nil {
 			sr.Logger.Error(err, "failed to reconcile HPA")
@@ -136,6 +151,11 @@ func (sr *ServerReconciler) DeleteResources() error {
 
 	if err := sr.deleteServices(); err != nil {
 		sr.Logger.Error(err, "failed to delete one or more services")
+		deletionErr.Append(err)
+	}
+
+	if err := sr.deleteServiceMonitor(metricsResourceName, sr.Instance.Namespace); err != nil {
+		sr.Logger.Error(err, "failed to delete serviceMonitor")
 		deletionErr.Append(err)
 	}
 

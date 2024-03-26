@@ -108,38 +108,6 @@ func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoring
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
 }
 
-// reconcileMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD metrics Service.
-func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitorWithSuffix(common.ArgoCDKeyMetrics, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
-		if !cr.Spec.Prometheus.Enabled {
-			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
-		}
-		return nil // ServiceMonitor found, do nothing
-	}
-
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	sm.Spec.Selector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix(common.ArgoCDKeyMetrics, cr),
-		},
-	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDKeyMetrics,
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), sm)
-}
-
 // reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
 func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	prometheus := newPrometheus(cr)
@@ -167,38 +135,6 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	return r.Client.Create(context.TODO(), prometheus)
-}
-
-// reconcileServerMetricsServiceMonitor will ensure that the ServiceMonitor is present for the ArgoCD Server metrics Service.
-func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.ArgoCD) error {
-	sm := newServiceMonitorWithSuffix("server-metrics", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
-		if !cr.Spec.Prometheus.Enabled {
-			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			return r.Client.Delete(context.TODO(), sm)
-		}
-		return nil // ServiceMonitor found, do nothing
-	}
-
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	sm.Spec.Selector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			common.ArgoCDKeyName: nameWithSuffix("server-metrics", cr),
-		},
-	}
-	sm.Spec.Endpoints = []monitoringv1.Endpoint{
-		{
-			Port: common.ArgoCDKeyMetrics,
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), sm)
 }
 
 // reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses

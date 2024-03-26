@@ -7,6 +7,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -40,26 +41,6 @@ func (acr *AppControllerReconciler) Reconcile() error {
 	}
 
 	if acr.ClusterScoped {
-		// delete namespaced RBAC and reconcile cluster RBAC
-		var deletionErr util.MultiError
-		err := acr.deleteRoleBinding(resourceName, acr.Instance.Namespace)
-		deletionErr.Append(err)
-
-		err = acr.deleteRole(resourceName, acr.Instance.Namespace)
-		deletionErr.Append(err)
-
-		roles, rbs, err := acr.getManagedRBACToBeDeleted()
-		if err != nil {
-			acr.Logger.Error(err, "failed to retrieve one or more namespaced rbac resources to be deleted")
-		} else {
-
-			deletionErr.Append(acr.DeleteRoleBindings(rbs))
-			deletionErr.Append(acr.DeleteRoles(roles))
-			if !deletionErr.IsNil() {
-				acr.Logger.Error(deletionErr, "failed to delete one or more managed namespaced rbac resources")
-			}
-		}
-
 		if err := acr.reconcileClusterRole(); err != nil {
 			acr.Logger.Error(err, "failed to reconcile clusterRole")
 			return err
@@ -71,27 +52,41 @@ func (acr *AppControllerReconciler) Reconcile() error {
 		}
 
 	} else {
-		// delete cluster RBAC and source ns resources, reconcile namespaced RBAC
+		// delete cluster RBAC
+		if err := acr.deleteClusterRoleBinding(clusterResourceName); err != nil {
+			acr.Logger.Error(err, "failed to delete cluster role")
+		}
 
 		if err := acr.deleteClusterRole(clusterResourceName); err != nil {
 			acr.Logger.Error(err, "failed to delete cluster role")
 		}
 
-		if err := acr.deleteClusterRoleBinding(clusterResourceName); err != nil {
-			acr.Logger.Error(err, "failed to delete cluster role")
-		}
+	}
 
-		if err := acr.reconcileRoles(); err != nil {
-			acr.Logger.Error(err, "failed to reconcile one or more roles")
-		}
+	if err := acr.reconcileRoles(); err != nil {
+		acr.Logger.Error(err, "failed to reconcile one or more roles")
+	}
 
-		if err := acr.reconcileRoleBindings(); err != nil {
-			acr.Logger.Error(err, "failed to reconcile one or more rolebindings")
-		}
+	if err := acr.reconcileRoleBindings(); err != nil {
+		acr.Logger.Error(err, "failed to reconcile one or more rolebindings")
 	}
 
 	if err := acr.reconcileMetricsService(); err != nil {
 		acr.Logger.Error(err, "failed to reconcile metrics service")
+	}
+
+	if monitoring.IsPrometheusAPIAvailable() {
+		if acr.Instance.Spec.Prometheus.Enabled {
+			if err := acr.reconcileMetricsServiceMonitor(); err != nil {
+				acr.Logger.Error(err, "failed to reconcile metrics service monitor")
+			}
+		} else {
+			if err := acr.deleteServiceMonitor(metricsResourceName, acr.Instance.Namespace); err != nil {
+				acr.Logger.Error(err, "failed to delete serviceMonitor")
+			}
+		}
+	} else {
+		acr.Logger.Debug("prometheus API unavailable, skipping service monitor reconciliation")
 	}
 
 	if err := acr.reconcileStatefulSet(); err != nil {
