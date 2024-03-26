@@ -2,104 +2,118 @@ package applicationset
 
 import (
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/pkg/errors"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (asr *ApplicationSetReconciler) reconcileService() error {
 
-	asr.Logger.Info("reconciling services")
-
-	serviceRequest := networking.ServiceRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        resourceName,
-			Namespace:   asr.Instance.Namespace,
-			Labels:      resourceLabels,
-			Annotations: asr.Instance.Annotations,
+	req := networking.ServiceRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, asr.Instance.Namespace, asr.Instance.Name, asr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				common.AppK8sKeyName: resourceName,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       common.Webhook,
+					Port:       common.AppSetWebhookPort,
+					Protocol:   corev1.ProtocolTCP,
+					TargetPort: intstr.FromInt(common.AppSetWebhookPort),
+				},
+				{
+					Name:       common.ArgoCDMetrics,
+					Port:       common.AppSetMetricsPort,
+					TargetPort: intstr.FromInt(common.AppSetMetricsPort),
+				},
+			},
 		},
-		Spec:      GetServiceSpec(),
 		Client:    asr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
-	desiredService, err := networking.RequestService(serviceRequest)
+	ignoreDrift := false
+	updateFn := func(existing, desired *corev1.Service, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
+			{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
+		}
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return asr.reconService(req, argocdcommon.UpdateFnSvc(updateFn), ignoreDrift)
+}
+
+func (asr *ApplicationSetReconciler) reconService(req networking.ServiceRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := networking.RequestService(req)
 	if err != nil {
-		asr.Logger.Error(err, "reconcileService: failed to request service", "name", desiredService.Name, "namespace", desiredService.Namespace)
 		asr.Logger.Debug("reconcileService: one or more mutations could not be applied")
-		return err
+		return errors.Wrapf(err, "reconcileService: failed to request Service %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	namespace, err := cluster.GetNamespace(asr.Instance.Namespace, asr.Client)
+	if err = controllerutil.SetControllerReference(asr.Instance, desired, asr.Scheme); err != nil {
+		asr.Logger.Error(err, "reconcileService: failed to set owner reference for Service", "name", desired.Name, "namespace", desired.Namespace)
+	}
+
+	existing, err := networking.GetService(desired.Name, desired.Namespace, asr.Client)
 	if err != nil {
-		asr.Logger.Error(err, "reconcileService: failed to retrieve namespace", "name", asr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := asr.deleteService(desiredService.Name, desiredService.Namespace); err != nil {
-			asr.Logger.Error(err, "reconcileService: failed to delete service", "name", desiredService.Name, "namespace", desiredService.Namespace)
-		}
-		return err
-	}
-
-	_, err = networking.GetService(desiredService.Name, desiredService.Namespace, asr.Client)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			asr.Logger.Error(err, "reconcileService: failed to retrieve service", "name", desiredService.Name, "namespace", desiredService.Namespace)
-			return err
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconcileService: failed to retrieve Service %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = controllerutil.SetControllerReference(asr.Instance, desiredService, asr.Scheme); err != nil {
-			asr.Logger.Error(err, "reconcileService: failed to set owner reference for service", "name", desiredService.Name, "namespace", desiredService.Namespace)
+		if err = networking.CreateService(desired, asr.Client); err != nil {
+			return errors.Wrapf(err, "reconcileService: failed to create Service %s in namespace %s", desired.Name, desired.Namespace)
 		}
-
-		if err = networking.CreateService(desiredService, asr.Client); err != nil {
-			asr.Logger.Error(err, "reconcileService: failed to create service", "name", desiredService.Name, "namespace", desiredService.Namespace)
-			return err
-		}
-		asr.Logger.Info("service created", "name", desiredService.Name, "namespace", desiredService.Namespace)
+		asr.Logger.Info("service created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
+	// Service found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnSvc); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconcileService: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+
+	if err = networking.UpdateService(existing, asr.Client); err != nil {
+		return errors.Wrapf(err, "reconcileService: failed to update service %s", existing.Name)
+	}
+
+	asr.Logger.Info("service updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
+// deleteService will delete service with given name.
 func (asr *ApplicationSetReconciler) deleteService(name, namespace string) error {
 	if err := networking.DeleteService(name, namespace, asr.Client); err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		asr.Logger.Error(err, "DeleteService: failed to delete service", "name", name, "namespace", namespace)
-		return err
+		return errors.Wrapf(err, "deleteService: failed to delete service %s in namespace %s", name, namespace)
 	}
 	asr.Logger.Info("service deleted", "name", name, "namespace", namespace)
 	return nil
-}
-
-func GetServiceSpec() corev1.ServiceSpec {
-	return corev1.ServiceSpec{
-		Ports: []corev1.ServicePort{
-			{
-				Name:       common.Webhook,
-				Port:       7000,
-				Protocol:   corev1.ProtocolTCP,
-				TargetPort: intstr.FromInt(7000),
-			},
-			{
-				Name:       common.ArgoCDMetrics,
-				Port:       8080,
-				TargetPort: intstr.FromInt(8080),
-			},
-		},
-		Selector: map[string]string{
-			common.AppK8sKeyName: resourceName,
-		},
-	}
 }

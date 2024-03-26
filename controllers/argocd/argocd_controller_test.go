@@ -515,10 +515,10 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 	// test with namespace scoped instance
 	r.Instance = instance
 	r.ClusterScoped = false
-	r.setAppManagedNamespaces()
+	r.setAppSourceNamespaces()
 	expectedNsMap := map[string]string{}
 	expectedLabelledNsList := []string{}
-	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+	assert.Equal(t, expectedNsMap, r.AppSourceNamespaces)
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels{
@@ -535,13 +535,13 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 
 	// change instance to clusterscoped
 	r.ClusterScoped = true
-	r.setAppManagedNamespaces()
+	r.setAppSourceNamespaces()
 	expectedNsMap = map[string]string{
 		"test-ns-1": "",
 		"test-ns-3": "",
 	}
 	expectedLabelledNsList = []string{"test-ns-1", "test-ns-3"}
-	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+	assert.Equal(t, expectedNsMap, r.AppSourceNamespaces)
 
 	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)
 	labelledNs = []string{}
@@ -553,13 +553,13 @@ func TestSetAppManagedNamespaces(t *testing.T) {
 
 	// update source namespace list
 	r.Instance.Spec.SourceNamespaces = []string{"test-ns-4", "test-ns-5"}
-	r.setAppManagedNamespaces()
+	r.setAppSourceNamespaces()
 	expectedNsMap = map[string]string{
 		"test-ns-4": "",
 		"test-ns-5": "",
 	}
 	expectedLabelledNsList = []string{"test-ns-4", "test-ns-5"}
-	assert.Equal(t, expectedNsMap, r.AppManagedNamespaces)
+	assert.Equal(t, expectedNsMap, r.AppSourceNamespaces)
 
 	// check that namespace labels are updated
 	existingManagedNamespaces, _ = cluster.ListNamespaces(r.Client, listOptions)

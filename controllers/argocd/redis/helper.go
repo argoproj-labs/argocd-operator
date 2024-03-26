@@ -195,8 +195,8 @@ func getConfigPath() string {
 	return path
 }
 
-// getArgs will return the list of cmd args to be supplied to the redis container
-func (rr *RedisReconciler) getArgs() []string {
+// getCmd will return the list of cmd args to be supplied to the redis container
+func (rr *RedisReconciler) getCmd() []string {
 	args := make([]string, 0)
 
 	args = append(args, "--save", "")

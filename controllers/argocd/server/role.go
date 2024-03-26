@@ -36,19 +36,28 @@ func (sr *ServerReconciler) reconcileRoles() error {
 		err = sr.reconcileSourceNsRoles()
 		reconcileErrs.Append(err)
 
-		// TO DO: reconcile appset source ns roles
+		// reconcile appset source ns roles
+		err = sr.reconcileAppsetSourceNsRoles()
+		reconcileErrs.Append(err)
 
 	} else {
 		// delete source ns roles
-		_, rbs, err := sr.getSourceNsRBAC()
+		roles, _, err := sr.getSourceNsRBAC()
 		if err != nil {
 			sr.Logger.Error(err, "reconcileRoles: failed to list one or more app management namespace rbac resources")
-		} else if len(rbs) > 0 {
+		} else if len(roles) > 0 {
 			sr.Logger.Debug("reconcileRoles: namespace scoped instance detected; deleting app management rbac resources")
-			reconcileErrs.Append(sr.DeleteRoles(rbs))
+			reconcileErrs.Append(sr.DeleteRoles(roles))
 		}
 
-		// TO DO: delete appset ns roles
+		// delete appset ns roles
+		roles, _, err = sr.getAppsetSourceNsRBAC()
+		if err != nil {
+			sr.Logger.Error(err, "reconcileRoles: failed to list one or more appset management namespace rbac resources")
+		} else if len(roles) > 0 {
+			sr.Logger.Debug("reconcileRoles: namespace scoped instance detected; deleting appset management rbac resources")
+			reconcileErrs.Append(sr.DeleteRoles(roles))
+		}
 
 		// reconcile control plane role
 		err = sr.reconcileRole()
@@ -70,12 +79,6 @@ func (sr *ServerReconciler) reconcileRole() error {
 		Instance:   sr.Instance,
 		Client:     sr.Client,
 		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-	}
-
-	desired, err := permissions.RequestRole(req)
-	if err != nil {
-		sr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
-		return errors.Wrapf(err, "reconcileRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
 	ignoreDrift := false
@@ -118,12 +121,6 @@ func (sr *ServerReconciler) reconcileManagedNsRoles() error {
 			Instance:   sr.Instance,
 			Client:     sr.Client,
 			Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
-		}
-
-		desired, err := permissions.RequestRole(req)
-		if err != nil {
-			sr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
-			return errors.Wrapf(err, "reconcileRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
 		ignoreDrift := false
@@ -171,10 +168,49 @@ func (sr *ServerReconciler) reconcileSourceNsRoles() error {
 			Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		}
 
-		desired, err := permissions.RequestRole(req)
+		ignoreDrift := false
+		updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
+			fieldsToCompare := []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
+			}
+
+			argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+			return nil
+		}
+		err = sr.reconRole(req, argocdcommon.UpdateFnRole(updateFn), ignoreDrift)
+		reconcileErrs.Append(err)
+	}
+
+	return reconcileErrs.ErrOrNil()
+}
+
+func (sr *ServerReconciler) reconcileAppsetSourceNsRoles() error {
+	var reconcileErrs util.MultiError
+
+	for appsetSourceNs := range sr.AppsetSourceNamespaces {
+		// Skip namespace if can't be retrieved or in terminating state
+		ns, err := cluster.GetNamespace(appsetSourceNs, sr.Client)
 		if err != nil {
-			sr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
-			return errors.Wrapf(err, "reconcileRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
+			sr.Logger.Error(err, "reconcileAppsetSourceNsRoles: unable to retrieve namesapce", "name", appsetSourceNs)
+			continue
+		}
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.Debug("reconcileAppsetSourceNsRoles: skipping namespace in terminating state", "name", appsetSourceNs)
+			continue
+		}
+
+		// Skip control plane namespace
+		if appsetSourceNs == sr.Instance.Namespace {
+			continue
+		}
+
+		req := permissions.RoleRequest{
+			ObjectMeta: argoutil.GetObjMeta(appsetSourceNsResourceName, appsetSourceNs, sr.Instance.Name, sr.Instance.Namespace, component, argocdcommon.GetAppsetManagementLabel(), util.EmptyMap()),
+			Rules:      getAppsetSourceNsPolicyRules(),
+			Instance:   sr.Instance,
+			Client:     sr.Client,
+			Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		}
 
 		ignoreDrift := false
@@ -430,6 +466,29 @@ func getSourceNsPolicyRules() []rbacv1.PolicyRule {
 			Verbs: []string{
 				"create",
 				"list",
+			},
+		},
+	}
+}
+
+// getPolicyRules returns rules for non control plane ns application management
+func getAppsetSourceNsPolicyRules() []rbacv1.PolicyRule {
+	return []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{
+				"argoproj.io",
+			},
+			Resources: []string{
+				"applicationsets",
+			},
+			Verbs: []string{
+				"create",
+				"get",
+				"list",
+				"watch",
+				"update",
+				"delete",
+				"patch",
 			},
 		},
 	}

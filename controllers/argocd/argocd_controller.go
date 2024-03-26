@@ -34,9 +34,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/pkg/errors"
+
+	"github.com/argoproj/argo-cd/v2/util/glob"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -81,7 +84,9 @@ type ArgoCDReconciler struct {
 	Logger        *util.Logger
 
 	ResourceManagedNamespaces map[string]string
-	AppManagedNamespaces      map[string]string
+	AppSourceNamespaces       map[string]string
+	AppsetSourceNamespaces    map[string]string
+
 	// Stores label selector used to reconcile a subset of ArgoCD
 	LabelSelector string
 
@@ -139,7 +144,7 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	argocd := &argoproj.ArgoCD{}
 	err := r.Client.Get(ctx, request.NamespacedName, argocd)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -231,8 +236,11 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 	if err = r.setResourceManagedNamespaces(); err != nil {
 		return reconcile.Result{}, err
 	}
+	if err = r.setAppSourceNamespaces(); err != nil {
+		return reconcile.Result{}, err
+	}
 
-	if err = r.setAppManagedNamespaces(); err != nil {
+	if err = r.setAppsetSourceNamespaces(); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -282,18 +290,50 @@ func (r *ArgoCDReconciler) setResourceManagedNamespaces() error {
 	return nil
 }
 
-// setAppManagedNamespaces sets and updates the list of namespaces that a cluster-scoped Argo CD instance is allowed to source Applications from. It is responsible for keeping cluster namespace labels in
-// sync with the list provided in the Argo CD CR. It also detects conflicts if a newly specified namespace is already being managed by a different cluster scoped instance
-func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
-	r.AppManagedNamespaces = make(map[string]string)
-	allowedSourceNamespaces := make(map[string]string)
+// getAllowedAppSourceNsList calculates the list of allowed app source namespaces for the given instance
+// It detects conflicts if a newly specified namespace is already being managed by a different cluster scoped
+// or namespace scoped instance
+func (r *ArgoCDReconciler) getAllowedAppSourceNsList() ([]string, error) {
+	sourceNamespaces := []string{}
 
-	if !r.ClusterScoped {
-		r.Logger.Debug("setSourceNamespaces: instance is not cluster scoped, skip processing namespaces for application management")
-		return nil
+	// retrieve all cluster namespaces
+	nsList, err := cluster.ListNamespaces(r.Client, []client.ListOption{})
+	if err != nil {
+		return []string{}, errors.Wrap(err, "getAllowedAppSourceNsList: failed to retrieve cluster namespaces")
 	}
 
-	r.Logger.Info("processing namespaces for application management")
+	for _, namespace := range nsList.Items {
+		if glob.MatchStringInList(r.Instance.Spec.SourceNamespaces, namespace.Name, false) {
+			// namespace matches request source ns criteria
+			// reject ns if already managed by a different instance
+			if val, ok := namespace.Labels[common.ArgoCDArgoprojKeyManagedBy]; ok && val != r.Instance.Namespace {
+				r.Logger.Debug("getAllowedAppSourceNsList: skipping namespace %s as it is already managed by a different Argo CD instance")
+				continue
+			}
+
+			if val, ok := namespace.Labels[common.ArgoCDArgoprojKeyAppsManagedBy]; ok && val != r.Instance.Namespace {
+				r.Logger.Debug("getAllowedAppSourceNsList: skipping namespace %s as it is already managed by a different Argo CD instance")
+				continue
+			}
+
+			// TO DO: future update - add exclusion list check here
+
+			sourceNamespaces = append(sourceNamespaces, namespace.Name)
+		}
+	}
+	return sourceNamespaces, nil
+}
+
+// setAppSourceNamespaces sets and updates the list of namespaces that a cluster-scoped Argo CD instance is allowed
+// to source Applications from. It is responsible for keeping cluster namespace labels in
+// sync with the list provided in the Argo CD CR.
+func (r *ArgoCDReconciler) setAppSourceNamespaces() error {
+	r.AppSourceNamespaces = make(map[string]string)
+
+	if !r.ClusterScoped {
+		r.Logger.Debug("setAppSourceNamespaces: instance is not cluster scoped, skip processing namespaces for application management")
+		return nil
+	}
 
 	// Get list of existing namespaces currently carrying the ArgoCDAppsManagedBy label and convert to a map
 	listOptions := []client.ListOption{
@@ -301,77 +341,171 @@ func (r *ArgoCDReconciler) setAppManagedNamespaces() error {
 			common.ArgoCDArgoprojKeyAppsManagedBy: r.Instance.Namespace,
 		},
 	}
-
-	existingManagedNamespaces, err := cluster.ListNamespaces(r.Client, listOptions)
+	existingAppSourceNamespaces, err := cluster.ListNamespaces(r.Client, listOptions)
 	if err != nil {
-		r.Logger.Error(err, "setSourceNamespaces: failed to list namespaces")
+		r.Logger.Error(err, "setAppSourceNamespaces: failed to list namespaces")
 		return err
 	}
-	existingManagedNsMap := make(map[string]string)
-	for _, ns := range existingManagedNamespaces.Items {
-		existingManagedNsMap[ns.Name] = ""
+	existingAppSrcNsMap := make(map[string]string)
+	for _, ns := range existingAppSourceNamespaces.Items {
+		existingAppSrcNsMap[ns.Name] = ""
 	}
 
-	// Get list of desired namespaces that should be carrying the ArgoCDAppsManagedBy label and convert to a map
-	desiredManagedNsMap := make(map[string]string)
-	for _, ns := range r.Instance.Spec.SourceNamespaces {
-		desiredManagedNsMap[ns] = ""
+	// Get list of allowed namespaces that should be carrying the ArgoCDAppsManagedBy label and convert to a map
+	allowedAppSrcNamespaces, err := r.getAllowedAppSourceNsList()
+	if err != nil {
+		return errors.Wrap(err, "setAppSourceNamespaces: failed to list requested source namespaces")
 	}
+	allowedAppSrcNsMap := util.StringSliceToMap(allowedAppSrcNamespaces)
 
-	// check if any of the desired namespaces are missing the label. If yes, add ArgoCDArgoprojKeyAppsManagedBy to it
-	for _, desiredNs := range r.Instance.Spec.SourceNamespaces {
-		if _, ok := existingManagedNsMap[desiredNs]; !ok {
-			ns, err := cluster.GetNamespace(desiredNs, r.Client)
-			if err != nil {
-				r.Logger.Error(err, "setSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
-				continue
-			}
+	// calculate new source namespaces by performing allowed - existing
+	newSourceNsMap := util.SetDiff(allowedAppSrcNsMap, existingAppSrcNsMap)
 
-			// sanity check
-			if len(ns.Labels) == 0 {
-				ns.Labels = make(map[string]string)
-			}
-			// check if desired namespace is already being managed by a different cluster scoped Argo CD instance. If yes, skip it
-			// If not, add ArgoCDArgoprojKeyAppsManagedBy to it and add it to allowedSourceNamespaces
-			if val, ok := ns.Labels[common.ArgoCDArgoprojKeyAppsManagedBy]; ok && val != r.Instance.Namespace {
-				r.Logger.Debug("setSourceNamespaces: skipping namespace as it is already managed by a different instance", "namespace", ns.Name, "managing-instance-namespace", val)
-				continue
-			} else {
-				ns.Labels[common.ArgoCDArgoprojKeyAppsManagedBy] = r.Instance.Namespace
-				allowedSourceNamespaces[desiredNs] = ""
-			}
-			err = cluster.UpdateNamespace(ns, r.Client)
-			if err != nil {
-				r.Logger.Error(err, "setSourceNamespaces: failed to update namespace", "namespace", ns.Name)
-				continue
-			}
-			r.Logger.Debug("setSourceNamespaces: labeled namespace", "namespace", ns.Name)
+	// calculate obsolete source namespaces by performing existing - allowed
+	obsoleteSourceNsMap := util.SetDiff(existingAppSrcNsMap, allowedAppSrcNsMap)
+
+	// label the new namespaces
+	for newNs := range newSourceNsMap {
+		ns, err := cluster.GetNamespace(newNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "setAppSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
 			continue
 		}
-		allowedSourceNamespaces[desiredNs] = ""
+		// sanity check
+		if len(ns.Labels) == 0 {
+			ns.Labels = make(map[string]string)
+		}
+		ns.Labels[common.ArgoCDArgoprojKeyAppsManagedBy] = r.Instance.Namespace
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "setAppSourceNamespaces: failed to update namespace", "namespace", ns.Name)
+			continue
+		}
+		r.Logger.Debug("setAppSourceNamespaces: labeled namespace", "namespace", ns.Name)
 		continue
 	}
 
-	// check if any of the exisiting namespaces are carrying the label when they should not be. If yes, remove it
-	for existingNs, _ := range existingManagedNsMap {
-		if _, ok := desiredManagedNsMap[existingNs]; !ok {
-			ns, err := cluster.GetNamespace(existingNs, r.Client)
-			if err != nil {
-				r.Logger.Error(err, "setSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
-				continue
-			}
-			delete(ns.Labels, common.ArgoCDArgoprojKeyAppsManagedBy)
-			err = cluster.UpdateNamespace(ns, r.Client)
-			if err != nil {
-				r.Logger.Error(err, "setSourceNamespaces: failed to update namespace", "namespace", ns.Name)
-				continue
-			}
-			r.Logger.Debug("setSourceNamespaces: unlabeled namespace", "namespace", ns.Name)
+	// unlabel obsolete namespaces
+	for oldNs := range obsoleteSourceNsMap {
+		ns, err := cluster.GetNamespace(oldNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "setSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
 			continue
 		}
+		delete(ns.Labels, common.ArgoCDArgoprojKeyAppsManagedBy)
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "setSourceNamespaces: failed to update namespace", "namespace", ns.Name)
+			continue
+		}
+		r.Logger.Debug("setSourceNamespaces: unlabeled namespace", "namespace", ns.Name)
+		continue
 	}
 
-	r.AppManagedNamespaces = allowedSourceNamespaces
+	r.AppSourceNamespaces = allowedAppSrcNsMap
+	return nil
+}
+
+func (r *ArgoCDReconciler) getAllowedAppsetSourceNsList() ([]string, error) {
+	sourceNamespaces := []string{}
+
+	// Get list of existing app source namespaces. Set of Appset source namespaces
+	// should be a subset of this set
+	listOptions := []client.ListOption{
+		client.MatchingLabels{
+			common.ArgoCDArgoprojKeyAppsManagedBy: r.Instance.Namespace,
+		},
+	}
+
+	existingAppSourceNamespaces, err := cluster.ListNamespaces(r.Client, listOptions)
+	if err != nil {
+		r.Logger.Error(err, "getDesiredAppsetSourceNsList: failed to list app source namespaces")
+		return nil, err
+	}
+
+	for _, namespace := range existingAppSourceNamespaces.Items {
+		if glob.MatchStringInList(r.Instance.Spec.ApplicationSet.SourceNamespaces, namespace.Name, false) {
+			// TO DO: future update - add exclusion list check here
+			sourceNamespaces = append(sourceNamespaces, namespace.Name)
+		}
+	}
+	return sourceNamespaces, nil
+}
+
+// setAppsetSourceNamespaces sets and updates the list of namespaces that a cluster-scoped Argo CD instance is allowed
+// to source Applicationsets from. It is responsible for keeping cluster namespace labels in
+// sync with the list provided in the Argo CD CR.
+func (r *ArgoCDReconciler) setAppsetSourceNamespaces() error {
+	r.AppsetSourceNamespaces = make(map[string]string)
+
+	if !r.ClusterScoped {
+		r.Logger.Debug("setAppsetSourceNamespaces: instance is not cluster scoped, skip processing namespaces for applicationset management")
+		return nil
+	}
+
+	// Get list of existing namespaces currently carrying the ArgoCDAppSetsManagedBy label and convert to a map
+	listOptions := []client.ListOption{
+		client.MatchingLabels{
+			common.ArgoCDArgoprojKeyAppSetsManagedBy: r.Instance.Namespace,
+		},
+	}
+	existingAppsetSourceNamespaces, err := cluster.ListNamespaces(r.Client, listOptions)
+	if err != nil {
+		r.Logger.Error(err, "setAppsetSourceNamespaces: failed to list namespaces")
+		return err
+	}
+	existingAppsetSrcNsMap := make(map[string]string)
+	for _, ns := range existingAppsetSourceNamespaces.Items {
+		existingAppsetSrcNsMap[ns.Name] = ""
+	}
+
+	// Get list of allowed namespaces that should be carrying the ArgoCDAppSetsManagedBy label and convert to a map
+	allowedAppsetSrcNamespaces, err := r.getAllowedAppsetSourceNsList()
+	if err != nil {
+		return errors.Wrap(err, "setAppsetSourceNamespaces: failed to list requested appset source namespaces")
+	}
+	allowedAppsetSrcNsMap := util.StringSliceToMap(allowedAppsetSrcNamespaces)
+
+	// calculate new source namespaces by performing allowed - existing
+	newSourceNsMap := util.SetDiff(allowedAppsetSrcNsMap, existingAppsetSrcNsMap)
+	// calculate obsolete source namespaces by performing existing - allowed
+	obsoleteSourceNsMap := util.SetDiff(existingAppsetSrcNsMap, allowedAppsetSrcNsMap)
+
+	// label the new namespaces
+	for newNs := range newSourceNsMap {
+		ns, err := cluster.GetNamespace(newNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "setAppsetSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
+			continue
+		}
+		// sanity check
+		if len(ns.Labels) == 0 {
+			ns.Labels = make(map[string]string)
+		}
+		ns.Labels[common.ArgoCDArgoprojKeyAppSetsManagedBy] = r.Instance.Namespace
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "setAppsetSourceNamespaces: failed to update namespace", "namespace", ns.Name)
+			continue
+		}
+		r.Logger.Debug("setAppsetSourceNamespaces: labeled namespace", "namespace", ns.Name)
+		continue
+	}
+
+	// unlabel obsolete namespaces
+	for oldNs := range obsoleteSourceNsMap {
+		ns, err := cluster.GetNamespace(oldNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "setAppsetSourceNamespaces: failed to retrieve namespace", "name", ns.Name)
+			continue
+		}
+		delete(ns.Labels, common.ArgoCDArgoprojKeyAppSetsManagedBy)
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "setAppsetSourceNamespaces: failed to update namespace", "namespace", ns.Name)
+			continue
+		}
+		r.Logger.Debug("setAppsetSourceNamespaces: unlabeled namespace", "namespace", ns.Name)
+		continue
+	}
+
+	r.AppsetSourceNamespaces = allowedAppsetSrcNsMap
 	return nil
 }
 
@@ -393,7 +527,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 			return err
 		}
 	} else {
-		r.Logger.Info("app controller disabled; deleting resources")
 		if err := r.AppController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete app controller resources")
 		}
@@ -405,7 +538,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 			return err
 		}
 	} else {
-		r.Logger.Info("server disabled; deleting resources")
 		if err := r.ServerController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete server resources")
 		}
@@ -417,7 +549,6 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 			return err
 		}
 	} else {
-		r.Logger.Info("redis disabled; deleting resources")
 		if err := r.RedisController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete redis resources")
 			return err
@@ -430,13 +561,12 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 			return err
 		}
 	} else {
-		r.Logger.Info("repo-server disabled; deleting resources")
 		if err := r.ReposerverController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete repo-server resources")
 		}
 	}
 
-	if r.Instance.Spec.ApplicationSet != nil {
+	if r.Instance.Spec.ApplicationSet != nil && r.Instance.Spec.ApplicationSet.IsEnabled() {
 		if err := r.AppsetController.Reconcile(); err != nil {
 			r.Logger.Error(err, "failed to reconcile applicationset controller")
 		}
@@ -484,13 +614,14 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	}
 
 	serverController := &server.ServerReconciler{
-		Client:            r.Client,
-		Scheme:            r.Scheme,
-		Instance:          r.Instance,
-		Logger:            util.NewLogger(common.ServerController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
-		ClusterScoped:     r.ClusterScoped,
-		ManagedNamespaces: r.ResourceManagedNamespaces,
-		SourceNamespaces:  r.AppManagedNamespaces,
+		Client:                 r.Client,
+		Scheme:                 r.Scheme,
+		Instance:               r.Instance,
+		Logger:                 util.NewLogger(common.ServerController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
+		ClusterScoped:          r.ClusterScoped,
+		ManagedNamespaces:      r.ResourceManagedNamespaces,
+		SourceNamespaces:       r.AppSourceNamespaces,
+		AppsetSourceNamespaces: r.AppSourceNamespaces,
 	}
 
 	notificationsController := &notifications.NotificationsReconciler{
@@ -506,16 +637,17 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Instance:          r.Instance,
 		ClusterScoped:     r.ClusterScoped,
 		ManagedNamespaces: r.ResourceManagedNamespaces,
-		SourceNamespaces:  r.AppManagedNamespaces,
+		SourceNamespaces:  r.AppSourceNamespaces,
 		Logger:            util.NewLogger(common.AppControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	appsetController := &applicationset.ApplicationSetReconciler{
-		Client:   r.Client,
-		Scheme:   r.Scheme,
-		Instance: r.Instance,
-		// TO DO: update this later
-		Logger: util.NewLogger(applicationset.AppSetControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
+		Client:                 r.Client,
+		Scheme:                 r.Scheme,
+		Instance:               r.Instance,
+		ClusterScoped:          r.ClusterScoped,
+		AppsetSourceNamespaces: r.AppsetSourceNamespaces,
+		Logger:                 util.NewLogger(common.AppSetControllerComponent, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
 	}
 
 	ssoController := &sso.SSOReconciler{

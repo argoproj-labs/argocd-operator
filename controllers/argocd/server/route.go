@@ -40,7 +40,7 @@ func (sr *ServerReconciler) reconcileRoute() error {
 
 	// Allow override of the Host for the Route.
 	if len(sr.Instance.Spec.Server.Host) > 0 {
-		req.Spec.Host = sr.Instance.Spec.Server.Host // TODO: What additional role needed for this?
+		req.Spec.Host = sr.getHost() // TODO: What additional role needed for this?
 	}
 
 	hostname, err := argocdcommon.ShortenHostname(req.Spec.Host)

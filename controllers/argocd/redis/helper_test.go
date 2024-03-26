@@ -306,7 +306,7 @@ func TestGetArgs(t *testing.T) {
 			reconciler := makeTestRedisReconciler(test.MakeTestArgoCD(nil))
 			reconciler.TLSEnabled = tt.TLSEnabled
 
-			gotArgs := reconciler.getArgs()
+			gotArgs := reconciler.getCmd()
 
 			assert.Equal(t, tt.expectedCmd, gotArgs)
 		})

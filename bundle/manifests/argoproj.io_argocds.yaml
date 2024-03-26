@@ -7173,11 +7173,23 @@ spec:
                           Limits. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  scmProviders:
+                    description: SCMProviders defines the list of allowed custom SCM
+                      provider API URLs
+                    items:
+                      type: string
+                    type: array
                   scmRootCAConfigMap:
                     description: SCMRootCAConfigMap is the name of the config map
                       that stores the Gitlab SCM Provider's TLS certificate which
                       will be mounted on the ApplicationSet Controller (optional).
                     type: string
+                  sourceNamespaces:
+                    description: SourceNamespaces defines the namespaces applicationset
+                      resources are allowed to be created in
+                    items:
+                      type: string
+                    type: array
                   version:
                     description: Version is the Argo CD ApplicationSet image tag.
                       (optional)

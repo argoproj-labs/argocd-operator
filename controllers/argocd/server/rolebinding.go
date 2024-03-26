@@ -38,7 +38,9 @@ func (sr *ServerReconciler) reconcileRoleBindings() error {
 		err = sr.reconcileSourceNsRB()
 		reconcileErrs.Append(err)
 
-		// TO DO: reconcile appset source ns rolebindings
+		// reconcile appset source ns rolebindings
+		err = sr.reconcileAppsetSourceNsRB()
+		reconcileErrs.Append(err)
 
 	} else {
 		// delete source ns rolebindings
@@ -50,7 +52,14 @@ func (sr *ServerReconciler) reconcileRoleBindings() error {
 			reconcileErrs.Append(sr.DeleteRoleBindings(rbs))
 		}
 
-		// TO DO: delete appset ns rolebindings
+		// delete appset ns rolebindings
+		_, rbs, err = sr.getAppsetSourceNsRBAC()
+		if err != nil {
+			sr.Logger.Error(err, "reconcileRoleBindings: failed to list one or more appset management namespace rbac resources")
+		} else if len(rbs) > 0 {
+			sr.Logger.Debug("reconcileRoleBindings: namespace scoped instance detected; deleting appset management rbac resources")
+			reconcileErrs.Append(sr.DeleteRoleBindings(rbs))
+		}
 
 		// reconcile namespace scoped rolebindings
 		err = sr.reconcileRB()
@@ -121,11 +130,11 @@ func (sr *ServerReconciler) reconcileManagedNsRB() error {
 		// Skip namespace if can't be retrieved or in terminating state
 		ns, err := cluster.GetNamespace(managedNs, sr.Client)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileManagedRoles: unable to retrieve namesapce", "name", managedNs)
+			sr.Logger.Error(err, "reconcileManagedNsRB: unable to retrieve namesapce", "name", managedNs)
 			continue
 		}
 		if ns.DeletionTimestamp != nil {
-			sr.Logger.Debug("reconcileManagedRoles: skipping namespace in terminating state", "name", managedNs)
+			sr.Logger.Debug("reconcileManagedNsRB: skipping namespace in terminating state", "name", managedNs)
 			continue
 		}
 
@@ -192,11 +201,11 @@ func (sr *ServerReconciler) reconcileSourceNsRB() error {
 		// Skip namespace if can't be retrieved or in terminating state
 		ns, err := cluster.GetNamespace(sourceNs, sr.Client)
 		if err != nil {
-			sr.Logger.Error(err, "reconcileManagedRoles: unable to retrieve namesapce", "name", sourceNs)
+			sr.Logger.Error(err, "reconcileSourceNsRB: unable to retrieve namesapce", "name", sourceNs)
 			continue
 		}
 		if ns.DeletionTimestamp != nil {
-			sr.Logger.Debug("reconcileManagedRoles: skipping namespace in terminating state", "name", sourceNs)
+			sr.Logger.Debug("reconcileSourceNsRB: skipping namespace in terminating state", "name", sourceNs)
 			continue
 		}
 
@@ -223,6 +232,62 @@ func (sr *ServerReconciler) reconcileSourceNsRB() error {
 				sr.Logger.Debug("detected drift in roleRef for rolebinding", "name", existing.Name, "namespace", existing.Namespace)
 				if err := sr.deleteRoleBinding(resourceName, sr.Instance.Namespace); err != nil {
 					return errors.Wrapf(err, "reconcileRoleBinding: unable to delete obsolete rolebinding %s", existing.Name)
+				}
+				return nil
+			}
+
+			fieldsToCompare := []argocdcommon.FieldToCompare{
+				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+				{Existing: &existing.Subjects, Desired: &desired.Subjects, ExtraAction: nil},
+			}
+
+			argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+			return nil
+		}
+		reconcileErrs.Append(sr.reconRoleBinding(req, argocdcommon.UpdateFnRb(updateFn), ignoreDrift))
+	}
+
+	return reconcileErrs.ErrOrNil()
+}
+
+func (sr *ServerReconciler) reconcileAppsetSourceNsRB() error {
+	var reconcileErrs util.MultiError
+
+	for appsetSourceNs := range sr.AppsetSourceNamespaces {
+		// Skip namespace if can't be retrieved or in terminating state
+		ns, err := cluster.GetNamespace(appsetSourceNs, sr.Client)
+		if err != nil {
+			sr.Logger.Error(err, "reconcileAppsetSourceNsRB: unable to retrieve namesapce", "name", appsetSourceNs)
+			continue
+		}
+		if ns.DeletionTimestamp != nil {
+			sr.Logger.Debug("reconcileAppsetSourceNsRB: skipping namespace in terminating state", "name", appsetSourceNs)
+			continue
+		}
+
+		req := permissions.RoleBindingRequest{
+			ObjectMeta: argoutil.GetObjMeta(appsetSourceNsResourceName, appsetSourceNs, sr.Instance.Name, sr.Instance.Namespace, component, argocdcommon.GetAppsetManagementLabel(), util.EmptyMap()),
+			Subjects: []rbacv1.Subject{
+				{
+					Kind:      rbacv1.ServiceAccountKind,
+					Name:      resourceName,
+					Namespace: sr.Instance.Namespace,
+				},
+			},
+			RoleRef: rbacv1.RoleRef{
+				APIGroup: rbacv1.GroupName,
+				Kind:     common.RoleKind,
+				Name:     appsetSourceNsResourceName,
+			},
+		}
+
+		ignoreDrift := false
+		updateFn := func(existing, desired *rbacv1.RoleBinding, changed *bool) error {
+			// if roleRef differs, we must delete the rolebinding as kubernetes does not allow updation of roleRef
+			if !reflect.DeepEqual(existing.RoleRef, desired.RoleRef) {
+				sr.Logger.Debug("detected drift in roleRef for rolebinding", "name", existing.Name, "namespace", existing.Namespace)
+				if err := sr.deleteRoleBinding(resourceName, sr.Instance.Namespace); err != nil {
+					return errors.Wrapf(err, "unable to delete obsolete rolebinding %s", existing.Name)
 				}
 				return nil
 			}

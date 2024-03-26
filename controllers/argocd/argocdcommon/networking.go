@@ -3,6 +3,8 @@ package argocdcommon
 import (
 	"fmt"
 	"strings"
+
+	"github.com/argoproj-labs/argocd-operator/common"
 )
 
 const (
@@ -10,6 +12,19 @@ const (
 	maxHostnameLength = 253
 	minFirstLabelSize = 20
 )
+
+func GetIngressNginxAnnotations() map[string]string {
+	return map[string]string{
+		common.NginxIngressK8sKeyForceSSLRedirect: "true",
+		common.NginxIngressK8sKeyBackendProtocol:  "true",
+	}
+}
+
+func GetGRPCIngressNginxAnnotations() map[string]string {
+	return map[string]string{
+		common.NginxIngressK8sKeyBackendProtocol: "GRPC",
+	}
+}
 
 // The algorithm used by this function is:
 // - If the FIRST label ("console-openshift-console" in the above case) is longer than 63 characters, shorten (truncate the end) it to 63.

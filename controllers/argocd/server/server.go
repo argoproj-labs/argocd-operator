@@ -13,13 +13,14 @@ import (
 )
 
 type ServerReconciler struct {
-	Client            client.Client
-	Scheme            *runtime.Scheme
-	Instance          *argoproj.ArgoCD
-	Logger            *util.Logger
-	ClusterScoped     bool
-	ManagedNamespaces map[string]string
-	SourceNamespaces  map[string]string
+	Client                 client.Client
+	Scheme                 *runtime.Scheme
+	Instance               *argoproj.ArgoCD
+	Logger                 *util.Logger
+	ClusterScoped          bool
+	ManagedNamespaces      map[string]string
+	SourceNamespaces       map[string]string
+	AppsetSourceNamespaces map[string]string
 
 	RepoServer RepoServerController
 	Redis      RedisController
@@ -195,12 +196,28 @@ func (sr *ServerReconciler) DeleteResources() error {
 		}
 	}
 
+	// delete appset source ns rbac
+	roles, rbs, err = sr.getAppsetSourceNsRBAC()
+	if err != nil {
+		sr.Logger.Error(err, "failed to list one or more appset management namespace rbac resources")
+	} else {
+		if err := sr.DeleteRoleBindings(rbs); err != nil {
+			sr.Logger.Error(err, "failed to delete one or more non control plane rolebindings")
+			deletionErr.Append(err)
+		}
+
+		if err := sr.DeleteRoles(roles); err != nil {
+			sr.Logger.Error(err, "failed to delete one or more non control plane roles")
+			deletionErr.Append(err)
+		}
+	}
+
 	if err := sr.deleteServiceAccount(resourceName, sr.Instance.Namespace); err != nil {
 		sr.Logger.Error(err, "failed to delete serviceaccount")
 		deletionErr.Append(err)
 	}
 
-	return nil
+	return deletionErr.ErrOrNil()
 }
 
 func (sr *ServerReconciler) varSetter() {

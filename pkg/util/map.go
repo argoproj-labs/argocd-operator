@@ -38,3 +38,15 @@ func ByteMapKeys(m map[string][]byte) []string {
 func EmptyMap() map[string]string {
 	return map[string]string{}
 }
+
+// StringSlicetoMap accepts a string slice and converts it into a [string]string map with slice
+// elements as map keys
+func StringSliceToMap(s []string) map[string]string {
+	keys := make(map[string]string)
+
+	for _, str := range s {
+		keys[str] = ""
+	}
+
+	return keys
+}

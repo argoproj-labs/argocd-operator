@@ -66,11 +66,41 @@ func (sr *ServerReconciler) getSourceNsRBAC() ([]types.NamespacedName, []types.N
 	return roles, rbs, nil
 }
 
+func (sr *ServerReconciler) getAppsetSourceNsRBAC() ([]types.NamespacedName, []types.NamespacedName, error) {
+	roles := []types.NamespacedName{}
+	rbs := []types.NamespacedName{}
+
+	compReq, err := argocdcommon.GetComponentLabelRequirement(component)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rbacReq, err := argocdcommon.GetRbacTypeLabelRequirement(common.ArgoCDRBACTypeAppSetManagement)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ls := argocdcommon.GetLabelSelector(*compReq, *rbacReq)
+
+	for ns := range sr.AppsetSourceNamespaces {
+		nsRoles, nsRbs := argocdcommon.GetRBACToBeDeleted(ns, ls, sr.Client, sr.Logger)
+		roles = append(roles, nsRoles...)
+		rbs = append(rbs, nsRbs...)
+	}
+
+	return roles, rbs, nil
+}
+
 // getHost will return the host for the given ArgoCD.
 func (sr *ServerReconciler) getHost() string {
 	host := sr.Instance.Name
 	if len(sr.Instance.Spec.Server.Host) > 0 {
-		host = sr.Instance.Spec.Server.Host
+		tmpHost, err := argocdcommon.ShortenHostname(sr.Instance.Spec.Server.Host)
+		if err != nil {
+			sr.Logger.Error(err, "getHost: failed to shorten hostname")
+		} else {
+			host = tmpHost
+		}
 	}
 	return host
 }
@@ -103,19 +133,6 @@ func (sr *ServerReconciler) getServiceType() corev1.ServiceType {
 	return svcType
 }
 
-func getIngressLabels() map[string]string {
-	return map[string]string{
-		common.NginxIngressK8sKeyForceSSLRedirect: "true",
-		common.NginxIngressK8sKeyBackendProtocol:  "true",
-	}
-}
-
-func getGRPCIngressLabels() map[string]string {
-	return map[string]string{
-		common.NginxIngressK8sKeyBackendProtocol: "GRPC",
-	}
-}
-
 // getCmd will return the command for the ArgoCD server component.
 func (sr *ServerReconciler) getCmd() []string {
 	cmd := make([]string, 0)
@@ -128,28 +145,35 @@ func (sr *ServerReconciler) getCmd() []string {
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
+	// TO DO: check if dex enabled
 	cmd = append(cmd, "--dex-server")
 	cmd = append(cmd, sr.Dex.GetServerAddress())
 
 	// reposerver flags
-	if sr.RepoServer.UseTLS() {
-		cmd = append(cmd, "--repo-server-strict-tls")
+	if sr.Instance.Spec.Repo.IsEnabled() {
+		if sr.RepoServer.UseTLS() {
+			cmd = append(cmd, "--repo-server-strict-tls")
+		}
+		cmd = append(cmd, "--repo-server")
+		cmd = append(cmd, sr.RepoServer.GetServerAddress())
+	} else {
+		sr.Logger.Debug("getCmd: repo server disabled; skipping repo server configuration")
 	}
 
-	cmd = append(cmd, "--repo-server")
-	cmd = append(cmd, sr.RepoServer.GetServerAddress())
-
 	// redis flags
-	cmd = append(cmd, "--redis")
-	cmd = append(cmd, sr.Redis.GetServerAddress())
-
-	if sr.Redis.UseTLS() {
-		cmd = append(cmd, "--redis-use-tls")
-		if sr.Redis.TLSVerificationDisabled() {
-			cmd = append(cmd, "--redis-insecure-skip-tls-verify")
-		} else {
-			cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
+	if sr.Instance.Spec.Redis.IsEnabled() {
+		cmd = append(cmd, "--redis")
+		cmd = append(cmd, sr.Redis.GetServerAddress())
+		if sr.Redis.UseTLS() {
+			cmd = append(cmd, "--redis-use-tls")
+			if sr.Redis.TLSVerificationDisabled() {
+				cmd = append(cmd, "--redis-insecure-skip-tls-verify")
+			} else {
+				cmd = append(cmd, "--redis-ca-certificate", "/app/config/server/tls/redis/tls.crt")
+			}
 		}
+	} else {
+		sr.Logger.Debug("getCmd: redis disabled; skipping redis configuration")
 	}
 
 	// set log level & format

@@ -172,6 +172,12 @@ type ArgoCDApplicationSet struct {
 
 	// Enabled is the flag to enable the Application Set Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// SourceNamespaces defines the namespaces applicationset resources are allowed to be created in
+	SourceNamespaces []string `json:"sourceNamespaces,omitempty"`
+
+	// SCMProviders defines the list of allowed custom SCM provider API URLs
+	SCMProviders []string `json:"scmProviders,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
