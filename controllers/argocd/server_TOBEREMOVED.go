@@ -943,3 +943,32 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 	}
 	return r.Client.Create(context.TODO(), sm)
 }
+
+// getArgoServerURI will return the URI for the ArgoCD server.
+// The hostname for argocd-server is from the route, ingress, an external hostname or service name in that order.
+func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("server", cr) // Default to service name
+
+	// Use the external hostname provided by the user
+	if cr.Spec.Server.Host != "" {
+		host = cr.Spec.Server.Host
+	}
+
+	// Use Ingress host if enabled
+	if cr.Spec.Server.Ingress.Enabled {
+		ing := newIngressWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, ing.Name, ing) {
+			host = ing.Spec.Rules[0].Host
+		}
+	}
+
+	// Use Route host if available, override Ingress if both exist
+	if IsRouteAPIAvailable() {
+		route := newRouteWithSuffix("server", cr)
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+			host = route.Spec.Host
+		}
+	}
+
+	return fmt.Sprintf("https://%s", host) // TODO: Safe to assume HTTPS here?
+}
