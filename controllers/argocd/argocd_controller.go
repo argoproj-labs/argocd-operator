@@ -809,7 +809,7 @@ func (r *ArgoCDReconciler) deleteClusterResources() {
 	}
 
 	for _, cr := range ClusterRoles {
-		if err := permissions.DeleteClusterRoleBinding(cr.Name, r.Client); err != nil {
+		if err := permissions.DeleteClusterRole(cr.Name, r.Client); err != nil {
 			r.Logger.Error(err, "failed to delete clusterrole", "name", cr.Name)
 		}
 	}
