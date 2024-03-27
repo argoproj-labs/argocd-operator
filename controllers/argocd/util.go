@@ -15,7 +15,6 @@
 package argocd
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
@@ -33,10 +32,6 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -174,81 +169,6 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	return nil
-}
-
-func (r *ReconcileArgoCD) deleteClusterResources(cr *argoproj.ArgoCD) error {
-	selector, err := argocdInstanceSelector(cr.Name)
-	if err != nil {
-		return err
-	}
-
-	clusterRoleList := &v1.ClusterRoleList{}
-	if err := filterObjectsBySelector(r.Client, clusterRoleList, selector); err != nil {
-		return fmt.Errorf("failed to filter ClusterRoles for %s: %w", cr.Name, err)
-	}
-
-	if err := deleteClusterRoles(r.Client, clusterRoleList); err != nil {
-		return err
-	}
-
-	clusterBindingsList := &v1.ClusterRoleBindingList{}
-	if err := filterObjectsBySelector(r.Client, clusterBindingsList, selector); err != nil {
-		return fmt.Errorf("failed to filter ClusterRoleBindings for %s: %w", cr.Name, err)
-	}
-
-	if err := deleteClusterRoleBindings(r.Client, clusterBindingsList); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) error {
-	nsList := &corev1.NamespaceList{}
-	listOption := client.MatchingLabels{
-		common.ArgoCDManagedByLabel: namespace,
-	}
-	if err := r.Client.List(context.TODO(), nsList, listOption); err != nil {
-		return err
-	}
-
-	nsList.Items = append(nsList.Items, corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
-	for _, n := range nsList.Items {
-		ns := &corev1.Namespace{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: n.Name}, ns); err != nil {
-			return err
-		}
-
-		if ns.Labels == nil {
-			continue
-		}
-
-		if n, ok := ns.Labels[common.ArgoCDManagedByLabel]; !ok || n != namespace {
-			continue
-		}
-		delete(ns.Labels, common.ArgoCDManagedByLabel)
-		if err := r.Client.Update(context.TODO(), ns); err != nil {
-			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
-		}
-	}
-	return nil
-}
-
-func argocdInstanceSelector(name string) (labels.Selector, error) {
-	selector := labels.NewSelector()
-	requirement, err := labels.NewRequirement(common.ArgoCDKeyManagedBy, selection.Equals, []string{name})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a requirement for %w", err)
-	}
-	return selector.Add(*requirement), nil
-}
-
-func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error {
-	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
-		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
-	}
 	return nil
 }
 

@@ -126,11 +126,11 @@ vs-ssh.visualstudio.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7Hr1oTWqNqOlzGJOf
 )
 
 // DefaultLabels returns the default set of labels for controllers.
-func DefaultResourceLabels(resourceName, instanceName, component string) map[string]string {
+func DefaultResourceLabels(resourceName, instanceNamespace, component string) map[string]string {
 	LabelsMap := map[string]string{
 		AppK8sKeyName:      resourceName,
 		AppK8sKeyPartOf:    ArgoCDAppName,
-		AppK8sKeyInstance:  instanceName,
+		AppK8sKeyInstance:  instanceNamespace,
 		AppK8sKeyManagedBy: ArgoCDOperatorName,
 	}
 

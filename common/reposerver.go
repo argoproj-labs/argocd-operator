@@ -15,7 +15,8 @@ const (
 
 // suffixes
 const (
-	RepoServerSuffix = "repo-server"
+	RepoServerSuffix    = "repo-server"
+	RepoServerTLSSuffix = "repo-server-tls"
 )
 
 // values

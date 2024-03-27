@@ -81,7 +81,7 @@ func FindSecretOwnerInstance(secretRef types.NamespacedName, client cntrlClient.
 		// service, which in turn is owned by an Argo CD instance. This method performs
 		// a lookup of the instance through the intermediate owning service.
 		for _, secretOwner := range secretOwnerRefs {
-			if isOwnerOfInterest(secretOwner) {
+			if IsOwnerOfInterest(secretOwner) {
 				owningSvc, err := networking.GetService(secretOwner.Name, secret.Namespace, client)
 				if err != nil {
 					return types.NamespacedName{}, err
@@ -109,10 +109,22 @@ func FindSecretOwnerInstance(secretRef types.NamespacedName, client cntrlClient.
 	return owner, nil
 }
 
+// isSecretOfInterest returns true if the name of the given secret matches one of the
+// well-known tls secrets used to secure communication amongst the Argo CD components.
+func IsSecretOfInterest(o client.Object) bool {
+	if strings.HasSuffix(o.GetName(), common.RepoServerTLSSuffix) {
+		return true
+	}
+	if o.GetName() == common.ArgoCDRedisServerTLSSecretName {
+		return true
+	}
+	return false
+}
+
 // isOwnerOfInterest returns true if the given owner is one of the Argo CD services that
 // may have been made the owner of the tls secret created by the OpenShift service CA, used
 // to secure communication amongst the Argo CD components.
-func isOwnerOfInterest(owner metav1.OwnerReference) bool {
+func IsOwnerOfInterest(owner metav1.OwnerReference) bool {
 	if owner.Kind != common.ServiceKind {
 		return false
 	}

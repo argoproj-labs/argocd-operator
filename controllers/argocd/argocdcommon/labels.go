@@ -31,6 +31,14 @@ func GetAppsetManagementLabel() map[string]string {
 	}
 }
 
+func GetInstanceLabelRequirement(instanceNamespaces ...string) (*labels.Requirement, error) {
+	instanceReq, err := GetLabelRequirements(common.AppK8sKeyInstance, selection.In, instanceNamespaces)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetInstanceLabelRequirement: failed to generate requirement")
+	}
+	return instanceReq, nil
+}
+
 func GetComponentLabelRequirement(components ...string) (*labels.Requirement, error) {
 	componentReq, err := GetLabelRequirements(common.AppK8sKeyComponent, selection.In, components)
 	if err != nil {
