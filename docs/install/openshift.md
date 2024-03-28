@@ -118,3 +118,4 @@ make undeploy
 
 
 [docs_usage]:../usage/basics.md
+[olm_install]:olm.md#operator-install
