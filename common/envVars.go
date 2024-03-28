@@ -30,4 +30,6 @@ const (
 	ArgoCDOperatorLogLevelEnvVar = "LOG_LEVEL"
 
 	ArgoCDReconciliationTImeOutEnvVar = "ARGOCD_RECONCILIATION_TIMEOUT"
+
+	ArgoCDRemoveManagedByLabelOnDeletionEnvVar = "REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"
 )

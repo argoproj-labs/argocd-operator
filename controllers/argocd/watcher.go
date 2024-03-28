@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -218,44 +219,56 @@ func (r *ArgoCDReconciler) shouldProcessLabelEventForDelete(e event.DeleteEvent,
 }
 
 // TO DO: THIS IS INCOMPLETE
-func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMapper handler.MapFunc) *builder.Builder {
+func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMapper, clusterResourceMapper, tlsSecretMapper, clusterSecretMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
 	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceMapper)
+	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
+	clusterSecretHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretMapper)
+	appSetGitlabSCMTLSConfigMapHandler := handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper)
+	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
 	// Watch for changes to primary resource ArgoCD
 	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(ignoreDeletionPredicate()))
 
-	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	// Watch for changes to ConfigMap resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
 
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	// Watch for changes to Secret resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Secret{})
 
-	// Watch for changes to Service sub-resources owned by ArgoCD instances.
+	// Watch for changes to Service resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.Service{})
 
-	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
+	// Watch for changes to Deployment resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.Deployment{})
 
-	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	// Watch for changes to Secret resources owned by ArgoCD instances.
 	bldr.Owns(&appsv1.StatefulSet{})
 
-	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
+	// Watch for changes to Ingress resources owned by ArgoCD instances.
 	bldr.Owns(&networkingv1.Ingress{})
 
+	// Watch for changes to Role resources owned by ArgoCD instances.
 	bldr.Owns(&rbacv1.Role{})
 
+	// Watch for changes to RoleBinding resources owned by ArgoCD instances.
 	bldr.Owns(&rbacv1.RoleBinding{})
 
+	// Inspect cluster to verify availability of extra features
+	// This sets the flags that are used in subsequent checks
+	if err := InspectCluster(); err != nil {
+		r.Logger.Debug("unable to inspect cluster for all APIs")
+	}
+
 	if openshift.IsRouteAPIAvailable() {
-		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
+		// Watch OpenShift Route resources owned by ArgoCD instances.
 		bldr.Owns(&routev1.Route{})
 	}
 
 	if monitoring.IsPrometheusAPIAvailable() {
-		// Watch Prometheus sub-resources owned by ArgoCD instances.
+		// Watch Prometheus resources owned by ArgoCD instances.
 		bldr.Owns(&monitoringv1.Prometheus{})
 
-		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
+		// Watch Prometheus ServiceMonitor resources owned by ArgoCD instances.
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
@@ -265,8 +278,28 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMa
 
 	}
 
-	// Watch for changes to namespaces managed by Argo CD instances.
+	// Watch for changes to ClusterRole resources managed by Argo CD instances
+	bldr.Watches(&rbacv1.ClusterRoleBinding{}, clusterResourceHandler)
+
+	// Watch for changes to ClusterRoleBinding resources managed by Argo CD instances
+	bldr.Watches(&rbacv1.ClusterRole{}, clusterResourceHandler)
+
+	// Watch for changes to namespaces managed by Argo CD instances
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(r.namespacePredicate()))
+
+	// Watch for changes to the appset gitlab SCM TLS certs config maps
+	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+	}}, appSetGitlabSCMTLSConfigMapHandler)
+
+	// Watch for secrets of type TLS that might be created by external processes
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+
+	// Watch for cluster secrets added to the argocd instance
+	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDArgoprojKeySecretType: common.ArgoCDSecretTypeCluster,
+		}}}, clusterSecretHandler)
 
 	return bldr
 }

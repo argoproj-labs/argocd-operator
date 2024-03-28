@@ -19,12 +19,14 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/appcontroller"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/applicationset"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/notifications"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
@@ -33,8 +35,11 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/argoproj/argo-cd/v2/util/glob"
 
@@ -42,6 +47,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -194,41 +200,29 @@ func (r *ArgoCDReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
-	// if r.Instance.GetDeletionTimestamp() != nil {
+	if r.Instance.GetDeletionTimestamp() != nil {
 
-	// 	// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count
-	// 	// by phase as well as total
-	// 	delete(ActiveInstanceMap, r.Instance.Namespace)
-	// 	ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
-	// 	ActiveInstancesTotal.Dec()
-	// 	ActiveInstanceReconciliationCount.DeleteLabelValues(r.Instance.Namespace)
-	// 	ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": r.Instance.Namespace})
+		// Argo CD instance marked for deletion; remove entry from activeInstances map and decrement active instance count by phase as well as total
+		delete(ActiveInstanceMap, r.Instance.Namespace)
+		ActiveInstancesByPhase.WithLabelValues(newPhase).Dec()
+		ActiveInstancesTotal.Dec()
+		ActiveInstanceReconciliationCount.DeleteLabelValues(r.Instance.Namespace)
+		ReconcileTime.DeletePartialMatch(prometheus.Labels{"namespace": r.Instance.Namespace})
 
-	// 	if r.Instance.IsDeletionFinalizerPresent() {
-	// 		if err := r.deleteClusterResources(r.Instance); err != nil {
-	// 			return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
-	// 		}
+		if r.Instance.IsDeletionFinalizerPresent() {
+			r.deleteClusterResources()
 
-	// 		if isRemoveManagedByLabelOnArgoCDDeletion() {
-	// 			if err := r.removeManagedByLabelFromNamespaces(r.Instance.Namespace); err != nil {
-	// 				return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", r.Instance.Namespace, err)
-	// 			}
-	// 		}
+			r.removeManagedNamespaceLabels()
 
-	// 		if err := r.removeUnmanagedSourceNamespaceResources(r.Instance); err != nil {
-	// 			return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
-	// 		}
-
-	// 		if err := r.removeDeletionFinalizer(r.Instance); err != nil {
-	// 			return reconcile.Result{}, err
-	// 		}
-
-	// 	}
-	// 	return reconcile.Result{}, nil
-	// }
+			if err := r.removeDeletionFinalizer(); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	}
 
 	if !r.Instance.IsDeletionFinalizerPresent() {
-		if err := r.addDeletionFinalizer(r.Instance); err != nil {
+		if err := r.addDeletionFinalizer(); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -693,14 +687,130 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ArgoCDReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	bldr := ctrl.NewControllerManagedBy(mgr)
-	r.setResourceWatches(bldr, r.namespaceMapper)
+	r.setResourceWatches(bldr, r.namespaceMapper, r.clusterResourceMapper, r.tlsSecretMapper, r.clusterSecretMapper, r.applicationSetSCMTLSConfigMapMapper)
 	return bldr.Complete(r)
 }
 
-func (r *ArgoCDReconciler) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
-	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
-	if err := r.Client.Update(context.TODO(), argocd); err != nil {
-		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
+func (r *ArgoCDReconciler) addDeletionFinalizer() error {
+	r.Instance.Finalizers = append(r.Instance.Finalizers, common.ArgoCDDeletionFinalizer)
+	if err := resource.UpdateObject(r.Instance, r.Client); err != nil {
+		return errors.Wrapf(err, "addDeletionFinalizer: failed to add deletion finalizer for %s", r.Instance.Name)
 	}
 	return nil
+}
+
+func (r *ArgoCDReconciler) removeDeletionFinalizer() error {
+	r.Instance.Finalizers = removeString(r.Instance.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	if err := resource.UpdateObject(r.Instance, r.Client); err != nil {
+		return errors.Wrapf(err, "removeDeletionFinalizer: failed to remove deletion finalizer for %s", r.Instance.Name)
+	}
+	return nil
+}
+
+func RemoveManagedByLabelOnDeletion() bool {
+	v := util.GetEnv(common.ArgoCDRemoveManagedByLabelOnDeletionEnvVar)
+	return strings.ToLower(v) == "true"
+}
+
+func (r *ArgoCDReconciler) removeManagedNamespaceLabels() {
+
+	// only remove managed by label from namespaces if explicity asked for. This will change once
+	// namespace management has been made to be self service
+	if RemoveManagedByLabelOnDeletion() {
+		for managedNs := range r.ResourceManagedNamespaces {
+			ns, err := cluster.GetNamespace(managedNs, r.Client)
+			if err != nil {
+				r.Logger.Error(err, "failed to retrieve namespace for deletion", "name", managedNs)
+				continue
+			}
+			if ns.Labels == nil {
+				continue
+			}
+			delete(ns.Labels, common.ArgoCDArgoprojKeyManagedBy)
+			if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+				r.Logger.Error(err, "failed to unlabel namespace", "name", managedNs)
+			}
+		}
+	}
+
+	for appSourceNs := range r.AppSourceNamespaces {
+		ns, err := cluster.GetNamespace(appSourceNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "failed to retrieve namespace for deletion", "name", appSourceNs)
+			continue
+		}
+		if ns.Labels == nil {
+			continue
+		}
+		delete(ns.Labels, common.ArgoCDArgoprojKeyAppsManagedBy)
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "failed to unlabel namespace", "name", appSourceNs)
+		}
+
+	}
+
+	for appsetSourceNs := range r.AppsetSourceNamespaces {
+		ns, err := cluster.GetNamespace(appsetSourceNs, r.Client)
+		if err != nil {
+			r.Logger.Error(err, "failed to retrieve namespace for deletion", "name", appsetSourceNs)
+			continue
+		}
+		if ns.Labels == nil {
+			continue
+		}
+		delete(ns.Labels, common.ArgoCDArgoprojKeyAppSetsManagedBy)
+		if err := cluster.UpdateNamespace(ns, r.Client); err != nil {
+			r.Logger.Error(err, "failed to unlabel namespace", "name", appsetSourceNs)
+		}
+	}
+}
+
+func (r *ArgoCDReconciler) deleteClusterResources() {
+	ClusterRoles := []types.NamespacedName{}
+	ClusterRolebindings := []types.NamespacedName{}
+
+	req, err := argocdcommon.GetInstanceLabelRequirement(r.Instance.Namespace)
+	if err != nil {
+		r.Logger.Error(err, "deleteClusterResources")
+	}
+
+	instanceLS := argocdcommon.GetLabelSelector(*req)
+
+	clusterRolBindingList, err := permissions.ListClusterRoles(r.Client, []client.ListOption{
+		&client.ListOptions{
+			LabelSelector: instanceLS,
+		},
+	})
+	if err != nil {
+		r.Logger.Error(err, "deleteClusterResources")
+		return
+	}
+	for _, crb := range clusterRolBindingList.Items {
+		ClusterRolebindings = append(ClusterRolebindings, types.NamespacedName{Name: crb.Name})
+	}
+
+	for _, crb := range ClusterRolebindings {
+		if err := permissions.DeleteClusterRoleBinding(crb.Name, r.Client); err != nil {
+			r.Logger.Error(err, "failed to delete clusterrolebinding", "name", crb.Name)
+		}
+	}
+
+	clusterRoleList, err := permissions.ListClusterRoles(r.Client, []client.ListOption{
+		&client.ListOptions{
+			LabelSelector: instanceLS,
+		},
+	})
+	if err != nil {
+		r.Logger.Error(err, "deleteClusterResources")
+		return
+	}
+	for _, r := range clusterRoleList.Items {
+		ClusterRoles = append(ClusterRoles, types.NamespacedName{Name: r.Name, Namespace: r.Namespace})
+	}
+
+	for _, cr := range ClusterRoles {
+		if err := permissions.DeleteClusterRole(cr.Name, r.Client); err != nil {
+			r.Logger.Error(err, "failed to delete clusterrole", "name", cr.Name)
+		}
+	}
 }
