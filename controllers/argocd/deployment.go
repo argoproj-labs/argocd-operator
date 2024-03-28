@@ -484,6 +484,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			},
 			RunAsNonRoot: boolPtr(true),
 			RunAsUser:    int64Ptr(999),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -629,6 +632,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -664,6 +670,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Drop: []corev1.Capability{
 					"ALL",
 				},
+			},
+			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
 			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
@@ -717,6 +727,9 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		RunAsNonRoot: boolPtr(true),
 		RunAsUser:    int64Ptr(1000),
 		FSGroup:      int64Ptr(1000),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: "RuntimeDefault",
+		},
 	}
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
@@ -812,6 +825,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -906,6 +922,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: repoServerVolumeMounts,
 	}}
@@ -1136,6 +1155,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
