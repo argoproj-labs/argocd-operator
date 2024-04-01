@@ -137,11 +137,11 @@ KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
 	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.2)
 
-# Pin setup env due to incompatibility between setup-envtest and controller-runtime
+# Pin setup env due to incompatibility between setup-envtest and controller-runtime.
 # More info: https://github.com/kubernetes-sigs/controller-runtime/issues/2744
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
-	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.17.2)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@bf15e44028f908c790721fc8fe67c7bf2d06a611)
 	$(ENVTEST) use 1.26
 
 # go-install-tool will 'go install' any package $2 and install it to $1.
