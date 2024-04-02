@@ -1723,12 +1723,12 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
+              control-plane: argocd-operator
           strategy: {}
           template:
             metadata:
               labels:
-                control-plane: controller-manager
+                control-plane: argocd-operator
             spec:
               containers:
               - args:
