@@ -1742,7 +1742,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator@sha256:38d61c3acda6230525614d1e609d0955f944680ccf12c07c1c84a7e5b0b98de8
+                image: quay.io/argoprojlabs/argocd-operator@sha256:25c71c9f0fbc5203b3ea8021cb770a98642ddf3ee3cc85faac3be642b7183491
                 livenessProbe:
                   httpGet:
                     path: /healthz
