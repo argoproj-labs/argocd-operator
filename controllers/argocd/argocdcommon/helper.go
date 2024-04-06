@@ -35,6 +35,8 @@ type UpdateFnSvc func(*corev1.Service, *corev1.Service, *bool) error
 
 type UpdateFnSM func(*monitoringv1.ServiceMonitor, *monitoringv1.ServiceMonitor, *bool) error
 
+type UpdateFnPR func(*monitoringv1.PrometheusRule, *monitoringv1.PrometheusRule, *bool) error
+
 type UpdateFnIngress func(*networkingv1.Ingress, *networkingv1.Ingress, *bool) error
 
 type UpdateFnRoute func(*routev1.Route, *routev1.Route, *bool) error

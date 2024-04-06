@@ -120,15 +120,6 @@ func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRed
 	return nil
 }
 
-// reconcileGrafanaDeployment will ensure the Deployment resource is present for the ArgoCD Grafana component.
-func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error {
-	if !cr.Spec.Grafana.Enabled {
-		return nil // Grafana not enabled, do nothing.
-	}
-	log.Info(grafanaDeprecatedWarning)
-	return nil
-}
-
 func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
 		return strings.ToLower(v) == "true"

@@ -8188,8 +8188,8 @@ spec:
                   to dex.
                 type: string
               prometheus:
-                description: Prometheus defines the Prometheus server options for
-                  ArgoCD.
+                description: 'Deprecated: Prometheus defines the Prometheus server
+                  options for ArgoCD.'
                 properties:
                   enabled:
                     description: Enabled will toggle Prometheus support globally for

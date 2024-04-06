@@ -786,7 +786,7 @@ type ArgoCDSpec struct {
 	// Notifications defines whether the Argo CD Notifications controller should be installed.
 	Notifications ArgoCDNotifications `json:"notifications,omitempty"`
 
-	// Prometheus defines the Prometheus server options for ArgoCD.
+	// Deprecated: Prometheus defines the Prometheus server options for ArgoCD.
 	Prometheus ArgoCDPrometheusSpec `json:"prometheus,omitempty"`
 
 	// RBAC defines the RBAC configuration for Argo CD.

@@ -28,6 +28,8 @@ const (
 
 	// ArgoCDOperatorName is the name of the operator that manages Argo CD instances and workloads
 	ArgoCDOperatorName = "argocd-operator"
+
+	ArogCDComponentStatusAlertRuleName = "argocd-component-status-alert"
 )
 
 // suffixes
