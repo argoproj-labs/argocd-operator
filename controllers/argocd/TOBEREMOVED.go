@@ -33,6 +33,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -1261,26 +1262,6 @@ func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) 
 	return newServiceWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
 }
 
-// reconcileGrafanaService will ensure that the Service for Grafana is present.
-func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
-	svc := newServiceWithSuffix("grafana", "grafana", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if !cr.Spec.Grafana.Enabled {
-			// Service exists but enabled flag has been set to false, delete the Service
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		log.Info(grafanaDeprecatedWarning)
-		return nil // Service found, do nothing
-	}
-
-	if !cr.Spec.Grafana.Enabled {
-		return nil // Grafana not enabled, do nothing.
-	}
-
-	log.Info(grafanaDeprecatedWarning)
-	return nil
-}
-
 // reconcileServices will ensure that all Services are present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileServices(cr *argoproj.ArgoCD) error {
 
@@ -1551,5 +1532,88 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
+	return nil
+}
+
+// reconcileRoutes will ensure that all ArgoCD Routes are present.
+func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileGrafanaRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheusRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileServerRoute(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileApplicationSetControllerWebhookRoute(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getArgoServerPath will return the Ingress Path for the Argo CD component.
+func getPathOrDefault(path string) string {
+	result := common.ArgoCDDefaultIngressPath
+	if len(path) > 0 {
+		result = path
+	}
+	return result
+}
+
+// newIngress returns a new Ingress instance for the given ArgoCD.
+func newIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
+	return &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newIngressWithName returns a new Ingress with the given name and ArgoCD.
+func newIngressWithName(name string, cr *argoproj.ArgoCD) *networkingv1.Ingress {
+	ingress := newIngress(cr)
+	ingress.ObjectMeta.Name = name
+
+	lbls := ingress.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	ingress.ObjectMeta.Labels = lbls
+
+	return ingress
+}
+
+// newIngressWithSuffix returns a new Ingress with the given name suffix for the ArgoCD.
+func newIngressWithSuffix(suffix string, cr *argoproj.ArgoCD) *networkingv1.Ingress {
+	return newIngressWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
+}
+
+// reconcileIngresses will ensure that all ArgoCD Ingress resources are present.
+func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileArgoServerIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileArgoServerGRPCIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileGrafanaIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcilePrometheusIngress(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileApplicationSetControllerIngress(cr); err != nil {
+		return err
+	}
+
 	return nil
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -56,6 +57,11 @@ import (
 
 const (
 	ArgoCDController = "argocd-controller"
+)
+
+const (
+	grafanaDeprecationWarning    = "warning: grafana is deprecated from ArgoCD; field will be ignored"
+	prometheusDeprecationWarning = "warning: prometheus is deprecated from ArgoCD; field will be ignored"
 )
 
 var (
@@ -577,6 +583,26 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 	} else {
 		if err := r.NotificationsController.DeleteResources(); err != nil {
 			r.Logger.Error(err, "failed to delete notifications resources")
+		}
+	}
+
+	if r.Instance.Spec.Grafana.Enabled {
+		r.Logger.Info(grafanaDeprecationWarning)
+	}
+
+	if r.Instance.Spec.Prometheus.Enabled {
+		r.Logger.Info(prometheusDeprecationWarning)
+	}
+
+	if monitoring.IsPrometheusAPIAvailable() {
+		if r.Instance.Spec.Monitoring.Enabled {
+			if err := r.reoncilePrometheusRule(); err != nil {
+				r.Logger.Error(err, "failed to reconcile prometheusRule")
+			}
+		} else {
+			if err := r.deletePrometheusRule(common.ArogCDComponentStatusAlertRuleName, r.Instance.Namespace); err != nil {
+				r.Logger.Error(err, "failed to delete prometheusRule")
+			}
 		}
 	}
 

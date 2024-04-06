@@ -44,6 +44,7 @@ func (acr *AppControllerReconciler) reconcileMetricsServiceMonitor() error {
 	}
 	return acr.reconServiceMonitor(req, argocdcommon.UpdateFnSM(updateFn), ignoreDrift)
 }
+
 func (acr *AppControllerReconciler) reconServiceMonitor(req monitoring.ServiceMonitorRequest, updateFn interface{}, ignoreDrift bool) error {
 	desired, err := monitoring.RequestServiceMonitor(req)
 	if err != nil {

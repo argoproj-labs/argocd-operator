@@ -1,52 +1,178 @@
-// Copyright 2019 ArgoCD Operator Developers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package argocd
 
 import (
 	"context"
 	"fmt"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// getPrometheusHost will return the hostname value for Prometheus.
-func getPrometheusHost(cr *argoproj.ArgoCD) string {
-	host := nameWithSuffix("prometheus", cr)
-	if len(cr.Spec.Prometheus.Host) > 0 {
-		host = cr.Spec.Prometheus.Host
+// reconcilePrometheusIngress will ensure that the Prometheus Ingress is present.
+func (r *ReconcileArgoCD) reconcilePrometheusIngress(cr *argoproj.ArgoCD) error {
+	ingress := newIngressWithSuffix("prometheus", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
+			// Ingress exists but enabled flag has been set to false, delete the Ingress
+			return r.Client.Delete(context.TODO(), ingress)
+		}
+		return nil // Ingress found and enabled, do nothing
 	}
-	return host
+
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Ingress.Enabled {
+		return nil // Prometheus itself or Ingress not enabled, move along...
+	}
+
+	// Add default annotations
+	atns := make(map[string]string)
+	atns[common.ArgoCDKeyIngressSSLRedirect] = "true"
+	atns[common.ArgoCDKeyIngressBackendProtocol] = "HTTP"
+
+	// Override default annotations if specified
+	if len(cr.Spec.Prometheus.Ingress.Annotations) > 0 {
+		atns = cr.Spec.Prometheus.Ingress.Annotations
+	}
+
+	ingress.ObjectMeta.Annotations = atns
+
+	ingress.Spec.IngressClassName = cr.Spec.Prometheus.Ingress.IngressClassName
+
+	pathType := networkingv1.PathTypeImplementationSpecific
+	// Add rules
+	ingress.Spec.Rules = []networkingv1.IngressRule{
+		{
+			Host: getPrometheusHost(cr),
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: getPathOrDefault(cr.Spec.Prometheus.Ingress.Path),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: "prometheus-operated",
+									Port: networkingv1.ServiceBackendPort{
+										Name: "web",
+									},
+								},
+							},
+							PathType: &pathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add TLS options
+	ingress.Spec.TLS = []networkingv1.IngressTLS{
+		{
+			Hosts:      []string{cr.Name},
+			SecretName: common.ArgoCDSecretName,
+		},
+	}
+
+	// Allow override of TLS options if specified
+	if len(cr.Spec.Prometheus.Ingress.TLS) > 0 {
+		ingress.Spec.TLS = cr.Spec.Prometheus.Ingress.TLS
+	}
+
+	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), ingress)
 }
 
-// getPrometheusSize will return the size value for the Prometheus replica count.
-func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
-	replicas := common.ArgoCDDefaultPrometheusReplicas
-	if cr.Spec.Prometheus.Size != nil {
-		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
-			replicas = *cr.Spec.Prometheus.Size
+// reconcilePrometheusRoute will ensure that the ArgoCD Prometheus Route is present.
+func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
+	route := newRouteWithSuffix("prometheus", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
+			// Route exists but enabled flag has been set to false, delete the Route
+			return r.Client.Delete(context.TODO(), route)
 		}
+		return nil // Route found, do nothing
 	}
-	return &replicas
+
+	if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
+		return nil // Prometheus itself or Route not enabled, do nothing.
+	}
+
+	// Allow override of the Annotations for the Route.
+	if len(cr.Spec.Prometheus.Route.Annotations) > 0 {
+		route.Annotations = cr.Spec.Prometheus.Route.Annotations
+	}
+
+	// Allow override of the Labels for the Route.
+	if len(cr.Spec.Prometheus.Route.Labels) > 0 {
+		labels := route.Labels
+		for key, val := range cr.Spec.Prometheus.Route.Labels {
+			labels[key] = val
+		}
+		route.Labels = labels
+	}
+
+	// Allow override of the Host for the Route.
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		route.Spec.Host = cr.Spec.Prometheus.Host // TODO: What additional role needed for this?
+	}
+
+	route.Spec.Port = &routev1.RoutePort{
+		TargetPort: intstr.FromString("web"),
+	}
+
+	// Allow override of TLS options for the Route
+	if cr.Spec.Prometheus.Route.TLS != nil {
+		route.Spec.TLS = cr.Spec.Prometheus.Route.TLS
+	}
+
+	route.Spec.To.Kind = "Service"
+	route.Spec.To.Name = "prometheus-operated"
+
+	// Allow override of the WildcardPolicy for the Route
+	if cr.Spec.Prometheus.Route.WildcardPolicy != nil && len(*cr.Spec.Prometheus.Route.WildcardPolicy) > 0 {
+		route.Spec.WildcardPolicy = *cr.Spec.Prometheus.Route.WildcardPolicy
+	}
+
+	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), route)
+}
+
+// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
+func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
+	prometheus := newPrometheus(cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
+		if !cr.Spec.Prometheus.Enabled {
+			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
+			return r.Client.Delete(context.TODO(), prometheus)
+		}
+		if hasPrometheusSpecChanged(prometheus, cr) {
+			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
+			return r.Client.Update(context.TODO(), prometheus)
+		}
+		return nil // Prometheus found, do nothing
+	}
+
+	if !cr.Spec.Prometheus.Enabled {
+		return nil // Prometheus not enabled, do nothing.
+	}
+
+	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
+	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
+	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
+
+	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), prometheus)
 }
 
 // hasPrometheusSpecChanged will return true if the supported properties differs in the actual versus the desired state.
@@ -66,6 +192,26 @@ func hasPrometheusSpecChanged(actual *monitoringv1.Prometheus, desired *argoproj
 		}
 	}
 	return false
+}
+
+// getPrometheusHost will return the hostname value for Prometheus.
+func getPrometheusHost(cr *argoproj.ArgoCD) string {
+	host := nameWithSuffix("prometheus", cr)
+	if len(cr.Spec.Prometheus.Host) > 0 {
+		host = cr.Spec.Prometheus.Host
+	}
+	return host
+}
+
+// getPrometheusSize will return the size value for the Prometheus replica count.
+func getPrometheusReplicas(cr *argoproj.ArgoCD) *int32 {
+	replicas := common.ArgoCDDefaultPrometheusReplicas
+	if cr.Spec.Prometheus.Size != nil {
+		if *cr.Spec.Prometheus.Size >= 0 && *cr.Spec.Prometheus.Size != replicas {
+			replicas = *cr.Spec.Prometheus.Size
+		}
+	}
+	return &replicas
 }
 
 // newPrometheus returns a new Prometheus instance for the given ArgoCD.
@@ -106,35 +252,6 @@ func newServiceMonitorWithName(name string, cr *argoproj.ArgoCD) *monitoringv1.S
 // newServiceMonitorWithSuffix returns a new ServiceMonitor instance for the given ArgoCD using the given suffix.
 func newServiceMonitorWithSuffix(suffix string, cr *argoproj.ArgoCD) *monitoringv1.ServiceMonitor {
 	return newServiceMonitorWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), cr)
-}
-
-// reconcilePrometheus will ensure that Prometheus is present for ArgoCD metrics.
-func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
-	prometheus := newPrometheus(cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
-		if !cr.Spec.Prometheus.Enabled {
-			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
-			return r.Client.Delete(context.TODO(), prometheus)
-		}
-		if hasPrometheusSpecChanged(prometheus, cr) {
-			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
-			return r.Client.Update(context.TODO(), prometheus)
-		}
-		return nil // Prometheus found, do nothing
-	}
-
-	if !cr.Spec.Prometheus.Enabled {
-		return nil // Prometheus not enabled, do nothing.
-	}
-
-	prometheus.Spec.Replicas = getPrometheusReplicas(cr)
-	prometheus.Spec.ServiceAccountName = "prometheus-k8s"
-	prometheus.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
-
-	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
-		return err
-	}
-	return r.Client.Create(context.TODO(), prometheus)
 }
 
 // reconcilePrometheusRule reconciles the PrometheusRule that triggers alerts based on workload statuses
