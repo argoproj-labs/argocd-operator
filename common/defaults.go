@@ -119,7 +119,7 @@ const (
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:4e7a457e1c442a724937a1914cd51fbf433629f1ec14815491039b92e0739278" // 0.9.0
+	ArgoCDDefaultExportJobVersion = "sha256:7d8199d0581a6451163c314ae5ef157bd42aace7ddd3f7dec5e8e8507e769e01" // 0.9.1
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
