@@ -3,6 +3,7 @@ package argocd
 import (
 	"sync"
 
+	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/monitoring"
@@ -182,6 +183,9 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMa
 
 	// Watch for changes to RoleBinding resources owned by ArgoCD instances.
 	bldr.Owns(&rbacv1.RoleBinding{})
+
+	// Watch for changes to NotificationsConfiguration CR
+	bldr.Owns(&v1alpha1.NotificationsConfiguration{})
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks

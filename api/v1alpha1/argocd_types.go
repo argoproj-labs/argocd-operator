@@ -37,7 +37,7 @@ func init() {
 // Important: Run "make" to regenerate code after modifying this file
 
 // +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 version is deprecated and will be converted to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API version."
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // ArgoCD is the Schema for the argocds API
 // +k8s:openapi-gen=true
@@ -953,7 +953,7 @@ type WebhookServerSpec struct {
 // IsDeletionFinalizerPresent checks if the instance has deletion finalizer
 func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	for _, finalizer := range argocd.GetFinalizers() {
-		if finalizer == common.ArgoprojKeyFinalizer {
+		if finalizer == common.ArgoCDDeletionFinalizer {
 			return true
 		}
 	}
