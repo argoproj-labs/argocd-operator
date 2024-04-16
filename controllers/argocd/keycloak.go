@@ -394,7 +394,7 @@ func getKeycloakServiceTemplate(ns string) *corev1.Service {
 	}
 }
 
-func getKeycloakRouteTemplate(ns string) *routev1.Route {
+func getKeycloakRouteTemplate(ns string, cr argoproj.ArgoCD) *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      map[string]string{"application": "${APPLICATION_NAME}"},
@@ -404,6 +404,7 @@ func getKeycloakRouteTemplate(ns string) *routev1.Route {
 		},
 		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Route"},
 		Spec: routev1.RouteSpec{
+			Host: getKeycloakOpenshiftHost(cr.Spec.SSO.Keycloak),
 			TLS: &routev1.TLSConfig{
 				Termination: "reencrypt",
 			},
@@ -437,7 +438,7 @@ func newKeycloakTemplate(cr *argoproj.ArgoCD) (template.Template, error) {
 	secretTemplate := getKeycloakSecretTemplate(ns)
 	deploymentConfigTemplate := getKeycloakDeploymentConfigTemplate(cr)
 	serviceTemplate := getKeycloakServiceTemplate(ns)
-	routeTemplate := getKeycloakRouteTemplate(ns)
+	routeTemplate := getKeycloakRouteTemplate(ns, *cr)
 
 	configMap, err := json.Marshal(configMapTemplate)
 	if err != nil {
@@ -534,7 +535,7 @@ func newKeycloakIngress(cr *argoproj.ArgoCD) *networkingv1.Ingress {
 			},
 			Rules: []networkingv1.IngressRule{
 				{
-					Host: keycloakIngressHost,
+					Host: getKeycloakIngressHost(cr.Spec.SSO.Keycloak),
 					IngressRuleValue: networkingv1.IngressRuleValue{
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{

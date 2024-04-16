@@ -328,6 +328,9 @@ type ArgoCDKeycloakSpec struct {
 
 	// VerifyTLS set to false disables strict TLS validation.
 	VerifyTLS *bool `json:"verifyTLS,omitempty"`
+
+	// Host is the hostname to use for Ingress/Route resources.
+	Host string `json:"host,omitempty"`
 }
 
 //+kubebuilder:object:root=true

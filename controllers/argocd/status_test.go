@@ -108,6 +108,9 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+						Host: "sso.test.example.com",
+					},
 					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},

@@ -9,6 +9,7 @@ spec:
     provider: keycloak
     keycloak:
       verifyTLS: false # required when running operator locally
+      host: sso.test.example.com
   server:
     ingress: 
       enabled: true

@@ -401,3 +401,65 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 
 	assert.Equal(t, ing.Spec.Rules, testRules)
 }
+
+func TestReconcile_testKeycloakIngressHost(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+	a.Spec.SSO.Keycloak = &argoproj.ArgoCDKeycloakSpec{
+		Host: "sso.test.example.com",
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	assert.NoError(t, r.reconcileSSO(a))
+
+	// Keycloak Ingress
+	ing := &networkingv1.Ingress{}
+	testPathType := networkingv1.PathTypeImplementationSpecific
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: defaultKeycloakIdentifier, Namespace: a.Namespace}, ing)
+	assert.NoError(t, err)
+
+	assert.Equal(t, ing.Name, defaultKeycloakIdentifier)
+	assert.Equal(t, ing.Namespace, a.Namespace)
+
+	testTLS := []networkingv1.IngressTLS{
+		{
+			Hosts: []string{keycloakIngressHost},
+		},
+	}
+	assert.Equal(t, ing.Spec.TLS, testTLS)
+
+	testRules := []networkingv1.IngressRule{
+		{
+			Host: "sso.test.example.com",
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: "/",
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: defaultKeycloakIdentifier,
+									Port: networkingv1.ServiceBackendPort{
+										Name: "http",
+									},
+								},
+							},
+							PathType: &testPathType,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, ing.Spec.Rules, testRules)
+
+}
