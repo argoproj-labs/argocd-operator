@@ -3,6 +3,8 @@ package permissions
 import (
 	"errors"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,6 +13,14 @@ import (
 
 type ServiceAccountRequest struct {
 	ObjectMeta metav1.ObjectMeta
+
+	Instance *argoproj.ArgoCD
+
+	// array of functions to mutate obj before returning to requester
+	Mutations []mutation.MutateFunc
+	// array of arguments to pass to the mutation funcs
+	MutationArgs []interface{}
+	Client       cntrlClient.Client
 }
 
 // newServiceAccount returns a new ServiceAccount instance.

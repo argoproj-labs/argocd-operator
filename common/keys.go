@@ -205,6 +205,8 @@ const (
 
 // misc
 const (
-	TLSSecretNameKey = "tls-secret-name"
-	WantAutoTLSKey   = "wantAutoTLS"
+	TLSSecretNameKey   = "tls-secret-name"
+	WantAutoTLSKey     = "wantAutoTLS"
+	RedirectURI        = "redirect-uri"
+	WantOpenShiftOAuth = "wantOpenShiftOAuth"
 )

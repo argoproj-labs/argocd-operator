@@ -83,12 +83,11 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 			common.ArgoCDKeyStatusBadgeEnabled:          r.getStatusBadgeEnabled(),
 			common.ArgoCDKeyUsersAnonymousEnabled:       r.getUsersAnonymousEnabled(),
 			common.ArgoCDKeyServerURL:                   r.ServerController.GetURI(),
+			common.ArgoCDKeyDexConfig:                   r.SSOController.DexController.GetConfig(),
 		},
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,
 	}
-
-	// TO DO: skipping dex config since that should be handled by SSO component
 
 	req.Data = util.MergeMaps(req.Data, r.getKustomizeVersions())
 	req.Data = util.MergeMaps(req.Data, r.getResourceHealthChecks())
@@ -99,6 +98,20 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 
 	ignoreDrift := false
 	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+
+		// special handling for dex
+		// rollout dex deployment if change detected in dex config
+		if existing.Data[common.ArgoCDKeyDexConfig] != desired.Data[common.ArgoCDKeyDexConfig] {
+			existing.Data[common.ArgoCDKeyDexConfig] = desired.Data[common.ArgoCDKeyDexConfig]
+			*changed = true
+
+			r.SSOController.DexController.TriggerDeploymentRollout(
+				argoutil.GenerateResourceName(r.Instance.Name, common.DexSuffix),
+				r.Instance.Namespace,
+				common.DexConfigChangedKey,
+			)
+		}
+
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
