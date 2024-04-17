@@ -145,6 +145,9 @@ const (
 	// ArgoCDDefaultKustomizeBuildOptions is the default kustomize build options.
 	ArgoCDDefaultKustomizeBuildOptions = ""
 
+	// ArgoCDDefaultWebTerminalEnabled is the default web terminal enabled switch.
+	ArgoCDDefaultWebTerminalEnabled = "false"
+
 	// ArgoCDKeycloakImage is the default Keycloak Image used for the non-openshift platforms when not specified.
 	ArgoCDKeycloakImage = "quay.io/keycloak/keycloak"
 

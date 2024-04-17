@@ -164,6 +164,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap(t *testing.T) {
 		"statusbadge.enabled":                "false",
 		"url":                                "https://argocd-server",
 		"users.anonymous.enabled":            "false",
+		"exec.enabled":                       "false",
 	}
 
 	cmdTests := []struct {
