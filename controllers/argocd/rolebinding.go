@@ -84,7 +84,7 @@ func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
 
 // reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
 func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoproj.ArgoCD) error {
-	params := getPolicyRuleList(r.Client)
+	params := getPolicyRuleList(r.Client, cr)
 
 	for _, param := range params {
 		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr); err != nil {
