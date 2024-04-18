@@ -104,7 +104,7 @@ kind: NotificationsConfiguration
 metadata:
  name: default-notifications-configuration
 spec:
- Context:
+ context:
   region: east
   environmentName: staging    
 ```
