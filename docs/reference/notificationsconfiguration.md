@@ -16,6 +16,7 @@ Name | Default | Description
 **Triggers** | [Empty] | Templates are used to generate the notification template message.
 **Services** | [Empty] | Services are used to deliver message.
 **Subscriptions** | [Empty] | Subscriptions contain centrally managed global application subscriptions.
+**Context** | [Empty] | Context is used to define some shared context between all notification templates.
 
 ## Templates Example
 
@@ -91,4 +92,19 @@ spec:
       selector: test=true
       triggers:
       - on-sync-status-unknown
+```
+
+## Context Example
+
+The following example shows how to add Context to the `argocd-notification-cm` using the `default-notifications-configuration` custom resource.
+
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: NotificationsConfiguration
+metadata:
+ name: default-notifications-configuration
+spec:
+ context:
+  region: east
+  environmentName: staging    
 ```
