@@ -5,10 +5,11 @@ import (
 
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
+	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,81 +21,87 @@ import (
 )
 
 func (nr *NotificationsReconciler) reconcileDeployment() error {
+	desired := nr.getdesired()
+	req := nr.getDeploymentRequest(*desired)
 
-	nr.Logger.Info("reconciling deployment")
-
-	desiredDeployment := nr.getDesiredDeployment()
-	deploymentRequest := nr.getDeploymentRequest(*desiredDeployment)
-
-	desiredDeployment, err := workloads.RequestDeployment(deploymentRequest)
-	if err != nil {
-		nr.Logger.Error(err, "reconcileDeployment: failed to request deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		nr.Logger.Debug("reconcileDeployment: one or more mutations could not be applied")
-		return err
-	}
-
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
-	if err != nil {
-		nr.Logger.Error(err, "reconcileDeployment: failed to retrieve namespace", "name", nr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := nr.deleteDeployment(desiredDeployment.Name, desiredDeployment.Namespace); err != nil {
-			nr.Logger.Error(err, "reconcileDeployment: failed to delete deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		}
-		return err
-	}
-
-	existingDeployment, err := workloads.GetDeployment(desiredDeployment.Name, desiredDeployment.Namespace, nr.Client)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileDeployment: failed to retrieve deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-			return err
+	ignoreDrift := false
+	updateFn := func(existing, desired *appsv1.Deployment, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &desired.Spec.Template.Spec.Containers[0].Image,
+				ExtraAction: func() {
+					existing.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
+				},
+			},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &desired.Spec.Template.Spec.Volumes, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Labels, Desired: &desired.Spec.Template.Labels, ExtraAction: nil},
+			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 		}
 
-		if err = controllerutil.SetControllerReference(nr.Instance, desiredDeployment, nr.Scheme); err != nil {
-			nr.Logger.Error(err, "reconcileDeployment: failed to set owner reference for deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-		}
-
-		if err = workloads.CreateDeployment(desiredDeployment, nr.Client); err != nil {
-			nr.Logger.Error(err, "reconcileDeployment: failed to create deployment", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
-			return err
-		}
-		nr.Logger.Info("deployment created", "name", desiredDeployment.Name, "namespace", desiredDeployment.Namespace)
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
 		return nil
 	}
-	deploymentChanged := false
 
-	fieldsToCompare := []argocdcommon.FieldToCompare{
-		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Image, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Image,
-			ExtraAction: func() {
-				existingDeployment.Spec.Template.ObjectMeta.Labels[common.ImageUpgradedKey] = time.Now().UTC().Format(common.TimeFormatMST)
-			},
-		},
-		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Command, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Env, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.Containers[0].Resources, Desired: &desiredDeployment.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.Volumes, Desired: &desiredDeployment.Spec.Template.Spec.Volumes, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.NodeSelector, Desired: &desiredDeployment.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.Tolerations, Desired: &desiredDeployment.Spec.Template.Spec.Tolerations, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Spec.ServiceAccountName, Desired: &desiredDeployment.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Template.Labels, Desired: &desiredDeployment.Spec.Template.Labels, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Replicas, Desired: &desiredDeployment.Spec.Replicas, ExtraAction: nil},
-		{Existing: &existingDeployment.Spec.Selector, Desired: &desiredDeployment.Spec.Selector, ExtraAction: nil},
-		{Existing: &existingDeployment.Labels, Desired: &desiredDeployment.Labels, ExtraAction: nil},
+	return nr.reconDeployment(req, argocdcommon.UpdateFnDep(updateFn), ignoreDrift)
+
+}
+
+func (nr *NotificationsReconciler) reconDeployment(req workloads.DeploymentRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := workloads.RequestDeployment(req)
+	if err != nil {
+		nr.Logger.Debug("reconDeployment: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconDeployment: failed to request Deployment %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	argocdcommon.UpdateIfChanged(fieldsToCompare, &deploymentChanged)
+	if err = controllerutil.SetControllerReference(nr.Instance, desired, nr.Scheme); err != nil {
+		nr.Logger.Error(err, "reconDeployment: failed to set owner reference for Deployment", "name", desired.Name, "namespace", desired.Namespace)
+	}
 
-	if deploymentChanged {
+	existing, err := workloads.GetDeployment(desired.Name, desired.Namespace, nr.Client)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrapf(err, "reconDeployment: failed to retrieve Deployment %s in namespace %s", desired.Name, desired.Namespace)
+		}
 
-		if err = workloads.UpdateDeployment(existingDeployment, nr.Client); err != nil {
-			nr.Logger.Error(err, "reconcileDeployment: failed to update deployment", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
-			return err
+		if err = workloads.CreateDeployment(desired, nr.Client); err != nil {
+			return errors.Wrapf(err, "reconDeployment: failed to create Deployment %s in namespace %s", desired.Name, desired.Namespace)
+		}
+		nr.Logger.Info("Deployment created", "name", desired.Name, "namespace", desired.Namespace)
+		return nil
+	}
+
+	// Deployment found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnDep); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconDeployment: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
 		}
 	}
 
-	nr.Logger.Info("deployment updated", "name", existingDeployment.Name, "namespace", existingDeployment.Namespace)
+	if !changed {
+		return nil
+	}
+
+	if err = workloads.UpdateDeployment(existing, nr.Client); err != nil {
+		return errors.Wrapf(err, "reconDeployment: failed to update Deployment %s", existing.Name)
+	}
+
+	nr.Logger.Info("Deployment updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
@@ -110,17 +117,13 @@ func (nr *NotificationsReconciler) deleteDeployment(name, namespace string) erro
 	return nil
 }
 
-func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
-	desiredDeployment := &appsv1.Deployment{}
+func (nr *NotificationsReconciler) getdesired() *appsv1.Deployment {
+	desired := &appsv1.Deployment{}
 
 	notificationEnv := nr.Instance.Spec.Notifications.Env
 	notificationEnv = util.EnvMerge(notificationEnv, util.ProxyEnvVars(), false)
 
-	objMeta := metav1.ObjectMeta{
-		Name:      resourceName,
-		Namespace: nr.Instance.Namespace,
-		Labels:    resourceLabels,
-	}
+	objMeta := argoutil.GetObjMeta(resourceName, nr.Instance.Namespace, nr.Instance.Name, nr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap())
 	podSpec := corev1.PodSpec{
 		ServiceAccountName: resourceName,
 		Volumes: []corev1.Volume{
@@ -205,9 +208,9 @@ func (nr *NotificationsReconciler) getDesiredDeployment() *appsv1.Deployment {
 		Replicas: nr.GetArgoCDNotificationsControllerReplicas(),
 	}
 
-	desiredDeployment.ObjectMeta = objMeta
-	desiredDeployment.Spec = deploymentSpec
-	return desiredDeployment
+	desired.ObjectMeta = objMeta
+	desired.Spec = deploymentSpec
+	return desired
 }
 
 func (nr *NotificationsReconciler) getDeploymentRequest(dep appsv1.Deployment) workloads.DeploymentRequest {

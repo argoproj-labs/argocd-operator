@@ -14,11 +14,11 @@ import (
 
 func TestNotificationsReconciler_reconcileDeployment(t *testing.T) {
 	resourceName = test.TestArgoCDName
-	resourceLabels = testExpectedLabels
+
 	ns := test.MakeTestNamespace(nil)
 	nr := makeTestNotificationsReconciler(t, ns)
 
-	existingDeployment := nr.getDesiredDeployment()
+	existingDeployment := nr.getdesired()
 
 	tests := []struct {
 		name        string

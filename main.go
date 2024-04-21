@@ -47,6 +47,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 
+	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -247,6 +248,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ArgoCDExport")
+		os.Exit(1)
+	}
+	if err = (&notificationsConfig.NotificationsConfigurationReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NotificationsConfiguration")
 		os.Exit(1)
 	}
 

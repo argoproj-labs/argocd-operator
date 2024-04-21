@@ -1,81 +1,92 @@
 package notifications
 
 import (
-	"reflect"
-
-	"github.com/argoproj-labs/argocd-operator/pkg/cluster"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
+	"github.com/pkg/errors"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (nr *NotificationsReconciler) reconcileRole() error {
-
-	nr.Logger.Info("reconciling roles")
-
-	roleRequest := permissions.RoleRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        resourceName,
-			Namespace:   nr.Instance.Namespace,
-			Labels:      resourceLabels,
-			Annotations: nr.Instance.Annotations,
-		},
-		Rules:     getPolicyRules(),
-		Client:    nr.Client,
-		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
+	req := permissions.RoleRequest{
+		ObjectMeta: argoutil.GetObjMeta(resourceName, nr.Instance.Namespace, nr.Instance.Name, nr.Instance.Namespace, component, util.EmptyMap(), util.EmptyMap()),
+		Rules:      getPolicyRules(),
+		Client:     nr.Client,
+		Mutations:  []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}
 
-	desiredRole, err := permissions.RequestRole(roleRequest)
-	if err != nil {
-		nr.Logger.Error(err, "reconcileRole: failed to request role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-		nr.Logger.Debug("reconcileRole: one or more mutations could not be applied")
-		return err
-	}
+	ignoreDrift := false
+	updateFn := func(existing, desired *rbacv1.Role, changed *bool) error {
+		fieldsToCompare := []argocdcommon.FieldToCompare{
+			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 
-	namespace, err := cluster.GetNamespace(nr.Instance.Namespace, nr.Client)
-	if err != nil {
-		nr.Logger.Error(err, "reconcileRole: failed to retrieve namespace", "name", nr.Instance.Namespace)
-		return err
-	}
-	if namespace.DeletionTimestamp != nil {
-		if err := nr.deleteRole(desiredRole.Name, desiredRole.Namespace); err != nil {
-			nr.Logger.Error(err, "reconcileRole: failed to delete role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+			{Existing: &existing.Rules, Desired: &desired.Rules, ExtraAction: nil},
 		}
-		return err
+
+		argocdcommon.UpdateIfChanged(fieldsToCompare, changed)
+		return nil
+	}
+	return nr.reconRole(req, argocdcommon.UpdateFnRole(updateFn), ignoreDrift)
+}
+
+func (nr *NotificationsReconciler) reconRole(req permissions.RoleRequest, updateFn interface{}, ignoreDrift bool) error {
+	desired, err := permissions.RequestRole(req)
+	if err != nil {
+		nr.Logger.Debug("reconRole: one or more mutations could not be applied")
+		return errors.Wrapf(err, "reconRole: failed to request Role %s in namespace %s", desired.Name, desired.Namespace)
 	}
 
-	existingRole, err := permissions.GetRole(desiredRole.Name, desiredRole.Namespace, nr.Client)
+	if desired.Namespace == nr.Instance.Namespace {
+		if err = controllerutil.SetControllerReference(nr.Instance, desired, nr.Scheme); err != nil {
+			nr.Logger.Error(err, "reconRole: failed to set owner reference for Role", "name", desired.Name, "namespace", desired.Namespace)
+		}
+	}
+
+	existing, err := permissions.GetRole(desired.Name, desired.Namespace, nr.Client)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			nr.Logger.Error(err, "reconcileRole: failed to retrieve role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-			return err
+			return errors.Wrapf(err, "reconRole: failed to retrieve Role %s in namespace %s", desired.Name, desired.Namespace)
 		}
 
-		if err = controllerutil.SetControllerReference(nr.Instance, desiredRole, nr.Scheme); err != nil {
-			nr.Logger.Error(err, "reconcileRole: failed to set owner reference for role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		if err = permissions.CreateRole(desired, nr.Client); err != nil {
+			return errors.Wrapf(err, "reconRole: failed to create Role %s in namespace %s", desired.Name, desired.Namespace)
 		}
-
-		if err = permissions.CreateRole(desiredRole, nr.Client); err != nil {
-			nr.Logger.Error(err, "reconcileRole: failed to create role", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
-			return err
-		}
-		nr.Logger.Info("role created", "name", desiredRole.Name, "namespace", desiredRole.Namespace)
+		nr.Logger.Info("role created", "name", desired.Name, "namespace", desired.Namespace)
 		return nil
 	}
 
-	if !reflect.DeepEqual(existingRole.Rules, desiredRole.Rules) {
-		existingRole.Rules = desiredRole.Rules
-		if err = permissions.UpdateRole(existingRole, nr.Client); err != nil {
-			nr.Logger.Error(err, "reconcileRole: failed to update role", "name", existingRole.Name, "namespace", existingRole.Namespace)
-			return err
+	// Role found, no update required - nothing to do
+	if ignoreDrift {
+		return nil
+	}
+
+	changed := false
+
+	// execute supplied update function
+	if updateFn != nil {
+		if fn, ok := updateFn.(argocdcommon.UpdateFnRole); ok {
+			if err := fn(existing, desired, &changed); err != nil {
+				return errors.Wrapf(err, "reconRole: failed to execute update function for %s in namespace %s", existing.Name, existing.Namespace)
+			}
 		}
 	}
-	nr.Logger.Info("role updated", "name", existingRole.Name, "namespace", existingRole.Namespace)
+
+	if !changed {
+		return nil
+	}
+
+	if err = permissions.UpdateRole(existing, nr.Client); err != nil {
+		return errors.Wrapf(err, "reconRole: failed to update Role %s", existing.Name)
+	}
+
+	nr.Logger.Info("role updated", "name", existing.Name, "namespace", existing.Namespace)
 	return nil
 }
 
