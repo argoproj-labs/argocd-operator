@@ -47,6 +47,8 @@ const (
 
 	ArgoCDStatusUnknown = "Unknown"
 
+	ArgoCDStatusUnavailable = "Unavailable"
+
 	ArgoCDStatusPending = "Pending"
 
 	ArgoCDStatusRunning = "Running"

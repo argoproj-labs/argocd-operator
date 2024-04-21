@@ -1,12 +1,10 @@
 package applicationset
 
 import (
-	"context"
-
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/util/retry"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,17 +45,5 @@ func (asr *ApplicationSetReconciler) ReconcileStatus() error {
 }
 
 func (asr *ApplicationSetReconciler) updateInstanceStatus() error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		if err := asr.Client.Status().Update(context.TODO(), asr.Instance); err != nil {
-			return errors.Wrap(err, "UpdateInstanceStatus: failed to update instance status")
-		}
-		return nil
-	})
-
-	if err != nil {
-		// May be conflict if max retries were hit, or may be something unrelated
-		// like permissions or a network error
-		return err
-	}
-	return nil
+	return resource.UpdateStatusSubResource(asr.Instance, asr.Client)
 }

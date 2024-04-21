@@ -125,5 +125,6 @@ func (rsr *RepoServerReconciler) TriggerRollout(key string) error {
 func (rsr *RepoServerReconciler) varSetter() {
 	component = common.RepoServerComponent
 	resourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix)
-	metricsResourceName = argoutil.GenerateResourceName(rsr.Instance.Name, common.RepoServerSuffix, common.MetricsSuffix)
+
+	metricsResourceName = argoutil.NameWithSuffix(resourceName, common.MetricsSuffix)
 }

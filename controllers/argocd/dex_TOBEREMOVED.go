@@ -544,3 +544,8 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 
 	return nil
 }
+
+// getDexServerAddress will return the Dex server address.
+func getDexServerAddress(cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("https://%s", fqdnServiceRef("dex-server", common.ArgoCDDefaultDexHTTPPort, cr))
+}

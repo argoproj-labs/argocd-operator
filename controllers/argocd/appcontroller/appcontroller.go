@@ -150,7 +150,8 @@ func (acr *AppControllerReconciler) TriggerRollout(key string) error {
 func (acr *AppControllerReconciler) varSetter() {
 	component = common.AppControllerComponent
 	resourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix)
-	metricsResourceName = argoutil.GenerateResourceName(acr.Instance.Name, common.AppControllerSuffix, common.MetricsSuffix)
-	managedNsResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix, common.ResourceMgmtSuffix)
 	clusterResourceName = argoutil.GenerateUniqueResourceName(acr.Instance.Name, acr.Instance.Namespace, common.AppControllerSuffix)
+
+	metricsResourceName = argoutil.NameWithSuffix(resourceName, common.MetricsSuffix)
+	managedNsResourceName = argoutil.NameWithSuffix(clusterResourceName, common.ResourceMgmtSuffix)
 }

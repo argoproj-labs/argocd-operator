@@ -177,7 +177,8 @@ func (asr *ApplicationSetReconciler) DeleteResources() error {
 func (asr *ApplicationSetReconciler) varSetter() {
 	component = common.AppSetControllerComponent
 	resourceName = argoutil.GenerateResourceName(asr.Instance.Name, common.AppSetControllerSuffix)
-	webhookResourceName = argoutil.GenerateResourceName(asr.Instance.Name, common.AppSetControllerSuffix, common.WebhookSuffix)
-	appsetSourceNsResourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, common.AppSetControllerSuffix, common.AppsetMgmtSuffix)
 	clusterResourceName = argoutil.GenerateUniqueResourceName(asr.Instance.Name, asr.Instance.Namespace, common.AppSetControllerSuffix)
+
+	webhookResourceName = argoutil.NameWithSuffix(resourceName, common.WebhookSuffix)
+	appsetSourceNsResourceName = argoutil.NameWithSuffix(clusterResourceName, common.AppsetMgmtSuffix)
 }
