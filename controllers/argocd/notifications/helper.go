@@ -6,6 +6,12 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
+// getDefaultNotificationsContext returns an empty map for context
+func getDefaultNotificationsContext() map[string]string {
+	notificationContext := make(map[string]string)
+	return notificationContext
+}
+
 // getDefaultNotificationsTemplates returns a map that contains default template configurations
 func getDefaultNotificationsTemplates() map[string]string {
 
