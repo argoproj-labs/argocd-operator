@@ -243,12 +243,13 @@ func (sr *ServerReconciler) DeleteResources() error {
 func (sr *ServerReconciler) varSetter() {
 	component = common.ServerComponent
 	resourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ServerSuffix)
-	grpcResourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ServerSuffix, common.GRPCSuffix)
-	metricsResourceName = argoutil.GenerateResourceName(sr.Instance.Name, common.ServerSuffix, common.MetricsSuffix)
 	clusterResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, common.ServerSuffix)
-	managedNsResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, common.ServerSuffix, common.ResourceMgmtSuffix)
-	sourceNsResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, common.ServerSuffix, common.AppMgmtSuffix)
-	appsetSourceNsResourceName = argoutil.GenerateUniqueResourceName(sr.Instance.Name, sr.Instance.Namespace, common.ServerSuffix, common.AppsetMgmtSuffix)
+
+	grpcResourceName = argoutil.NameWithSuffix(resourceName, common.GRPCSuffix)
+	metricsResourceName = argoutil.NameWithSuffix(resourceName, common.MetricsSuffix)
+	managedNsResourceName = argoutil.NameWithSuffix(clusterResourceName, common.ResourceMgmtSuffix)
+	sourceNsResourceName = argoutil.NameWithSuffix(clusterResourceName, common.AppMgmtSuffix)
+	appsetSourceNsResourceName = argoutil.NameWithSuffix(clusterResourceName, common.AppsetMgmtSuffix)
 }
 
 func (sr *ServerReconciler) TriggerRollout(key string) error {

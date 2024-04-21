@@ -21,6 +21,7 @@ import (
 
 	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,7 +30,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
+	"github.com/argoproj-labs/argocd-operator/pkg/networking"
+	"github.com/argoproj-labs/argocd-operator/pkg/openshift"
+	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 )
 
@@ -72,17 +77,133 @@ func (r *ArgoCDReconciler) reconcileStatus() error {
 		statusErr.Append(err)
 	}
 
-	// TO DO
+	if err := r.reconcilePhase(); err != nil {
+		return err
+	}
 
-	// if err := r.reconcileStatusHost(cr); err != nil {
-	// 	return err
-	// }
-
-	// if err := r.reconcileStatusPhase(cr); err != nil {
-	// 	return err
-	// }
+	if err := r.reconcileHost(); err != nil {
+		return err
+	}
 
 	return statusErr.ErrOrNil()
+}
+
+// reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
+func (r *ArgoCDReconciler) reconcilePhase() error {
+	phase := common.ArgoCDStatusPending
+
+	if ((!r.Instance.Spec.Controller.IsEnabled() && r.Instance.Status.ApplicationController == common.ArgoCDStatusUnknown) || r.Instance.Status.ApplicationController == common.ArgoCDStatusRunning) &&
+		((!r.Instance.Spec.Redis.IsEnabled() && r.Instance.Status.Redis == common.ArgoCDStatusUnknown) || r.Instance.Status.Redis == common.ArgoCDStatusRunning) &&
+		((!r.Instance.Spec.Repo.IsEnabled() && r.Instance.Status.Repo == common.ArgoCDStatusUnknown) || r.Instance.Status.Repo == common.ArgoCDStatusRunning) &&
+		((!r.Instance.Spec.Server.IsEnabled() && r.Instance.Status.Server == common.ArgoCDStatusUnknown) || r.Instance.Status.Server == common.ArgoCDStatusRunning) {
+		phase = common.ArgoCDStatusAvailable
+	}
+
+	if r.Instance.Status.Phase != phase {
+		r.Instance.Status.Phase = phase
+	}
+	return r.updateInstanceStatus()
+}
+
+func (r *ArgoCDReconciler) reconcileHost() error {
+	host := ""
+	phase := r.Instance.Status.Phase
+
+	// return if neither ingress, nor route is enabled
+	if !r.Instance.Spec.Server.Ingress.Enabled && (!r.Instance.Spec.Server.Route.Enabled || !openshift.IsOpenShiftEnv()) {
+		r.Instance.Status.Host = host
+		r.Instance.Status.Phase = phase
+		return r.updateInstanceStatus()
+	}
+
+	serverResourceName := argoutil.GenerateResourceName(r.Instance.Name, common.ServerSuffix)
+
+	if r.Instance.Spec.Server.Route.Enabled && openshift.IsOpenShiftEnv() {
+		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
+		// to fulfill the conditions specified.
+		// But the names of such created route resources are randomly generated so it is better to identify the routes using Labels
+		// instead of Name.
+		// 1. If a user creates ingress on openshift, Ingress controller generates a route for the ingress with random name.
+		// 2. If a user creates route on openshift, Ingress controller processes the route with provided name.
+		routeList, err := openshift.ListRoutes(r.Instance.Namespace, r.Client, []client.ListOption{
+			&client.ListOptions{
+				LabelSelector: labels.SelectorFromSet(map[string]string{
+					common.AppK8sKeyName: serverResourceName,
+				}),
+				Namespace: r.Instance.Namespace,
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "reconcileHost: faield to list routes")
+		}
+
+		if len(routeList.Items) == 0 {
+			r.Logger.Debug("reconcileHost: server route requested but not found on cluster")
+			phase = common.ArgoCDStatusPending
+		} else {
+			route := &routeList.Items[0]
+			// status.ingress not available
+			if route.Status.Ingress == nil {
+				host = ""
+				phase = common.ArgoCDStatusPending
+			} else {
+				// conditions exist and type is RouteAdmitted
+				routeConditions := route.Status.Ingress[0].Conditions
+				if len(routeConditions) > 0 && routeConditions[0].Type == routev1.RouteAdmitted {
+					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
+						host = route.Status.Ingress[0].Host
+					} else {
+						host = ""
+						phase = common.ArgoCDStatusPending
+					}
+				} else {
+					// no conditions are available
+					if route.Status.Ingress[0].Host != "" {
+						host = route.Status.Ingress[0].Host
+					} else {
+						host = common.ArgoCDStatusUnavailable
+						phase = common.ArgoCDStatusPending
+					}
+				}
+			}
+		}
+	} else if r.Instance.Spec.Server.Ingress.Enabled {
+		ingress, err := networking.GetIngress(serverResourceName, r.Instance.Namespace, r.Client)
+		if err != nil {
+			r.Logger.Debug("reconcileHost: server ingress requested but not found on cluster")
+			phase = common.ArgoCDStatusPending
+		} else {
+			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
+				var s []string
+				var hosts string
+				for _, ingressElement := range ingress.Status.LoadBalancer.Ingress {
+					if ingressElement.Hostname != "" {
+						s = append(s, ingressElement.Hostname)
+						continue
+					} else if ingressElement.IP != "" {
+						s = append(s, ingressElement.IP)
+						continue
+					}
+				}
+				hosts = strings.Join(s, ", ")
+				host = hosts
+			}
+		}
+	}
+
+	if r.Instance.Status.Host != host {
+		r.Instance.Status.Host = host
+	}
+
+	if r.Instance.Status.Phase != phase {
+		r.Instance.Status.Phase = phase
+	}
+
+	return r.updateInstanceStatus()
+}
+
+func (r *ArgoCDReconciler) updateInstanceStatus() error {
+	return resource.UpdateStatusSubResource(r.Instance, r.Client)
 }
 
 // reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
@@ -141,105 +262,4 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
-}
-
-// reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
-	var phase string
-
-	if ((!cr.Spec.Controller.IsEnabled() && cr.Status.ApplicationController == "Unknown") || cr.Status.ApplicationController == "Running") &&
-		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running") &&
-		((!cr.Spec.Repo.IsEnabled() && cr.Status.Repo == "Unknown") || cr.Status.Repo == "Running") &&
-		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") {
-		phase = "Available"
-	} else {
-		phase = "Pending"
-	}
-
-	if cr.Status.Phase != phase {
-		cr.Status.Phase = phase
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
-// reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
-	cr.Status.Host = ""
-
-	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
-		route := newRouteWithSuffix("server", cr)
-
-		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
-		// to fulfill the conditions specified.
-		// But the names of such created route resources are randomly generated so it is better to identify the routes using Labels
-		// instead of Name.
-		// 1. If a user creates ingress on openshift, Ingress controller generates a route for the ingress with random name.
-		// 2. If a user creates route on openshift, Ingress controller processes the route with provided name.
-		routeList := &routev1.RouteList{}
-		opts := &client.ListOptions{
-			LabelSelector: labels.SelectorFromSet(map[string]string{
-				"app.kubernetes.io/name": route.Name,
-			}),
-			Namespace: cr.Namespace,
-		}
-
-		if err := r.Client.List(context.TODO(), routeList, opts); err != nil {
-			return err
-		}
-
-		if len(routeList.Items) == 0 {
-			log.Info("argocd-server route requested but not found on cluster")
-			return nil
-		} else {
-			route = &routeList.Items[0]
-			// status.ingress not available
-			if route.Status.Ingress == nil {
-				cr.Status.Host = ""
-				cr.Status.Phase = "Pending"
-			} else {
-				// conditions exist and type is RouteAdmitted
-				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
-					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
-						cr.Status.Host = route.Status.Ingress[0].Host
-					} else {
-						cr.Status.Host = ""
-						cr.Status.Phase = "Pending"
-					}
-				} else {
-					// no conditions are available
-					if route.Status.Ingress[0].Host != "" {
-						cr.Status.Host = route.Status.Ingress[0].Host
-					} else {
-						cr.Status.Host = "Unavailable"
-						cr.Status.Phase = "Pending"
-					}
-				}
-			}
-		}
-	} else if cr.Spec.Server.Ingress.Enabled {
-		ingress := newIngressWithSuffix("server", cr)
-		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
-			log.Info("argocd-server ingress requested but not found on cluster")
-			cr.Status.Phase = "Pending"
-			return nil
-		} else {
-			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
-				var s []string
-				var hosts string
-				for _, ingressElement := range ingress.Status.LoadBalancer.Ingress {
-					if ingressElement.Hostname != "" {
-						s = append(s, ingressElement.Hostname)
-						continue
-					} else if ingressElement.IP != "" {
-						s = append(s, ingressElement.IP)
-						continue
-					}
-				}
-				hosts = strings.Join(s, ", ")
-				cr.Status.Host = hosts
-			}
-		}
-	}
-	return r.Client.Status().Update(context.TODO(), cr)
 }

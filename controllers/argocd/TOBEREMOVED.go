@@ -904,6 +904,13 @@ func namespaceFilterPredicate() predicate.Predicate {
 	}
 }
 
+func isRemoveManagedByLabelOnArgoCDDeletion() bool {
+	if v := os.Getenv("REMOVE_MANAGED_BY_LABEL_ON_ARGOCD_DELETION"); v != "" {
+		return strings.ToLower(v) == "true"
+	}
+	return false
+}
+
 // deleteRBACsForNamespace deletes the RBACs when the label from the namespace is removed.
 func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) error {
 	log.Info(fmt.Sprintf("Removing the RBACs created for the namespace: %s", sourceNS))
@@ -2786,4 +2793,203 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
 
 	return bldr
+}
+
+// newDeployment returns a new Deployment instance for the given ArgoCD.
+func newDeployment(cr *argoproj.ArgoCD) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newDeploymentWithName returns a new Deployment instance for the given ArgoCD using the given name.
+func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+	deploy := newDeployment(cr)
+	deploy.ObjectMeta.Name = name
+
+	lbls := deploy.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	lbls[common.ArgoCDKeyComponent] = component
+	deploy.ObjectMeta.Labels = lbls
+
+	deploy.Spec = appsv1.DeploymentSpec{
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				common.ArgoCDKeyName: name,
+			},
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.ArgoCDKeyName: name,
+				},
+			},
+			Spec: corev1.PodSpec{
+				NodeSelector: common.DefaultNodeSelector(),
+			},
+		},
+	}
+
+	if cr.Spec.NodePlacement != nil {
+		deploy.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(deploy.Spec.Template.Spec.NodeSelector, cr.Spec.NodePlacement.NodeSelector)
+		deploy.Spec.Template.Spec.Tolerations = cr.Spec.NodePlacement.Tolerations
+	}
+	return deploy
+}
+
+// newDeploymentWithSuffix returns a new Deployment instance for the given ArgoCD using the given suffix.
+func newDeploymentWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) *appsv1.Deployment {
+	return newDeploymentWithName(fmt.Sprintf("%s-%s", cr.Name, suffix), component, cr)
+}
+
+// reconcileDeployments will ensure that all Deployment resources are present for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileDeployments(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+
+	if err := r.reconcileDexDeployment(cr); err != nil {
+		log.Error(err, "error reconciling dex deployment")
+	}
+
+	err := r.reconcileRedisDeployment(cr, useTLSForRedis)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRedisHAProxyDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileRepoDeployment(cr, useTLSForRedis)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileServerDeployment(cr, useTLSForRedis)
+	if err != nil {
+		return err
+	}
+
+	err = r.reconcileGrafanaDeployment(cr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// to update nodeSelector and tolerations in reconciler
+func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
+		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+		*changed = true
+	}
+	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
+		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+		*changed = true
+	}
+}
+
+// reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
+	var phase string
+
+	if ((!cr.Spec.Controller.IsEnabled() && cr.Status.ApplicationController == "Unknown") || cr.Status.ApplicationController == "Running") &&
+		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running") &&
+		((!cr.Spec.Repo.IsEnabled() && cr.Status.Repo == "Unknown") || cr.Status.Repo == "Running") &&
+		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") {
+		phase = "Available"
+	} else {
+		phase = "Pending"
+	}
+
+	if cr.Status.Phase != phase {
+		cr.Status.Phase = phase
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
+
+// reconcileStatusHost will ensure that the host status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusHost(cr *argoproj.ArgoCD) error {
+	cr.Status.Host = ""
+
+	if (cr.Spec.Server.Route.Enabled || cr.Spec.Server.Ingress.Enabled) && IsRouteAPIAvailable() {
+		route := newRouteWithSuffix("server", cr)
+
+		// The Red Hat OpenShift ingress controller implementation is designed to watch ingress objects and create one or more routes
+		// to fulfill the conditions specified.
+		// But the names of such created route resources are randomly generated so it is better to identify the routes using Labels
+		// instead of Name.
+		// 1. If a user creates ingress on openshift, Ingress controller generates a route for the ingress with random name.
+		// 2. If a user creates route on openshift, Ingress controller processes the route with provided name.
+		routeList := &routev1.RouteList{}
+		opts := &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				"app.kubernetes.io/name": route.Name,
+			}),
+			Namespace: cr.Namespace,
+		}
+
+		if err := r.Client.List(context.TODO(), routeList, opts); err != nil {
+			return err
+		}
+
+		if len(routeList.Items) == 0 {
+			log.Info("argocd-server route requested but not found on cluster")
+			return nil
+		} else {
+			route = &routeList.Items[0]
+			// status.ingress not available
+			if route.Status.Ingress == nil {
+				cr.Status.Host = ""
+				cr.Status.Phase = "Pending"
+			} else {
+				// conditions exist and type is RouteAdmitted
+				if len(route.Status.Ingress[0].Conditions) > 0 && route.Status.Ingress[0].Conditions[0].Type == routev1.RouteAdmitted {
+					if route.Status.Ingress[0].Conditions[0].Status == corev1.ConditionTrue {
+						cr.Status.Host = route.Status.Ingress[0].Host
+					} else {
+						cr.Status.Host = ""
+						cr.Status.Phase = "Pending"
+					}
+				} else {
+					// no conditions are available
+					if route.Status.Ingress[0].Host != "" {
+						cr.Status.Host = route.Status.Ingress[0].Host
+					} else {
+						cr.Status.Host = "Unavailable"
+						cr.Status.Phase = "Pending"
+					}
+				}
+			}
+		}
+	} else if cr.Spec.Server.Ingress.Enabled {
+		ingress := newIngressWithSuffix("server", cr)
+		if !argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
+			log.Info("argocd-server ingress requested but not found on cluster")
+			cr.Status.Phase = "Pending"
+			return nil
+		} else {
+			if !reflect.DeepEqual(ingress.Status.LoadBalancer, corev1.LoadBalancerStatus{}) && len(ingress.Status.LoadBalancer.Ingress) > 0 {
+				var s []string
+				var hosts string
+				for _, ingressElement := range ingress.Status.LoadBalancer.Ingress {
+					if ingressElement.Hostname != "" {
+						s = append(s, ingressElement.Hostname)
+						continue
+					} else if ingressElement.IP != "" {
+						s = append(s, ingressElement.IP)
+						continue
+					}
+				}
+				hosts = strings.Join(s, ", ")
+				cr.Status.Host = hosts
+			}
+		}
+	}
+	return r.Client.Status().Update(context.TODO(), cr)
 }
