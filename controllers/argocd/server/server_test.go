@@ -7,6 +7,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/redis"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/reposerver"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso/dex"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
@@ -43,6 +44,13 @@ func makeTestServerReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *Serve
 		Instance: cr,
 	}
 
+	ssoController := &sso.SSOReconciler{
+		Client:        client,
+		Scheme:        sch,
+		Instance:      cr,
+		DexController: dexController,
+	}
+
 	return &ServerReconciler{
 		Client:     client,
 		Scheme:     sch,
@@ -50,7 +58,7 @@ func makeTestServerReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *Serve
 		Logger:     util.NewLogger(common.RedisComponent),
 		RepoServer: reposerverController,
 		Redis:      redisController,
-		Dex:        dexController,
+		SSO:        ssoController,
 	}
 }
 

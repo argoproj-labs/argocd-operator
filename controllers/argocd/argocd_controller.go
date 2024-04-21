@@ -687,17 +687,16 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Server:   serverController,
 	}
 
+	r.SSOController = ssoController
+	r.SSOController.DexController = dexController
+
 	r.AppController = appController
 
 	r.ServerController = serverController
 	r.ServerController.Redis = redisController
 	r.ServerController.RepoServer = reposerverController
 	// TODO: use sso abstraction
-	r.ServerController.Dex = &dex.DexReconciler{
-		Client:   r.Client,
-		Scheme:   r.Scheme,
-		Instance: r.Instance,
-	}
+	r.ServerController.SSO = ssoController
 
 	r.ReposerverController = reposerverController
 	r.ReposerverController.Appcontroller = appController
@@ -716,9 +715,6 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.AppController.RepoServer = reposerverController
 
 	r.NotificationsController = notificationsController
-
-	r.SSOController = ssoController
-	r.SSOController.DexController = dexController
 
 }
 

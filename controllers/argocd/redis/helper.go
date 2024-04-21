@@ -38,6 +38,7 @@ func (rr *RedisReconciler) UseTLS() bool {
 
 // GetServerAddress will return the Redis service address for the given ArgoCD instance
 func (rr *RedisReconciler) GetServerAddress() string {
+	rr.varSetter()
 	if rr.Instance.Spec.Redis.Remote != nil && *rr.Instance.Spec.Redis.Remote != "" {
 		return *rr.Instance.Spec.Redis.Remote
 	}

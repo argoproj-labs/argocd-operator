@@ -1,5 +1,9 @@
 package server
 
+import (
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+)
+
 type AppController interface {
 	TriggerRollout(string) error
 }
@@ -15,7 +19,11 @@ type RepoServerController interface {
 	GetServerAddress() string
 }
 
-// TODO: use sso pkg?
 type DexController interface {
 	GetServerAddress() string
+}
+
+type SSOController interface {
+	GetProvider(*argoproj.ArgoCD) argoproj.SSOProviderType
+	DexController
 }

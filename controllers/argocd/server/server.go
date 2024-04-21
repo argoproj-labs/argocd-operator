@@ -25,7 +25,7 @@ type ServerReconciler struct {
 
 	RepoServer RepoServerController
 	Redis      RedisController
-	Dex        DexController
+	SSO        SSOController
 }
 
 var (
