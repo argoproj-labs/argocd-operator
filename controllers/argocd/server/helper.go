@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
@@ -180,9 +181,10 @@ func (sr *ServerReconciler) getCmd() []string {
 	cmd = append(cmd, "--staticassets")
 	cmd = append(cmd, "/shared/app")
 
-	// TO DO: check if dex enabled
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, sr.Dex.GetServerAddress())
+	if sr.SSO.GetProvider(sr.Instance) == argoproj.SSOProviderTypeDex {
+		cmd = append(cmd, "--dex-server")
+		cmd = append(cmd, sr.SSO.GetServerAddress())
+	}
 
 	// reposerver flags
 	if sr.Instance.Spec.Repo.IsEnabled() {

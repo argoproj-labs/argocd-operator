@@ -40,14 +40,11 @@ func (rr *RedisReconciler) reconcileDeployment() error {
 			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].Args, Desired: &desired.Spec.Template.Spec.Containers[0].Args, ExtraAction: nil},
-			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
-			{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &desired.Spec.Template.Spec.InitContainers, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
-			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 			//
 		}
@@ -84,7 +81,7 @@ func (rr *RedisReconciler) reconcileHAProxyDeployment() error {
 			{Existing: &existing.Spec.Template.Spec.AutomountServiceAccountToken, Desired: &desired.Spec.Template.Spec.AutomountServiceAccountToken, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &desired.Spec.Template.Spec.ServiceAccountName, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &desired.Spec.Template.Spec.SecurityContext, ExtraAction: nil},
-			{Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
+			// {Existing: &existing.Spec.Replicas, Desired: &desired.Spec.Replicas, ExtraAction: nil},
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
 		}
 

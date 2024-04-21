@@ -46,6 +46,7 @@ func (rsr *RepoServerReconciler) getContainerImage() string {
 
 // GetServerAddress will return the repo-server service address for the given ArgoCD instance
 func (rsr *RepoServerReconciler) GetServerAddress() string {
+	rsr.varSetter()
 	if rsr.Instance.Spec.Repo.Remote != nil && *rsr.Instance.Spec.Repo.Remote != "" {
 		return *rsr.Instance.Spec.Repo.Remote
 	}

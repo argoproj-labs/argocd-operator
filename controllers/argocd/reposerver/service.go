@@ -74,8 +74,7 @@ func (rsr *RepoServerReconciler) reconcileService() error {
 
 	fieldsToCompare := []argocdcommon.FieldToCompare{
 		{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
-
-		{Existing: &existing.Spec, Desired: &desired.Spec, ExtraAction: nil},
+		{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 	}
 
 	argocdcommon.UpdateIfChanged(fieldsToCompare, &changed)
