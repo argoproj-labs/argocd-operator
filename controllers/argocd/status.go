@@ -77,11 +77,11 @@ func (r *ArgoCDReconciler) reconcileStatus() error {
 		statusErr.Append(err)
 	}
 
-	if err := r.reconcileHost(); err != nil {
+	if err := r.reconcilePhase(); err != nil {
 		return err
 	}
 
-	if err := r.reconcilePhase(); err != nil {
+	if err := r.reconcileHost(); err != nil {
 		return err
 	}
 
