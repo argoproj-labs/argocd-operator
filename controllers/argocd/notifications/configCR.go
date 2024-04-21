@@ -24,7 +24,7 @@ func (nr *NotificationsReconciler) reconcileConfigurationCR() error {
 		},
 	}
 
-	if defaultNotificationsConfigurationCR, err := resource.GetObject(ConfigurationInstanceName, nr.Instance.Namespace, defaultNotificationsConfigurationCR, nr.Client); err != nil {
+	if _, err := resource.GetObject(ConfigurationInstanceName, nr.Instance.Namespace, defaultNotificationsConfigurationCR, nr.Client); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrapf(err, "reconcileConfigurationCR: failed to retrieve notificationsConfigufation instance %s", defaultNotificationsConfigurationCR.GetName())
 		}

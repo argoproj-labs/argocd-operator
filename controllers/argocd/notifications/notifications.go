@@ -111,7 +111,7 @@ func (nr *NotificationsReconciler) DeleteResources() error {
 		deletionError.Append(err)
 	}
 
-	return deletionError
+	return deletionError.ErrOrNil()
 }
 
 func (nr *NotificationsReconciler) varSetter() {
