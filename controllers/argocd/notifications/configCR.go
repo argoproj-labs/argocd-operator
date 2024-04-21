@@ -19,6 +19,7 @@ func (nr *NotificationsReconciler) reconcileConfigurationCR() error {
 			Namespace: nr.Instance.Namespace,
 		},
 		Spec: v1alpha1.NotificationsConfigurationSpec{
+			Context:   getDefaultNotificationsContext(),
 			Triggers:  getDefaultNotificationsTriggers(),
 			Templates: getDefaultNotificationsTemplates(),
 		},

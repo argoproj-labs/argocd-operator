@@ -132,5 +132,19 @@ func getPolicyRuleForClusterRole() []rbacv1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"update",
+			},
+		},
 	}
 }

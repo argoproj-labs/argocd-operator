@@ -383,6 +383,20 @@ func getPolicyRules() []rbacv1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"update",
+			},
+		},
 	}
 }
 
@@ -432,6 +446,20 @@ func getManagedNsPolicyRules() []rbacv1.PolicyRule {
 				"list",
 			},
 		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"update",
+			},
+		},
 	}
 }
 
@@ -466,6 +494,20 @@ func getSourceNsPolicyRules() []rbacv1.PolicyRule {
 			Verbs: []string{
 				"create",
 				"list",
+			},
+		},
+		{
+			APIGroups: []string{
+				"batch",
+			},
+			Resources: []string{
+				"jobs",
+				"cronjobs",
+				"cronjobs/finalizers",
+			},
+			Verbs: []string{
+				"create",
+				"update",
 			},
 		},
 	}
