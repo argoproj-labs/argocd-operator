@@ -1,26 +1,12 @@
-// Copyright 2021 ArgoCD Operator Developers
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package argocd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
-	apiErrors "k8s.io/apimachinery/pkg/api/errors"
-
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -182,5 +168,29 @@ func (r *ReconcileArgoCD) deleteSSOConfiguration(newCr *argoproj.ArgoCD, oldCr *
 	}
 
 	_ = r.reconcileStatusSSO(newCr)
+	return nil
+}
+
+// reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD) error {
+
+	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
+	status := ssoConfigLegalStatus
+
+	// perform dex/keycloak status reconciliation only if sso configurations are legal
+	if status == ssoLegalSuccess {
+		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
+			return r.reconcileStatusDex(cr)
+		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
+			return r.reconcileStatusKeycloak(cr)
+		}
+	} else {
+		// illegal/unknown sso configurations
+		if cr.Status.SSO != status {
+			cr.Status.SSO = status
+			return r.Client.Status().Update(context.TODO(), cr)
+		}
+	}
+
 	return nil
 }

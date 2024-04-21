@@ -606,8 +606,10 @@ func (r *ArgoCDReconciler) reconcileControllers() error {
 		}
 	}
 
-	if err := r.SSOController.Reconcile(); err != nil {
-		r.Logger.Error(err, "failed to reconcile SSO controller")
+	if r.Instance.Spec.SSO != nil {
+		if err := r.SSOController.Reconcile(); err != nil {
+			r.Logger.Error(err, "failed to reconcile SSO")
+		}
 	}
 
 	if err := r.reconcileStatus(); err != nil {
@@ -674,6 +676,15 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Instance: r.Instance,
+		Logger:   util.NewLogger(common.SSOController, "instance", r.Instance.Name, "instance-namespace", r.Instance.Namespace),
+	}
+
+	dexController := &dex.DexReconciler{
+		Client:   r.Client,
+		Scheme:   r.Scheme,
+		Instance: r.Instance,
+		Logger:   *ssoController.Logger,
+		Server:   serverController,
 	}
 
 	r.AppController = appController
@@ -707,6 +718,7 @@ func (r *ArgoCDReconciler) InitializeControllerReconcilers() {
 	r.NotificationsController = notificationsController
 
 	r.SSOController = ssoController
+	r.SSOController.DexController = dexController
 
 }
 

@@ -3,6 +3,7 @@ package sso
 import (
 	"context"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/util/retry"
 )
@@ -10,7 +11,23 @@ import (
 // reconcileStatus will ensure that the sso status is updated for the given ArgoCD instance
 func (sr *SSOReconciler) ReconcileStatus() error {
 
-	// TO DO
+	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
+	status := ssoConfigLegalStatus
+
+	// perform dex/keycloak status reconciliation only if sso configurations are legal
+	if status == SSOLegalSucces {
+		provider := sr.GetProvider(sr.Instance)
+		switch provider {
+		case argoproj.SSOProviderTypeKeycloak:
+			// TO DO: get status from keycloak
+		case argoproj.SSOProviderTypeDex:
+			status = sr.DexController.ReconcileStatus()
+		}
+	}
+
+	if sr.Instance.Status.SSO != status {
+		sr.Instance.Status.SSO = status
+	}
 
 	return sr.updateInstanceStatus()
 }

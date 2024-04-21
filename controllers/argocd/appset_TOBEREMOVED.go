@@ -10,6 +10,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -742,4 +743,34 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
+}
+
+// reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						status = "Failed"
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if cr.Status.ApplicationSetController != status {
+		cr.Status.ApplicationSetController = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
 }

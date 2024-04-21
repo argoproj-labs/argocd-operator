@@ -20,9 +20,57 @@ func init() {
 	mutation.Register(AddSeccompProfileForOpenShift)
 	mutation.Register(AddNonRootSCCForOpenShift)
 	mutation.Register(AddAutoTLSAnnotationForOpenShift)
+	mutation.Register(AddOAuthRedirectAnnotationForOpenShift)
 }
 
 // TO DO: Add dedicated e2e tests for all these mutations
+
+// AddOAuthRedirectAnnotationForOpenShift adds the OAuth redirect URI annotation to the provided serviceaccount object, using the provided URI as value. This is only used for Dex, and only when OpenShift OAuth is requested
+func AddOAuthRedirectAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {
+	if !IsOpenShiftEnv() {
+		return nil
+	}
+	switch obj := resource.(type) {
+	case *corev1.ServiceAccount:
+
+		// ignore if service account does not belong to dex
+		if component, ok := obj.GetLabels()[common.AppK8sKeyComponent]; !ok || component != common.DexServerComponent {
+			return nil
+		}
+
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+
+		// Ensure that args carries only one argument, which is a map of type map[string]string
+		// containing the keys "wantOpenShiftOAuth" and "redirect-uri". If this is the case, the associated value
+		// can be used within the annotation if OpenShiftOAuth is requested
+		if len(args) == 1 {
+			for _, arg := range args {
+				argMap := arg.(map[string]string)
+
+				if val, ok := argMap[common.WantOpenShiftOAuth]; !ok {
+					return nil
+				} else {
+					wantOpenShiftOAuth, err := strconv.ParseBool(val)
+					if err != nil {
+						return errors.Wrapf(err, "AddOAuthRedirectAnnotationForOpenShift: failed to parse mutation args for resource")
+					}
+
+					// return if autoTLS is not requested
+					if !wantOpenShiftOAuth {
+						return nil
+					}
+				}
+
+				if val, ok := argMap[common.RedirectURI]; ok {
+					obj.Annotations[common.SAOpenshiftKeyOAuthRedirectURI] = val
+				}
+			}
+		}
+	}
+	return nil
+}
 
 // AddAutoTLSAnnotationForOpenShift adds the OpenShift Service CA TLS cert request annotaiton to the provided service object, using the provided secret name as the value
 func AddAutoTLSAnnotationForOpenShift(cr *argoproj.ArgoCD, resource interface{}, client client.Client, args ...interface{}) error {

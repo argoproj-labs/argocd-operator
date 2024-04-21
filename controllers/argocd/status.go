@@ -85,100 +85,6 @@ func (r *ArgoCDReconciler) reconcileStatus() error {
 	return statusErr.ErrOrNil()
 }
 
-// reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD) error {
-	if err := r.reconcileStatusApplicationController(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusSSO(cr); err != nil {
-		log.Info(err.Error())
-	}
-
-	if err := r.reconcileStatusPhase(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusRedis(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusRepo(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusServer(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusHost(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusNotifications(cr); err != nil {
-		return err
-	}
-
-	if err := r.reconcileStatusApplicationSetController(cr); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// reconcileStatusApplicationController will ensure that the ApplicationController Status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
-		status = "Pending"
-
-		if ss.Spec.Replicas != nil {
-			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
-				status = "Running"
-			}
-		}
-	}
-
-	if cr.Status.ApplicationController != status {
-		cr.Status.ApplicationController = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
-// reconcileStatusDex will ensure that the Dex status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.SSO != status {
-		cr.Status.SSO = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-
-	return nil
-}
-
 // reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
@@ -237,60 +143,6 @@ func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 	return nil
 }
 
-// reconcileStatusApplicationSetController will ensure that the ApplicationSet controller status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusApplicationSetController(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	deploy := newDeploymentWithSuffix("applicationset-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.ApplicationSetController != status {
-		cr.Status.ApplicationSetController = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
-// reconcileStatusSSOConfig will ensure that the SSOConfig status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusSSO(cr *argoproj.ArgoCD) error {
-
-	// set status to track ssoConfigLegalStatus so it is always up to date with latest sso situation
-	status := ssoConfigLegalStatus
-
-	// perform dex/keycloak status reconciliation only if sso configurations are legal
-	if status == ssoLegalSuccess {
-		if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeDex {
-			return r.reconcileStatusDex(cr)
-		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
-			return r.reconcileStatusKeycloak(cr)
-		}
-	} else {
-		// illegal/unknown sso configurations
-		if cr.Status.SSO != status {
-			cr.Status.SSO = status
-			return r.Client.Status().Update(context.TODO(), cr)
-		}
-	}
-
-	return nil
-}
-
 // reconcileStatusPhase will ensure that the Status Phase is updated for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
 	var phase string
@@ -306,40 +158,6 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
 
 	if cr.Status.Phase != phase {
 		cr.Status.Phase = phase
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-	return nil
-}
-
-// reconcileStatusNotifications will ensure that the Notifications status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
-		status = "Pending"
-
-		if deploy.Spec.Replicas != nil {
-			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
-				status = "Running"
-			} else if deploy.Status.Conditions != nil {
-				for _, condition := range deploy.Status.Conditions {
-					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-	}
-
-	if cr.Status.NotificationsController != status {
-		if !cr.Spec.Notifications.Enabled {
-			cr.Status.NotificationsController = ""
-		} else {
-			cr.Status.NotificationsController = status
-		}
 		return r.Client.Status().Update(context.TODO(), cr)
 	}
 	return nil

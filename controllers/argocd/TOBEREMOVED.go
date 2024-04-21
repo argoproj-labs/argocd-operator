@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -18,8 +19,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 
 	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	oappsv1 "github.com/openshift/api/apps/v1"
 	configv1 "github.com/openshift/api/config/v1"
 	templatev1 "github.com/openshift/api/template/v1"
 	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
@@ -35,7 +38,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	v1 "k8s.io/api/rbac/v1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	ctrlLog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -1616,4 +1622,1168 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func getPolicyRuleList(client client.Client) []struct {
+	name       string
+	policyRule []v1.PolicyRule
+} {
+	return []struct {
+		name       string
+		policyRule []v1.PolicyRule
+	}{
+		{
+			name:       common.ArgoCDApplicationControllerComponent,
+			policyRule: policyRuleForApplicationController(),
+		}, {
+			name:       common.ArgoCDDexServerComponent,
+			policyRule: policyRuleForDexServer(),
+		}, {
+			name:       common.ArgoCDServerComponent,
+			policyRule: policyRuleForServer(),
+		}, {
+			name:       common.ArgoCDRedisHAComponent,
+			policyRule: policyRuleForRedisHa(client),
+		}, {
+			name:       common.ArgoCDRedisComponent,
+			policyRule: policyRuleForRedis(client),
+		},
+	}
+}
+
+func getPolicyRuleClusterRoleList() []struct {
+	name       string
+	policyRule []v1.PolicyRule
+} {
+	return []struct {
+		name       string
+		policyRule []v1.PolicyRule
+	}{
+		{
+			name:       common.ArgoCDApplicationControllerComponent,
+			policyRule: policyRuleForApplicationController(),
+		}, {
+			name:       common.ArgoCDServerComponent,
+			policyRule: policyRuleForServerClusterRole(),
+		},
+	}
+}
+
+// newRole returns a new Role instance.
+func newRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.Role {
+	return &v1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      generateResourceName(name, cr),
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+		Rules: rules,
+	}
+}
+
+func newRoleForApplicationSourceNamespaces(namespace string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.Role {
+	return &v1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getRoleNameForApplicationSourceNamespaces(namespace, cr),
+			Namespace: namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+		Rules: rules,
+	}
+}
+
+func generateResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
+	return cr.Name + "-" + argoComponentName
+}
+
+// GenerateUniqueResourceName generates unique names for cluster scoped resources
+func GenerateUniqueResourceName(argoComponentName string, cr *argoproj.ArgoCD) string {
+	return cr.Name + "-" + cr.Namespace + "-" + argoComponentName
+}
+
+func newClusterRole(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) *v1.ClusterRole {
+	return &v1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        GenerateUniqueResourceName(name, cr),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
+		},
+		Rules: rules,
+	}
+}
+
+// reconcileRoles will ensure that all ArgoCD Service Accounts are configured.
+func (r *ReconcileArgoCD) reconcileRoles(cr *argoproj.ArgoCD) error {
+	params := getPolicyRuleList(r.Client)
+
+	for _, param := range params {
+		if _, err := r.reconcileRole(param.name, param.policyRule, cr); err != nil {
+			return err
+		}
+	}
+
+	clusterParams := getPolicyRuleClusterRoleList()
+
+	for _, clusterParam := range clusterParams {
+		if _, err := r.reconcileClusterRole(clusterParam.name, clusterParam.policyRule, cr); err != nil {
+			return err
+		}
+	}
+
+	log.Info("reconciling roles for source namespaces")
+	policyRuleForApplicationSourceNamespaces := policyRuleForServerApplicationSourceNamespaces()
+	// reconcile roles is source namespaces for ArgoCD Server
+	if err := r.reconcileRoleForApplicationSourceNamespaces(common.ArgoCDServerComponent, policyRuleForApplicationSourceNamespaces, cr); err != nil {
+		return err
+	}
+
+	log.Info("performing cleanup for source namespaces")
+	// remove resources for namespaces not part of SourceNamespaces
+	if err := r.removeUnmanagedSourceNamespaceResources(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileRole, reconciles the policy rules for different ArgoCD components, for each namespace
+// Managed by a single instance of ArgoCD.
+func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) ([]*v1.Role, error) {
+	var roles []*v1.Role
+
+	// create policy rules for each namespace
+	for _, namespace := range r.ManagedNamespaces.Items {
+		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
+		// clean-up of roles/rolebindings and removal of namespace from cluster secret
+		if namespace.DeletionTimestamp != nil {
+			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+				delete(namespace.Labels, common.ArgoCDManagedByLabel)
+				_ = r.Client.Update(context.TODO(), &namespace)
+			}
+			continue
+		}
+
+		list := &argoproj.ArgoCDList{}
+		listOption := &client.ListOptions{Namespace: namespace.Name}
+		err := r.Client.List(context.TODO(), list, listOption)
+		if err != nil {
+			return nil, err
+		}
+		// only skip creation of dex and redisHa roles for namespaces that no argocd instance is deployed in
+		if len(list.Items) < 1 {
+			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
+			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
+				continue
+			}
+		}
+		customRole := getCustomRoleName(name)
+		role := newRole(name, policyRules, cr)
+		if err := applyReconcilerHook(cr, role, ""); err != nil {
+			return nil, err
+		}
+		role.Namespace = namespace.Name
+		existingRole := v1.Role{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: role.Namespace}, &existingRole)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+			}
+			if customRole != "" {
+				continue // skip creating default role if custom cluster role is provided
+			}
+			roles = append(roles, role)
+
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+
+				continue // Dex installation not requested, do nothing
+			}
+
+			// Only set ownerReferences for roles in same namespace as ArgoCD CR
+			if cr.Namespace == role.Namespace {
+				if err = controllerutil.SetControllerReference(cr, role, r.Scheme); err != nil {
+					return nil, fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for role \"%s\": %s", cr.Name, role.Name, err)
+				}
+			}
+
+			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, cr.Namespace))
+			if err := r.Client.Create(context.TODO(), role); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		// Delete the existing default role if custom role is specified
+		// or if there is an existing Role created for Dex but dex is disabled or not configured
+		if customRole != "" ||
+			(name == common.ArgoCDDexServerComponent && !UseDex(cr)) {
+
+			log.Info("deleting the existing Dex role because dex is not configured")
+			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
+				return nil, err
+			}
+			continue
+		}
+
+		// if the Rules differ, update the Role
+		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+			existingRole.Rules = role.Rules
+			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
+				return nil, err
+			}
+		}
+		roles = append(roles, &existingRole)
+	}
+	return roles, nil
+}
+
+func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+
+	// create policy rules for each source namespace for ArgoCD Server
+	for _, sourceNamespace := range cr.Spec.SourceNamespaces {
+
+		namespace := &corev1.Namespace{}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+			return err
+		}
+
+		// do not reconcile roles for namespaces already containing managed-by label
+		// as it already contains roles with permissions to manipulate application resources
+		// reconciled during reconcilation of ManagedNamespaces
+		if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok && value != "" {
+			log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
+			// if managed-by-cluster-argocd label is also present, remove the namespace from the ManagedSourceNamespaces.
+			if val, ok1 := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok1 && val == cr.Namespace {
+				delete(r.ManagedSourceNamespaces, namespace.Name)
+				if err := r.cleanupUnmanagedSourceNamespaceResources(cr, namespace.Name); err != nil {
+					log.Error(err, fmt.Sprintf("error cleaning up resources for namespace %s", namespace.Name))
+				}
+			}
+			continue
+		}
+
+		log.Info(fmt.Sprintf("Reconciling role for %s", namespace.Name))
+
+		role := newRoleForApplicationSourceNamespaces(namespace.Name, policyRules, cr)
+		if err := applyReconcilerHook(cr, role, ""); err != nil {
+			return err
+		}
+		role.Namespace = namespace.Name
+		existingRole := v1.Role{}
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: role.Name, Namespace: namespace.Name}, &existingRole)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
+			}
+		}
+
+		// do not reconcile roles for namespaces already containing managed-by-cluster-argocd label
+		// as it already contains roles reconciled during reconcilation of ManagedNamespaces
+		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; ok {
+			// If sourceNamespace includes the name but role is missing in the namespace, create the role
+			if reflect.DeepEqual(existingRole, v1.Role{}) {
+				log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
+				if err := r.Client.Create(context.TODO(), role); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+
+		// reconcile roles only if another ArgoCD instance is not already set as value for managed-by-cluster-argocd label
+		if value, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; ok && value != "" {
+			log.Info(fmt.Sprintf("Namespace already has label set to argocd instance %s. Thus, skipping namespace %s", value, namespace.Name))
+			continue
+		}
+
+		// Get the latest value of namespace before updating it
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: namespace.Name}, namespace); err != nil {
+			return err
+		}
+		// Update namespace with managed-by-cluster-argocd label
+		namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
+		if err := r.Client.Update(context.TODO(), namespace); err != nil {
+			log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
+		}
+		// if the Rules differ, update the Role
+		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
+			existingRole.Rules = role.Rules
+			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
+				return err
+			}
+		}
+
+		if _, ok := r.ManagedSourceNamespaces[sourceNamespace]; !ok {
+			r.ManagedSourceNamespaces[sourceNamespace] = ""
+		}
+
+	}
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
+	allowed := false
+	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+		allowed = true
+	}
+	clusterRole := newClusterRole(name, policyRules, cr)
+	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
+		return nil, err
+	}
+
+	existingClusterRole := &v1.ClusterRole{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
+		}
+		if !allowed {
+			// Do Nothing
+			return nil, nil
+		}
+		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
+	}
+
+	if !allowed {
+		return nil, r.Client.Delete(context.TODO(), existingClusterRole)
+	}
+
+	// if the Rules differ, update the Role
+	if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
+		existingClusterRole.Rules = clusterRole.Rules
+		if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
+			return nil, err
+		}
+	}
+	return existingClusterRole, nil
+}
+
+func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) error {
+	for _, clusterRole := range clusterRoleList.Items {
+		if err := c.Delete(context.TODO(), &clusterRole); err != nil {
+			return fmt.Errorf("failed to delete ClusterRole %q during cleanup: %w", clusterRole.Name, err)
+		}
+	}
+	return nil
+}
+
+// newClusterRoleBinding returns a new ClusterRoleBinding instance.
+func newClusterRoleBinding(cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
+	return &v1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        cr.Name,
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
+		},
+	}
+}
+
+// newClusterRoleBindingWithname creates a new ClusterRoleBinding with the given name for the given ArgCD.
+func newClusterRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.ClusterRoleBinding {
+	roleBinding := newClusterRoleBinding(cr)
+	roleBinding.Name = GenerateUniqueResourceName(name, cr)
+
+	labels := roleBinding.ObjectMeta.Labels
+	labels[common.ArgoCDKeyName] = name
+	roleBinding.ObjectMeta.Labels = labels
+
+	return roleBinding
+}
+
+// newRoleBinding returns a new RoleBinding instance.
+func newRoleBinding(cr *argoproj.ArgoCD) *v1.RoleBinding {
+	return &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        cr.Name,
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
+			Namespace:   cr.Namespace,
+		},
+	}
+}
+
+// newRoleBindingForSupportNamespaces returns a new RoleBinding instance.
+func newRoleBindingForSupportNamespaces(cr *argoproj.ArgoCD, namespace string) *v1.RoleBinding {
+	return &v1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        getRoleBindingNameForSourceNamespaces(cr.Name, namespace),
+			Labels:      argoutil.LabelsForCluster(cr),
+			Annotations: argoutil.AnnotationsForCluster(cr),
+			Namespace:   namespace,
+		},
+	}
+}
+
+func getRoleBindingNameForSourceNamespaces(argocdName, targetNamespace string) string {
+	return fmt.Sprintf("%s_%s", argocdName, targetNamespace)
+}
+
+// newRoleBindingWithname creates a new RoleBinding with the given name for the given ArgCD.
+func newRoleBindingWithname(name string, cr *argoproj.ArgoCD) *v1.RoleBinding {
+	roleBinding := newRoleBinding(cr)
+	roleBinding.ObjectMeta.Name = fmt.Sprintf("%s-%s", cr.Name, name)
+
+	labels := roleBinding.ObjectMeta.Labels
+	labels[common.ArgoCDKeyName] = name
+	roleBinding.ObjectMeta.Labels = labels
+
+	return roleBinding
+}
+
+// reconcileRoleBindings will ensure that all ArgoCD RoleBindings are configured.
+func (r *ReconcileArgoCD) reconcileRoleBindings(cr *argoproj.ArgoCD) error {
+	params := getPolicyRuleList(r.Client)
+
+	for _, param := range params {
+		if err := r.reconcileRoleBinding(param.name, param.policyRule, cr); err != nil {
+			return fmt.Errorf("error reconciling roleBinding for %q: %w", param.name, err)
+		}
+	}
+
+	return nil
+}
+
+// reconcileRoleBinding, creates RoleBindings for every role and associates it with the right ServiceAccount.
+// This would create RoleBindings for all the namespaces managed by the ArgoCD instance.
+func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+	var sa *corev1.ServiceAccount
+	var error error
+
+	if sa, error = r.reconcileServiceAccount(name, cr); error != nil {
+		return error
+	}
+
+	if _, error = r.reconcileRole(name, rules, cr); error != nil {
+		return error
+	}
+
+	for _, namespace := range r.ManagedNamespaces.Items {
+		// If encountering a terminating namespace remove managed-by label from it and skip reconciliation - This should trigger
+		// clean-up of roles/rolebindings and removal of namespace from cluster secret
+		if namespace.DeletionTimestamp != nil {
+			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+				delete(namespace.Labels, common.ArgoCDManagedByLabel)
+				_ = r.Client.Update(context.TODO(), &namespace)
+			}
+			continue
+		}
+
+		list := &argoproj.ArgoCDList{}
+		listOption := &client.ListOptions{Namespace: namespace.Name}
+		err := r.Client.List(context.TODO(), list, listOption)
+		if err != nil {
+			return err
+		}
+		// only skip creation of dex and redisHa rolebindings for namespaces that no argocd instance is deployed in
+		if len(list.Items) < 1 {
+			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
+			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
+				continue
+			}
+		}
+		// get expected name
+		roleBinding := newRoleBindingWithname(name, cr)
+		roleBinding.Namespace = namespace.Name
+
+		// fetch existing rolebinding by name
+		existingRoleBinding := &v1.RoleBinding{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+		roleBindingExists := true
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
+			}
+
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+				continue // Dex installation is not requested, do nothing
+			}
+
+			roleBindingExists = false
+		}
+
+		roleBinding.Subjects = []v1.Subject{
+			{
+				Kind:      v1.ServiceAccountKind,
+				Name:      sa.Name,
+				Namespace: sa.Namespace,
+			},
+		}
+
+		customRoleName := getCustomRoleName(name)
+		if customRoleName != "" {
+			roleBinding.RoleRef = v1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "ClusterRole",
+				Name:     customRoleName,
+			}
+		} else {
+			roleBinding.RoleRef = v1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "Role",
+				Name:     generateResourceName(name, cr),
+			}
+		}
+
+		if roleBindingExists {
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+				// Delete any existing RoleBinding created for Dex since dex uninstallation is requested
+				log.Info("deleting the existing Dex roleBinding because dex uninstallation is requested")
+				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+					return err
+				}
+				continue
+			}
+
+			// if the RoleRef changes, delete the existing role binding and create a new one
+			if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
+				if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+					return err
+				}
+			} else {
+				// if the Subjects differ, update the role bindings
+				if !reflect.DeepEqual(roleBinding.Subjects, existingRoleBinding.Subjects) {
+					existingRoleBinding.Subjects = roleBinding.Subjects
+					if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+		}
+
+		// Only set ownerReferences for role bindings in same namespaces as Argo CD CR
+		if cr.Namespace == roleBinding.Namespace {
+			if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+				return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
+			}
+		}
+
+		log.Info(fmt.Sprintf("creating rolebinding %s for Argo CD instance %s in namespace %s", roleBinding.Name, cr.Name, cr.Namespace))
+		if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
+			return err
+		}
+	}
+
+	// reconcile rolebindings only for ArgoCDServerComponent
+	if name == common.ArgoCDServerComponent {
+
+		// reconcile rolebindings for all source namespaces for argocd-server
+		for _, sourceNamespace := range cr.Spec.SourceNamespaces {
+			namespace := &corev1.Namespace{}
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: sourceNamespace}, namespace); err != nil {
+				return err
+			}
+
+			// do not reconcile rolebindings for namespaces already containing managed-by label
+			// as it already contains rolebindings with permissions to manipulate application resources
+			// reconciled during reconcilation of ManagedNamespaces
+			if value, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
+				log.Info(fmt.Sprintf("Skipping reconciling resources for namespace %s as it is already managed-by namespace %s.", namespace.Name, value))
+				continue
+			}
+
+			list := &argoproj.ArgoCDList{}
+			listOption := &client.ListOptions{Namespace: namespace.Name}
+			err := r.Client.List(context.TODO(), list, listOption)
+			if err != nil {
+				log.Info(err.Error())
+				return err
+			}
+
+			// get expected name
+			roleBinding := newRoleBindingWithNameForApplicationSourceNamespaces(namespace.Name, cr)
+			roleBinding.Namespace = namespace.Name
+
+			roleBinding.RoleRef = v1.RoleRef{
+				APIGroup: v1.GroupName,
+				Kind:     "Role",
+				Name:     getRoleNameForApplicationSourceNamespaces(namespace.Name, cr),
+			}
+
+			// fetch existing rolebinding by name
+			existingRoleBinding := &v1.RoleBinding{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name, Namespace: roleBinding.Namespace}, existingRoleBinding)
+			roleBindingExists := true
+			if err != nil {
+				if !apierrors.IsNotFound(err) {
+					return fmt.Errorf("failed to get the rolebinding associated with %s : %s", name, err)
+				}
+				log.Info(fmt.Sprintf("Existing rolebinding %s", err.Error()))
+				roleBindingExists = false
+			}
+
+			roleBinding.Subjects = []v1.Subject{
+				{
+					Kind:      v1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDServerComponent),
+					Namespace: sa.Namespace,
+				},
+				{
+					Kind:      v1.ServiceAccountKind,
+					Name:      getServiceAccountName(cr.Name, common.ArgoCDApplicationControllerComponent),
+					Namespace: sa.Namespace,
+				},
+			}
+
+			if roleBindingExists {
+				// reconcile role bindings for namespaces already containing managed-by-cluster-argocd label only
+				if n, ok := namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel]; !ok || n == cr.Namespace {
+					continue
+				}
+				// if the RoleRef changes, delete the existing role binding and create a new one
+				if !reflect.DeepEqual(roleBinding.RoleRef, existingRoleBinding.RoleRef) {
+					if err = r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
+						return err
+					}
+				} else {
+					// if the Subjects differ, update the role bindings
+					if !reflect.DeepEqual(roleBinding.Subjects, existingRoleBinding.Subjects) {
+						existingRoleBinding.Subjects = roleBinding.Subjects
+						if err = r.Client.Update(context.TODO(), existingRoleBinding); err != nil {
+							return err
+						}
+					}
+					continue
+				}
+			}
+
+			log.Info(fmt.Sprintf("creating rolebinding %s for Argo CD instance %s in namespace %s", roleBinding.Name, cr.Name, namespace))
+			if err = r.Client.Create(context.TODO(), roleBinding); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func getCustomRoleName(name string) string {
+	if name == common.ArgoCDApplicationControllerComponent {
+		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
+	}
+	if name == common.ArgoCDServerComponent {
+		return os.Getenv(server.ArgoCDServerClusterRoleEnvVar)
+	}
+	return ""
+}
+
+// Returns the name of the role for the source namespaces for ArgoCDServer in the format of "sourceNamespace_targetNamespace_argocd-server"
+func getRoleNameForApplicationSourceNamespaces(targetNamespace string, cr *argoproj.ArgoCD) string {
+	return fmt.Sprintf("%s_%s", cr.Name, targetNamespace)
+}
+
+// newRoleBindingWithNameForApplicationSourceNamespaces creates a new RoleBinding with the given name for the source namespaces of ArgoCD Server.
+func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *argoproj.ArgoCD) *v1.RoleBinding {
+	roleBinding := newRoleBindingForSupportNamespaces(cr, namespace)
+
+	labels := roleBinding.ObjectMeta.Labels
+	labels[common.ArgoCDKeyName] = roleBinding.ObjectMeta.Name
+	roleBinding.ObjectMeta.Labels = labels
+
+	return roleBinding
+}
+
+func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoproj.ArgoCD) error {
+
+	// get expected name
+	roleBinding := newClusterRoleBindingWithname(name, cr)
+	// fetch existing rolebinding by name
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: roleBinding.Name}, roleBinding)
+	roleBindingExists := true
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		roleBindingExists = false
+		roleBinding = newClusterRoleBindingWithname(name, cr)
+	}
+
+	if roleBindingExists && role == nil {
+		return r.Client.Delete(context.TODO(), roleBinding)
+	}
+
+	if !roleBindingExists && role == nil {
+		// DO Nothing
+		return nil
+	}
+
+	roleBinding.Subjects = []v1.Subject{
+		{
+			Kind:      v1.ServiceAccountKind,
+			Name:      generateResourceName(name, cr),
+			Namespace: cr.Namespace,
+		},
+	}
+	roleBinding.RoleRef = v1.RoleRef{
+		APIGroup: v1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     GenerateUniqueResourceName(name, cr),
+	}
+
+	if cr.Namespace == roleBinding.Namespace {
+		if err = controllerutil.SetControllerReference(cr, roleBinding, r.Scheme); err != nil {
+			return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
+		}
+	}
+
+	if roleBindingExists {
+		return r.Client.Update(context.TODO(), roleBinding)
+	}
+	return r.Client.Create(context.TODO(), roleBinding)
+}
+
+func deleteClusterRoleBindings(c client.Client, clusterBindingList *v1.ClusterRoleBindingList) error {
+	for _, clusterBinding := range clusterBindingList.Items {
+		if err := c.Delete(context.TODO(), &clusterBinding); err != nil {
+			return fmt.Errorf("failed to delete ClusterRoleBinding %q during cleanup: %w", clusterBinding.Name, err)
+		}
+	}
+	return nil
+}
+
+// newServiceAccount returns a new ServiceAccount instance.
+func newServiceAccount(cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    argoutil.LabelsForCluster(cr),
+		},
+	}
+}
+
+// newServiceAccountWithName creates a new ServiceAccount with the given name for the given ArgCD.
+func newServiceAccountWithName(name string, cr *argoproj.ArgoCD) *corev1.ServiceAccount {
+	sa := newServiceAccount(cr)
+	sa.ObjectMeta.Name = getServiceAccountName(cr.Name, name)
+
+	lbls := sa.ObjectMeta.Labels
+	lbls[common.ArgoCDKeyName] = name
+	sa.ObjectMeta.Labels = lbls
+
+	return sa
+}
+
+func getServiceAccountName(crName, name string) string {
+	return fmt.Sprintf("%s-%s", crName, name)
+}
+
+// reconcileServiceAccounts will ensure that all ArgoCD Service Accounts are configured.
+func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
+	params := getPolicyRuleList(r.Client)
+
+	for _, param := range params {
+		if err := r.reconcileServiceAccountPermissions(param.name, param.policyRule, cr); err != nil {
+			return err
+		}
+	}
+
+	clusterParams := getPolicyRuleClusterRoleList()
+
+	for _, clusterParam := range clusterParams {
+		if err := r.reconcileServiceAccountClusterPermissions(clusterParam.name, clusterParam.policyRule, cr); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+	var role *v1.ClusterRole
+	var err error
+
+	_, err = r.reconcileServiceAccount(name, cr)
+	if err != nil {
+		return err
+	}
+
+	if role, err = r.reconcileClusterRole(name, rules, cr); err != nil {
+		return err
+	}
+
+	return r.reconcileClusterRoleBinding(name, role, cr)
+}
+
+func (r *ReconcileArgoCD) reconcileServiceAccountPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+	return r.reconcileRoleBinding(name, rules, cr)
+}
+
+func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.ArgoCD) (*corev1.ServiceAccount, error) {
+	sa := newServiceAccountWithName(name, cr)
+
+	exists := true
+	if err := argoutil.FetchObject(r.Client, cr.Namespace, sa.Name, sa); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+			return sa, nil // Dex installation not requested, do nothing
+		}
+		exists = false
+	}
+	if exists {
+		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+			// Delete any existing Service Account created for Dex since dex is disabled
+			log.Info("deleting the existing Dex service account because dex uninstallation requested")
+			return sa, r.Client.Delete(context.TODO(), sa)
+		}
+		return sa, nil
+	}
+
+	if err := controllerutil.SetControllerReference(cr, sa, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	log.Info(fmt.Sprintf("creating serviceaccount %s for Argo CD instance %s in namespace %s", sa.Name, cr.Name, cr.Namespace))
+
+	err := r.Client.Create(context.TODO(), sa)
+	if err != nil {
+		return nil, err
+	}
+
+	return sa, nil
+}
+
+// reconcileStatus will ensure that all of the Status properties are updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatus(cr *argoproj.ArgoCD) error {
+	if err := r.reconcileStatusApplicationController(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusSSO(cr); err != nil {
+		log.Info(err.Error())
+	}
+
+	if err := r.reconcileStatusPhase(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusRedis(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusRepo(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusServer(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusHost(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusNotifications(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileStatusApplicationSetController(cr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// reconcileResources will reconcile common ArgoCD resources.
+func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
+
+	// we reconcile SSO first so that we can catch and throw errors for any illegal SSO configurations right away, and return control from here
+	// preventing dex resources from getting created anyway through the other function calls, effectively bypassing the SSO checks
+	log.Info("reconciling SSO")
+	if err := r.reconcileSSO(cr); err != nil {
+		log.Info(err.Error())
+	}
+
+	log.Info("reconciling status")
+	if err := r.reconcileStatus(cr); err != nil {
+		log.Info(err.Error())
+	}
+
+	log.Info("reconciling roles")
+	if err := r.reconcileRoles(cr); err != nil {
+		log.Info(err.Error())
+		return err
+	}
+
+	log.Info("reconciling rolebindings")
+	if err := r.reconcileRoleBindings(cr); err != nil {
+		log.Info(err.Error())
+		return err
+	}
+
+	log.Info("reconciling service accounts")
+	if err := r.reconcileServiceAccounts(cr); err != nil {
+		log.Info(err.Error())
+		return err
+	}
+
+	log.Info("reconciling certificate authority")
+	if err := r.reconcileCertificateAuthority(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling secrets")
+	if err := r.reconcileSecrets(cr); err != nil {
+		return err
+	}
+
+	useTLSForRedis := r.redisShouldUseTLS(cr)
+
+	log.Info("reconciling config maps")
+	if err := r.reconcileConfigMaps(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	log.Info("reconciling services")
+	if err := r.reconcileServices(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling deployments")
+	if err := r.reconcileDeployments(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	log.Info("reconciling statefulsets")
+	if err := r.reconcileStatefulSets(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	log.Info("reconciling autoscalers")
+	if err := r.reconcileAutoscalers(cr); err != nil {
+		return err
+	}
+
+	log.Info("reconciling ingresses")
+	if err := r.reconcileIngresses(cr); err != nil {
+		return err
+	}
+
+	if IsRouteAPIAvailable() {
+		log.Info("reconciling routes")
+		if err := r.reconcileRoutes(cr); err != nil {
+			return err
+		}
+	}
+
+	if IsPrometheusAPIAvailable() {
+		log.Info("reconciling prometheus")
+		if err := r.reconcilePrometheus(cr); err != nil {
+			return err
+		}
+
+		// Reconciles prometheusRule created to alert based on argo-cd workload status
+		if err := r.reconcilePrometheusRule(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileMetricsServiceMonitor(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileRepoServerServiceMonitor(cr); err != nil {
+			return err
+		}
+
+		if err := r.reconcileServerMetricsServiceMonitor(cr); err != nil {
+			return err
+		}
+	}
+
+	if cr.Spec.ApplicationSet != nil {
+		log.Info("reconciling ApplicationSet controller")
+		if err := r.reconcileApplicationSetController(cr); err != nil {
+			return err
+		}
+	}
+
+	if cr.Spec.Notifications.Enabled {
+		log.Info("reconciling Notifications controller")
+		if err := r.reconcileNotificationsController(cr); err != nil {
+			return err
+		}
+	}
+
+	if err := r.reconcileRepoServerTLSSecret(cr); err != nil {
+		return err
+	}
+
+	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// setResourceWatches will register Watches for each of the supported Resources.
+func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResourceMapper, tlsSecretMapper, namespaceResourceMapper, clusterSecretResourceMapper, applicationSetGitlabSCMTLSConfigMapMapper handler.MapFunc) *builder.Builder {
+
+	deploymentConfigPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to CR status in which case metadata.Generation does not change
+			var count int32 = 1
+			newDC, ok := e.ObjectNew.(*oappsv1.DeploymentConfig)
+			if !ok {
+				return false
+			}
+			oldDC, ok := e.ObjectOld.(*oappsv1.DeploymentConfig)
+			if !ok {
+				return false
+			}
+			if newDC.Name == defaultKeycloakIdentifier {
+				if newDC.Status.AvailableReplicas == count {
+					return true
+				}
+				if newDC.Status.AvailableReplicas == int32(0) &&
+					!reflect.DeepEqual(oldDC.Status.AvailableReplicas, newDC.Status.AvailableReplicas) {
+					// Handle the deletion of keycloak pod.
+					log.Info(fmt.Sprintf("Handle the pod deletion event for keycloak deployment config %s in namespace %s",
+						newDC.Name, newDC.Namespace))
+					err := handleKeycloakPodDeletion(newDC)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Failed to update Deployment Config %s for keycloak pod deletion in namespace %s",
+							newDC.Name, newDC.Namespace))
+					}
+				}
+			}
+			return false
+		},
+	}
+
+	deleteSSOPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+
+			// Handle deletion of SSO from Argo CD custom resource
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO == nil {
+				err := r.deleteSSOConfiguration(newCR, oldCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+
+			// Trigger reconciliation of SSO on update event
+			if !reflect.DeepEqual(oldCR.Spec.SSO, newCR.Spec.SSO) && newCR.Spec.SSO != nil && oldCR.Spec.SSO != nil {
+				err := r.reconcileSSO(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update existing SSO Configuration for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+			return true
+		},
+	}
+
+	// Add new predicate to delete Notifications Resources. The predicate watches the Argo CD CR for changes to the `.spec.Notifications.Enabled`
+	// field. When a change is detected that results in notifications being disabled, we trigger deletion of notifications resources
+	deleteNotificationsPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			if oldCR.Spec.Notifications.Enabled && !newCR.Spec.Notifications.Enabled {
+				err := r.deleteNotificationsResources(newCR)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to delete notifications controller resources for ArgoCD %s in namespace %s",
+						newCR.Name, newCR.Namespace))
+				}
+			}
+			return true
+		},
+	}
+
+	// Watch for changes to primary resource ArgoCD
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
+
+	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.ConfigMap{})
+
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.Secret{})
+
+	// Watch for changes to Service sub-resources owned by ArgoCD instances.
+	bldr.Owns(&corev1.Service{})
+
+	// Watch for changes to Deployment sub-resources owned by ArgoCD instances.
+	bldr.Owns(&appsv1.Deployment{})
+
+	// Watch for changes to Ingress sub-resources owned by ArgoCD instances.
+	bldr.Owns(&networkingv1.Ingress{})
+
+	bldr.Owns(&v1.Role{})
+
+	bldr.Owns(&v1.RoleBinding{})
+
+	clusterResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterResourceMapper)
+
+	clusterSecretResourceHandler := handler.EnqueueRequestsFromMapFunc(clusterSecretResourceMapper)
+
+	appSetGitlabSCMTLSConfigMapHandler := handler.EnqueueRequestsFromMapFunc(applicationSetGitlabSCMTLSConfigMapMapper)
+
+	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
+
+	bldr.Watches(&v1.ClusterRoleBinding{}, clusterResourceHandler)
+
+	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
+
+	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+	}}, appSetGitlabSCMTLSConfigMapHandler)
+
+	// Watch for secrets of type TLS that might be created by external processes
+	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
+
+	// Watch for cluster secrets added to the argocd instance
+	bldr.Watches(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{
+			common.ArgoCDManagedByClusterArgoCDLabel: "cluster",
+		}}}, clusterSecretResourceHandler)
+
+	// Watch for changes to Secret sub-resources owned by ArgoCD instances.
+	bldr.Owns(&appsv1.StatefulSet{})
+
+	// Inspect cluster to verify availability of extra features
+	// This sets the flags that are used in subsequent checks
+	if err := InspectCluster(); err != nil {
+		log.Info("unable to inspect cluster")
+	}
+
+	if IsRouteAPIAvailable() {
+		// Watch OpenShift Route sub-resources owned by ArgoCD instances.
+		bldr.Owns(&routev1.Route{})
+	}
+
+	if IsPrometheusAPIAvailable() {
+		// Watch Prometheus sub-resources owned by ArgoCD instances.
+		bldr.Owns(&monitoringv1.Prometheus{})
+
+		// Watch Prometheus ServiceMonitor sub-resources owned by ArgoCD instances.
+		bldr.Owns(&monitoringv1.ServiceMonitor{})
+	}
+
+	if IsTemplateAPIAvailable() {
+		// Watch for the changes to Deployment Config
+		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
+
+	}
+
+	namespaceHandler := handler.EnqueueRequestsFromMapFunc(namespaceResourceMapper)
+
+	bldr.Watches(&corev1.Namespace{}, namespaceHandler, builder.WithPredicates(namespaceFilterPredicate()))
+
+	return bldr
 }

@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 var lock sync.RWMutex
@@ -43,75 +42,6 @@ var ScheduledForRBACDeletion map[string][]ManagedNsOpts
 
 func InitializeScheduledForRBACDeletion() {
 	ScheduledForRBACDeletion = make(map[string][]ManagedNsOpts)
-}
-
-// namespacePredicate defines how we filter events on namespaces to decide if a new round of reconciliation should be triggered or not.
-func (r *ArgoCDReconciler) namespacePredicate() predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			processEvent := false
-
-			// for now only process namespace create events if namespace is created with the
-			// managed by label. This behavior might change if in the future we change namespace
-			// management to go through the CR instead of letting users directly label the ns
-			if _, ok := e.Object.GetLabels()[common.ArgoCDArgoprojKeyManagedBy]; ok {
-				processEvent = true
-			}
-
-			return processEvent
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// processEvent decides if this event reaches the event handler or not
-			processEvent := false
-
-			InitializeScheduledForRBACDeletion()
-
-			// check for "argoproj.argocd.io/managed-by"
-			l1 := shouldProcessLabelEventForUpdate(e, common.ArgoCDArgoprojKeyManagedBy, common.ArgoCDRBACTypeResourceMananagement)
-			// check for "argoproj.argocd.io/apps-managed-by"
-			l2 := shouldProcessLabelEventForUpdate(e, common.ArgoCDArgoprojKeyAppsManagedBy, common.ArgoCDRBACTypeAppManagement)
-			// check for "argoproj.argocd.io/appsets-managed-by"
-			l3 := shouldProcessLabelEventForUpdate(e, common.ArgoCDArgoprojKeyAppSetsManagedBy, common.ArgoCDRBACTypeAppSetManagement)
-
-			// process event if even one of them returns true
-			if l1 || l2 || l3 {
-				processEvent = true
-			}
-			return processEvent
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			// processEvent decides if this event reaches the event handler or not
-			processEvent := false
-
-			InitializeScheduledForRBACDeletion()
-
-			// check for "argoproj.argocd.io/managed-by"
-			l1 := r.shouldProcessLabelEventForDelete(e, common.ArgoCDArgoprojKeyManagedBy, common.ArgoCDRBACTypeResourceMananagement)
-			// check for "argoproj.argocd.io/apps-managed-by"
-			l2 := r.shouldProcessLabelEventForDelete(e, common.ArgoCDArgoprojKeyAppsManagedBy, common.ArgoCDRBACTypeAppManagement)
-			// check for "argoproj.argocd.io/appsets-managed-by"
-			l3 := r.shouldProcessLabelEventForDelete(e, common.ArgoCDArgoprojKeyAppSetsManagedBy, common.ArgoCDRBACTypeAppSetManagement)
-
-			// process event if even one of them returns true
-			if l1 || l2 || l3 {
-				processEvent = true
-			}
-			return processEvent
-		},
-	}
-}
-
-func ignoreDeletionPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Ignore updates to CR status in which case metadata.Generation does not change
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			// Evaluates to false if the object has been confirmed deleted.
-			return !e.DeleteStateUnknown
-		},
-	}
 }
 
 // shouldProcessLabelEventForUpdate decides if a given namespace update event should be processed or not. Only update events involving
@@ -227,7 +157,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMa
 	tlsSecretHandler := handler.EnqueueRequestsFromMapFunc(tlsSecretMapper)
 
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(ignoreDeletionPredicate()))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(ignoreDeletionOrStatusUpdatePredicate(), r.deleteSSOPredicate()))
 
 	// Watch for changes to ConfigMap resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})

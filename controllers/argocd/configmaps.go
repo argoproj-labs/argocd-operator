@@ -1,8 +1,10 @@
 package argocd
 
 import (
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -88,7 +90,11 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 		Client:    r.Client,
 	}
 
-	// TO DO: skipping dex config since that should be handled by SSO component
+	if r.SSOController.GetProvider(r.Instance) == argoproj.SSOProviderTypeDex &&
+		r.SSOController.GetStatus() != sso.SSOLegalFailed &&
+		r.SSOController.GetStatus() != sso.SSOLegalUnknown {
+		req.Data[common.ArgoCDKeyDexConfig] = r.SSOController.DexController.GetConfig()
+	}
 
 	req.Data = util.MergeMaps(req.Data, r.getKustomizeVersions())
 	req.Data = util.MergeMaps(req.Data, r.getResourceHealthChecks())
@@ -99,6 +105,20 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 
 	ignoreDrift := false
 	updateFn := func(existing, desired *corev1.ConfigMap, changed *bool) error {
+
+		// special handling for dex
+		// rollout dex deployment if change detected in dex config
+		if existing.Data[common.ArgoCDKeyDexConfig] != desired.Data[common.ArgoCDKeyDexConfig] {
+			existing.Data[common.ArgoCDKeyDexConfig] = desired.Data[common.ArgoCDKeyDexConfig]
+			*changed = true
+
+			r.SSOController.DexController.TriggerDeploymentRollout(
+				argoutil.GenerateResourceName(r.Instance.Name, common.DexSuffix),
+				r.Instance.Namespace,
+				common.DexConfigChangedKey,
+			)
+		}
+
 		fieldsToCompare := func(existing, desired *corev1.ConfigMap) []argocdcommon.FieldToCompare {
 			return []argocdcommon.FieldToCompare{
 				{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},

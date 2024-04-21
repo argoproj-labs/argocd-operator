@@ -7,6 +7,10 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 )
 
+const (
+	grafanaDeprecatedWarning = "Warning: grafana field is deprecated from ArgoCD: field will be ignored."
+)
+
 // reconcileGrafanaService will ensure that the Service for Grafana is present.
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
