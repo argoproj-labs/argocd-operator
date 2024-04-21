@@ -57,8 +57,10 @@ func (nr *NotificationsReconciler) reconcileSecret() error {
 		}
 
 		if err = workloads.CreateSecret(desiredSecret, nr.Client); err != nil {
-			nr.Logger.Error(err, "reconcileSecret: failed to create secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
-			return err
+			if !apierrors.IsAlreadyExists(err) {
+				nr.Logger.Error(err, "reconcileSecret: failed to create secret", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
+				return err
+			}
 		}
 		nr.Logger.Info("secret created", "name", desiredSecret.Name, "namespace", desiredSecret.Namespace)
 		return nil

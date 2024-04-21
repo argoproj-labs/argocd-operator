@@ -1242,3 +1242,37 @@ func policyRuleForNotificationsController() []rbacv1.PolicyRule {
 		},
 	}
 }
+
+// reconcileStatusNotifications will ensure that the Notifications status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusNotifications(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	deploy := newDeploymentWithSuffix("notifications-controller", "controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						status = "Failed"
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if cr.Status.NotificationsController != status {
+		if !cr.Spec.Notifications.Enabled {
+			cr.Status.NotificationsController = ""
+		} else {
+			cr.Status.NotificationsController = status
+		}
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}

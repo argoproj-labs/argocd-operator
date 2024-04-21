@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	clientSecretKey = "$oidc.dex.clientSecret"
+	clientSecretKey = "oidc.dex.clientSecret"
 )
 
 func (dr *DexReconciler) getOpenShiftConfig() (string, error) {

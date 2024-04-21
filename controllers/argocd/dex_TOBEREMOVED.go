@@ -13,6 +13,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -511,4 +512,35 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 
 	log.Info(fmt.Sprintf("creating deployment %s for Argo CD instance %s in namespace %s", deploy.Name, cr.Name, cr.Namespace))
 	return r.Client.Create(context.TODO(), deploy)
+}
+
+// reconcileStatusDex will ensure that the Dex status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	deploy := newDeploymentWithSuffix("dex-server", "dex-server", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, deploy.Name, deploy) {
+		status = "Pending"
+
+		if deploy.Spec.Replicas != nil {
+			if deploy.Status.ReadyReplicas == *deploy.Spec.Replicas {
+				status = "Running"
+			} else if deploy.Status.Conditions != nil {
+				for _, condition := range deploy.Status.Conditions {
+					if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+						// Deployment has failed
+						status = "Failed"
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if cr.Status.SSO != status {
+		cr.Status.SSO = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+
+	return nil
 }

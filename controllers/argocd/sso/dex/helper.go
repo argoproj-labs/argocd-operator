@@ -12,15 +12,15 @@ import (
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 const (
 	dexConfigKey       = "dex.config"
-	dexTokenSecretName = "argocd-dex-server-token-"
+	dexTokenSecretName = "argocd-dex-server-token-secret"
 )
 
 type DexConnector struct {
@@ -76,7 +76,7 @@ func (dr *DexReconciler) getConfig() string {
 }
 
 func (dr *DexReconciler) GetOAuthClientSecret() (*string, error) {
-
+	dr.varSetter()
 	sa, err := permissions.GetServiceAccount(resourceName, dr.Instance.Namespace, dr.Client)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getOAuthClientSecret: failed to retrieve service account %s", resourceName)
@@ -96,8 +96,8 @@ func (dr *DexReconciler) GetOAuthClientSecret() (*string, error) {
 
 		req := workloads.SecretRequest{
 			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: dexTokenSecretName,
-				Namespace:    dr.Instance.Namespace,
+				Name:      dexTokenSecretName,
+				Namespace: dr.Instance.Namespace,
 				Annotations: map[string]string{
 					corev1.ServiceAccountNameKey: sa.Name,
 				},
@@ -116,7 +116,9 @@ func (dr *DexReconciler) GetOAuthClientSecret() (*string, error) {
 		}
 
 		if err := workloads.CreateSecret(secret, dr.Client); err != nil {
-			return nil, errors.Wrapf(err, "getOAuthClientSecret: failed to create secret %s", dexTokenSecretName)
+			if !apierrors.IsAlreadyExists(err) {
+				return nil, errors.Wrapf(err, "getOAuthClientSecret: failed to create secret %s", dexTokenSecretName)
+			}
 		}
 
 		tokenSecret = &corev1.ObjectReference{

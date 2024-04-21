@@ -1,8 +1,10 @@
 package argocd
 
 import (
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -83,10 +85,15 @@ func (r *ArgoCDReconciler) reconcileArgoCDCm() error {
 			common.ArgoCDKeyStatusBadgeEnabled:          r.getStatusBadgeEnabled(),
 			common.ArgoCDKeyUsersAnonymousEnabled:       r.getUsersAnonymousEnabled(),
 			common.ArgoCDKeyServerURL:                   r.ServerController.GetURI(),
-			common.ArgoCDKeyDexConfig:                   r.SSOController.DexController.GetConfig(),
 		},
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 		Client:    r.Client,
+	}
+
+	if r.SSOController.GetProvider(r.Instance) == argoproj.SSOProviderTypeDex &&
+		r.SSOController.GetStatus() != sso.SSOLegalFailed &&
+		r.SSOController.GetStatus() != sso.SSOLegalUnknown {
+		req.Data[common.ArgoCDKeyDexConfig] = r.SSOController.DexController.GetConfig()
 	}
 
 	req.Data = util.MergeMaps(req.Data, r.getKustomizeVersions())

@@ -13,6 +13,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -212,6 +213,24 @@ func (dr *DexReconciler) getDeploymentReq() workloads.DeploymentRequest {
 		}},
 	}
 
-	req.Spec.Template.Spec = podSpec
+	req.Spec = appsv1.DeploymentSpec{
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		Template: corev1.PodTemplateSpec{
+			Spec: podSpec,
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					common.AppK8sKeyName: resourceName,
+				},
+			},
+		},
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				common.AppK8sKeyName: resourceName,
+			},
+		},
+	}
+
 	return req
 }

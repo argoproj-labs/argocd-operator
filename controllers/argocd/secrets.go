@@ -7,6 +7,7 @@ import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/sso"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/mutation"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
@@ -156,7 +157,9 @@ func (r *ArgoCDReconciler) reconcileArgoCDSecret() error {
 		}
 
 		// if Dex is enabled, store/update dex OAuth client secret
-		if provider := r.SSOController.GetProvider(); provider == argoproj.SSOProviderTypeDex {
+		if provider := r.SSOController.GetProvider(r.Instance); provider == argoproj.SSOProviderTypeDex &&
+			r.SSOController.GetStatus() != sso.SSOLegalFailed &&
+			r.SSOController.GetStatus() != sso.SSOLegalUnknown {
 			desiredDexOIDCClientSecret, err := r.SSOController.DexController.GetOAuthClientSecret()
 			if err != nil {
 				return errors.Wrap(err, "reconcileArgoCDSecret: failed to get dex oidc client secret")

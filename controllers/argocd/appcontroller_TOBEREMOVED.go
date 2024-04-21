@@ -661,3 +661,25 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	}
 	return r.Client.Create(context.TODO(), sm)
 }
+
+// reconcileStatusApplicationController will ensure that the ApplicationController Status is updated for the given ArgoCD.
+func (r *ReconcileArgoCD) reconcileStatusApplicationController(cr *argoproj.ArgoCD) error {
+	status := "Unknown"
+
+	ss := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, ss.Name, ss) {
+		status = "Pending"
+
+		if ss.Spec.Replicas != nil {
+			if ss.Status.ReadyReplicas == *ss.Spec.Replicas {
+				status = "Running"
+			}
+		}
+	}
+
+	if cr.Status.ApplicationController != status {
+		cr.Status.ApplicationController = status
+		return r.Client.Status().Update(context.TODO(), cr)
+	}
+	return nil
+}
