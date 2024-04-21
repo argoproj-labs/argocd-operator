@@ -138,7 +138,7 @@ func (r *ArgoCDReconciler) reconcileArgoCDSecret() error {
 
 		if argoutil.HasArgoAdminPasswordChanged(existing, clusterPermSecret) {
 			pwBytes, ok := clusterPermSecret.Data[common.ArgoCDKeyAdminPassword]
-			if ok {
+			if ok && existing.Data[common.ArgoCDKeyAdminPassword] == nil {
 				hashedPassword, err := argopass.HashPassword(strings.TrimRight(string(pwBytes), "\n"))
 				if err != nil {
 					return errors.Wrapf(err, "reconcileArgoCDSecret: failed to encrypt admin password")
