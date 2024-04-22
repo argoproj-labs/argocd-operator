@@ -15,7 +15,7 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()
@@ -63,7 +63,7 @@ func TestServerReconciler_createUpdateAndDeleteRoute(t *testing.T) {
 }
 
 func TestServerReconciler_routeTLS(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

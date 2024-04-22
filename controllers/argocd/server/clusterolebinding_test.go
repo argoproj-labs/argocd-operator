@@ -13,7 +13,7 @@ import (
 )
 
 func TestServerReconciler_createAndDeleteClusterRoleBinding(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

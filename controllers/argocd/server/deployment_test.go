@@ -12,7 +12,7 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteDeployment(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

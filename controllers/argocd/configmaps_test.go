@@ -5,6 +5,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd/server"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
@@ -24,6 +25,7 @@ func Test_reconcileConfigMaps(t *testing.T) {
 			nil,
 			func(s *corev1.Secret) {
 				s.Name = "test-argocd-ca"
+				s.Namespace = "test-ns"
 				s.Data = map[string][]byte{
 					"tls.crt": []byte(test.TestVal),
 				}
@@ -31,6 +33,10 @@ func Test_reconcileConfigMaps(t *testing.T) {
 		),
 	)
 
+	reconciler.varSetter()
+	reconciler.ServerController = &server.ServerReconciler{
+		Instance: testArgoCD,
+	}
 	expectedResources := []client.Object{
 		test.MakeTestConfigMap(
 			nil,
@@ -204,6 +210,10 @@ func Test_reconcileArgoCDCm(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
+			tt.reconciler.ServerController = &server.ServerReconciler{
+				Instance: tt.reconciler.Instance,
+			}
+			tt.reconciler.varSetter()
 			err := tt.reconciler.reconcileArgoCDCm()
 			assert.NoError(t, err)
 

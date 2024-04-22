@@ -14,7 +14,7 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()
@@ -67,7 +67,7 @@ func TestServerReconciler_createUpdateAndDeleteServerIngress(t *testing.T) {
 }
 
 func TestServerReconciler_createUpdateAndDeleteServerGRPCIngress(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

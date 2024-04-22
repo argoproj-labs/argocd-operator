@@ -14,7 +14,7 @@ import (
 )
 
 func TestServerReconciler_createUpdateAndDeleteHPA(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

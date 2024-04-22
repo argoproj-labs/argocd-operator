@@ -12,7 +12,7 @@ import (
 )
 
 func TestServerReconciler_createAndDeleteRoleBindings(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()
@@ -38,7 +38,7 @@ func TestServerReconciler_createAndDeleteRoleBindings(t *testing.T) {
 }
 
 func TestServerReconciler_roleBindingWithCustomRole(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

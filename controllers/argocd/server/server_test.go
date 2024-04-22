@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func makeTestServerReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *ServerReconciler {
+func MakeTestServerReconciler(cr *argoproj.ArgoCD, objs ...client.Object) *ServerReconciler {
 	schemeOpt := func(s *runtime.Scheme) {
 		argoproj.AddToScheme(s)
 	}
@@ -70,7 +70,7 @@ func TestServerReconciler_Reconcile(t *testing.T) {
 	}{
 		{
 			name: "successful reconcile",
-			reconciler: makeTestServerReconciler(
+			reconciler: MakeTestServerReconciler(
 				test.MakeTestArgoCD(nil),
 			),
 			expectError: false,
@@ -98,7 +98,7 @@ func TestServerReconciler_DeleteResources(t *testing.T) {
 	}{
 		{
 			name: "successful delete",
-			reconciler: makeTestServerReconciler(
+			reconciler: MakeTestServerReconciler(
 				test.MakeTestArgoCD(nil),
 			),
 			expectError: false,

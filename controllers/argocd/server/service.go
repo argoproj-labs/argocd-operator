@@ -65,6 +65,8 @@ func (sr *ServerReconciler) reconcileService() error {
 	updateFn := func(existing, desired *corev1.Service, changed *bool) error {
 		fieldsToCompare := []argocdcommon.FieldToCompare{
 			{Existing: &existing.Labels, Desired: &desired.Labels, ExtraAction: nil},
+			{Existing: &existing.Annotations, Desired: &desired.Annotations, ExtraAction: nil},
+			{Existing: &existing.Spec.Type, Desired: &desired.Spec.Type, ExtraAction: nil},
 			{Existing: &existing.Spec.Selector, Desired: &desired.Spec.Selector, ExtraAction: nil},
 			{Existing: &existing.Spec.Ports, Desired: &desired.Spec.Ports, ExtraAction: nil},
 		}
