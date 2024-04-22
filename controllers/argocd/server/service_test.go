@@ -15,7 +15,7 @@ import (
 )
 
 func TestServerReconciler_createAndUpdateService(t *testing.T) {
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()
@@ -43,7 +43,7 @@ func TestServerReconciler_createAndUpdateService(t *testing.T) {
 
 func TestServerReconciler_autoTLSService(t *testing.T) {
 	openshift.SetVersionAPIFound(true)
-	sr := makeTestServerReconciler(
+	sr := MakeTestServerReconciler(
 		test.MakeTestArgoCD(nil),
 	)
 	sr.varSetter()

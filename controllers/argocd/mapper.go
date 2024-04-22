@@ -226,7 +226,7 @@ func (r *ArgoCDReconciler) namespaceMapper(ctx context.Context, obj client.Objec
 	}
 
 	// trigger reconciliation for new managing namespaces so required resources are created for those instances
-	for newManagingNs, _ := range newManagingNamespaces {
+	for newManagingNs := range newManagingNamespaces {
 		if objs, err := resource.ListObjects(newManagingNs, &argoproj.ArgoCDList{}, r.Client, []client.ListOption{}); err == nil {
 			if instances, ok := objs.(*argoproj.ArgoCDList); ok {
 				if len(instances.Items) > 0 {

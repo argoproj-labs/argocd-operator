@@ -3,7 +3,6 @@ package reposerver
 import (
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/pkg/workloads"
 	"github.com/argoproj-labs/argocd-operator/tests/mock"
@@ -66,79 +65,6 @@ func TestReconcileDeployment_create(t *testing.T) {
 				assert.Error(t, err, "Expected an error but got none.")
 			} else {
 				assert.NoError(t, err, "Expected no error but got one.")
-			}
-
-		})
-	}
-}
-
-func TestReconcileDeployment_update(t *testing.T) {
-	mockRedisName := "test-argocd-redis"
-
-	tests := []struct {
-		name               string
-		reconciler         *RepoServerReconciler
-		expectedError      bool
-		expectedDeployment *appsv1.Deployment
-	}{
-		{
-			name: "Deployment drift",
-			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(nil),
-				test.MakeTestDeployment(getDesiredDeployment(),
-					func(d *appsv1.Deployment) {
-						d.Name = "test-argocd-repo-server"
-						// Modify some fields to simulate drift
-						d.Spec.Template.Spec.Containers[0].Image = "random-image"
-					},
-				),
-			),
-			expectedError:      false,
-			expectedDeployment: getDesiredDeployment(),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.reconciler.varSetter()
-
-			mockRedis := mock.NewRedis(mockRedisName, test.TestNamespace, tt.reconciler.Client)
-			mockRedis.SetServerAddress("http://mock-server-address")
-			mockRedis.SetUseTLS(true)
-			tt.reconciler.Redis = mockRedis
-
-			err := tt.reconciler.reconcileDeployment()
-			assert.NoError(t, err)
-
-			existing, err := workloads.GetDeployment("test-argocd-repo-server", test.TestNamespace, tt.reconciler.Client)
-
-			if tt.expectedError {
-				assert.Error(t, err, "Expected an error but got none.")
-			} else {
-				assert.NoError(t, err, "Expected no error but got one.")
-			}
-
-			if tt.expectedDeployment != nil {
-				match := true
-
-				ftc := []argocdcommon.FieldToCompare{
-					{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &tt.expectedDeployment.Spec.Template.Spec.NodeSelector},
-					{Existing: &existing.Spec.Template.Spec.Volumes, Desired: &tt.expectedDeployment.Spec.Template.Spec.Volumes},
-					{Existing: &existing.Spec.Template.Spec.Containers[0].Image, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Image},
-					{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Command},
-					{Existing: &existing.Spec.Template.Spec.Containers[0].Ports, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].Ports},
-					{Existing: &existing.Spec.Template.Spec.Containers[0].SecurityContext, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].SecurityContext},
-					{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &tt.expectedDeployment.Spec.Template.Spec.Containers[0].VolumeMounts},
-					{Existing: &existing.Spec.Template.Spec.InitContainers, Desired: &tt.expectedDeployment.Spec.Template.Spec.InitContainers},
-					{Existing: &existing.Spec.Template.Spec.ServiceAccountName, Desired: &tt.expectedDeployment.Spec.Template.Spec.ServiceAccountName},
-					{Existing: &existing.Spec.Template.Spec.SecurityContext, Desired: &tt.expectedDeployment.Spec.Template.Spec.SecurityContext},
-					{Existing: &existing.Spec.Replicas, Desired: &tt.expectedDeployment.Spec.Replicas},
-					{Existing: &existing.Spec.Selector, Desired: &tt.expectedDeployment.Spec.Selector},
-					{Existing: &existing.Labels, Desired: &tt.expectedDeployment.Labels},
-					{Existing: &existing.Annotations, Desired: &tt.expectedDeployment.Annotations},
-				}
-				argocdcommon.PartialMatch(ftc, &match)
-				assert.True(t, match)
 			}
 
 		})

@@ -109,6 +109,7 @@ func (sr *ServerReconciler) getHost() string {
 }
 
 func (sr *ServerReconciler) GetURI() string {
+	sr.varSetter()
 	host := resourceName // default to service name
 
 	// Use the external hostname provided by the user

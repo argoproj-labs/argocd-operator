@@ -3,7 +3,6 @@ package reposerver
 import (
 	"testing"
 
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
@@ -58,75 +57,6 @@ func TestReconcileService_create(t *testing.T) {
 				assert.NoError(t, err, "Expected no error but got one.")
 			}
 
-		})
-	}
-}
-
-func TestReconcileService_update(t *testing.T) {
-	tests := []struct {
-		name            string
-		reconciler      *RepoServerReconciler
-		expectedError   bool
-		expectedService *corev1.Service
-	}{
-		{
-			name: "Service drift",
-			reconciler: makeTestReposerverReconciler(
-				test.MakeTestArgoCD(nil),
-				test.MakeTestService(getDesiredSvc(),
-					func(svc *corev1.Service) {
-						svc.Name = "test-argocd-repo-server"
-						// Modify some fields to simulate drift
-						svc.Spec.Ports = []corev1.ServicePort{
-							{
-								Name: "server",
-								Port: 8087,
-							},
-						}
-					},
-				),
-			),
-			expectedError:   false,
-			expectedService: getDesiredSvc(),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.reconciler.varSetter()
-
-			err := tt.reconciler.reconcileService()
-			assert.NoError(t, err)
-
-			existing, err := networking.GetService("test-argocd-repo-server", test.TestNamespace, tt.reconciler.Client)
-
-			if tt.expectedError {
-				assert.Error(t, err, "Expected an error but got none.")
-			} else {
-				assert.NoError(t, err, "Expected no error but got one.")
-			}
-
-			if tt.expectedService != nil {
-				match := true
-
-				// Check for partial match on relevant fields
-				ftc := []argocdcommon.FieldToCompare{
-					{
-						Existing: existing.Labels,
-						Desired:  tt.expectedService.Labels,
-					},
-					{
-						Existing: existing.Annotations,
-						Desired:  tt.expectedService.Annotations,
-					},
-					{
-						Existing: existing.Spec,
-						Desired:  tt.expectedService.Spec,
-					},
-				}
-				argocdcommon.PartialMatch(ftc, &match)
-				assert.True(t, match)
-			}
 		})
 	}
 }

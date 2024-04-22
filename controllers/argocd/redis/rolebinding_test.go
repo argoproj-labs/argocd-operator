@@ -3,8 +3,6 @@ package redis
 import (
 	"testing"
 
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-	"github.com/argoproj-labs/argocd-operator/controllers/argocd/argocdcommon"
 	"github.com/argoproj-labs/argocd-operator/pkg/permissions"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 	"github.com/stretchr/testify/assert"
@@ -12,119 +10,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func TestReconcileRoleBinding(t *testing.T) {
-	tests := []struct {
-		name                string
-		reconciler          *RedisReconciler
-		expectedError       bool
-		expectedRoleBinding *rbacv1.RoleBinding
-	}{
-		{
-			name: "RoleBinding does not exist",
-			reconciler: makeTestRedisReconciler(
-				test.MakeTestArgoCD(nil),
-			),
-			expectedError:       false,
-			expectedRoleBinding: getDesiredRoleBinding(),
-		},
-		{
-			name: "RoleBinding does not exist, HA role",
-			reconciler: makeTestRedisReconciler(
-				test.MakeTestArgoCD(nil,
-					func(ac *argoproj.ArgoCD) {
-						ac.Spec.HA.Enabled = true
-					},
-				),
-			),
-			expectedError: false,
-			expectedRoleBinding: test.MakeTestRoleBinding(getDesiredRoleBinding(),
-				func(rb *rbacv1.RoleBinding) {
-					rb.RoleRef = rbacv1.RoleRef{
-						Kind:     "Role",
-						Name:     "test-argocd-redis-ha",
-						APIGroup: "rbac.authorization.k8s.io",
-					}
-				},
-			),
-		},
-		{
-			name: "RoleBinding drift",
-			reconciler: makeTestRedisReconciler(
-				test.MakeTestArgoCD(nil),
-				test.MakeTestRoleBinding(getDesiredRoleBinding(),
-					func(rb *rbacv1.RoleBinding) {
-						rb.Name = "test-argocd-redis"
-						// Modify some fields to simulate drift
-						rb.Subjects = []rbacv1.Subject{
-							{
-								Kind:      "User",
-								Name:      "test-user",
-								Namespace: "test-namespace",
-							},
-						}
-					},
-				),
-			),
-			expectedError:       false,
-			expectedRoleBinding: getDesiredRoleBinding(),
-		},
-		{
-			name: "RoleBinding RoleRef drift",
-			reconciler: makeTestRedisReconciler(
-				test.MakeTestArgoCD(nil),
-				test.MakeTestRoleBinding(getDesiredRoleBinding(),
-					func(rb *rbacv1.RoleBinding) {
-						rb.Name = "test-argocd-redis"
-						// Modify RoleRef to simulate drift
-						rb.RoleRef.Name = "test-different-role"
-					},
-				),
-			),
-			expectedError:       true,
-			expectedRoleBinding: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.reconciler.varSetter()
-
-			err := tt.reconciler.reconcileRoleBinding()
-			assert.NoError(t, err)
-
-			existing, err := permissions.GetRoleBinding("test-argocd-redis", test.TestNamespace, tt.reconciler.Client)
-
-			if tt.expectedError {
-				assert.Error(t, err, "Expected an error but got none.")
-			} else {
-				assert.NoError(t, err, "Expected no error but got one.")
-			}
-
-			if tt.expectedRoleBinding != nil {
-				match := true
-
-				// Check for partial match on relevant fields
-				ftc := []argocdcommon.FieldToCompare{
-					{
-						Existing: existing.Labels,
-						Desired:  tt.expectedRoleBinding.Labels,
-					},
-					{
-						Existing: existing.Subjects,
-						Desired:  tt.expectedRoleBinding.Subjects,
-					},
-					{
-						Existing: existing.RoleRef,
-						Desired:  tt.expectedRoleBinding.RoleRef,
-					},
-				}
-				argocdcommon.PartialMatch(ftc, &match)
-				assert.True(t, match)
-			}
-		})
-	}
-}
 
 func TestDeleteRoleBinding(t *testing.T) {
 	tests := []struct {

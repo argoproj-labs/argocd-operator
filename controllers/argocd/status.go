@@ -15,21 +15,15 @@
 package argocd
 
 import (
-	"context"
 	"reflect"
 	"strings"
 
-	oappsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	appsv1 "k8s.io/api/apps/v1"
-
-	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/argoutil"
 	"github.com/argoproj-labs/argocd-operator/pkg/networking"
@@ -204,62 +198,4 @@ func (r *ArgoCDReconciler) reconcileHost() error {
 
 func (r *ArgoCDReconciler) updateInstanceStatus() error {
 	return resource.UpdateStatusSubResource(r.Instance, r.Client)
-}
-
-// reconcileStatusKeycloak will ensure that the Keycloak status is updated for the given ArgoCD.
-func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
-	status := "Unknown"
-
-	if IsTemplateAPIAvailable() {
-		// keycloak is installed using OpenShift templates.
-		dc := &oappsv1.DeploymentConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      defaultKeycloakIdentifier,
-				Namespace: cr.Namespace,
-			},
-		}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, dc.Name, dc) {
-			status = "Pending"
-
-			if dc.Status.ReadyReplicas == dc.Spec.Replicas {
-				status = "Running"
-			} else if dc.Status.Conditions != nil {
-				for _, condition := range dc.Status.Conditions {
-					if condition.Type == oappsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-						// Deployment has failed
-						status = "Failed"
-						break
-					}
-				}
-			}
-		}
-
-	} else {
-		d := newDeploymentWithName(defaultKeycloakIdentifier, defaultKeycloakIdentifier, cr)
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, d.Name, d) {
-			status = "Pending"
-
-			if d.Spec.Replicas != nil {
-				if d.Status.ReadyReplicas == *d.Spec.Replicas {
-					status = "Running"
-				} else if d.Status.Conditions != nil {
-					for _, condition := range d.Status.Conditions {
-						if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-							// Deployment has failed
-							status = "Failed"
-							break
-						}
-					}
-				}
-
-			}
-		}
-	}
-
-	if cr.Status.SSO != status {
-		cr.Status.SSO = status
-		return r.Client.Status().Update(context.TODO(), cr)
-	}
-
-	return nil
 }

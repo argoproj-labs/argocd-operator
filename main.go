@@ -145,7 +145,7 @@ func main() {
 	setupLog.Info(fmt.Sprintf("Watching labelselector \"%s\"", labelSelectorFlag))
 
 	// Inspect cluster to verify availability of extra features
-	err := argocd.InspectCluster()
+	err := argocd.VerifyClusterAPIs()
 	if err != nil {
 		setupLog.Error(err, "error verifying one or more APIs on the cluster")
 	}
