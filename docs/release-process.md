@@ -54,6 +54,46 @@ Lastly, make sure you are listed as a maintainer for argocd-operator in order to
   make bundle IMG=quay.io/argoprojlabs/argocd-operator@sha256:d894c0f7510c8f41b48900b52eac94f623885fd409ebf2660793cd921b137bde
 ```
 
+* The step above will create some changes to the control-plane code that must be reverted:
+    * In `bundle/manifests/argocd-operator.clusterserviceversion.yaml` and in `deploy/olm-catalog/argocd-operator/[your-version]/argocd-operator.[your-version].clusterserviceversion.yaml`, under the `spec.install.spec.deployments` add the control-plane label and change the deployment `spec.selector.matchLabels.control-plane` from `argocd-operator` to `controller-manager`, like so: 
+```yaml
+deployments:
+  - label:
+      control-plane: controller-manager
+    name: argocd-operator-controller-manager
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          control-plane: controller-manager
+      strategy: {}
+      template:
+        metadata:
+          labels:
+            control-plane: controller-manager
+```
+  * In `bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml` and `deploy/olm-catalog/argocd-operator/[your-version]/argocd-operator-controller-manager-metrics-service_v1_service.yaml`, update the control-plane labels from `argocd-operator ` to `controller-manager`, like so: 
+
+```yaml
+metadata:
+  creationTimestamp: null
+  labels:
+    control-plane: controller-manager
+  name: argocd-operator-controller-manager-metrics-service
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: 8080
+  selector:
+    control-plane: controller-manager
+```
+  * In `bundle/manifests/argocd-operator-webhook-service_v1_service.yaml` and `deploy/olm-catalog/argocd-operator/[your-version]/argocd-operator-webhook-service_v1_service.yaml`, update the control-plane label from `argocd-operator` to `controller-manager`, like so: 
+```yaml
+selector:
+  control-plane: controller-manager
+```
+
 * Create the registry image. (Below command assumes the release version as `v0.2.0`; please change the command accordingly.)
   
 ```txt
@@ -88,7 +128,7 @@ Lastly, make sure you are listed as a maintainer for argocd-operator in order to
 
 * Edit the CSV file in the new release folder, and add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
 
-* Commit and push the changes, then create a PR.
+* Commit and push the changes, then create a PR. The PR merge process should be automatic if all the checks pass; once the PR is merged then continue on to the next step. 
 
 ----
 
@@ -104,7 +144,7 @@ Lastly, make sure you are listed as a maintainer for argocd-operator in order to
 
 * Edit the CSV file in the new release folder, and add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
 
-* Commit and push the changes, then create a PR.
+* Commit and push the changes, then create a PR. The PR process should be automatic for this repository as well. 
 
 ## Setting up the next version
 
