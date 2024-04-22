@@ -11,6 +11,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/pkg/util"
 	"github.com/argoproj-labs/argocd-operator/tests/test"
 )
 
@@ -27,6 +28,7 @@ func makeTestApplicationSetReconciler(t *testing.T, webhookServerRouteEnabled bo
 	return &ApplicationSetReconciler{
 		Client: cl,
 		Scheme: s,
+		Logger: util.NewLogger("appset-controller"),
 		Instance: test.MakeTestArgoCD(nil, func(a *argoproj.ArgoCD) {
 			a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
 				WebhookServer: argoproj.WebhookServerSpec{
