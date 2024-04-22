@@ -189,7 +189,7 @@ func (r *ArgoCDReconciler) setResourceWatches(bldr *builder.Builder, namespaceMa
 
 	// Inspect cluster to verify availability of extra features
 	// This sets the flags that are used in subsequent checks
-	if err := InspectCluster(); err != nil {
+	if err := VerifyClusterAPIs(); err != nil {
 		r.Logger.Debug("unable to inspect cluster for all APIs")
 	}
 

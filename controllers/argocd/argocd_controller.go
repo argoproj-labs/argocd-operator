@@ -111,8 +111,6 @@ type ArgoCDReconciler struct {
 	SSOController           *sso.SSOReconciler
 }
 
-var log = ctrl.Log.WithName("controller_argocd")
-
 // Map to keep track of running Argo CD instances using their namespaces as key and phase as value
 // This map will be used for the performance metrics purposes
 // Important note: This assumes that each instance only contains one Argo CD instance
@@ -734,7 +732,7 @@ func (r *ArgoCDReconciler) addDeletionFinalizer() error {
 }
 
 func (r *ArgoCDReconciler) removeDeletionFinalizer() error {
-	r.Instance.Finalizers = removeString(r.Instance.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	r.Instance.Finalizers = util.RemoveString(r.Instance.GetFinalizers(), common.ArgoCDDeletionFinalizer)
 	if err := resource.UpdateObject(r.Instance, r.Client); err != nil {
 		return errors.Wrapf(err, "removeDeletionFinalizer: failed to remove deletion finalizer for %s", r.Instance.Name)
 	}
