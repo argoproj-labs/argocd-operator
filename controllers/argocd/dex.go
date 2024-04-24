@@ -125,6 +125,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		}
 
 		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		deploy.Spec.Template.ObjectMeta.Labels["dex.redirectURI"] = r.getDexOAuthRedirectURI(cr)
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
