@@ -121,7 +121,6 @@ func TestGenerateRandomString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GenerateRandomString(tt.length)
-
 			if err != nil {
 				t.Errorf("GenerateRandomString() error = %v", err)
 				return
@@ -135,6 +134,48 @@ func TestGenerateRandomString(t *testing.T) {
 			// Check if the decoded string has the expected length
 			if len(decoded) != tt.length {
 				t.Errorf("GenerateRandomString() length = %v, want %v", len(decoded), tt.length)
+			}
+		})
+	}
+}
+
+func TestConstructString(t *testing.T) {
+	tests := []struct {
+		name      string
+		separator string
+		parts     []string
+		want      string
+	}{
+		{"DotSep", DotSep, []string{"a", "b", "c"}, "a.b.c"},
+		{"UnderscoreSep", UnderscoreSep, []string{"a", "b", "c"}, "a_b_c"},
+		{"Single char", UnderscoreSep, []string{"a"}, "a"},
+		{"Empty parts", DotSep, []string{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ConstructString(tt.separator, tt.parts...)
+			if got != tt.want {
+				t.Errorf("ConstructStrings() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStringPtr(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{"Simple string", "apple"},
+		{"Emty string", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := StringPtr(tt.value)
+			if *got != tt.value {
+				t.Errorf("StringPtr() = %v", got)
 			}
 		})
 	}
