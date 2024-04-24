@@ -36,6 +36,12 @@ spec:
             description: NotificationsConfigurationSpec allows users to define the
               triggers, templates, services, context and subscriptions for the notifications
             properties:
+              context:
+                additionalProperties:
+                  type: string
+                description: Context is used to define some shared context between
+                  all notification templates
+                type: object
               services:
                 additionalProperties:
                   type: string
