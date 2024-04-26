@@ -243,7 +243,7 @@ func (r *ReconcileArgoCD) reconcileStatusPhase(cr *argoproj.ArgoCD) error {
 	var phase string
 
 	if ((!cr.Spec.Controller.IsEnabled() && cr.Status.ApplicationController == "Unknown") || cr.Status.ApplicationController == "Running") &&
-		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running") &&
+		((!cr.Spec.Redis.IsEnabled() && cr.Status.Redis == "Unknown") || cr.Status.Redis == "Running" || (cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "")) &&
 		((!cr.Spec.Repo.IsEnabled() && cr.Status.Repo == "Unknown") || cr.Status.Repo == "Running") &&
 		((!cr.Spec.Server.IsEnabled() && cr.Status.Server == "Unknown") || cr.Status.Server == "Running") {
 		phase = "Available"

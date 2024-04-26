@@ -553,6 +553,11 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		return nil // Deployment found with nothing to do, move along...
 	}
 
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		log.Info("Custom Redis Endpoint. Skipping starting redis.")
+		return nil
+	}
+
 	if !cr.Spec.Redis.IsEnabled() {
 		log.Info("Redis disabled. Skipping starting redis.")
 		return nil
