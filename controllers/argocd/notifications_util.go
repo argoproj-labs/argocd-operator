@@ -2,6 +2,12 @@ package argocd
 
 import argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
+// getDefaultNotificationsContext returns an empty map for context
+func getDefaultNotificationsContext() map[string]string {
+	notificationContext := make(map[string]string)
+	return notificationContext
+}
+
 // getDefaultNotificationsTemplates returns a map that contains default template configurations
 func getDefaultNotificationsTemplates() map[string]string {
 

@@ -84,6 +84,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 			Namespace: cr.Namespace,
 		},
 		Spec: v1alpha1.NotificationsConfigurationSpec{
+			Context:   getDefaultNotificationsContext(),
 			Triggers:  getDefaultNotificationsTriggers(),
 			Templates: getDefaultNotificationsTemplates(),
 		},

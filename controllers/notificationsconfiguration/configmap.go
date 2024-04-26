@@ -60,6 +60,10 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 		expectedConfiguration[k] = v
 	}
 
+	if cr.Spec.Context != nil {
+		expectedConfiguration["context"] = mapToString(cr.Spec.Context)
+	}
+
 	if !reflect.DeepEqual(expectedConfiguration, NotificationsConfigMap.Data) {
 		NotificationsConfigMap.Data = expectedConfiguration
 		err := r.Client.Update(context.TODO(), NotificationsConfigMap)
@@ -70,4 +74,11 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 
 	// Do nothing
 	return nil
+}
+func mapToString(m map[string]string) string {
+	result := ""
+	for key, value := range m {
+		result += fmt.Sprintf("%s: %s\n", key, value)
+	}
+	return result
 }
