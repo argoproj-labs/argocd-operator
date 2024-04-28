@@ -289,7 +289,17 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 		return nil, err
 	}
 
+	customClusterRoleName := getCustomClusterRoleName(name)
+	customClusterRole := &v1.ClusterRole{}
+	if customClusterRoleName != "" {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Name: customClusterRoleName}, customClusterRole)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find the specified cluster role %s for the service account associated with %s : %s", customClusterRoleName, name, err)
+		}
+	}
+
 	existingClusterRole := &v1.ClusterRole{}
+	existingClusterRoleExists := false
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -299,21 +309,39 @@ func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.Pol
 			// Do Nothing
 			return nil, nil
 		}
-		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
-	}
+		if customClusterRoleName == "" {
+			return clusterRole, r.Client.Create(context.TODO(), clusterRole)
+		}
+	} else {
+		existingClusterRoleExists = true
+		// Role exists but there is no custom role, check if allowed and update rules if needed
+		if !allowed {
+			return nil, r.Client.Delete(context.TODO(), existingClusterRole)
+		}
 
-	if !allowed {
-		return nil, r.Client.Delete(context.TODO(), existingClusterRole)
-	}
-
-	// if the Rules differ, update the Role
-	if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
-		existingClusterRole.Rules = clusterRole.Rules
-		if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
-			return nil, err
+		// if the Rules differ, update the Role
+		if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
+			existingClusterRole.Rules = clusterRole.Rules
+			if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
+				return nil, err
+			}
 		}
 	}
-	return existingClusterRole, nil
+
+	// Return either custom or existing role
+	if customClusterRoleName != "" {
+		log.Info("Checking to see if we need to delete existing cluster role")
+		if existingClusterRoleExists {
+			log.Info("Deleting existing cluster role")
+			err = r.Client.Delete(context.TODO(), existingClusterRole)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("failed to delete default ClusterRole [%s]", existingClusterRole.Name))
+			}
+		}
+		return customClusterRole, nil
+	} else {
+		return existingClusterRole, nil
+	}
 }
 
 func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) error {

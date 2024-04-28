@@ -312,6 +312,16 @@ func (r *ReconcileArgoCD) reconcileRoleBinding(name string, rules []v1.PolicyRul
 	return nil
 }
 
+func getCustomClusterRoleName(name string) string {
+	if name == common.ArgoCDApplicationControllerComponent {
+		return os.Getenv(common.ArgoCDControllerClusterScopeRoleEnvName)
+	}
+	if name == common.ArgoCDServerComponent {
+		return os.Getenv(common.ArgoCDServerClusterScopeRoleEnvName)
+	}
+	return ""
+}
+
 func getCustomRoleName(name string) string {
 	if name == common.ArgoCDApplicationControllerComponent {
 		return os.Getenv(common.ArgoCDControllerClusterRoleEnvName)
@@ -362,17 +372,29 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 		return nil
 	}
 
-	roleBinding.Subjects = []v1.Subject{
+	var subjects []v1.Subject
+	subjects = []v1.Subject{
 		{
 			Kind:      v1.ServiceAccountKind,
 			Name:      generateResourceName(name, cr),
 			Namespace: cr.Namespace,
 		},
 	}
-	roleBinding.RoleRef = v1.RoleRef{
-		APIGroup: v1.GroupName,
-		Kind:     "ClusterRole",
-		Name:     GenerateUniqueResourceName(name, cr),
+
+	var roleRef v1.RoleRef
+	customClusterRoleName := getCustomClusterRoleName(name)
+	if customClusterRoleName != "" {
+		roleRef = v1.RoleRef{
+			APIGroup: v1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     customClusterRoleName,
+		}
+	} else {
+		roleRef = v1.RoleRef{
+			APIGroup: v1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     GenerateUniqueResourceName(name, cr),
+		}
 	}
 
 	if cr.Namespace == roleBinding.Namespace {
@@ -380,6 +402,21 @@ func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.Clus
 			return fmt.Errorf("failed to set ArgoCD CR \"%s\" as owner for roleBinding \"%s\": %s", cr.Name, roleBinding.Name, err)
 		}
 	}
+
+	// if the rolebinding exists but the roleRef changed we need to delete it and recreate it since we cannot
+	// a role with a different roleRef
+	if roleBindingExists {
+		// if the RoleRef changes, delete the existing role binding and create a new one
+		if !reflect.DeepEqual(roleBinding.RoleRef, roleRef) {
+			if err = r.Client.Delete(context.TODO(), roleBinding); err != nil {
+				return err
+			}
+			roleBindingExists = false
+			roleBinding = newClusterRoleBindingWithname(name, cr)
+		}
+	}
+	roleBinding.Subjects = subjects
+	roleBinding.RoleRef = roleRef
 
 	if roleBindingExists {
 		return r.Client.Update(context.TODO(), roleBinding)
