@@ -424,6 +424,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 		return nil // StatefulSet found, do nothing
 	}
 
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		log.Info("Custom Redis Endpoint. Skipping starting redis.")
+		return nil
+	}
+
 	if !cr.Spec.Redis.IsEnabled() {
 		log.Info("Redis disabled. Skipping starting Redis.") // Redis not enabled, do nothing.
 		return nil
