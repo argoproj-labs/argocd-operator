@@ -33,6 +33,16 @@ func TestGetLogLevel(t *testing.T) {
 			zapcore.DebugLevel,
 		},
 		{
+			"GetLogLevel Panic",
+			"panic",
+			zapcore.PanicLevel,
+		},
+		{
+			"GetLogLevel Fatal",
+			"fatal",
+			zapcore.FatalLevel,
+		},
+		{
 			"GetLogLevel Default",
 			"unknown",
 			zapcore.InfoLevel,
