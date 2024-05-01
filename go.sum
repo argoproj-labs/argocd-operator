@@ -649,10 +649,8 @@ github.com/apache/arrow/go/v11 v11.0.0/go.mod h1:Eg5OsL5H+e299f7u5ssuXsuHQVEGC4x
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
-github.com/argoproj/argo-cd/v2 v2.9.11 h1:+PJqkfbR3f8+0H7ZJzQf9HV9DT8uVOZ3nepbxTtVPT0=
-github.com/argoproj/argo-cd/v2 v2.9.11/go.mod h1:y24WY8Phm7hz9X7AlnkB5oq9swpoUiRlcT86wcTSRRI=
-github.com/argoproj/argo-cd/v2 v2.9.12 h1:4g/b0U0/PF8Yqe2LsJ5OfMVpoJiEDPfrDdtXjkux010=
-github.com/argoproj/argo-cd/v2 v2.9.12/go.mod h1:y24WY8Phm7hz9X7AlnkB5oq9swpoUiRlcT86wcTSRRI=
+github.com/argoproj/argo-cd/v2 v2.9.14 h1:/GujbAJULSZxpbT2oE/bHi3qP3E7NkGUlM1t7G4t2Gc=
+github.com/argoproj/argo-cd/v2 v2.9.14/go.mod h1:Cy70uz6NUrFYtF8tb7GzFYoF6JVpvLZe0KWRc/wmHvQ=
 github.com/argoproj/pkg v0.13.7-0.20230626144333-d56162821bd1 h1:qsHwwOJ21K2Ao0xPju1sNuqphyMnMYkyB3ZLoLtxWpo=
 github.com/argoproj/pkg v0.13.7-0.20230626144333-d56162821bd1/go.mod h1:CZHlkyAD1/+FbEn6cB2DQTj48IoLGvEYsWEvtzP3238=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
