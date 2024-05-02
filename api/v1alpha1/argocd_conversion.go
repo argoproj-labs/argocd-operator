@@ -36,6 +36,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 			sso.Keycloak.Version = src.Spec.SSO.Version
 			sso.Keycloak.VerifyTLS = src.Spec.SSO.VerifyTLS
 			sso.Keycloak.Resources = src.Spec.SSO.Resources
+			sso.Keycloak.Host = src.Spec.SSO.Keycloak.Host
 		}
 	}
 

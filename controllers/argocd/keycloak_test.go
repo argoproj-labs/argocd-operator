@@ -348,6 +348,21 @@ func TestNewKeycloakTemplate_testRoute(t *testing.T) {
 	assert.Equal(t, route.Spec.Host, a.Spec.SSO.Keycloak.Host)
 }
 
+func TestNewKeycloakTemplate_testRouteWhenHostIsEmpty(t *testing.T) {
+	a := makeTestArgoCDForKeycloak()
+	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+		Provider: "keycloak",
+	}
+	route := getKeycloakRouteTemplate(fakeNs, *a)
+	assert.Equal(t, route.Name, "${APPLICATION_NAME}")
+	assert.Equal(t, route.Namespace, fakeNs)
+	assert.Equal(t, route.Spec.To,
+		routev1.RouteTargetReference{Name: "${APPLICATION_NAME}"})
+	assert.Equal(t, route.Spec.TLS,
+		&routev1.TLSConfig{Termination: "reencrypt"})
+	assert.Equal(t, route.Spec.Host, "")
+}
+
 func TestKeycloak_testRealmConfigCreation(t *testing.T) {
 	cfg := &keycloakConfig{
 		ArgoName:      "foo-argocd",

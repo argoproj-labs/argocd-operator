@@ -26,6 +26,7 @@ import (
 	k8sappsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -462,4 +463,46 @@ func TestReconcile_testKeycloakIngressHost(t *testing.T) {
 
 	assert.Equal(t, ing.Spec.Rules, testRules)
 
+}
+
+func TestReconcile_testKeycloakRouteHost(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+	a.Spec.SSO.Keycloak = &argoproj.ArgoCDKeycloakSpec{
+		Host: "sso.test.example.com",
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	assert.NoError(t, r.reconcileSSO(a))
+
+	// Keycloak Route
+	route := getKeycloakRouteTemplate(a.Namespace, *a)
+
+	expectedRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:      map[string]string{"application": "${APPLICATION_NAME}"},
+			Name:        "${APPLICATION_NAME}",
+			Namespace:   a.Namespace,
+			Annotations: map[string]string{"description": "Route for application's https service"},
+		},
+		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Route"},
+		Spec: routev1.RouteSpec{
+			Host: getKeycloakOpenshiftHost(a.Spec.SSO.Keycloak),
+			TLS: &routev1.TLSConfig{
+				Termination: "reencrypt",
+			},
+			To: routev1.RouteTargetReference{
+				Name: "${APPLICATION_NAME}",
+			},
+		},
+	}
+	assert.Equal(t, route, expectedRoute)
 }
