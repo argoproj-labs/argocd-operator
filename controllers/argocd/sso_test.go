@@ -40,6 +40,7 @@ func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
 	a := makeTestArgoCDForKeycloak()
 
 	templateAPIFound = true
+	deploymentConfigAPIFound = true
 
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}

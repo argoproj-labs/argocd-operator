@@ -227,7 +227,7 @@ func main() {
 	}
 
 	// Setup Schemes for SSO if template instance is available.
-	if argocd.IsTemplateAPIAvailable() {
+	if argocd.CanUseKeycloakWithTemplate() {
 		if err := templatev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)

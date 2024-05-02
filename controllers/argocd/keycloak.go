@@ -111,7 +111,7 @@ func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 
 	if img == "" {
 		img = common.ArgoCDKeycloakImage
-		if IsTemplateAPIAvailable() {
+		if CanUseKeycloakWithTemplate() {
 			img = common.ArgoCDKeycloakImageForOpenShift
 		}
 		defaultImg = true
@@ -123,7 +123,7 @@ func getKeycloakContainerImage(cr *argoproj.ArgoCD) string {
 
 	if tag == "" {
 		tag = common.ArgoCDKeycloakVersion
-		if IsTemplateAPIAvailable() {
+		if CanUseKeycloakWithTemplate() {
 			tag = common.ArgoCDKeycloakVersionForOpenShift
 		}
 		defaultTag = true
@@ -910,7 +910,7 @@ func createRealmConfig(cfg *keycloakConfig) ([]byte, error) {
 
 	// Add OpenShift-v4 as Identity Provider only for OpenShift environment.
 	// No Identity Provider is configured by default for non-openshift environments.
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		baseURL := "https://kubernetes.default.svc.cluster.local"
 		if isProxyCluster() {
 			baseURL = getOpenShiftAPIURL()
@@ -1005,7 +1005,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	// Create openshift OAuthClient
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		oAuthClient := &oauthv1.OAuthClient{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "OAuthClient",
@@ -1128,7 +1128,7 @@ func handleKeycloakPodDeletion(dc *appsv1.DeploymentConfig) error {
 func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// TemplateAPI is available, Install keycloak using openshift templates.
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		err := r.reconcileKeycloakForOpenShift(cr)
 		if err != nil {
 			return err
@@ -1146,7 +1146,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakConfiguration(cr *argoproj.ArgoCD) er
 func deleteKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 
 	// If SSO is installed using OpenShift templates.
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		err := deleteKeycloakConfigForOpenShift(cr)
 		if err != nil {
 			return err

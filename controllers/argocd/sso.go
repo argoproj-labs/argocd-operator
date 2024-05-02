@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 
+	deploymentConfig "github.com/openshift/api/apps/v1"
 	template "github.com/openshift/api/template/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -33,13 +34,25 @@ const (
 )
 
 var (
-	templateAPIFound     = false
-	ssoConfigLegalStatus string
+	templateAPIFound         = false
+	deploymentConfigAPIFound = false
+	ssoConfigLegalStatus     string
 )
 
-// IsTemplateAPIAvailable returns true if the template API is present.
-func IsTemplateAPIAvailable() bool {
-	return templateAPIFound
+// CanUseKeycloakWithTemplate checks if the required APIs are available to
+// manage a Keycloak instance using Templates.
+func CanUseKeycloakWithTemplate() bool {
+	return templateAPIFound && deploymentConfigAPIFound
+}
+
+func verifyKeycloakTemplateAPIs() error {
+	found, err := argoutil.VerifyAPI(deploymentConfig.GroupVersion.Group, deploymentConfig.GroupVersion.Version)
+	if err != nil {
+		return err
+	}
+	deploymentConfigAPIFound = found
+
+	return verifyTemplateAPI()
 }
 
 // verifyTemplateAPI will verify that the template API is present.
