@@ -46,22 +46,17 @@ func CanUseKeycloakWithTemplate() bool {
 }
 
 func verifyKeycloakTemplateAPIs() error {
-	found, err := argoutil.VerifyAPI(deploymentConfig.GroupVersion.Group, deploymentConfig.GroupVersion.Version)
+	var err error
+	deploymentConfigAPIFound, err = argoutil.VerifyAPI(deploymentConfig.GroupVersion.Group, deploymentConfig.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
-	deploymentConfigAPIFound = found
 
-	return verifyTemplateAPI()
-}
-
-// verifyTemplateAPI will verify that the template API is present.
-func verifyTemplateAPI() error {
-	found, err := argoutil.VerifyAPI(template.GroupVersion.Group, template.GroupVersion.Version)
+	templateAPIFound, err = argoutil.VerifyAPI(template.GroupVersion.Group, template.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
-	templateAPIFound = found
+
 	return nil
 }
 
@@ -127,6 +122,16 @@ func (r *ReconcileArgoCD) reconcileSSO(cr *argoproj.ArgoCD) error {
 				ssoConfigLegalStatus = ssoLegalFailed // set global indicator that SSO config has gone wrong
 				_ = r.reconcileStatusSSO(cr)
 				return err
+			}
+
+			// DeploymentConfig API is being deprecated with OpenShift 4.14. Users who wish to
+			// install Keycloak using Template should enable the DeploymentConfig API.
+			if templateAPIFound && !deploymentConfigAPIFound {
+				ssoConfigLegalStatus = ssoLegalFailed
+				if err := r.reconcileStatusSSO(cr); err != nil {
+					return err
+				}
+				return fmt.Errorf("cannot manage Keycloak using Template since the DeploymentConfig API is not found")
 			}
 		}
 

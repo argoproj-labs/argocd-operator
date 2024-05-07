@@ -33,6 +33,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 func TestReconcile_testKeycloakTemplateInstance(t *testing.T) {
@@ -262,6 +263,36 @@ func TestReconcile_testKeycloakK8sInstance(t *testing.T) {
 	assert.NoError(t, createNamespace(r, a.Namespace, ""))
 
 	assert.NoError(t, r.reconcileSSO(a))
+}
+
+func TestReconcile_KeycloakTemplateWithoutDeploymentConfig(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCDForKeycloak()
+
+	// Cluster has Template API but no DeploymentConfig API
+	templateAPIFound = true
+	deploymentConfigAPIFound = false
+	defer removeTemplateAPI()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, templatev1.Install, oappsv1.Install, routev1.Install)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	err := r.reconcileSSO(a)
+	assert.NotNil(t, err)
+	expectedErrMsg := "cannot manage Keycloak using Template since the DeploymentConfig API is not found"
+	assert.Equal(t, err.Error(), expectedErrMsg)
+
+	// Verify that the Template instance is not created.
+	templateInstance := &templatev1.TemplateInstance{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: "rhsso", Namespace: a.Namespace}, templateInstance)
+	assert.NotNil(t, err)
+	assert.True(t, apierrors.IsNotFound(err))
 }
 
 func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
