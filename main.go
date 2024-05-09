@@ -241,6 +241,8 @@ func main() {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
+	} else {
+		setupLog.Info("Keycloak instance cannot be managed using OpenShift Template, as DeploymentConfig/Template API is not present")
 	}
 
 	if err = (&argocd.ReconcileArgoCD{
