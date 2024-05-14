@@ -1,6 +1,7 @@
 module github.com/argoproj-labs/argocd-operator
 
 go 1.21
+toolchain go1.22.2
 
 require (
 	github.com/argoproj/argo-cd/v2 v2.10.5
@@ -15,7 +16,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/sethvargo/go-password v0.2.0
+	github.com/sethvargo/go-password v0.3.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.17.0
