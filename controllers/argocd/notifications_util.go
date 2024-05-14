@@ -2,26 +2,32 @@ package argocd
 
 import argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 
-// getDefaultNotificationsConfig returns a map that contains default triggers and template configurations for argocd-notifications-cm
-func getDefaultNotificationsConfig() map[string]string {
+// getDefaultNotificationsContext returns an empty map for context
+func getDefaultNotificationsContext() map[string]string {
+	notificationContext := make(map[string]string)
+	return notificationContext
+}
 
-	notificationsConfig := make(map[string]string)
+// getDefaultNotificationsTemplates returns a map that contains default template configurations
+func getDefaultNotificationsTemplates() map[string]string {
+
+	notificationsTempaltes := make(map[string]string)
 
 	// configure default notifications templates
 
-	notificationsConfig["template.app-created"] = `email:
+	notificationsTempaltes["template.app-created"] = `email:
   subject: Application {{.app.metadata.name}} has been created.
 message: Application {{.app.metadata.name}} has been created.
 teams:
   title: Application {{.app.metadata.name}} has been created.`
 
-	notificationsConfig["template.app-deleted"] = `email:
+	notificationsTempaltes["template.app-deleted"] = `email:
   subject: Application {{.app.metadata.name}} has been deleted.
 message: Application {{.app.metadata.name}} has been deleted.
 teams:
   title: Application {{.app.metadata.name}} has been deleted.`
 
-	notificationsConfig["template.app-deployed"] = `email:
+	notificationsTempaltes["template.app-deployed"] = `email:
   subject: New version of an application {{.app.metadata.name}} is up and running.
 message: |
   {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} is now running new version of deployments manifests.
@@ -104,7 +110,7 @@ teams:
   themeColor: '#000080'
   title: New version of an application {{.app.metadata.name}} is up and running.`
 
-	notificationsConfig["template.app-health-degraded"] = `email:
+	notificationsTempaltes["template.app-health-degraded"] = `email:
   subject: Application {{.app.metadata.name}} has degraded.
 message: |
   {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} has degraded.
@@ -179,7 +185,7 @@ teams:
   themeColor: '#FF0000'
   title: Application {{.app.metadata.name}} has degraded.`
 
-	notificationsConfig["template.app-sync-failed"] = `email:
+	notificationsTempaltes["template.app-sync-failed"] = `email:
   subject: Failed to sync application {{.app.metadata.name}}.
 message: |
   {{if eq .serviceType "slack"}}:exclamation:{{end}}  The sync operation of application {{.app.metadata.name}} has failed at {{.app.status.operationState.finishedAt}} with the following error: {{.app.status.operationState.message}}
@@ -258,7 +264,7 @@ teams:
   themeColor: '#FF0000'
   title: Failed to sync application {{.app.metadata.name}}.`
 
-	notificationsConfig["template.app-sync-running"] = `email:
+	notificationsTempaltes["template.app-sync-running"] = `email:
   subject: Start syncing application {{.app.metadata.name}}.
 message: |
   The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationState.startedAt}}.
@@ -336,7 +342,7 @@ teams:
     }]
   title: Start syncing application {{.app.metadata.name}}.`
 
-	notificationsConfig["template.app-sync-status-unknown"] = `email:
+	notificationsTempaltes["template.app-sync-status-unknown"] = `email:
   subject: Application {{.app.metadata.name}} sync status is 'Unknown'
 message: |
   {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync is 'Unknown'.
@@ -415,7 +421,7 @@ teams:
     }]
   title: Application {{.app.metadata.name}} sync status is 'Unknown'`
 
-	notificationsConfig["template.app-sync-succeeded"] = `email:
+	notificationsTempaltes["template.app-sync-succeeded"] = `email:
   subject: Application {{.app.metadata.name}} has been successfully synced.
 message: |
   {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been successfully synced at {{.app.status.operationState.finishedAt}}.
@@ -494,53 +500,62 @@ teams:
   themeColor: '#000080'
   title: Application {{.app.metadata.name}} has been successfully synced`
 
+	return notificationsTempaltes
+}
+
+// getDefaultNotificationsTriggers returns a map that contains default triggers configurations
+func getDefaultNotificationsTriggers() map[string]string {
+
+	notificationsTriggers := make(map[string]string)
+
 	// configure default notifications triggers
 
-	notificationsConfig["trigger.on-created"] = `- description: Application is created.
+	notificationsTriggers["trigger.on-created"] = `- description: Application is created.
   oncePer: app.metadata.name
   send:
   - app-created
   when: "true"`
 
-	notificationsConfig["trigger.on-deleted"] = `- description: Application is deleted.
+	notificationsTriggers["trigger.on-deleted"] = `- description: Application is deleted.
   oncePer: app.metadata.name
   send:
   - app-deleted
   when: app.metadata.deletionTimestamp != nil`
 
-	notificationsConfig["trigger.on-deployed"] = `- description: Application is synced and healthy. Triggered once per commit.
+	notificationsTriggers["trigger.on-deployed"] = `- description: Application is synced and healthy. Triggered once per commit.
   oncePer: app.status.operationState.syncResult.revision
   send:
   - app-deployed
   when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status
       == 'Healthy'`
 
-	notificationsConfig["trigger.on-health-degraded"] = `- description: Application has degraded
+	notificationsTriggers["trigger.on-health-degraded"] = `- description: Application has degraded
   send:
   - app-health-degraded
   when: app.status.health.status == 'Degraded'`
 
-	notificationsConfig["trigger.on-sync-failed"] = `- description: Application syncing has failed
+	notificationsTriggers["trigger.on-sync-failed"] = `- description: Application syncing has failed
   send:
   - app-sync-failed
   when: app.status.operationState.phase in ['Error', 'Failed']`
 
-	notificationsConfig["trigger.on-sync-running"] = `- description: Application is being synced
+	notificationsTriggers["trigger.on-sync-running"] = `- description: Application is being synced
   send:
   - app-sync-running
   when: app.status.operationState.phase in ['Running']`
 
-	notificationsConfig["trigger.on-sync-status-unknown"] = `- description: Application status is 'Unknown'
+	notificationsTriggers["trigger.on-sync-status-unknown"] = `- description: Application status is 'Unknown'
   send:
   - app-sync-status-unknown
   when: app.status.sync.status == 'Unknown'`
 
-	notificationsConfig["trigger.on-sync-succeeded"] = `- description: Application syncing has succeeded
+	notificationsTriggers["trigger.on-sync-succeeded"] = `- description: Application syncing has succeeded
   send:
   - app-sync-succeeded
   when: app.status.operationState.phase in ['Succeeded']`
 
-	return notificationsConfig
+	return notificationsTriggers
+
 }
 
 // getArgoCDNotificationsControllerReplicas will return the size value for the argocd-notifications-controller replica count if it

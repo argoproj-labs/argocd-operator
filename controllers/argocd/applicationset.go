@@ -83,10 +83,11 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 		cmd = append(cmd, "--allowed-scm-providers", fmt.Sprint(strings.Join(cr.Spec.ApplicationSet.SCMProviders, ",")))
 	}
 
-	// appset in any ns doesn't support default SCM providers list.
-	// The list needs to be explicitly defined by admins when the feature is enabled.
+	// appset in any ns is enabled and no scmProviders allow list is specified,
+	// disables scm & PR generators to prevent potential security issues
+	// https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Appset-Any-Namespace/#scm-providers-secrets-consideration
 	if len(appsetsSourceNamespaces) > 0 && !(len(cr.Spec.ApplicationSet.SCMProviders) > 0) {
-		cmd = append(cmd, "--enable-scm-providers", "false")
+		cmd = append(cmd, "--enable-scm-providers=false")
 	}
 
 	// ApplicationSet command arguments provided by the user

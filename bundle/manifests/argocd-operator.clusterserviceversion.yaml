@@ -127,6 +127,35 @@ metadata:
           }
         },
         {
+          "apiVersion": "argoproj.io/v1alpha1",
+          "kind": "NotificationsConfiguration",
+          "metadata": {
+            "name": "default-notifications-configuration"
+          },
+          "spec": {
+            "templates": {
+              "template.app-created": "email:\n  subject: Application {{.app.metadata.name}} has been created.\nmessage: Application {{.app.metadata.name}} has been created.\nteams:\n  title: Application {{.app.metadata.name}} has been created.",
+              "template.app-deleted": "email:\n  subject: Application {{.app.metadata.name}} has been deleted.\nmessage: Application {{.app.metadata.name}} has been deleted.\nteams:\n  title: Application {{.app.metadata.name}} has been deleted.",
+              "template.app-deployed": "email:\n  subject: New version of an application {{.app.metadata.name}} is up and running.\nmessage: |\n  {{if eq .serviceType \"slack\"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} is now running new version of deployments manifests.\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#18be52\",\n      \"fields\": [\n      {\n        \"title\": \"Sync Status\",\n        \"value\": \"{{.app.status.sync.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Revision\",\n        \"value\": \"{{.app.status.sync.revision}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Sync Status\",\n      \"value\": \"{{.app.status.sync.status}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    },\n    {\n      \"name\": \"Revision\",\n      \"value\": \"{{.app.status.sync.revision}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |-\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Operation Application\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  themeColor: '#000080'\n  title: New version of an application {{.app.metadata.name}} is up and running.",
+              "template.app-health-degraded": "email:\n  subject: Application {{.app.metadata.name}} has degraded.\nmessage: |\n  {{if eq .serviceType \"slack\"}}:exclamation:{{end}} Application {{.app.metadata.name}} has degraded.\n  Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}.\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\": \"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#f4c030\",\n      \"fields\": [\n      {\n        \"title\": \"Health Status\",\n        \"value\": \"{{.app.status.health.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Health Status\",\n      \"value\": \"{{.app.status.health.status}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Application\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  themeColor: '#FF0000'\n  title: Application {{.app.metadata.name}} has degraded.",
+              "template.app-sync-failed": "email:\n  subject: Failed to sync application {{.app.metadata.name}}.\nmessage: |\n  {{if eq .serviceType \"slack\"}}:exclamation:{{end}}  The sync operation of application {{.app.metadata.name}} has failed at {{.app.status.operationState.finishedAt}} with the following error: {{.app.status.operationState.message}}\n  Sync operation details are available at: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true .\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#E96D76\",\n      \"fields\": [\n      {\n        \"title\": \"Sync Status\",\n        \"value\": \"{{.app.status.sync.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Sync Status\",\n      \"value\": \"{{.app.status.sync.status}}\"\n    },\n    {\n      \"name\": \"Failed at\",\n      \"value\": \"{{.app.status.operationState.finishedAt}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |-\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Operation\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  themeColor: '#FF0000'\n  title: Failed to sync application {{.app.metadata.name}}.",
+              "template.app-sync-running": "email:\n  subject: Start syncing application {{.app.metadata.name}}.\nmessage: |\n  The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationState.startedAt}}.\n  Sync operation details are available at: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true .\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#0DADEA\",\n      \"fields\": [\n      {\n        \"title\": \"Sync Status\",\n        \"value\": \"{{.app.status.sync.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Sync Status\",\n      \"value\": \"{{.app.status.sync.status}}\"\n    },\n    {\n      \"name\": \"Started at\",\n      \"value\": \"{{.app.status.operationState.startedAt}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |-\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Operation\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  title: Start syncing application {{.app.metadata.name}}.",
+              "template.app-sync-status-unknown": "email:\n  subject: Application {{.app.metadata.name}} sync status is 'Unknown'\nmessage: |\n  {{if eq .serviceType \"slack\"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync is 'Unknown'.\n  Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}.\n  {{if ne .serviceType \"slack\"}}\n  {{range $c := .app.status.conditions}}\n      * {{$c.message}}\n  {{end}}\n  {{end}}\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#E96D76\",\n      \"fields\": [\n      {\n        \"title\": \"Sync Status\",\n        \"value\": \"{{.app.status.sync.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Sync Status\",\n      \"value\": \"{{.app.status.sync.status}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |-\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Application\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  title: Application {{.app.metadata.name}} sync status is 'Unknown'",
+              "template.app-sync-succeeded": "email:\n  subject: Application {{.app.metadata.name}} has been successfully synced.\nmessage: |\n  {{if eq .serviceType \"slack\"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been successfully synced at {{.app.status.operationState.finishedAt}}.\n  Sync operation details are available at: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true .\nslack:\n  attachments: |\n    [{\n      \"title\": \"{{ .app.metadata.name}}\",\n      \"title_link\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}\",\n      \"color\": \"#18be52\",\n      \"fields\": [\n      {\n        \"title\": \"Sync Status\",\n        \"value\": \"{{.app.status.sync.status}}\",\n        \"short\": true\n      },\n      {\n        \"title\": \"Repository\",\n        \"value\": \"{{.app.spec.source.repoURL}}\",\n        \"short\": true\n      }\n      {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"title\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\",\n        \"short\": true\n      }\n      {{end}}\n      ]\n    }]\n  deliveryPolicy: Post\n  groupingKey: \"\"\n  notifyBroadcast: false\nteams:\n  facts: |\n    [{\n      \"name\": \"Sync Status\",\n      \"value\": \"{{.app.status.sync.status}}\"\n    },\n    {\n      \"name\": \"Synced at\",\n      \"value\": \"{{.app.status.operationState.finishedAt}}\"\n    },\n    {\n      \"name\": \"Repository\",\n      \"value\": \"{{.app.spec.source.repoURL}}\"\n    }\n    {{range $index, $c := .app.status.conditions}}\n      {{if not $index}},{{end}}\n      {{if $index}},{{end}}\n      {\n        \"name\": \"{{$c.type}}\",\n        \"value\": \"{{$c.message}}\"\n      }\n    {{end}}\n    ]\n  potentialAction: |-\n    [{\n      \"@type\":\"OpenUri\",\n      \"name\":\"Operation Details\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true\"\n      }]\n    },\n    {\n      \"@type\":\"OpenUri\",\n      \"name\":\"Open Repository\",\n      \"targets\":[{\n        \"os\":\"default\",\n        \"uri\":\"{{.app.spec.source.repoURL | call .repo.RepoURLToHTTPS}}\"\n      }]\n    }]\n  themeColor: '#000080'\n  title: Application {{.app.metadata.name}} has been successfully synced"
+            },
+            "triggers": {
+              "trigger.on-created": "- description: Application is created.\n  oncePer: app.metadata.name\n  send:\n  - app-created\n  when: \"true\"",
+              "trigger.on-deleted": "- description: Application is deleted.\n  oncePer: app.metadata.name\n  send:\n  - app-deleted\n  when: app.metadata.deletionTimestamp != nil",
+              "trigger.on-deployed": "- description: Application is synced and healthy. Triggered once per commit.\n  oncePer: app.status.operationState.syncResult.revision\n  send:\n  - app-deployed\n  when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status\n      == 'Healthy'",
+              "trigger.on-health-degraded": "- description: Application has degraded\n  send:\n  - app-health-degraded\n  when: app.status.health.status == 'Degraded'",
+              "trigger.on-sync-failed": "- description: Application syncing has failed\n  send:\n  - app-sync-failed\n  when: app.status.operationState.phase in ['Error', 'Failed']",
+              "trigger.on-sync-running": "- description: Application is being synced\n  send:\n  - app-sync-running\n  when: app.status.operationState.phase in ['Running']",
+              "trigger.on-sync-status-unknown": "- description: Application status is 'Unknown'\n  send:\n  - app-sync-status-unknown\n  when: app.status.sync.status == 'Unknown'",
+              "trigger.on-sync-succeeded": "- description: Application syncing has succeeded\n  send:\n  - app-sync-succeeded\n  when: app.status.operationState.phase in ['Succeeded']"
+            }
+          }
+        },
+        {
           "apiVersion": "argoproj.io/v1beta1",
           "kind": "ArgoCD",
           "metadata": {
@@ -1507,6 +1536,93 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       version: v1beta1
+    - description: NotificationsConfiguration is the Schema for the notificationsconfiguration
+        API
+      displayName: NotificationsConfiguration
+      kind: NotificationsConfiguration
+      name: notificationsconfigurations.argoproj.io
+      resources:
+      - kind: ArgoCD
+        name: ""
+        version: v1alpha1
+      - kind: ArgoCDExport
+        name: ""
+        version: v1alpha1
+      - kind: NotificationsConfiguration
+        name: ""
+        version: v1alpha1
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      - kind: CronJob
+        name: ""
+        version: v1
+      - kind: Deployment
+        name: ""
+        version: v1
+      - kind: Ingress
+        name: ""
+        version: v1
+      - kind: Job
+        name: ""
+        version: v1
+      - kind: PersistentVolumeClaim
+        name: ""
+        version: v1
+      - kind: Pod
+        name: ""
+        version: v1
+      - kind: Prometheus
+        name: ""
+        version: v1
+      - kind: ReplicaSet
+        name: ""
+        version: v1
+      - kind: Route
+        name: ""
+        version: v1
+      - kind: Secret
+        name: ""
+        version: v1
+      - kind: Service
+        name: ""
+        version: v1
+      - kind: ServiceMonitor
+        name: ""
+        version: v1
+      - kind: StatefulSet
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Argocd is the name of the ArgoCD instance to export.
+        displayName: ArgoCD
+        path: argocd
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Schedule in Cron format, see https://en.wikipedia.org/wiki/Cron.
+        displayName: Schedule
+        path: schedule
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Storage defines the storage configuration options.
+        displayName: Storage
+        path: storage
+      statusDescriptors:
+      - description: 'Phase is a simple, high-level summary of where the ArgoCDExport
+          is in its lifecycle. There are five possible phase values: Pending: The
+          ArgoCDExport has been accepted by the Kubernetes system, but one or more
+          of the required resources have not been created. Running: All of the containers
+          for the ArgoCDExport are still running, or in the process of starting or
+          restarting. Succeeded: All containers for the ArgoCDExport have terminated
+          in success, and will not be restarted. Failed: At least one container has
+          terminated in failure, either exited with non-zero status or was terminated
+          by the system. Unknown: For some reason the state of the ArgoCDExport could
+          not be obtained.'
+        displayName: Phase
+        path: phase
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      version: v1alpha1
   description: |
     ## Overview
 
@@ -1561,6 +1677,18 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - ""
           resources:
@@ -1627,6 +1755,13 @@ spec:
           - argocds
           - argocds/finalizers
           - argocds/status
+          verbs:
+          - '*'
+        - apiGroups:
+          - argoproj.io
+          resources:
+          - notificationsconfigurations
+          - notificationsconfigurations/finalizers
           verbs:
           - '*'
         - apiGroups:

@@ -458,6 +458,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			if err := r.reconcileDexConfiguration(existingCM, cr); err != nil {
 				return err
 			}
+			cm.Data[common.ArgoCDKeyDexConfig] = existingCM.Data[common.ArgoCDKeyDexConfig]
 		} else if cr.Spec.SSO != nil && cr.Spec.SSO.Provider.ToLower() == argoproj.SSOProviderTypeKeycloak {
 			// retain oidc.config during reconcilliation when keycloak is configured
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]

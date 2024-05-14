@@ -463,6 +463,47 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 	}
 }
 
+func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
+
+	expectedEnv := []corev1.EnvVar{
+		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
+		{Name: "HOME", Value: "/home/argocd"},
+	}
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		// Assuming spec.controller.env is a slice
+		a.Spec.Controller.Env = []corev1.EnvVar{
+			{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	env := ss.Spec.Template.Spec.Containers[0].Env
+
+	diffEnv := cmp.Diff(env, expectedEnv)
+
+	if diffEnv != "" {
+		t.Fatalf("Reconciliation of EnvVars failed:\n%s", diffEnv)
+	}
+}
+
 func Test_UpdateNodePlacementStateful(t *testing.T) {
 
 	ss := &appsv1.StatefulSet{

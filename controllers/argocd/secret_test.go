@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	"reflect"
 	"sort"
 	"testing"
@@ -259,7 +260,70 @@ func Test_ReconcileArgoCD_ReconcileExistingArgoSecret(t *testing.T) {
 	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
 		t.Errorf("Expected data for data.server.secretKey but got nothing")
 	}
+}
 
+func Test_ReconcileArgoCD_ReconcileShouldNotChangeWhenUpdatedAdminPass(t *testing.T) {
+	argocd := &argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd",
+			Namespace: "argocd-operator",
+		},
+	}
+
+	clusterSecret := argoutil.NewSecretWithSuffix(argocd, "cluster")
+	clusterSecret.Data = map[string][]byte{common.ArgoCDKeyAdminPassword: []byte("something")}
+	tlsSecret := argoutil.NewSecretWithSuffix(argocd, "tls")
+
+	resObjs := []client.Object{argocd}
+	subresObjs := []client.Object{argocd}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	r.Client.Create(context.TODO(), clusterSecret)
+	r.Client.Create(context.TODO(), tlsSecret)
+
+	err := r.reconcileArgoSecret(argocd)
+
+	assert.NoError(t, err)
+
+	testSecret := &corev1.Secret{}
+	secretErr := r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+	assert.NoError(t, secretErr)
+
+	// simulating update of argo-cd Admin password from cli or argocd dashboard
+	hashedPassword, _ := argopass.HashPassword("updated_password")
+	testSecret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
+	mTime := nowBytes()
+	testSecret.Data[common.ArgoCDKeyAdminPasswordMTime] = mTime
+	r.Client.Update(context.TODO(), testSecret)
+
+	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
+	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+
+	// checking if reconciliation updates the ArgoCDKeyAdminPassword and ArgoCDKeyAdminPasswordMTime
+	if string(testSecret.Data[common.ArgoCDKeyAdminPassword]) != hashedPassword {
+		t.Errorf("Expected hashedPassword to reamin unchanged but got updated")
+	}
+	if string(testSecret.Data[common.ArgoCDKeyAdminPasswordMTime]) != string(mTime) {
+		t.Errorf("Expected ArgoCDKeyAdminPasswordMTime to reamin unchanged but got updated")
+	}
+
+	// if you remove the secret.Data it should come back, including the secretKey
+	testSecret.Data = nil
+	r.Client.Update(context.TODO(), testSecret)
+
+	_ = r.reconcileExistingArgoSecret(argocd, testSecret, clusterSecret, tlsSecret)
+	_ = r.Client.Get(context.TODO(), types.NamespacedName{Name: "argocd-secret", Namespace: "argocd-operator"}, testSecret)
+
+	if testSecret.Data == nil {
+		t.Errorf("Expected data for data.server but got nothing")
+	}
+
+	if testSecret.Data[common.ArgoCDKeyServerSecretKey] == nil {
+		t.Errorf("Expected data for data.server.secretKey but got nothing")
+	}
 }
 
 func Test_ReconcileArgoCD_ReconcileRedisTLSSecret(t *testing.T) {

@@ -450,7 +450,7 @@ func TestReconcileApplicationSet_Deployments_Command(t *testing.T) {
 				},
 				SourceNamespaces: []string{"foo", "bar"},
 			},
-			expectedCmd: []string{"--applicationset-namespaces", "foo,bar", "--enable-scm-providers", "false"},
+			expectedCmd: []string{"--applicationset-namespaces", "foo,bar", "--enable-scm-providers=false"},
 		},
 		{
 			name: "with SCM provider list",
