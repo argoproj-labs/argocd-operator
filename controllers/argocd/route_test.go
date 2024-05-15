@@ -97,8 +97,8 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
-		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+		Termination:                   routev1.TLSTerminationReencrypt,
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
@@ -202,8 +202,8 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig = &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
-		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+		Termination:                   routev1.TLSTerminationReencrypt,
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
 		t.Fatalf("failed to reconcile route:\n%s", diff)
@@ -280,7 +280,8 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
 					TLS: &routev1.TLSConfig{
-						Termination: "passthrough",
+						Termination:                   routev1.TLSTerminationPassthrough,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 					},
 				},
 			},
@@ -311,7 +312,7 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
-		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 		Termination:                   routev1.TLSTerminationPassthrough,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {

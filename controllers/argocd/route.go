@@ -231,13 +231,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			Termination:                   routev1.TLSTerminationEdge,
 		}
 	} else {
-		// Server is using TLS configure passthrough.
+		// Server is using TLS configure reencrypt.
 		route.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("https"),
 		}
 		route.Spec.TLS = &routev1.TLSConfig{
-			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-			Termination:                   routev1.TLSTerminationPassthrough,
+			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
+			Termination:                   routev1.TLSTerminationReencrypt,
 		}
 	}
 
