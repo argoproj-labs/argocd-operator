@@ -14,7 +14,7 @@ import (
 func (asr *ApplicationSetReconciler) ReconcileStatus() error {
 	status := common.ArgoCDStatusUnknown
 
-	if asr.Instance.Spec.ApplicationSet.IsEnabled() {
+	if asr.Instance.Spec.ApplicationSet != nil && asr.Instance.Spec.ApplicationSet.IsEnabled() {
 		d, err := workloads.GetDeployment(resourceName, asr.Instance.Namespace, asr.Client)
 		if err != nil {
 			return errors.Wrapf(err, "failed to retrieve deployment %s", resourceName)
