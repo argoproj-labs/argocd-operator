@@ -13,4 +13,4 @@ spec:
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - command: sleep 30s
+  - command: sleep 30

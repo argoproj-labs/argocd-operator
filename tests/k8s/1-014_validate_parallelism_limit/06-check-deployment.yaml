@@ -8,8 +8,8 @@ commands:
 - script: |
     set -e
     expected=10
-    wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
-    if ! echo "$wlCommand" | grep -qPz -- "--kubectl-parallelism-limit\\n${expected}(\$|\\n)"; then
+    wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' | tr '\n' ' ' )
+    if ! echo "$wlCommand" | grep -q -- "--kubectl-parallelism-limit ${expected}"; then
       echo "Incorrect or missing --kubectl-parallelism-limit detected."
       echo "$wlCommand"
       exit 1

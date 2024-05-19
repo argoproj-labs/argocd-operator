@@ -42,29 +42,29 @@ status:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: example-argocd-argocd-server
+  name: example-argocd-server
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: example-argocd-argocd-redis-ha
+  name: example-argocd-redis
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: example-argocd-argocd-server
+  name: example-argocd-server
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: example-argocd-argocd-redis-ha
+  name: example-argocd-redis

@@ -12,4 +12,4 @@ delete:
   kind: Namespace
   name: central-argocd
 commands:
-  - command: sleep 30s
+  - command: sleep 30

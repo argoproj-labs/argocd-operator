@@ -5,15 +5,15 @@ commands:
 - script: |
     set -e
     for wl in deployment/argocd-server deployment/argocd-repo-server statefulset/argocd-application-controller; do
-      wlCommand=$(kubectl get -n $NAMESPACE $wl -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
+      wlCommand=$(kubectl get -n $NAMESPACE $wl -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' | tr '\n' ' ' )
       level="debug"
       format="json"
-      if ! echo "$wlCommand" | grep -qPz -- "--loglevel\\n$level(\$|\\n)"; then
+      if ! echo "$wlCommand" | grep -q -- "--loglevel $level"; then
         echo "logLevel was not set correctly for $wl"
         echo "CWD: $wlCommand"
         exit 1
       fi
-      if ! echo "$wlCommand" | grep -qPz -- "--logformat\\n$format(\$|\\n)"; then
+      if ! echo "$wlCommand" | grep -q -- "--logformat $format"; then
         echo "logFormat was not set correctly for $wl"
         echo "CWD: $wlCommand"
         exit 1

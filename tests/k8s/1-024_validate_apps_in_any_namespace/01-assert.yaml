@@ -24,9 +24,9 @@ roleRef:
   name: example-argocd_test-1-24-custom
 subjects:
 - kind: ServiceAccount
-  name: example-argocd-argocd-server
+  name: example-argocd-server
 - kind: ServiceAccount
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
 ---
 apiVersion: v1
 kind: Namespace
@@ -53,6 +53,6 @@ roleRef:
   name: example-argocd_test-2-24-custom
 subjects:
 - kind: ServiceAccount
-  name: example-argocd-argocd-server
+  name: example-argocd-server
 - kind: ServiceAccount
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
