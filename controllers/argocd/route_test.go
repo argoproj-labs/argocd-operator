@@ -491,6 +491,62 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 	}
 }
 
+func TestReconcileRouteTLSConfig(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	tt := []struct {
+		name         string
+		want         routev1.TLSTerminationType
+		updateArgoCD func(cr *argoproj.ArgoCD)
+	}{
+		{
+			name: "should set the default termination policy to renencrypt",
+			want: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+		},
+		{
+			name: "shouldn't overwrite the TLS config if it's already configured",
+			want: routev1.TLSTerminationEdge,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationEdge,
+				}
+			},
+		},
+	}
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			argoCD := makeArgoCD(test.updateArgoCD)
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			reconciler := makeTestReconciler(fakeClient, sch)
+
+			req := reconcile.Request{
+				NamespacedName: testNamespacedName(testArgoCDName),
+			}
+
+			_, err := reconciler.Reconcile(ctx, req)
+			assert.Nil(t, err)
+
+			route := &routev1.Route{}
+			err = reconciler.Client.Get(ctx, types.NamespacedName{Name: argoCD.Name + "-server", Namespace: argoCD.Namespace}, route)
+			assert.Nil(t, err)
+			assert.Equal(t, test.want, route.Spec.TLS.Termination)
+
+		})
+	}
+}
+
 func makeReconciler(t *testing.T, acd *argoproj.ArgoCD, objs ...runtime.Object) *ReconcileArgoCD {
 	t.Helper()
 	s := scheme.Scheme
