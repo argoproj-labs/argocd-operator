@@ -220,6 +220,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
+		args = append(args, "--requirepass $(REDIS_PASSWORD)")
 	}
 
 	return args
@@ -461,6 +462,18 @@ func (r *ReconcileArgoCD) reconcileGrafanaDeployment(cr *argoproj.ArgoCD) error 
 func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS bool) error {
 	deploy := newDeploymentWithSuffix("redis", "redis", cr)
 
+	env := append(proxyEnvVars(), corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
@@ -474,7 +487,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			},
 		},
 		Resources: getRedisResources(cr),
-		Env:       proxyEnvVars(),
+		Env:       env,
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
 			Capabilities: &corev1.Capabilities{
@@ -794,6 +807,17 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 
 	// Global proxy env vars go first
 	repoEnv := cr.Spec.Repo.Env
+	repoEnv = append(repoEnv, corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
 	if cr.Spec.Repo.ExecTimeout != nil {
@@ -1097,6 +1121,17 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
+	serverEnv = append(serverEnv, corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
 	serverEnv = argoutil.EnvMerge(serverEnv, proxyEnvVars(), false)
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{

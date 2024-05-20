@@ -452,6 +452,18 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		Value: "/home/argocd",
 	})
 
+	env = append(env, corev1.EnvVar{
+		Name: "REDIS_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
 	if cr.Spec.Controller.Sharding.Enabled {
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
