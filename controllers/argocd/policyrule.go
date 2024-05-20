@@ -41,7 +41,6 @@ func policyRuleForRedis(client client.Client) []v1.PolicyRule {
 				"get",
 				"list",
 				"watch",
-				"create",
 			},
 		},
 	}
@@ -78,7 +77,6 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 				"get",
 				"list",
 				"watch",
-				"create",
 			},
 		},
 	}
