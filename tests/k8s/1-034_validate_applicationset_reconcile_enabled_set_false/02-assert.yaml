@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: argocd-test
-  namespace: test
+  namespace: test034
 status:
   phase: Available
 ---
@@ -10,16 +10,16 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: argocd-test-application-controller
-  namespace: test
+  namespace: test034
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: argocd-test-argocd-application-controller
-  namespace: test
+  namespace: test034
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-test-argocd-application-controller
-  namespace: test
+  namespace: test034

@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: argocd-test
-  namespace: test
+  namespace: test034
 spec:
   controller:
     enabled: true
