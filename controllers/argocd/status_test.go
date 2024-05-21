@@ -67,6 +67,7 @@ func TestReconcileArgoCD_reconcileStatusKeycloak_OpenShift(t *testing.T) {
 
 	assert.NoError(t, oappsv1.Install(r.Scheme))
 	templateAPIFound = true
+	deploymentConfigAPIFound = true
 	defer removeTemplateAPI()
 
 	dc := getKeycloakDeploymentConfigTemplate(a)

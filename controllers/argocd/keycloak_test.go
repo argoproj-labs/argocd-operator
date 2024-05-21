@@ -84,13 +84,14 @@ func TestKeycloakContainerImage(t *testing.T) {
 
 	defer removeTemplateAPI()
 	tests := []struct {
-		name               string
-		setEnvVarFunc      func(*testing.T, string)
-		envVar             string
-		argoCD             *argoproj.ArgoCD
-		updateCrFunc       func(cr *argoproj.ArgoCD)
-		templateAPIFound   bool
-		wantContainerImage string
+		name                     string
+		setEnvVarFunc            func(*testing.T, string)
+		envVar                   string
+		argoCD                   *argoproj.ArgoCD
+		updateCrFunc             func(cr *argoproj.ArgoCD)
+		templateAPIFound         bool
+		deploymentConfigAPIFound bool
+		wantContainerImage       string
 	}{
 		{
 			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set",
@@ -101,9 +102,10 @@ func TestKeycloakContainerImage(t *testing.T) {
 					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
-			updateCrFunc:       nil,
-			templateAPIFound:   false,
-			wantContainerImage: "quay.io/keycloak/keycloak@sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9",
+			updateCrFunc:             nil,
+			templateAPIFound:         false,
+			deploymentConfigAPIFound: false,
+			wantContainerImage:       "quay.io/keycloak/keycloak@sha256:64fb81886fde61dee55091e6033481fa5ccdac62ae30a4fd29b54eb5e97df6a9",
 		},
 		{
 			name:          "no .spec.sso, no ArgoCDKeycloakImageEnvName env var set - for OCP",
@@ -114,9 +116,10 @@ func TestKeycloakContainerImage(t *testing.T) {
 					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
-			updateCrFunc:       nil,
-			templateAPIFound:   true,
-			wantContainerImage: "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:ec9f60018694dcc5d431ba47d5536b761b71cb3f66684978fe6bb74c157679ac",
+			updateCrFunc:             nil,
+			templateAPIFound:         true,
+			deploymentConfigAPIFound: true,
+			wantContainerImage:       "registry.redhat.io/rh-sso-7/sso76-openshift-rhel8@sha256:ec9f60018694dcc5d431ba47d5536b761b71cb3f66684978fe6bb74c157679ac",
 		},
 		{
 			name: "ArgoCDKeycloakImageEnvName env var set",
@@ -129,9 +132,10 @@ func TestKeycloakContainerImage(t *testing.T) {
 					Provider: argoproj.SSOProviderTypeKeycloak,
 				}
 			}),
-			updateCrFunc:       nil,
-			templateAPIFound:   true,
-			wantContainerImage: "envImage:latest",
+			updateCrFunc:             nil,
+			templateAPIFound:         true,
+			deploymentConfigAPIFound: true,
+			wantContainerImage:       "envImage:latest",
 		},
 		{
 			name: "both cr.spec.sso.keycloak.Image and ArgoCDKeycloakImageEnvName are set",
@@ -153,14 +157,16 @@ func TestKeycloakContainerImage(t *testing.T) {
 					},
 				}
 			},
-			templateAPIFound:   true,
-			wantContainerImage: "crImage:crVersion",
+			templateAPIFound:         true,
+			deploymentConfigAPIFound: true,
+			wantContainerImage:       "crImage:crVersion",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			templateAPIFound = test.templateAPIFound
+			deploymentConfigAPIFound = test.deploymentConfigAPIFound
 
 			if test.setEnvVarFunc != nil {
 				test.setEnvVarFunc(t, test.envVar)
@@ -244,6 +250,8 @@ func TestNewKeycloakTemplate_testKeycloakContainer(t *testing.T) {
 	// For OpenShift Container Platform.
 	t.Setenv(common.ArgoCDKeycloakImageEnvName, "")
 	templateAPIFound = true
+	deploymentConfigAPIFound = true
+
 	defer removeTemplateAPI()
 
 	a := makeTestArgoCD()
@@ -496,4 +504,5 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 
 func removeTemplateAPI() {
 	templateAPIFound = false
+	deploymentConfigAPIFound = false
 }

@@ -616,7 +616,7 @@ func InspectCluster() error {
 		return err
 	}
 
-	if err := verifyTemplateAPI(); err != nil {
+	if err := verifyKeycloakTemplateAPIs(); err != nil {
 		return err
 	}
 
@@ -1078,7 +1078,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		// Watch for the changes to Deployment Config
 		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
 
