@@ -1969,7 +1969,7 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.9.0
+  replaces: argocd-operator.v0.9.1
   version: 0.10.0
   webhookdefinitions:
   - admissionReviewVersions:
