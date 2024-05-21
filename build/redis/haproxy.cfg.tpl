@@ -21,11 +21,11 @@ backend check_if_redis_is_master_0
     option tcp-check
 {{- if eq .UseTLS "false"}}
     tcp-check connect
-    tcp-check send "AUTH ${AUTH}"\r\n
-    tcp-check expect string +OK
 {{- else}}
     tcp-check connect ssl
 {{- end}}
+    tcp-check send "AUTH ${AUTH}"\r\n
+    tcp-check expect string +OK
     tcp-check send PING\r\n
     tcp-check expect string +PONG
     tcp-check send SENTINEL\ get-master-addr-by-name\ argocd\r\n

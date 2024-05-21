@@ -212,6 +212,7 @@ func getArgoRedisArgs(useTLS bool) []string {
 
 	args = append(args, "--save", "")
 	args = append(args, "--appendonly", "no")
+	args = append(args, "--requirepass $(REDIS_PASSWORD)")
 
 	if useTLS {
 		args = append(args, "--tls-port", "6379")
@@ -220,7 +221,6 @@ func getArgoRedisArgs(useTLS bool) []string {
 		args = append(args, "--tls-cert-file", "/app/config/redis/tls/tls.crt")
 		args = append(args, "--tls-key-file", "/app/config/redis/tls/tls.key")
 		args = append(args, "--tls-auth-clients", "no")
-		args = append(args, "--requirepass $(REDIS_PASSWORD)")
 	}
 
 	return args
@@ -589,6 +589,18 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) error {
 	deploy := newDeploymentWithSuffix("redis-ha-haproxy", "redis", cr)
 
+	var redisEnv = append(proxyEnvVars(), corev1.EnvVar{
+		Name: "AUTH",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
+				},
+				Key: "admin.password",
+			},
+		},
+	})
+
 	deploy.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
@@ -621,7 +633,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 		Image:           getRedisHAProxyContainerImage(cr),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "haproxy",
-		Env:             proxyEnvVars(),
+		Env:             redisEnv,
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{

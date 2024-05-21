@@ -1494,6 +1494,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 		"--save",
 		"",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
@@ -1518,12 +1519,12 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
 		"--tls-key-file", "/app/config/redis/tls/tls.key",
 		"--tls-auth-clients", "no",
-		"--requirepass $(REDIS_PASSWORD)",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, true))
