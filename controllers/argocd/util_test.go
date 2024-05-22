@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	b64 "encoding/base64"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -548,6 +550,15 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	sync60s := []v1.EnvVar{
 		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		v1.EnvVar{Name: "REDIS_PASSWORD", Value: "",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("argocd-redis-initial-password"),
+					},
+					Key: "admin.password",
+				},
+			}},
 		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
 
 	cmdTests := []struct {

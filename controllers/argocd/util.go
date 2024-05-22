@@ -99,6 +99,17 @@ func generateArgoAdminPassword() ([]byte, error) {
 	return []byte(pass), err
 }
 
+// generateRedisAdminPassword will generate and return the admin password for Redis.
+func generateRedisAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		common.RedisDefaultAdminPasswordLength,
+		common.RedisDefaultAdminPasswordNumDigits,
+		common.RedisDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
 // generateArgoServerKey will generate and return the server signature key for session validation.
 func generateArgoServerSessionKey() ([]byte, error) {
 	pass, err := password.Generate(
@@ -815,6 +826,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 	}
 
 	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileNetworkPolicies(cr); err != nil {
 		return err
 	}
 

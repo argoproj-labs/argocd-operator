@@ -24,6 +24,8 @@ backend check_if_redis_is_master_0
 {{- else}}
     tcp-check connect ssl
 {{- end}}
+    tcp-check send "AUTH replace-with-redis-auth"\r\n
+    tcp-check expect string +OK
     tcp-check send PING\r\n
     tcp-check expect string +PONG
     tcp-check send SENTINEL\ get-master-addr-by-name\ argocd\r\n
@@ -48,6 +50,8 @@ backend check_if_redis_is_master_1
 {{- else}}
     tcp-check connect ssl
 {{- end}}
+    tcp-check send "AUTH replace-with-redis-auth"\r\n
+    tcp-check expect string +OK
     tcp-check send PING\r\n
     tcp-check expect string +PONG
     tcp-check send SENTINEL\ get-master-addr-by-name\ argocd\r\n
@@ -72,6 +76,8 @@ backend check_if_redis_is_master_2
 {{- else}}
     tcp-check connect ssl
 {{- end}}
+    tcp-check send "AUTH replace-with-redis-auth"\r\n
+    tcp-check expect string +OK
     tcp-check send PING\r\n
     tcp-check expect string +PONG
     tcp-check send SENTINEL\ get-master-addr-by-name\ argocd\r\n
@@ -102,6 +108,8 @@ backend bk_redis_master
 {{- else}}
     tcp-check connect ssl
 {{- end}}
+    tcp-check send "AUTH replace-with-redis-auth"\r\n
+    tcp-check expect string +OK
     tcp-check send PING\r\n
     tcp-check expect string +PONG
     tcp-check send info\ replication\r\n
