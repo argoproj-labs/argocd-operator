@@ -278,6 +278,10 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
+	if err := r.reconcileRedisInitialPasswordSecret(cr); err != nil {
+		return err
+	}
+
 	if err := r.reconcileClusterCASecret(cr); err != nil {
 		return err
 	}
@@ -697,4 +701,27 @@ func (r *ReconcileArgoCD) getClusterSecrets(cr *argoproj.ArgoCD) (*corev1.Secret
 	}
 
 	return clusterSecrets, nil
+}
+
+// reconcileRedisInitialPasswordSecret will ensure that the redis Secret is present for the cluster.
+func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoCD) error {
+	secret := argoutil.NewSecretWithSuffix(cr, "redis-initial-password")
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, secret.Name, secret) {
+		return nil // Secret found, do nothing
+	}
+
+	redisInitialPassword, err := generateRedisAdminPassword()
+	if err != nil {
+		return err
+	}
+
+	secret.Data = map[string][]byte{
+		"immutable":                   []byte("true"),
+		common.ArgoCDKeyAdminPassword: redisInitialPassword,
+	}
+
+	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
+		return err
+	}
+	return r.Client.Create(context.TODO(), secret)
 }
