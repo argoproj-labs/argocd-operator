@@ -353,6 +353,9 @@ func TestNewKeycloakTemplate_testRouteWhenHostIsEmpty(t *testing.T) {
 	a.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 		Provider: "keycloak",
 	}
+
+	assert.True(t, a.Spec.SSO.Keycloak == nil || a.Spec.SSO.Keycloak.Host == "", "host must be empty, or keycloak must be nil (which implies host is empty)")
+
 	route := getKeycloakRouteTemplate(fakeNs, *a)
 	assert.Equal(t, route.Name, "${APPLICATION_NAME}")
 	assert.Equal(t, route.Namespace, fakeNs)

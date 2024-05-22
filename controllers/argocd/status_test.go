@@ -119,13 +119,14 @@ func TestReconcileArgoCD_reconcileStatusSSO(t *testing.T) {
 			wantSSOStatus: "Failed",
 		},
 		{
-			name: "both dex and keycloak configured and keycloak host is empty",
+			name: "both dex and keycloak configured, and keycloak host is empty",
 			argoCD: makeTestArgoCD(func(cr *argoproj.ArgoCD) {
 				cr.Spec.SSO = &argoproj.ArgoCDSSOSpec{
 					Provider: argoproj.SSOProviderTypeKeycloak,
 					Dex: &argoproj.ArgoCDDexSpec{
 						OpenShiftOAuth: true,
 					},
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{},
 				}
 			}),
 			wantSSOStatus: "Failed",

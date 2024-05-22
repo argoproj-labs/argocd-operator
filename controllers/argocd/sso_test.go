@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	oappsv1 "github.com/openshift/api/apps/v1"
@@ -27,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -327,7 +327,7 @@ func TestReconcile_testKeycloakInstanceResources(t *testing.T) {
 	}
 	assert.Equal(t, deployment.Labels, testLabels)
 
-	testSelector := &v1.LabelSelector{
+	testSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			"app": defaultKeycloakIdentifier,
 		},
@@ -472,6 +472,12 @@ func TestReconcile_testKeycloakRouteHost(t *testing.T) {
 		Host: "sso.test.example.com",
 	}
 
+	// Set templateAPIFound to true, to simulate running on an OpenShift machine
+	templateAPIFound = true
+	deploymentConfigAPIFound = true
+	ssoConfigLegalStatus = ""
+	defer removeTemplateAPI()
+
 	resObjs := []client.Object{a}
 	subresObjs := []client.Object{a}
 	runtimeObjs := []runtime.Object{}
@@ -483,26 +489,32 @@ func TestReconcile_testKeycloakRouteHost(t *testing.T) {
 
 	assert.NoError(t, r.reconcileSSO(a))
 
-	// Keycloak Route
-	route := getKeycloakRouteTemplate(a.Namespace, *a)
-
-	expectedRoute := &routev1.Route{
+	// Calls to reconcileSSO will create a TemplateInstance
+	templ := templatev1.TemplateInstance{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"application": "${APPLICATION_NAME}"},
-			Name:        "${APPLICATION_NAME}",
-			Namespace:   a.Namespace,
-			Annotations: map[string]string{"description": "Route for application's https service"},
-		},
-		TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Route"},
-		Spec: routev1.RouteSpec{
-			Host: getKeycloakOpenshiftHost(a.Spec.SSO.Keycloak),
-			TLS: &routev1.TLSConfig{
-				Termination: "reencrypt",
-			},
-			To: routev1.RouteTargetReference{
-				Name: "${APPLICATION_NAME}",
-			},
+			Name:      defaultTemplateIdentifier,
+			Namespace: a.Namespace,
 		},
 	}
-	assert.Equal(t, route, expectedRoute)
+	err := r.Client.Get(context.Background(), client.ObjectKeyFromObject(&templ), &templ)
+	assert.NoError(t, err)
+
+	// TemplateInstance contains a set of Objects, but we only care about the Route
+	matchFound := false
+	for _, obj := range templ.Spec.Template.Objects {
+
+		strVal := string(obj.Raw)
+
+		// Look for the Route object within the TemplateInstance
+		if strings.Contains(strVal, "\"kind\":\"Route\"") {
+
+			// Make sure the Route object contains the host
+			assert.Contains(t, strVal, "sso.test.example.com", "the Route portion of the template should contain the host value from above")
+			matchFound = true
+		}
+
+	}
+
+	assert.True(t, matchFound)
+
 }
