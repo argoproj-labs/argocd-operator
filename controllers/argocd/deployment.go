@@ -706,6 +706,10 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				Name:      "data",
 				MountPath: "/data",
 			},
+			{
+				Name:      "redis-initial-pass",
+				MountPath: "/redis-initial-pass",
+			},
 		},
 	}}
 
@@ -737,6 +741,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
+					Optional:   boolPtr(true),
+				},
+			},
+		},
+		{
+			Name: "redis-initial-pass",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: fmt.Sprintf("%s-%s", cr.Name, "redis-initial-password"),
 					Optional:   boolPtr(true),
 				},
 			},

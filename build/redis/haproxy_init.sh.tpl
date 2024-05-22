@@ -32,3 +32,7 @@ if [ -z "$ANNOUNCE_IP2" ]; then
     exit 1
 fi
 sed -i "s/REPLACE_ANNOUNCE2/$ANNOUNCE_IP2/" "$HAPROXY_CONF"
+
+auth=$(cat /redis-initial-pass/admin.password)
+sed -i "s/replace-with-redis-auth/$auth/" "$HAPROXY_CONF"
+
