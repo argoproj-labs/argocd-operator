@@ -360,6 +360,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			replicas: 1,
 			vars: []corev1.EnvVar{
 				{Name: "HOME", Value: "/home/argocd"},
+				{Name: "REDIS_PASSWORD", Value: "",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: fmt.Sprintf("argocd-redis-initial-password"),
+							},
+							Key: "admin.password",
+						},
+					}},
 			},
 		},
 		{
@@ -371,6 +380,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "1"},
 				{Name: "HOME", Value: "/home/argocd"},
+				{Name: "REDIS_PASSWORD", Value: "",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: fmt.Sprintf("argocd-redis-initial-password"),
+							},
+							Key: "admin.password",
+						},
+					}},
 			},
 		},
 		{
@@ -382,6 +400,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 			vars: []corev1.EnvVar{
 				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "3"},
 				{Name: "HOME", Value: "/home/argocd"},
+				{Name: "REDIS_PASSWORD", Value: "",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: fmt.Sprintf("argocd-redis-initial-password"),
+							},
+							Key: "admin.password",
+						},
+					}},
 			},
 		},
 	}
@@ -430,6 +457,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withAppSync(t *testing.T
 	expectedEnv := []corev1.EnvVar{
 		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "600s"},
 		{Name: "HOME", Value: "/home/argocd"},
+		{Name: "REDIS_PASSWORD", Value: "",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("argocd-redis-initial-password"),
+					},
+					Key: "admin.password",
+				},
+			}},
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
@@ -468,6 +504,15 @@ func TestReconcileArgoCD_reconcileApplicationController_withEnv(t *testing.T) {
 	expectedEnv := []corev1.EnvVar{
 		{Name: "CUSTOM_ENV_VAR", Value: "custom-value"},
 		{Name: "HOME", Value: "/home/argocd"},
+		{Name: "REDIS_PASSWORD", Value: "",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("argocd-redis-initial-password"),
+					},
+					Key: "admin.password",
+				},
+			}},
 	}
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
