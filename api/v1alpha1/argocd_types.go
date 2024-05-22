@@ -960,10 +960,11 @@ func (argocd *ArgoCD) IsDeletionFinalizerPresent() bool {
 	return false
 }
 
-// WantsAutoTLS returns true if user configured a route with reencryption
-// termination policy.
+// WantsAutoTLS returns true if:
+// 1. user has configured a route with reencrypt.
+// 2. user has not configured TLS and we default to reencrypt.
 func (s *ArgoCDServerSpec) WantsAutoTLS() bool {
-	return s.Route.TLS != nil && s.Route.TLS.Termination == routev1.TLSTerminationReencrypt
+	return s.Route.TLS == nil || s.Route.TLS.Termination == routev1.TLSTerminationReencrypt
 }
 
 // WantsAutoTLS returns true if the repository server configuration has set
