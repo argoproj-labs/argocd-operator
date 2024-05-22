@@ -23,7 +23,7 @@ set -eu
 sentinel_get_master() {
 set +e
     if [ "$SENTINEL_PORT" -eq 0 ]; then
-        redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}"   --tls --cacert /app/config/redis/tls/tls.crt sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
+        redis-cli -h "${SERVICE}" -p "${SENTINEL_TLS_PORT}" --tls --cacert /app/config/redis/tls/tls.crt sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
         grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
     else
         redis-cli -h "${SERVICE}" -p "${SENTINEL_PORT}"  sentinel get-master-addr-by-name "${MASTER_GROUP}" |\
@@ -133,9 +133,9 @@ setup_defaults() {
 redis_ping() {
 set +e
     if [ "$REDIS_PORT" -eq 0 ]; then
-        redis-cli -h "${MASTER}" -p "${REDIS_TLS_PORT}"  --tls --cacert /app/config/redis/tls/tls.crt ping
+        redis-cli -h "${MASTER}" -a "${AUTH}" --no-auth-warning -p "${REDIS_TLS_PORT}"  --tls --cacert /app/config/redis/tls/tls.crt ping
     else
-        redis-cli -h "${MASTER}" -p "${REDIS_PORT}" ping
+        redis-cli -h "${MASTER}"  -a "${AUTH}" --no-auth-warning -p "${REDIS_PORT}" ping
     fi
 set -e
 }
