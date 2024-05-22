@@ -29,7 +29,21 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 }
 
 func policyRuleForRedis(client client.Client) []v1.PolicyRule {
-	rules := []v1.PolicyRule{}
+	rules := []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		},
+	}
 
 	// Need additional policy rules if we are running on openshift, else the stateful set won't have the right
 	// permissions to start
@@ -50,6 +64,19 @@ func policyRuleForRedisHa(client client.Client) []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"get",
+			},
+		},
+		{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"secrets",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
 			},
 		},
 	}
