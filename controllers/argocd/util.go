@@ -271,6 +271,23 @@ func getArgoServerHost(cr *argoproj.ArgoCD) string {
 	return host
 }
 
+// getKeycloakIngressHost will return the host for the given ArgoCD.
+func getKeycloakIngressHost(cr *argoproj.ArgoCDKeycloakSpec) string {
+	if cr != nil && len(cr.Host) > 0 {
+		return cr.Host
+	}
+	// If cr is nil or cr.Host is empty, return a default value or handle it accordingly.
+	return keycloakIngressHost
+}
+
+// getKeycloakIngressHost will return the host for the given ArgoCD.
+func getKeycloakOpenshiftHost(cr *argoproj.ArgoCDKeycloakSpec) string {
+	if cr != nil && len(cr.Host) > 0 {
+		return cr.Host
+	}
+	return ""
+}
+
 // getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
 func getArgoServerResources(cr *argoproj.ArgoCD) corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
