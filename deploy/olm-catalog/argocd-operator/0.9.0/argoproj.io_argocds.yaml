@@ -630,6 +630,10 @@ spec:
                         type: integer
                     type: object
                 type: object
+              defaultClusterScopedRoleDisabled:
+                description: DefaultClusterScopedRoleDisabled will disable creation
+                  of default ClusterRoles for a cluster scoped instance.
+                type: boolean
               dex:
                 description: Deprecated field. Support dropped in v1beta1 version.
                   Dex defines the Dex server options for ArgoCD.
@@ -7589,6 +7593,10 @@ spec:
                         type: integer
                     type: object
                 type: object
+              defaultClusterScopedRoleDisabled:
+                description: DefaultClusterScopedRoleDisabled will disable creation
+                  of default ClusterRoles for a cluster scoped instance.
+                type: boolean
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean

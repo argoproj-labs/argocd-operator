@@ -821,6 +821,9 @@ type ArgoCDSpec struct {
 	// Deprecated field. Support dropped in v1beta1 version.
 	// Dex defines the Dex server options for ArgoCD.
 	Dex *ArgoCDDexSpec `json:"dex,omitempty"`
+
+	// DefaultClusterScopedRoleDisabled will disable creation of default ClusterRoles for a cluster scoped instance.
+	DefaultClusterScopedRoleDisabled bool `json:"defaultClusterScopedRoleDisabled,omitempty"`
 }
 
 // ArgoCDStatus defines the observed state of ArgoCD

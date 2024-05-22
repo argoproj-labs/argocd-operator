@@ -92,6 +92,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
+	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -159,6 +160,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.UsersAnonymousEnabled = src.Spec.UsersAnonymousEnabled
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
+	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)

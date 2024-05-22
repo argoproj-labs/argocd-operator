@@ -94,7 +94,7 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	}
 
 	// update a new cert in argocd-tls-certs-cm
-	testPEM := generateEncodedPEM(t, "example.com")
+	testPEM := generateEncodedPEM(t)
 
 	configMap.Data["example.com"] = string(testPEM)
 	assert.NoError(t, r.Client.Update(context.TODO(), configMap))

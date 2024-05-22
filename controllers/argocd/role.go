@@ -280,10 +280,29 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
+
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
 		allowed = true
 	}
+
+	// Check if it is cluster-scoped instance namespace and user doesn't want to use default ClusterRole
+	if allowed && cr.Spec.DefaultClusterScopedRoleDisabled {
+
+		// In case DefaultClusterScopedRoleDisabled was false earlier and default ClusterRole was created, then delete it.
+		existingClusterRole := &v1.ClusterRole{}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(name, cr)}, existingClusterRole); err == nil {
+
+			// Default ClusterRole exists, now delete it
+			if err := r.Client.Delete(context.TODO(), existingClusterRole); err != nil {
+				return nil, fmt.Errorf("failed to delete existing cluster role for the service account associated with %s : %s", name, err)
+			}
+		}
+
+		// Don't create a default ClusterRole
+		return nil, nil
+	}
+
 	clusterRole := newClusterRole(name, policyRules, cr)
 	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
 		return nil, err
