@@ -184,6 +184,58 @@ func TestReconcileArgoCD_reconcileClusterRoleBinding(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
 }
 
+func TestReconcileArgoCD_reconcileClusterRoleBinding_disabled(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+	workloadIdentifier := "x"
+	expectedClusterRole := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: workloadIdentifier}}
+
+	// Disable creation of default ClusterRole, hence RoleBinding won't be created either.
+	a.Spec.DefaultClusterScopedRoleDisabled = true
+	err := cl.Update(context.Background(), a)
+	assert.NoError(t, err)
+
+	// Reconcile ClusterRoleBinding
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
+
+	// Ensure default ClusterRoleBinding is not created
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	expectedName := fmt.Sprintf("%s-%s-%s", a.Name, a.Namespace, workloadIdentifier)
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "not found")
+
+	// Now enable creation of default ClusterRole, hence RoleBinding should be created aw well.
+	a.Spec.DefaultClusterScopedRoleDisabled = false
+	err = cl.Update(context.Background(), a)
+	assert.NoError(t, err)
+
+	// Again reconcile ClusterRoleBinding
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
+
+	// Ensure default ClusterRoleBinding is created now
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding))
+
+	// Once again disable creation of default ClusterRole
+	a.Spec.DefaultClusterScopedRoleDisabled = true
+	err = cl.Update(context.Background(), a)
+	assert.NoError(t, err)
+
+	// Once again reconcile ClusterRoleBinding
+	assert.NoError(t, r.reconcileClusterRoleBinding(workloadIdentifier, expectedClusterRole, a))
+
+	// Ensure default ClusterRoleBinding is deleted again
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedName}, clusterRoleBinding)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "not found")
+}
+
 func TestReconcileArgoCD_reconcileRoleBinding_custom_role(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()

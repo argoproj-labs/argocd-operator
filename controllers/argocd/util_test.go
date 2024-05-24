@@ -549,8 +549,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	sync60s := []v1.EnvVar{
-		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
-		v1.EnvVar{Name: "REDIS_PASSWORD", Value: "",
+		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		{Name: "REDIS_PASSWORD", Value: "",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -559,7 +559,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 					Key: "admin.password",
 				},
 			}},
-		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
 
 	cmdTests := []struct {
 		name string
@@ -994,7 +994,7 @@ func TestGenerateRandomString(t *testing.T) {
 	assert.Len(t, b, 20)
 }
 
-func generateEncodedPEM(t *testing.T, host string) []byte {
+func generateEncodedPEM(t *testing.T) []byte {
 	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 
