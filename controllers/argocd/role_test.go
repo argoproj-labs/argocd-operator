@@ -172,8 +172,11 @@ func TestReconcileArgoCD_reconcileClusterRole_disabled(t *testing.T) {
 	// Disable creation of default ClusterRole
 	a.Spec.DefaultClusterScopedRoleDisabled = true
 
+	err := cl.Update(context.Background(), a)
+	assert.NoError(t, err)
+
 	// Reconcile ClusterRole
-	_, err := r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
+	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
 	assert.NoError(t, err)
 
 	// Ensure default ClusterRole is not created
@@ -184,6 +187,8 @@ func TestReconcileArgoCD_reconcileClusterRole_disabled(t *testing.T) {
 
 	// Now enable creation of default ClusterRole
 	a.Spec.DefaultClusterScopedRoleDisabled = false
+	err = cl.Update(context.Background(), a)
+	assert.NoError(t, err)
 
 	// Again reconcile ClusterRole
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)
@@ -194,6 +199,8 @@ func TestReconcileArgoCD_reconcileClusterRole_disabled(t *testing.T) {
 
 	// Once again disable creation of default ClusterRole
 	a.Spec.DefaultClusterScopedRoleDisabled = true
+	err = cl.Update(context.Background(), a)
+	assert.NoError(t, err)
 
 	// Once again reconcile ClusterRole
 	_, err = r.reconcileClusterRole(workloadIdentifier, expectedRules, a)

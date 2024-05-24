@@ -59,3 +59,5 @@ metadata:
 spec:
   defaultClusterScopedRoleDisabled: true
 ```
+
+When `defaultClusterScopedRoleDisabled` is `true`, the default ClusterRole/ClusterRoleBindings for the Argo CD instance will not be created, and the administrative user is free to create and customize these independent of the operator. The field can later be set to `false`, to recreate these resources, if needed.
