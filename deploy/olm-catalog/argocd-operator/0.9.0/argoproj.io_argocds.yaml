@@ -1063,6 +1063,10 @@ spec:
                 description: Monitoring defines whether workload status monitoring
                   configuration for this instance.
                 properties:
+                  disableMetrics:
+                    description: DisableMetrics field can be used to enable or disable
+                      the collection of Metrics on Openshift
+                    type: boolean
                   enabled:
                     description: Enabled defines whether workload status monitoring
                       is enabled for this instance or not
@@ -7956,6 +7960,10 @@ spec:
                 description: Monitoring defines whether workload status monitoring
                   configuration for this instance.
                 properties:
+                  disableMetrics:
+                    description: DisableMetrics field can be used to enable or disable
+                      the collection of Metrics on Openshift
+                    type: boolean
                   enabled:
                     description: Enabled defines whether workload status monitoring
                       is enabled for this instance or not
