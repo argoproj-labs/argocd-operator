@@ -10,7 +10,7 @@ CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman
 
 # If neither Docker nor Podman is found, print an error message and exit
 ifeq ($(CONTAINER_RUNTIME),)
-$(error "No container runtime (Docker or Podman) found in PATH. Please install one of them.")
+$(warning "No container runtime (Docker or Podman) found in PATH. Please install one of them.")
 endif
 
 # CHANNELS define the bundle channels used in the bundle.
