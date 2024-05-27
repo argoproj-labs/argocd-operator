@@ -690,7 +690,8 @@ type KustomizeVersionSpec struct {
 // pending for x mins consecutively.
 type ArgoCDMonitoringSpec struct {
 	// Enabled defines whether workload status monitoring is enabled for this instance or not
-	Enabled bool `json:"enabled"`
+	Enabled         bool  `json:"enabled"`
+	DisabledMetrics *bool `json:"disabledMetrics,omitempty"`
 }
 
 // ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
