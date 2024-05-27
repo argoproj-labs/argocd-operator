@@ -651,8 +651,8 @@ type KustomizeVersionSpec struct {
 type ArgoCDMonitoringSpec struct {
 	// Enabled defines whether workload status monitoring is enabled for this instance or not
 	Enabled bool `json:"enabled"`
-	// DisabledMetrics field can be used to enable or disable the collection of Metrics on Openshift
-	DisabledMetrics *bool `json:"disabledMetrics,omitempty"`
+	// DisableMetrics field can be used to enable or disable the collection of Metrics on Openshift
+	DisableMetrics *bool `json:"disableMetrics,omitempty"`
 }
 
 // ArgoCDNodePlacementSpec is used to specify NodeSelector and Tolerations for Argo CD workloads
