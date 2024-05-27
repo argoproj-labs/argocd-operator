@@ -1063,6 +1063,9 @@ spec:
                     description: Enabled defines whether workload status monitoring
                       is enabled for this instance or not
                     type: boolean
+                  disabledMetrics:
+                    description: DisabledMetrics field can be used to enable or disable the collection of Metrics on Openshift
+                    type: boolean
                 required:
                 - enabled
                 type: object

@@ -690,7 +690,8 @@ type KustomizeVersionSpec struct {
 // pending for x mins consecutively.
 type ArgoCDMonitoringSpec struct {
 	// Enabled defines whether workload status monitoring is enabled for this instance or not
-	Enabled         bool  `json:"enabled"`
+	Enabled bool `json:"enabled"`
+	// DisabledMetrics field can be used to enable or disable the collection of Metrics on Openshift
 	DisabledMetrics *bool `json:"disabledMetrics,omitempty"`
 }
 
