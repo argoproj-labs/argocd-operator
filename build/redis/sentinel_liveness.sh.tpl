@@ -1,6 +1,5 @@
 response=$(
   redis-cli \
-    -a "${AUTH}" --no-auth-warning \
     -h localhost \
     -p 26379 \
 {{- if eq .UseTLS "true"}}

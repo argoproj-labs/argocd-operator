@@ -69,6 +69,7 @@ var ActiveInstanceMap = make(map[string]string)
 //+kubebuilder:rbac:groups=batch,resources=cronjobs;jobs,verbs=*
 //+kubebuilder:rbac:groups=config.openshift.io,resources=clusterversions,verbs=get;list;watch
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=*
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=create;delete;get;list;patch;update;watch;
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheuses;prometheusrules;servicemonitors,verbs=*
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes;routes/custom-host,verbs=*
 //+kubebuilder:rbac:groups=argoproj.io,resources=applications;appprojects,verbs=*
