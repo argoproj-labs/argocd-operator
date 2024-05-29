@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/argoproj/argo-cd/v2 v2.11.2
 	github.com/coreos/prometheus-operator v0.40.0
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/onsi/ginkgo v1.16.5
