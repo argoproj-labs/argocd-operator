@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,6 +62,48 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) 
 			assert.Equal(t, test.ingressClassName, ingress.Spec.IngressClassName)
 		})
 	}
+}
+
+func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName_update(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	nginx := "nginx"
+	existingIngressClassName := "test-name"
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.Ingress.Enabled = true
+		a.Spec.Server.Ingress.IngressClassName = &nginx
+	})
+
+	// Existing ingress with different ingressClassName
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		Spec: networkingv1.IngressSpec{
+			IngressClassName: &existingIngressClassName,
+		},
+	}
+
+	resObjs := []client.Object{a, ingress}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileArgoServerIngress(a)
+	assert.NoError(t, err)
+
+	updatedIngress := &networkingv1.Ingress{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "argocd-server",
+		Namespace: testNamespace,
+	}, updatedIngress)
+	assert.NoError(t, err)
+	assert.Equal(t, a.Spec.Server.Ingress.IngressClassName, updatedIngress.Spec.IngressClassName)
+
 }
 
 func TestReconcileArgoCD_reconcile_ServerGRPCIngress_ingressClassName(t *testing.T) {
