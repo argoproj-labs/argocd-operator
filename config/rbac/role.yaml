@@ -87,6 +87,13 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+    - argoproj.io
+  resources:
+    - notificationsconfigurations
+    - notificationsconfigurations/finalizers
+  verbs:
+    - '*'
+- apiGroups:
   - autoscaling
   resources:
   - horizontalpodautoscalers
