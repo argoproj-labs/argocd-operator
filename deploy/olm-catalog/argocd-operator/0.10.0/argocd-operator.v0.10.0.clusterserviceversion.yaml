@@ -251,6 +251,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
+    containerImage: quay.io/argoprojlabs/argocd-operator@sha256:0189ebed00160dcc5c265f09a6d0f95089e482e01fae0c84e9dc2d4d9021eecf
     support: Argo CD
   name: argocd-operator.v0.10.0
   namespace: placeholder
@@ -1969,7 +1970,7 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.9.0
+  replaces: argocd-operator.v0.9.1
   version: 0.10.0
   webhookdefinitions:
   - admissionReviewVersions:
