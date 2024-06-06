@@ -12,35 +12,35 @@ status:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-argocd-application-controller
+  name: argocd-application-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: argocd-argocd-application-controller
+  name: argocd-application-controller
 subjects:
 - kind: ServiceAccount
-  name: argocd-argocd-application-controller
+  name: argocd-application-controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-argocd-redis-ha
+  name: argocd-redis
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: argocd-argocd-redis-ha
+  name: argocd-redis
 subjects:
 - kind: ServiceAccount
-  name: argocd-argocd-redis-ha
+  name: argocd-redis
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-argocd-server
+  name: argocd-server
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: argocd-argocd-server
+  name: argocd-server
 subjects:
 - kind: ServiceAccount
-  name: argocd-argocd-server
+  name: argocd-server

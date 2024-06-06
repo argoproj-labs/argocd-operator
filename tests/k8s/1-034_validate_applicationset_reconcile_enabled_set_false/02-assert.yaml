@@ -15,11 +15,11 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-test-argocd-application-controller
+  name: argocd-test-application-controller
   namespace: test034
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-test-argocd-application-controller
+  name: argocd-test-application-controller
   namespace: test034

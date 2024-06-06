@@ -35,14 +35,14 @@ metadata:
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: example-argocd-argocd-notifications-controller
+  name: example-argocd-notifications-controller
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: example-argocd-argocd-notifications-controller
+  name: example-argocd-notifications-controller
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: example-argocd-argocd-notifications-controller
+  name: example-argocd-notifications-controller

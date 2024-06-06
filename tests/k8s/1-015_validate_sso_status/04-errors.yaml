@@ -6,17 +6,17 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: argocd-argocd-dex-server
+  name: argocd-dex-server
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-argocd-dex-server
+  name: argocd-dex-server
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-argocd-dex-server
+  name: argocd-dex-server
 ---
 apiVersion: v1
 kind: Service

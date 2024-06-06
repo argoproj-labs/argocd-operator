@@ -30,20 +30,20 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-test-argocd-application-controller
+  name: argocd-test-application-controller
   namespace: test034
 
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: argocd-test-argocd-server
+  name: argocd-test-server
   namespace: test034
 
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: argocd-test-argocd-redis-ha
+  name: argocd-test-redis
   namespace: test034
 

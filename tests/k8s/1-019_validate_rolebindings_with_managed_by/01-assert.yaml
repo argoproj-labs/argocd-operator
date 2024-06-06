@@ -1,31 +1,31 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
   namespace: central-argocd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: example-argocd-argocd-server
+  name: example-argocd-server
   namespace: central-argocd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
   namespace: central-argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd-argocd-server
+  name: example-argocd-server
   namespace: central-argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd-argocd-server
+  name: example-argocd-server

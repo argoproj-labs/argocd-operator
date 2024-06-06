@@ -87,12 +87,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-    - argoproj.io
+  - argoproj.io
   resources:
-    - notificationsconfigurations
-    - notificationsconfigurations/finalizers
+  - notificationsconfigurations
+  - notificationsconfigurations/finalizers
   verbs:
-    - '*'
+  - '*'
 - apiGroups:
   - autoscaling
   resources:

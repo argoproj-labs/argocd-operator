@@ -9,9 +9,9 @@ status:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
- name: example-argocd-argocd-e2e-cluster-config-argocd-application-controller
+ name: example-argocd-argocd-e2e-cluster-config-application-controller
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: example-argocd-argocd-e2e-cluster-config-argocd-server
+  name: example-argocd-argocd-e2e-cluster-config-server

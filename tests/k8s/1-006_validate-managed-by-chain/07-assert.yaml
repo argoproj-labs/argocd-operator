@@ -2,24 +2,24 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-argocd-server
+  name: argocd-server
   namespace: test-1-12-custom2
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-argocd-application-controller
+  name: argocd-application-controller
   namespace: test-1-12-custom2
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: argocd-argocd-server
+  name: argocd-server
   namespace: test-1-12-custom2
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: argocd-argocd-server
+  name: argocd-server
 subjects:
 - kind: ServiceAccount
-  name: argocd-argocd-server
+  name: argocd-server
