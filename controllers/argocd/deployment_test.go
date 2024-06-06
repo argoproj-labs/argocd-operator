@@ -1110,7 +1110,7 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					},
 					RunAsNonRoot: boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
-						Type: "runtime/default",
+						Type: "RuntimeDefault",
 					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
@@ -1340,7 +1340,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					},
 					RunAsNonRoot: boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
-						Type: "runtime/default",
+						Type: "RuntimeDefault",
 					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
@@ -1435,7 +1435,7 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					},
 					RunAsNonRoot: boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
-						Type: "runtime/default",
+						Type: "RuntimeDefault",
 					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
