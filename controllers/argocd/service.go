@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -210,7 +211,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 			return r.Client.Delete(context.TODO(), svc)
 		}
 
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
@@ -220,7 +221,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyService(cr *argoproj.ArgoCD) erro
 		return nil //return as Ha is not enabled do nothing
 	}
 
-	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis-ha-haproxy", cr),
@@ -266,7 +267,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Redis.IsEnabled() {
 			return r.Client.Delete(context.TODO(), svc)
 		}
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		if cr.Spec.HA.Enabled {
@@ -279,7 +280,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		return nil //return as Ha is enabled do nothing
 	}
 
-	ensureAutoTLSAnnotation(svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
+	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRedisServerTLSSecretName, cr.Spec.Redis.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("redis", cr),
@@ -308,7 +309,7 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 //
 // When this method returns true, the svc resource will need to be updated on
 // the cluster.
-func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled bool) bool {
+func ensureAutoTLSAnnotation(k8sClient client.Client, svc *corev1.Service, secretName string, enabled bool) bool {
 	var autoTLSAnnotationName, autoTLSAnnotationValue string
 
 	// We currently only support OpenShift for automatic TLS
@@ -323,6 +324,12 @@ func ensureAutoTLSAnnotation(svc *corev1.Service, secretName string, enabled boo
 	if autoTLSAnnotationName != "" {
 		val, ok := svc.Annotations[autoTLSAnnotationName]
 		if enabled {
+			// Don't request a TLS certificate from the OpenShift Service CA if the secret already exists.
+			isTLSSecretFound := argoutil.IsObjectFound(k8sClient, svc.Namespace, secretName, &corev1.Secret{})
+			if !ok && isTLSSecretFound {
+				log.Info(fmt.Sprintf("skipping AutoTLS on service %s since the TLS secret is already present", svc.Name))
+				return false
+			}
 			if !ok || val != secretName {
 				log.Info(fmt.Sprintf("requesting AutoTLS on service %s", svc.ObjectMeta.Name))
 				svc.Annotations[autoTLSAnnotationName] = autoTLSAnnotationValue
@@ -348,7 +355,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Repo.IsEnabled() {
 			return r.Client.Delete(context.TODO(), svc)
 		}
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
@@ -358,7 +365,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		return nil
 	}
 
-	ensureAutoTLSAnnotation(svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
+	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS())
 
 	svc.Spec.Selector = map[string]string{
 		common.ArgoCDKeyName: nameWithSuffix("repo-server", cr),
@@ -417,7 +424,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Server.IsEnabled() {
 			return r.Client.Delete(context.TODO(), svc)
 		}
-		if ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
+		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
@@ -427,7 +434,7 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 		return nil
 	}
 
-	ensureAutoTLSAnnotation(svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
+	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
 
 	svc.Spec.Ports = []corev1.ServicePort{
 		{
