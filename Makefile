@@ -3,6 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
+<<<<<<< HEAD
 VERSION ?= 0.10.1
 
 # Try to detect Docker or Podman
@@ -12,6 +13,9 @@ CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman
 ifeq ($(CONTAINER_RUNTIME),)
 $(warning "No container runtime (Docker or Podman) found in PATH. Please install one of them.")
 endif
+=======
+VERSION ?= 0.11.0
+>>>>>>> 174bf37 (Generated manifests for 0.11.0 version (#1402))
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
