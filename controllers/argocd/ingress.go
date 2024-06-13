@@ -97,6 +97,12 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
 		}
+
+		// If Ingress found and enabled, make sure the ingressClassName is up-to-date
+		if ingress.Spec.IngressClassName != cr.Spec.Server.Ingress.IngressClassName {
+			ingress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
+			return r.Client.Update(context.TODO(), ingress)
+		}
 		return nil // Ingress found and enabled, do nothing
 	}
 
