@@ -205,10 +205,10 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 //
 // 1. from the Spec, the spec.repo field has an image and version to use for
 // generating an image reference.
-// 2. from the Environment, this looks for the `ARGOCD_IMAGE` field and uses
-// that if the spec is not configured.
-// 3. from the Spec, the spec.version field has an image and version to use for
+// 2. from the Spec, the spec.version field has an image and version to use for
 // generating an image reference
+// 3. from the Environment, this looks for the `ARGOCD_IMAGE` field and uses
+// that if the spec is not configured.
 // 4. the default is configured in common.ArgoCDDefaultArgoVersion and
 // common.ArgoCDDefaultArgoImage.
 func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
