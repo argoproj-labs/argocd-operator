@@ -13,4 +13,4 @@ metadata:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: example-argocd-grpc
+  name: example-argocd-server

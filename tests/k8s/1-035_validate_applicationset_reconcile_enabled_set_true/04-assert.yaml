@@ -6,6 +6,7 @@ metadata:
 status:
   phase: Available
 ---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,22 +14,10 @@ metadata:
   namespace: test
 
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+
 kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: argocd-test-argocd-application-controller
+  name: argocd-test-server
   namespace: test
 
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-server
-  namespace: test
-
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-redis-ha
-  namespace: test

@@ -30,6 +30,7 @@ func (nr *NotificationsReconciler) reconcileMetricsService() error {
 				common.AppK8sKeyName: resourceName,
 			},
 		},
+		Instance:  nr.Instance,
 		Client:    nr.Client,
 		Mutations: []mutation.MutateFunc{mutation.ApplyReconcilerMutation},
 	}

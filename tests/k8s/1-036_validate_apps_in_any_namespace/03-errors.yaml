@@ -16,6 +16,6 @@ roleRef:
   name: example-argocd_test-2-24-custom
 subjects:
 - kind: ServiceAccount
-  name: example-argocd-argocd-server
+  name: example-argocd-server
 - kind: ServiceAccount
-  name: example-argocd-argocd-application-controller
+  name: example-argocd-application-controller

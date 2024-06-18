@@ -37,8 +37,8 @@ func (asr *ApplicationSetReconciler) ReconcileStatus() error {
 		}
 	}
 
-	if asr.Instance.Status.ApplicationController != status {
-		asr.Instance.Status.ApplicationController = status
+	if asr.Instance.Status.ApplicationSetController != status {
+		asr.Instance.Status.ApplicationSetController = status
 	}
 
 	return asr.updateInstanceStatus()

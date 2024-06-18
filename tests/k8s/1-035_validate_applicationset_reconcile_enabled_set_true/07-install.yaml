@@ -8,10 +8,10 @@ spec:
     enabled: false
   redis:
     enabled: false
-  ha:
-    enabled: true
   repo:
     enabled: false
+  ha:
+    enabled: true
   server:
     enabled: false
   applicationSet:

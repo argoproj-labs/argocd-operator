@@ -10,9 +10,8 @@ metadata:
   name: argocd-test-application-controller
   namespace: test
 ---
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
 metadata:
-  name: argocd-test-server
+  name: argocd-test-redis
   namespace: test
-
