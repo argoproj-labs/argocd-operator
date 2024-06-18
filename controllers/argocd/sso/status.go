@@ -2,6 +2,7 @@ package sso
 
 import (
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
+	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/pkg/resource"
 )
 
@@ -19,6 +20,8 @@ func (sr *SSOReconciler) ReconcileStatus() error {
 			// TO DO: get status from keycloak
 		case argoproj.SSOProviderTypeDex:
 			status = sr.DexController.ReconcileStatus()
+		default:
+			status = common.ArgoCDStatusUnknown
 		}
 	}
 
