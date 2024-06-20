@@ -644,7 +644,7 @@ spec:
                   revision:
                     type: string
                   source:
-                    description: ApplicationSource contains information about github
+                    description: ApplicationSource contains information about GitHub
                       repository, path within repository and target application environment.
                     properties:
                       chart:
@@ -1495,7 +1495,7 @@ spec:
                           type: string
                       type: object
                     source:
-                      description: ApplicationSource contains information about github
+                      description: ApplicationSource contains information about GitHub
                         repository, path within repository and target application
                         environment.
                       properties:

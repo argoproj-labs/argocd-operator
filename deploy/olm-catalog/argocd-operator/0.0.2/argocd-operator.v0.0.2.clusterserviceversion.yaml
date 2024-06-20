@@ -203,7 +203,7 @@ spec:
     name: example-argocd
     ```
 
-    See the documentation and examples at the [official github repository](https://github.com/argoproj-labs/argocd-operator) 
+    See the documentation and examples at the [official GitHub repository](https://github.com/argoproj-labs/argocd-operator) 
     for more informaction.
   displayName: Argo CD
   icon:
