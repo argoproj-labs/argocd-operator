@@ -133,6 +133,7 @@ func (dr *DexReconciler) getDeploymentReq() workloads.DeploymentRequest {
 	}
 
 	podSpec := corev1.PodSpec{
+		NodeSelector:       common.DefaultNodeSelector(),
 		ServiceAccountName: resourceName,
 		Volumes: []corev1.Volume{{
 			Name: "static-files",
@@ -230,6 +231,11 @@ func (dr *DexReconciler) getDeploymentReq() workloads.DeploymentRequest {
 				common.AppK8sKeyName: resourceName,
 			},
 		},
+	}
+
+	if dr.Instance.Spec.NodePlacement != nil {
+		req.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(req.Spec.Template.Spec.NodeSelector, dr.Instance.Spec.NodePlacement.NodeSelector)
+		req.Spec.Template.Spec.Tolerations = dr.Instance.Spec.NodePlacement.Tolerations
 	}
 
 	return req

@@ -201,6 +201,11 @@ func (rr *RedisReconciler) getDeploymentRequest() workloads.DeploymentRequest {
 		Client:    rr.Client,
 	}
 
+	if rr.Instance.Spec.NodePlacement != nil {
+		req.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(req.Spec.Template.Spec.NodeSelector, rr.Instance.Spec.NodePlacement.NodeSelector)
+		req.Spec.Template.Spec.Tolerations = rr.Instance.Spec.NodePlacement.Tolerations
+	}
+
 	return req
 }
 

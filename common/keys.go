@@ -116,7 +116,7 @@ const (
 	ArgoCDDexSecretKey = "oidc.dex.clientSecret"
 
 	ArgoCDKeyKustomizeVersion       = "kustomize.version."
-	ArgoCDKeyResourceCustomizations = "resource.customizations."
+	ArgoCDKeyResourceCustomizations = "resource.customizations"
 )
 
 // openshift.io keys
