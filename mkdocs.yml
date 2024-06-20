@@ -55,6 +55,8 @@ nav:
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
     - Custom Roles: usage/custom_roles.md
+    - Apps in Any Namespace: usage/apps-in-any-namespace.md
+    - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
   - Reference:
     - ArgoCD: reference/argocd.md
     - ArgoCDExport: reference/argocdexport.md
