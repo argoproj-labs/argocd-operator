@@ -97,7 +97,7 @@ func TestReconcileRouteSetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig := &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
+		Termination:                   routev1.TLSTerminationReencrypt,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
@@ -202,7 +202,7 @@ func TestReconcileRouteUnsetsInsecure(t *testing.T) {
 	fatalIfError(t, err, "failed to load route %q: %s", testArgoCDName+"-server", err)
 
 	wantTLSConfig = &routev1.TLSConfig{
-		Termination:                   routev1.TLSTerminationPassthrough,
+		Termination:                   routev1.TLSTerminationReencrypt,
 		InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 	}
 	if diff := cmp.Diff(wantTLSConfig, loaded.Spec.TLS); diff != "" {
@@ -280,7 +280,8 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
 					TLS: &routev1.TLSConfig{
-						Termination: "passthrough",
+						Termination:                   routev1.TLSTerminationPassthrough,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 					},
 				},
 			},
@@ -485,6 +486,93 @@ func TestReconcileRouteForShorteningHostname(t *testing.T) {
 			// Check if first label is greater than 20
 			labels := strings.Split(loaded.Spec.Host, ".")
 			assert.True(t, len(labels[0]) > 20)
+
+		})
+	}
+}
+
+func TestReconcileRouteTLSConfig(t *testing.T) {
+	routeAPIFound = true
+	ctx := context.Background()
+	logf.SetLogger(ZapLogger(true))
+
+	tt := []struct {
+		name            string
+		want            routev1.TLSTerminationType
+		updateArgoCD    func(cr *argoproj.ArgoCD)
+		createResources func(k8sClient client.Client, cr *argoproj.ArgoCD)
+	}{
+		{
+			name: "should set the default termination policy to renencrypt",
+			want: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {},
+		},
+		{
+			name: "shouldn't overwrite the TLS config if it's already configured",
+			want: routev1.TLSTerminationEdge,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+				cr.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationEdge,
+				}
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {},
+		},
+		{
+			// We don't want to change the default value to reencrypt if the user has already
+			// configured a TLS secret for passthrough (previous default value).
+			name: "shouldn't overwrite if the Route was previously configured with passthrough",
+			want: routev1.TLSTerminationPassthrough,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      common.ArgoCDServerTLSSecretName,
+						Namespace: cr.Namespace,
+					},
+				}
+				err := k8sClient.Create(context.Background(), secret)
+				assert.NoError(t, err)
+
+				// create a Route with passthrough policy.
+				route := newRouteWithSuffix("server", cr)
+				route.Spec.TLS = &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationPassthrough,
+				}
+				err = k8sClient.Create(context.Background(), route)
+				assert.NoError(t, err)
+			},
+		},
+	}
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			argoCD := makeArgoCD(test.updateArgoCD)
+
+			resObjs := []client.Object{argoCD}
+			subresObjs := []client.Object{argoCD}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			reconciler := makeTestReconciler(fakeClient, sch)
+
+			test.createResources(fakeClient, argoCD)
+			req := reconcile.Request{
+				NamespacedName: testNamespacedName(testArgoCDName),
+			}
+
+			_, err := reconciler.Reconcile(ctx, req)
+			assert.Nil(t, err)
+
+			route := &routev1.Route{}
+			err = reconciler.Client.Get(ctx, types.NamespacedName{Name: argoCD.Name + "-server", Namespace: argoCD.Namespace}, route)
+			assert.Nil(t, err)
+			assert.Equal(t, test.want, route.Spec.TLS.Termination)
 
 		})
 	}

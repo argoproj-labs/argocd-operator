@@ -48,7 +48,7 @@ $ kubectl get secret argocd-cluster -n argocd -ojsonpath='{.data.admin\.password
 
 ## Setting TLS modes for routes
 
-You can parameterize the route's TLS configuration by setting appropriate values in the `.spec.server.route.tls` field of the `ArgoCD` CR.
+By default, the operator creates the Argo CD server route with `reencrypt` termination policy. You can parameterize the route's TLS configuration by setting appropriate values in the `.spec.server.route.tls` field of the `ArgoCD` CR.
 
 ### TLS edge termination mode
 

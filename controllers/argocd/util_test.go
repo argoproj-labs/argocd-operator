@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	b64 "encoding/base64"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/argoproj-labs/argocd-operator/common"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,11 +25,12 @@ import (
 )
 
 const (
-	dexTestImage          = "testing/dex:latest"
-	argoTestImage         = "testing/argocd:latest"
-	redisTestImage        = "testing/redis:latest"
-	redisHATestImage      = "testing/redis:latest-ha"
-	redisHAProxyTestImage = "testing/redis-ha-haproxy:latest-ha"
+	dexTestImage              = "testing/dex:latest"
+	argoTestImage             = "testing/argocd:latest"
+	argoTestImageOtherVersion = "testing/argocd:test"
+	redisTestImage            = "testing/redis:latest"
+	redisHATestImage          = "testing/redis:latest-ha"
+	redisHAProxyTestImage     = "testing/redis-ha-haproxy:latest-ha"
 )
 
 func parallelismLimit(n int32) argoCDOpt {
@@ -104,6 +107,35 @@ var imageTests = []struct {
 	{
 		name:      "argo env configuration",
 		imageFunc: getArgoContainerImage,
+		want:      argoTestImage,
+		pre: func(t *testing.T) {
+			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
+		},
+	},
+	{
+		name:      "repo default configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoutil.CombineImageTag(common.ArgoCDDefaultArgoImage, common.ArgoCDDefaultArgoVersion),
+	},
+	{
+		name:      "repo spec configuration",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImage, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Repo.Image = "testing/argocd"
+			a.Spec.Repo.Version = "latest"
+		}},
+	},
+	{
+		name:      "repo configuration fallback spec",
+		imageFunc: getRepoServerContainerImage,
+		want:      argoTestImageOtherVersion, opts: []argoCDOpt{func(a *argoproj.ArgoCD) {
+			a.Spec.Image = "testing/argocd"
+			a.Spec.Version = "test"
+		}},
+	},
+	{
+		name:      "argo env configuration",
+		imageFunc: getRepoServerContainerImage,
 		want:      argoTestImage,
 		pre: func(t *testing.T) {
 			t.Setenv(common.ArgoCDImageEnvName, argoTestImage)
@@ -547,8 +579,17 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	sync60s := []v1.EnvVar{
-		v1.EnvVar{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
-		v1.EnvVar{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
+		{Name: "HOME", Value: "/home/argocd", ValueFrom: (*v1.EnvVarSource)(nil)},
+		{Name: "REDIS_PASSWORD", Value: "",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("argocd-redis-initial-password"),
+					},
+					Key: "admin.password",
+				},
+			}},
+		{Name: "ARGOCD_RECONCILIATION_TIMEOUT", Value: "60s", ValueFrom: (*v1.EnvVarSource)(nil)}}
 
 	cmdTests := []struct {
 		name string
@@ -983,7 +1024,7 @@ func TestGenerateRandomString(t *testing.T) {
 	assert.Len(t, b, 20)
 }
 
-func generateEncodedPEM(t *testing.T, host string) []byte {
+func generateEncodedPEM(t *testing.T) []byte {
 	key, err := argoutil.NewPrivateKey()
 	assert.NoError(t, err)
 

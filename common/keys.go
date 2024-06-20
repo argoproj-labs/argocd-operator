@@ -121,10 +121,6 @@ const (
 	// ArgoCDKeyResourceTrackingMethod is the configuration key for resource tracking method
 	ArgoCDKeyResourceTrackingMethod = "application.resourceTrackingMethod"
 
-	// ArgoCDRepoImageEnvName is the environment variable used to get the image
-	// to used for the Dex container.
-	ArgoCDRepoImageEnvName = "ARGOCD_REPOSERVER_IMAGE"
-
 	// ArgoCDKeyRepositories is the configuration key for repositories.
 	ArgoCDKeyRepositories = "repositories"
 

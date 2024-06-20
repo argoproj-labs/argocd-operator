@@ -2,6 +2,7 @@ package argocd
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -312,7 +313,8 @@ func TestReconcileArgoCD_reconcile_ServerDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
+		// Check that the env vars are set, Count is 3 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
 	})
@@ -352,7 +354,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 3)
+		// Check that the env vars are set, Count is 4 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 4)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
@@ -380,7 +383,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
@@ -412,7 +416,8 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		}, deployment)
 		assert.NoError(t, err)
 
-		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 1)
+		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
+		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
@@ -434,7 +439,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 			Namespace: testNamespace,
 		}, deployment)
 		assert.NoError(t, err)
-		assert.Empty(t, deployment.Spec.Template.Spec.Containers[0].Env)
 	})
 }
 
@@ -1077,6 +1081,18 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 					"--logformat",
 					"text",
 				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: fmt.Sprintf("argocd-redis-initial-password"),
+								},
+								Key: "admin.password",
+							},
+						},
+					},
+				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1109,6 +1125,9 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 						},
 					},
 					RunAsNonRoot: boolPtr(true),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: "RuntimeDefault",
+					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1304,6 +1323,18 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 					"--logformat",
 					"text",
 				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: fmt.Sprintf("argocd-redis-initial-password"),
+								},
+								Key: "admin.password",
+							},
+						},
+					},
+				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1336,6 +1367,9 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 						},
 					},
 					RunAsNonRoot: boolPtr(true),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: "RuntimeDefault",
+					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1396,6 +1430,18 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 					"--logformat",
 					"text",
 				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_PASSWORD", Value: "",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: fmt.Sprintf("argocd-redis-initial-password"),
+								},
+								Key: "admin.password",
+							},
+						},
+					},
+				},
 				Ports: []corev1.ContainerPort{
 					{ContainerPort: 8080},
 					{ContainerPort: 8083},
@@ -1428,6 +1474,9 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 						},
 					},
 					RunAsNonRoot: boolPtr(true),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: "RuntimeDefault",
+					},
 				},
 				VolumeMounts: serverDefaultVolumeMounts(),
 			},
@@ -1454,6 +1503,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithoutTLS(t *testing.T) {
 		"--save",
 		"",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 	}
 
 	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
@@ -1478,6 +1528,7 @@ func TestReconcileArgoCD_reconcileRedisDeploymentWithTLS(t *testing.T) {
 	want := []string{
 		"--save", "",
 		"--appendonly", "no",
+		"--requirepass $(REDIS_PASSWORD)",
 		"--tls-port", "6379",
 		"--port", "0",
 		"--tls-cert-file", "/app/config/redis/tls/tls.crt",
@@ -1639,7 +1690,6 @@ func assertDeploymentHasProxyVars(t *testing.T, c client.Client, name string) {
 		{Name: "no_proxy", Value: testNoProxy},
 	}
 	for _, c := range deployment.Spec.Template.Spec.Containers {
-		assert.Len(t, c.Env, len(want))
 		for _, w := range want {
 			assert.Contains(t, c.Env, w)
 		}

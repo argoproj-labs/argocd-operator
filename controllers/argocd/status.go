@@ -130,7 +130,7 @@ func (r *ReconcileArgoCD) reconcileStatusDex(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileStatusKeycloak(cr *argoproj.ArgoCD) error {
 	status := "Unknown"
 
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		// keycloak is installed using OpenShift templates.
 		dc := &oappsv1.DeploymentConfig{
 			ObjectMeta: metav1.ObjectMeta{

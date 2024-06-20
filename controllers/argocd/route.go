@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -231,13 +232,23 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			Termination:                   routev1.TLSTerminationEdge,
 		}
 	} else {
-		// Server is using TLS configure passthrough.
 		route.Spec.Port = &routev1.RoutePort{
 			TargetPort: intstr.FromString("https"),
 		}
-		route.Spec.TLS = &routev1.TLSConfig{
-			InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-			Termination:                   routev1.TLSTerminationPassthrough,
+
+		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, &corev1.Secret{})
+		// Since Passthrough was the default policy in the previous versions of the operator, we don't want to
+		// break users who have already configured a TLS secret for Passthrough.
+		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && route.Spec.TLS != nil && route.Spec.TLS.Termination == routev1.TLSTerminationPassthrough {
+			route.Spec.TLS = &routev1.TLSConfig{
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+				Termination:                   routev1.TLSTerminationPassthrough,
+			}
+		} else {
+			route.Spec.TLS = &routev1.TLSConfig{
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+				Termination:                   routev1.TLSTerminationReencrypt,
+			}
 		}
 	}
 

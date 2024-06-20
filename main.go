@@ -227,7 +227,8 @@ func main() {
 	}
 
 	// Setup Schemes for SSO if template instance is available.
-	if argocd.IsTemplateAPIAvailable() {
+	if argocd.CanUseKeycloakWithTemplate() {
+		setupLog.Info("Keycloak instance can be managed using OpenShift Template")
 		if err := templatev1.Install(mgr.GetScheme()); err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
@@ -240,6 +241,8 @@ func main() {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
+	} else {
+		setupLog.Info("Keycloak instance cannot be managed using OpenShift Template, as DeploymentConfig/Template API is not present")
 	}
 
 	if err = (&argocd.ReconcileArgoCD{

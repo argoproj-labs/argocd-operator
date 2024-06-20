@@ -99,6 +99,17 @@ func generateArgoAdminPassword() ([]byte, error) {
 	return []byte(pass), err
 }
 
+// generateRedisAdminPassword will generate and return the admin password for Redis.
+func generateRedisAdminPassword() ([]byte, error) {
+	pass, err := password.Generate(
+		common.RedisDefaultAdminPasswordLength,
+		common.RedisDefaultAdminPasswordNumDigits,
+		common.RedisDefaultAdminPasswordNumSymbols,
+		false, false)
+
+	return []byte(pass), err
+}
+
 // generateArgoServerKey will generate and return the server signature key for session validation.
 func generateArgoServerSessionKey() ([]byte, error) {
 	pass, err := password.Generate(
@@ -189,27 +200,35 @@ func getArgoContainerImage(cr *argoproj.ArgoCD) string {
 
 // getRepoServerContainerImage will return the container image for the Repo server.
 //
-// There are three possible options for configuring the image, and this is the
+// There are four possible options for configuring the image, and this is the
 // order of preference.
 //
 // 1. from the Spec, the spec.repo field has an image and version to use for
 // generating an image reference.
-// 2. from the Environment, this looks for the `ARGOCD_REPOSERVER_IMAGE` field and uses
+// 2. from the Spec, the spec.version field has an image and version to use for
+// generating an image reference
+// 3. from the Environment, this looks for the `ARGOCD_IMAGE` field and uses
 // that if the spec is not configured.
-// 3. the default is configured in common.ArgoCDDefaultRepoServerVersion and
-// common.ArgoCDDefaultRepoServerImage.
+// 4. the default is configured in common.ArgoCDDefaultArgoVersion and
+// common.ArgoCDDefaultArgoImage.
 func getRepoServerContainerImage(cr *argoproj.ArgoCD) string {
 	defaultImg, defaultTag := false, false
 	img := cr.Spec.Repo.Image
 	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
+		img = cr.Spec.Image
+		if img == "" {
+			img = common.ArgoCDDefaultArgoImage
+			defaultImg = true
+		}
 	}
 
 	tag := cr.Spec.Repo.Version
 	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
+		tag = cr.Spec.Version
+		if tag == "" {
+			tag = common.ArgoCDDefaultArgoVersion
+			defaultTag = true
+		}
 	}
 	if e := os.Getenv(common.ArgoCDImageEnvName); e != "" && (defaultTag && defaultImg) {
 		return e
@@ -258,6 +277,23 @@ func getArgoServerHost(cr *argoproj.ArgoCD) string {
 		host = cr.Spec.Server.Host
 	}
 	return host
+}
+
+// getKeycloakIngressHost will return the host for the given ArgoCD.
+func getKeycloakIngressHost(cr *argoproj.ArgoCDKeycloakSpec) string {
+	if cr != nil && len(cr.Host) > 0 {
+		return cr.Host
+	}
+	// If cr is nil or cr.Host is empty, return a default value or handle it accordingly.
+	return keycloakIngressHost
+}
+
+// getKeycloakIngressHost will return the host for the given ArgoCD.
+func getKeycloakOpenshiftHost(cr *argoproj.ArgoCDKeycloakSpec) string {
+	if cr != nil && len(cr.Host) > 0 {
+		return cr.Host
+	}
+	return ""
 }
 
 // getArgoServerResources will return the ResourceRequirements for the Argo CD server container.
@@ -616,7 +652,7 @@ func InspectCluster() error {
 		return err
 	}
 
-	if err := verifyTemplateAPI(); err != nil {
+	if err := verifyKeycloakTemplateAPIs(); err != nil {
 		return err
 	}
 
@@ -815,6 +851,10 @@ func (r *ReconcileArgoCD) reconcileResources(cr *argoproj.ArgoCD) error {
 	}
 
 	if err := r.reconcileRedisTLSSecret(cr, useTLSForRedis); err != nil {
+		return err
+	}
+
+	if err := r.ReconcileNetworkPolicies(cr); err != nil {
 		return err
 	}
 
@@ -1078,7 +1118,7 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		bldr.Owns(&monitoringv1.ServiceMonitor{})
 	}
 
-	if IsTemplateAPIAvailable() {
+	if CanUseKeycloakWithTemplate() {
 		// Watch for the changes to Deployment Config
 		bldr.Owns(&oappsv1.DeploymentConfig{}, builder.WithPredicates(deploymentConfigPred))
 
