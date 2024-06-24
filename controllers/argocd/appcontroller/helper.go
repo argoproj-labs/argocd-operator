@@ -54,7 +54,10 @@ func (acr *AppControllerReconciler) getParallelismLimit() int32 {
 
 func (acr *AppControllerReconciler) getResources() corev1.ResourceRequirements {
 	resources := corev1.ResourceRequirements{}
-	return argocdcommon.GetValueOrDefault(acr.Instance.Spec.Controller.Resources, resources).(corev1.ResourceRequirements)
+	if acr.Instance.Spec.Controller.Resources != nil {
+		resources = *acr.Instance.Spec.Controller.Resources
+	}
+	return resources
 }
 
 func (acr *AppControllerReconciler) getCmd() []string {
