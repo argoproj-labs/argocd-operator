@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.21
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.11.2
+	github.com/argoproj/argo-cd/v2 v2.11.3
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0
