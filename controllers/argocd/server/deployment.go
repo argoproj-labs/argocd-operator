@@ -38,6 +38,7 @@ func (sr *ServerReconciler) reconcileDeployment() error {
 			},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].Command, Desired: &desired.Spec.Template.Spec.Containers[0].Command, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].Resources, Desired: &desired.Spec.Template.Spec.Containers[0].Resources, ExtraAction: nil},
+			{Existing: &existing.Spec.Template.Spec.Containers[0].Env, Desired: &desired.Spec.Template.Spec.Containers[0].Env, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Containers[0].VolumeMounts, Desired: &desired.Spec.Template.Spec.Containers[0].VolumeMounts, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.NodeSelector, Desired: &desired.Spec.Template.Spec.NodeSelector, ExtraAction: nil},
 			{Existing: &existing.Spec.Template.Spec.Tolerations, Desired: &desired.Spec.Template.Spec.Tolerations, ExtraAction: nil},
@@ -141,6 +142,7 @@ func (sr *ServerReconciler) getDeploymentReq() workloads.DeploymentRequest {
 	}
 
 	podSpec := corev1.PodSpec{
+		NodeSelector:       common.DefaultNodeSelector(),
 		ServiceAccountName: resourceName,
 		Volumes: []corev1.Volume{
 			{
