@@ -267,5 +267,10 @@ func (sr *ServerReconciler) getDeploymentReq() workloads.DeploymentRequest {
 		Replicas: replicas,
 	}
 
+	if sr.Instance.Spec.NodePlacement != nil {
+		req.Spec.Template.Spec.NodeSelector = argoutil.AppendStringMap(req.Spec.Template.Spec.NodeSelector, sr.Instance.Spec.NodePlacement.NodeSelector)
+		req.Spec.Template.Spec.Tolerations = sr.Instance.Spec.NodePlacement.Tolerations
+	}
+
 	return req
 }
