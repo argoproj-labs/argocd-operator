@@ -31,8 +31,6 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	templatev1 "github.com/openshift/api/template/v1"
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -80,7 +78,7 @@ func init() {
 func printVersion() {
 	setupLog.Info(fmt.Sprintf("Go Version: %s", goruntime.Version()))
 	setupLog.Info(fmt.Sprintf("Go OS/Arch: %s/%s", goruntime.GOOS, goruntime.GOARCH))
-	setupLog.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+	// setupLog.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 	setupLog.Info(fmt.Sprintf("Version of %s-operator: %v", common.ArgoCDAppName, version.Version))
 }
 
@@ -161,7 +159,7 @@ func main() {
 		setupLog.Info("unable to inspect cluster")
 	}
 
-	namespace, err := k8sutil.GetWatchNamespace()
+	namespace, err := getWatchNamespace()
 	if err != nil {
 		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
 	}
@@ -294,7 +292,7 @@ func main() {
 }
 
 func getDefaultWatchedNamespacesCacheOptions() map[string]cache.Config {
-	watchedNamespaces, err := k8sutil.GetWatchNamespace()
+	watchedNamespaces, err := getWatchNamespace()
 	if err != nil {
 		setupLog.Error(err, "Failed to get watch namespace, defaulting to all namespace mode")
 		return nil
@@ -313,4 +311,18 @@ func getDefaultWatchedNamespacesCacheOptions() map[string]cache.Config {
 	}
 
 	return defaultNamespacesCacheConfig
+}
+
+// getWatchNamespace returns the Namespace the operator should be watching for changes
+func getWatchNamespace() (string, error) {
+	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
+	// which specifies the Namespace to watch.
+	// An empty value means the operator is running with cluster scope.
+	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
+
+	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
+	}
+	return ns, nil
 }

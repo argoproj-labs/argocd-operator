@@ -27,7 +27,7 @@ import (
 	"time"
 
 	argopass "github.com/argoproj/argo-cd/v2/util/password"
-	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -111,11 +111,12 @@ func newCertificateSecret(suffix string, caCert *x509.Certificate, caKey *rsa.Pr
 		return nil, err
 	}
 
-	cfg := &tlsutil.CertConfig{
-		CertName:     secret.Name,
-		CertType:     tlsutil.ClientAndServingCert,
-		CommonName:   secret.Name,
-		Organization: []string{cr.ObjectMeta.Namespace},
+	cfg := &certmanagerv1.CertificateSpec{
+		SecretName: secret.Name,
+		CommonName: secret.Name,
+		Subject: &certmanagerv1.X509Subject{
+			Organizations: []string{cr.ObjectMeta.Namespace},
+		},
 	}
 
 	dnsNames := []string{
