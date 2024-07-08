@@ -34,7 +34,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Set the Operator SDK version to use.
 # This is useful for CI or a project to utilize a specific version of the operator-sdk toolkit.
-OPERATOR_SDK_VERSION ?= v1.30.0
+OPERATOR_SDK_VERSION ?= v1.32.0
 
 
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
