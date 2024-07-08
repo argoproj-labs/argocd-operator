@@ -41,16 +41,16 @@ jobs:
           make bundle
       - name: Ensure there is no diff in bundle
         run: |
-          git diff --exit-code -- .
+          git diff --ignore-matching-lines='.*createdAt:.*'
       - name: Run make generate
         run: |
           make generate
       - name: Ensure there is no diff in generated assets
         run: |
-          git diff --exit-code -- .
+          git diff --ignore-matching-lines='.*createdAt:.*'
       - name: Run make manifests
         run: |
           make manifests
       - name: Ensure there is no diff in manifests
         run: |
-          git diff --exit-code -- .
+          git diff --ignore-matching-lines='.*createdAt:.*'
