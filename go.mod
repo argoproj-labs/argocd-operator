@@ -15,7 +15,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20200325131901-f7baeb993edb
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
-	github.com/sethvargo/go-password v0.2.0
+	github.com/sethvargo/go-password v0.3.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.19.0
