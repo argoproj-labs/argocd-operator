@@ -26,7 +26,7 @@ import (
 	"math/big"
 	"time"
 
-	tlsutil "github.com/operator-framework/operator-sdk/pkg/tls"
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 
 	"github.com/argoproj-labs/argocd-operator/common"
 )
@@ -97,24 +97,17 @@ func NewSelfSignedCACertificate(name string, key *rsa.PrivateKey) (*x509.Certifi
 // NewSignedCertificate signs a certificate using the given private key, CA and returns a signed certificate.
 // The certificate could be used for both client and server auth.
 // The certificate has one-year lease.
-func NewSignedCertificate(cfg *tlsutil.CertConfig, dnsNames []string, key *rsa.PrivateKey, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
+func NewSignedCertificate(cfg *certmanagerv1.CertificateSpec, dnsNames []string, key *rsa.PrivateKey, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).SetInt64(math.MaxInt64))
 	if err != nil {
 		return nil, err
 	}
 	eku := []x509.ExtKeyUsage{}
-	switch cfg.CertType {
-	case tlsutil.ClientCert:
-		eku = append(eku, x509.ExtKeyUsageClientAuth)
-	case tlsutil.ServingCert:
-		eku = append(eku, x509.ExtKeyUsageServerAuth)
-	case tlsutil.ClientAndServingCert:
-		eku = append(eku, x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth)
-	}
+	eku = append(eku, x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth)
 	certTmpl := x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:   cfg.CommonName,
-			Organization: cfg.Organization,
+			Organization: cfg.Subject.Organizations,
 		},
 		DNSNames:     dnsNames,
 		SerialNumber: serial,
