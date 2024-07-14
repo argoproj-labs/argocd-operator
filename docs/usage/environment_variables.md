@@ -29,6 +29,7 @@ spec:
 ```
 
 The following default value of images could be overridden by setting the environment variables:
+
 | Environment Variable | Default Value |
 | --- | --- |
 | `ARGOCD_IMAGE` | [quay.io/argoproj/argocd](quay.io/argoproj/argocd) |
