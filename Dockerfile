@@ -10,15 +10,15 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go main.go
+COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY common/ common/
-COPY controllers/ controllers/
+COPY internal/controller/ internal/controller/
 COPY version/ version/
 
 # Build
 ARG LD_FLAGS
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="$LD_FLAGS" -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="$LD_FLAGS" -a -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
