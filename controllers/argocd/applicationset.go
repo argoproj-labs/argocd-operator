@@ -237,7 +237,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+							Name: scmRootCAConfigMapName,
 						},
 					},
 				},

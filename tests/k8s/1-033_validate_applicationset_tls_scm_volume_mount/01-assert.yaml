@@ -71,5 +71,5 @@ spec:
         name: tmp
       - configMap:
           defaultMode: 420
-          name: argocd-appset-gitlab-scm-tls-certs-cm
+          name: test-1-32-appsets-scm-tls-cm
         name: appset-gitlab-scm-tls-cert
