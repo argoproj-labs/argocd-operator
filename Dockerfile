@@ -13,7 +13,7 @@ RUN go mod download
 COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY common/ common/
-COPY internal/controller/ internal/controller/
+COPY controller/ controller/
 COPY version/ version/
 
 # Build
