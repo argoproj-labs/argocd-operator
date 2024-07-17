@@ -36,12 +36,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/internal/controller/argocd"
-	"github.com/argoproj-labs/argocd-operator/internal/controller/argocdexport"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocd"
+	"github.com/argoproj-labs/argocd-operator/controllers/argocdexport"
 
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	notificationsConfig "github.com/argoproj-labs/argocd-operator/internal/controller/notificationsconfiguration"
+	notificationsConfig "github.com/argoproj-labs/argocd-operator/controllers/notificationsconfiguration"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
