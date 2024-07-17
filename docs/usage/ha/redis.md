@@ -1,4 +1,4 @@
-# High Availability
+# High Availability for Redis
 
 The Argo CD operator supports high availability through the mechanism described in the Argo CD [documentation][argocd_ha].
 

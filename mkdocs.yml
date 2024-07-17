@@ -44,7 +44,9 @@ nav:
     - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
     - Export: usage/export.md
     - ExtraConfig: usage/extra-config.md
-    - High Availability: usage/ha.md
+    - High Availability: 
+      - Redis: usage/ha/redis.md
+      - Repo Server: usage/ha/repo-server.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
     - Dex: usage/dex.md
