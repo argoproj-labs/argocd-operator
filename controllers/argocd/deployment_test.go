@@ -497,6 +497,70 @@ func TestReconcileArgoCD_reconcileRepoDeployment_mounts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, testMount)
 	})
+
+	t.Run("Add extra volume mount and volume that override default /tmp volume mount and volume", func(t *testing.T) {
+		testMount := corev1.VolumeMount{
+			Name:      "test-mount",
+			MountPath: "/tmp",
+		}
+
+		logf.SetLogger(ZapLogger(true))
+		a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+			a.Spec.Repo.VolumeMounts = []corev1.VolumeMount{testMount}
+			a.Spec.Repo.Volumes = []corev1.Volume{{Name: "test-mount"}}
+		})
+
+		resObjs := []client.Object{a}
+		subresObjs := []client.Object{a}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
+		err := r.reconcileRepoDeployment(a, false)
+		assert.NoError(t, err)
+
+		deployment := &appsv1.Deployment{}
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: testNamespace,
+		}, deployment)
+		assert.NoError(t, err)
+
+		assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+
+		containsTestMount := false
+		containsDefaultMount := false
+
+		for _, volumeMount := range container.VolumeMounts {
+
+			if volumeMount.Name == testMount.Name {
+				containsTestMount = true
+			} else if volumeMount.MountPath == "/tmp" {
+				containsDefaultMount = true
+			}
+		}
+
+		assert.True(t, containsTestMount, "should contain test-mount volume mount")
+		assert.False(t, containsDefaultMount, "should not contain the default mount, since this is being overriden by the test-mount")
+
+		containsTestMountVolume := false
+		containsDefaultVolume := false
+		for _, volume := range deployment.Spec.Template.Spec.Volumes {
+			if volume.Name == "test-mount" {
+				containsTestMountVolume = true
+			}
+			if volume.Name == "tmp" {
+				containsDefaultVolume = true
+			}
+		}
+
+		assert.True(t, containsTestMountVolume, "should contain test-mount molume")
+		assert.False(t, containsDefaultVolume, "should not contain default tmp volume")
+
+	})
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_initContainers(t *testing.T) {
@@ -1777,12 +1841,6 @@ func repoServerDefaultVolumes() []corev1.Volume {
 			},
 		},
 		{
-			Name: "tmp",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -1812,6 +1870,12 @@ func repoServerDefaultVolumes() []corev1.Volume {
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	return volumes
 }
@@ -1823,10 +1887,10 @@ func repoServerDefaultVolumeMounts() []corev1.VolumeMount {
 		{Name: "tls-certs", MountPath: "/app/config/tls"},
 		{Name: "gpg-keys", MountPath: "/app/config/gpg/source"},
 		{Name: "gpg-keyring", MountPath: "/app/config/gpg/keys"},
-		{Name: "tmp", MountPath: "/tmp"},
 		{Name: "argocd-repo-server-tls", MountPath: "/app/config/reposerver/tls"},
 		{Name: common.ArgoCDRedisServerTLSSecretName, MountPath: "/app/config/reposerver/tls/redis"},
 		{Name: "plugins", MountPath: "/home/argocd/cmp-server/plugins"},
+		{Name: "tmp", MountPath: "/tmp"},
 	}
 	return mounts
 }

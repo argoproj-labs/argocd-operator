@@ -63,14 +63,14 @@ spec:
           name: gpg-keys
         - mountPath: /app/config/gpg/keys
           name: gpg-keyring
-        - mountPath: /tmp
-          name: tmp
         - mountPath: /app/config/reposerver/tls
           name: argocd-repo-server-tls
         - mountPath: /app/config/reposerver/tls/redis
           name: argocd-operator-redis-tls
         - mountPath: /home/argocd/cmp-server/plugins
           name: plugins
+        - mountPath: /tmp
+          name: tmp
       volumes:
       - configMap:
           defaultMode: 420
@@ -86,8 +86,6 @@ spec:
         name: gpg-keys
       - emptyDir: {}
         name: gpg-keyring
-      - emptyDir: {}
-        name: tmp
       - name: argocd-repo-server-tls
         secret:
           defaultMode: 420
@@ -102,6 +100,8 @@ spec:
         name: var-files
       - emptyDir: {}
         name: plugins
+      - emptyDir: {}
+        name: tmp
 ---
 apiVersion: apps/v1
 kind: StatefulSet
