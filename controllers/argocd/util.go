@@ -1083,8 +1083,9 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
-	bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
-		Name: common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName,
+	bldr.Watches(&corev1.ConfigMap{TypeMeta: metav1.TypeMeta{
+		APIVersion: "v1",
+		Kind:       "ConfigMap",
 	}}, appSetGitlabSCMTLSConfigMapHandler)
 
 	// Watch for secrets of type TLS that might be created by external processes

@@ -206,16 +206,15 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(ctx context.Context, o cli
 func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
-	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
-		argocds := &argoproj.ArgoCDList{}
-		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
-			return result
-		}
+	argocds := &argoproj.ArgoCDList{}
+	if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+		return result
+	}
 
-		if len(argocds.Items) != 1 {
-			return result
-		}
-
+	if len(argocds.Items) != 1 {
+		return result
+	}
+	if argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap != "" && o.GetName() == argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap {
 		argocd := argocds.Items[0]
 		namespacedName := client.ObjectKey{
 			Name:      argocd.Name,
