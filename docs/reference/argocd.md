@@ -848,8 +848,8 @@ LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid op
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
 Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0.
-Volumes | [Empty] | Configure addition volumes to the repo server deployment. This field is optional.
-VolumeMounts | [Empty] | Configure addition volume mounts to the repo server deployment. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the repo server deployment. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the repo server deployment. This field is optional.
 InitContainers | [Empty] | List of init containers for the repo server deployment. This field is optional.
 SidecarContainers | [Empty] | List of sidecar containers for the repo server deployment. This field is optional.
 Enabled | true | Flag to enable repo server during ArgoCD installation.
