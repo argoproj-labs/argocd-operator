@@ -3,12 +3,8 @@ module github.com/argoproj-labs/argocd-operator
 go 1.21
 
 require (
-<<<<<<< HEAD
 	github.com/argoproj/argo-cd/v2 v2.11.6
 	github.com/cert-manager/cert-manager v1.14.4
-=======
-	github.com/argoproj/argo-cd/v2 v2.11.5
->>>>>>> a58a9d8 (release 0.11.0)
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.2
 	github.com/google/go-cmp v0.6.0

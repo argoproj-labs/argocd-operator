@@ -667,8 +667,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1245,8 +1245,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form:   p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form:   g, subject,
+          definitions. Policy rules are in the form: p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form: g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1894,7 +1894,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator@sha256:80c4c2dd0f582d43c99a7e60597e16ef2e321427a77ca8ecf551278fa5f1ce06
+                image: quay.io/argoprojlabs/argocd-operator@sha256:dafdfde863b81c8da28f37819ac4fc504ee0e9519ddcebd4dbe7c22a51d644e5
                 livenessProbe:
                   httpGet:
                     path: /healthz
