@@ -667,8 +667,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1245,8 +1245,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1867,20 +1867,20 @@ spec:
         serviceAccountName: argocd-operator-controller-manager
       deployments:
       - label:
-          control-plane: argocd-operator
+          control-plane: controller-manager
         name: argocd-operator-controller-manager
         spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: argocd-operator
+              control-plane: controller-manager
           strategy: {}
           template:
             metadata:
               annotations:
                 kubectl.kubernetes.io/default-container: manager
               labels:
-                control-plane: argocd-operator
+                control-plane: controller-manager
             spec:
               containers:
               - args:
@@ -1894,7 +1894,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator:v0.11.0
+                image: quay.io/argoprojlabs/argocd-operator@sha256:80c4c2dd0f582d43c99a7e60597e16ef2e321427a77ca8ecf551278fa5f1ce06
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1984,7 +1984,7 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.10.0
+  replaces: argocd-operator.v0.10.1
   version: 0.11.0
   webhookdefinitions:
   - admissionReviewVersions:
