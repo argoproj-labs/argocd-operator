@@ -27,6 +27,9 @@ spec:
     volumeMounts:
     - mountPath: /tmp
       name: repo-storage
+    env:
+    - name: TMPDIR
+      value: "/tmp"
 ```
 
 [argocd_repo_scaling]:https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/#scaling-up
