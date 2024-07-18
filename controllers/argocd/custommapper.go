@@ -214,14 +214,18 @@ func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Contex
 	if len(argocds.Items) != 1 {
 		return result
 	}
-	if argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap != "" && o.GetName() == argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap {
-		argocd := argocds.Items[0]
-		namespacedName := client.ObjectKey{
-			Name:      argocd.Name,
-			Namespace: argocd.Namespace,
-		}
-		result = []reconcile.Request{
-			{NamespacedName: namespacedName},
+	appSet := argocds.Items[0].Spec.ApplicationSet
+	if appSet != nil && appSet.SCMRootCAConfigMap != "" {
+		if o.GetName() == argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap {
+
+			argocd := argocds.Items[0]
+			namespacedName := client.ObjectKey{
+				Name:      argocd.Name,
+				Namespace: argocd.Namespace,
+			}
+			result = []reconcile.Request{
+				{NamespacedName: namespacedName},
+			}
 		}
 	}
 

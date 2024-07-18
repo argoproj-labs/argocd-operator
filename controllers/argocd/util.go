@@ -1049,8 +1049,29 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 		},
 	}
 
+	applicationSetSCMTLSConfigMapName := ""
+	applicationSetSCMProviderPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			newCR, ok := e.ObjectNew.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldCR, ok := e.ObjectOld.(*argoproj.ArgoCD)
+			if !ok {
+				return false
+			}
+			oldAppSet := oldCR.Spec.ApplicationSet
+			newAppSet := newCR.Spec.ApplicationSet
+			if (oldAppSet == nil || oldAppSet.SCMRootCAConfigMap == "") && (newAppSet != nil && len(newAppSet.SCMRootCAConfigMap) > 0) {
+				applicationSetSCMTLSConfigMapName = newAppSet.SCMRootCAConfigMap
+				fmt.Println("YAYYYYYYYY I AM HETERER EHEHREHREH EHRHERHEHREHR HERHERHEHREH")
+			}
+			return true
+		},
+	}
+
 	// Watch for changes to primary resource ArgoCD
-	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred))
+	bldr.For(&argoproj.ArgoCD{}, builder.WithPredicates(deleteSSOPred, deleteNotificationsPred, applicationSetSCMProviderPred))
 
 	// Watch for changes to ConfigMap sub-resources owned by ArgoCD instances.
 	bldr.Owns(&corev1.ConfigMap{})
@@ -1083,10 +1104,11 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 
 	bldr.Watches(&v1.ClusterRole{}, clusterResourceHandler)
 
-	bldr.Watches(&corev1.ConfigMap{TypeMeta: metav1.TypeMeta{
-		APIVersion: "v1",
-		Kind:       "ConfigMap",
-	}}, appSetGitlabSCMTLSConfigMapHandler)
+	if applicationSetSCMTLSConfigMapName != "" {
+		bldr.Watches(&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+			Name: applicationSetSCMTLSConfigMapName,
+		}}, appSetGitlabSCMTLSConfigMapHandler)
+	}
 
 	// Watch for secrets of type TLS that might be created by external processes
 	bldr.Watches(&corev1.Secret{Type: corev1.SecretTypeTLS}, tlsSecretHandler)
