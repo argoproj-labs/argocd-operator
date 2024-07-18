@@ -11,8 +11,9 @@ To mount a Persistent Volume to the Repo Server, add the volume details in the `
 !!! important
       The Argo CD operator does not create persistent volumes automatically. It is the user's responsibility to create and manage the required Persistent Volume (PV) and Persistent Volume Claim (PVC) resources. Make sure to provision these resources according to your storage needs and environment.
 
-Example: 
+**Examples:**  
 
+1) Mount the persistent volume to the default repository storage location, i.e. `/tmp`.
 ```yaml
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
@@ -27,9 +28,26 @@ spec:
     volumeMounts:
     - mountPath: /tmp
       name: repo-storage
+```
+
+2) Mount the persistent volume to a custom repository storage location, e.g. `/manifests`.
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-sample
+spec:
+  repo:
+    volumes:
+    - name: repo-storage
+      persistentVolumeClaim:
+        claimName: <persistent-volume-claim>
+    volumeMounts:
+    - mountPath: /manifests
+      name: repo-storage
     env:
     - name: TMPDIR
-      value: "/tmp"
+      value: "/manifests"
 ```
 
 [argocd_repo_scaling]:https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/#scaling-up
