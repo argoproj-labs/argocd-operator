@@ -1064,7 +1064,6 @@ func (r *ReconcileArgoCD) setResourceWatches(bldr *builder.Builder, clusterResou
 			newAppSet := newCR.Spec.ApplicationSet
 			if (oldAppSet == nil || oldAppSet.SCMRootCAConfigMap == "") && (newAppSet != nil && len(newAppSet.SCMRootCAConfigMap) > 0) {
 				applicationSetSCMTLSConfigMapName = newAppSet.SCMRootCAConfigMap
-				fmt.Println("YAYYYYYYYY I AM HETERER EHEHREHREH EHRHERHEHREHR HERHERHEHREH")
 			}
 			return true
 		},
