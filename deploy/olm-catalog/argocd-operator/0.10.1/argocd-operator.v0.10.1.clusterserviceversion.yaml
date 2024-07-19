@@ -248,11 +248,11 @@ metadata:
     categories: Integration & Delivery
     certified: "false"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.32.0
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.11.0
+  name: argocd-operator.v0.10.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -666,8 +666,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1244,8 +1244,8 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
+          definitions. Policy rules are in the form:   p, subject, resource, action,
+          object, effect Role definitions and bindings are in the form:   g, subject,
           inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
           for additional information.'
         displayName: Policy
@@ -1891,7 +1891,7 @@ spec:
                       fieldPath: metadata.annotations['olm.targetNamespaces']
                 - name: ENABLE_CONVERSION_WEBHOOK
                   value: "true"
-                image: quay.io/argoprojlabs/argocd-operator@sha256:dafdfde863b81c8da28f37819ac4fc504ee0e9519ddcebd4dbe7c22a51d644e5
+                image: quay.io/argoprojlabs/argocd-operator@sha256:82fc1fefd981bf96a1411cde9c8998db956b918b18221727797c2d7c5dffe6f3
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -1981,8 +1981,8 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.10.1
-  version: 0.11.0
+  replaces: argocd-operator.v0.10.0
+  version: 0.10.1
   webhookdefinitions:
   - admissionReviewVersions:
     - v1alpha1

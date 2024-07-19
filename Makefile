@@ -5,6 +5,14 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.11.0
 
+# Try to detect Docker or Podman
+CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
+
+# If neither Docker nor Podman is found, print an error message and exit
+ifeq ($(CONTAINER_RUNTIME),)
+$(warning "No container runtime (Docker or Podman) found in PATH. Please install one of them.")
+endif
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
