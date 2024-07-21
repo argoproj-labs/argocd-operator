@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	argopass "github.com/argoproj/argo-cd/v2/util/password"
 	"reflect"
 	"sort"
 	"testing"
+
+	argopass "github.com/argoproj/argo-cd/v2/util/password"
 
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"

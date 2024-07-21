@@ -441,7 +441,7 @@ spec:
       argocd: example-argocd
     ```
 
-    See the documentation and examples at the [official github repository](https://github.com/argoproj-labs/argocd-operator) 
+    See the documentation and examples at the [official GitHub repository](https://github.com/argoproj-labs/argocd-operator) 
     for more information.
   displayName: Argo CD
   icon:

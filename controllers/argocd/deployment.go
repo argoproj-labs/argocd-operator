@@ -895,6 +895,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Repo.InitContainers...)
 	}
 
+	// If the user has specified a custom volume mount that overrides the existing /tmp mount, then we should use the user's custom mount, rather than the default.
+	volumeMountOverridesTmpVolume := false
+	for _, volumeMount := range cr.Spec.Repo.VolumeMounts {
+		if volumeMount.MountPath == "/tmp" {
+			volumeMountOverridesTmpVolume = true
+			break
+		}
+	}
+
 	repoServerVolumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "ssh-known-hosts",
@@ -913,10 +922,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			MountPath: "/app/config/gpg/keys",
 		},
 		{
-			Name:      "tmp",
-			MountPath: "/tmp",
-		},
-		{
 			Name:      "argocd-repo-server-tls",
 			MountPath: "/app/config/reposerver/tls",
 		},
@@ -928,6 +933,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			Name:      "plugins",
 			MountPath: "/home/argocd/cmp-server/plugins",
 		},
+	}
+
+	if !volumeMountOverridesTmpVolume {
+
+		repoServerVolumeMounts = append(repoServerVolumeMounts, corev1.VolumeMount{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		})
+
 	}
 
 	if cr.Spec.Repo.VolumeMounts != nil {
@@ -1025,12 +1039,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			},
 		},
 		{
-			Name: "tmp",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -1060,6 +1068,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+	}
+
+	// If the user is not used a custom /tmp mount, then just use the default
+	if !volumeMountOverridesTmpVolume {
+		repoServerVolumes = append(repoServerVolumes, corev1.Volume{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
 	}
 
 	if cr.Spec.Repo.Volumes != nil {
