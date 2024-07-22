@@ -35,6 +35,7 @@ Name | Default | Description
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
+[**Repo**](#repo-options) | [Object] | Repo Server configuration options.
 [**ResourceHealthChecks**](#resource-customizations) | [Empty] | Customizes resource health check behavior.
 [**ResourceIgnoreDifferences**](#resource-customizations) | [Empty] | Customizes resource ignore difference behavior.
 [**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
@@ -847,6 +848,12 @@ LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid op
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
 Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0.
+Volumes | [Empty] | Configure addition volumes for the repo server deployment. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the repo server deployment. This field is optional.
+InitContainers | [Empty] | List of init containers for the repo server deployment. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the repo server deployment. This field is optional.
+Enabled | true | Flag to enable repo server during ArgoCD installation.
+Remote | [Empty] | Specifies the remote URL of the repo server container. By default, it points to a local instance managed by the operator. This field is optional.
 
 ### Pass Command Arguments To Repo Server
 
