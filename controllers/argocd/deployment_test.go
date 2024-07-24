@@ -1332,7 +1332,7 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
-func TestReconcileServer_IniContainers(t *testing.T) {
+func TestReconcileServer_InitContainers(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.Server.InitContainers = []corev1.Container{
 			{
