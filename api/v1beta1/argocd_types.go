@@ -79,6 +79,10 @@ type ArgoCDApplicationControllerProcessorsSpec struct {
 
 // ArgoCDApplicationControllerSpec defines the options for the ArgoCD Application Controller component.
 type ArgoCDApplicationControllerSpec struct {
+
+	// InitContainers defines the list of initialization containers for the Application Controller component.
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+
 	// Processors contains the options for the Application Controller processors.
 	Processors ArgoCDApplicationControllerProcessorsSpec `json:"processors,omitempty"`
 
@@ -576,6 +580,9 @@ type ArgoCDServerSpec struct {
 
 	// GRPC defines the state for the Argo CD Server GRPC options.
 	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
+
+	// InitContainers defines the list of initialization containers for the Argo CD Server component.
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
 	// Host is the hostname to use for Ingress/Route resources.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Host",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server","urn:alm:descriptor:com.tectonic.ui:text"}

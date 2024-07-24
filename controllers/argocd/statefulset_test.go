@@ -710,3 +710,99 @@ func TestReconcileArgoCD_reconcileApplicationController_withDynamicSharding(t *t
 
 	}
 }
+
+func TestReconcileAppController_Initcontainer(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.InitContainers = []corev1.Container{
+			{
+				Name:  "test-init-container",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	assert.Equal(t, 1, len(ss.Spec.Template.Spec.InitContainers))
+	assert.Equal(t, "test-init-container", ss.Spec.Template.Spec.InitContainers[0].Name)
+	assert.Equal(t, "test-image", ss.Spec.Template.Spec.InitContainers[0].Image)
+
+	// Remove InitContainers
+	a.Spec.Controller.InitContainers = nil
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss = &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	assert.Equal(t, 0, len(ss.Spec.Template.Spec.InitContainers))
+}
+
+func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.SidecarContainers = []corev1.Container{
+			{
+				Name:  "test-sidecar-container",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss := &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	assert.Equal(t, 2, len(ss.Spec.Template.Spec.Containers))
+	assert.Equal(t, "test-sidecar-container", ss.Spec.Template.Spec.Containers[1].Name)
+	assert.Equal(t, "test-image", ss.Spec.Template.Spec.Containers[1].Image)
+
+	// Remove SidecarContainers
+	a.Spec.Controller.SidecarContainers = nil
+	assert.NoError(t, r.reconcileApplicationControllerStatefulSet(a, false))
+
+	ss = &appsv1.StatefulSet{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-application-controller",
+			Namespace: a.Namespace,
+		},
+		ss))
+
+	assert.Equal(t, 1, len(ss.Spec.Template.Spec.Containers))
+}

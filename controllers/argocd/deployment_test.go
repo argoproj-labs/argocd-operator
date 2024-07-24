@@ -1332,6 +1332,101 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
+func TestReconcileServer_IniContainers(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.InitContainers = []corev1.Container{
+			{
+				Name:  "test-init-container",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, "test-init-container", deployment.Spec.Template.Spec.InitContainers[0].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.InitContainers[0].Image)
+
+	// Remove the init container
+	a.Spec.Server.InitContainers = []corev1.Container{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+}
+
+func TestReconcile_SidecarContainers(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.SidecarContainers = []corev1.Container{
+			{
+				Name:  "test-sidecar",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 2)
+	assert.Equal(t, "test-sidecar", deployment.Spec.Template.Spec.Containers[1].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.Containers[1].Image)
+
+	// Remove the sidecar container
+	a.Spec.Server.SidecarContainers = []corev1.Container{}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+}
+
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
 	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
 	extraCMDArgs := []string{"--extra-path", "/"}

@@ -247,11 +247,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-<<<<<<< HEAD
     createdAt: "2024-07-22T11:00:53Z"
-=======
-    createdAt: "2024-07-23T08:16:41Z"
->>>>>>> b445bab (feat: add sidecar container support for Argo CD Controller and Server)
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
