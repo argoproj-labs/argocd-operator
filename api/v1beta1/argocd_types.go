@@ -106,6 +106,9 @@ type ArgoCDApplicationControllerSpec struct {
 	// Sharding contains the options for the Application Controller sharding configuration.
 	Sharding ArgoCDApplicationControllerShardSpec `json:"sharding,omitempty"`
 
+	// SidecarContainers defines the list of sidecar containers for the controller deployment
+	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
+
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
@@ -603,6 +606,9 @@ type ArgoCDServerSpec struct {
 
 	// Service defines the options for the Service backing the ArgoCD Server component.
 	Service ArgoCDServerServiceSpec `json:"service,omitempty"`
+
+	// SidecarContainers defines the list of sidecar containers for the server deployment
+	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 
 	// Env lets you specify environment for API server pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
