@@ -7592,6 +7592,14 @@ spec:
                       - name
                       type: object
                     type: array
+                  extraCommandArgs:
+                    description: |-
+                      Extra Command arguments allows users to pass command line arguments to controller workload. They get added to default command line arguments provided
+                      by the operator.
+                      Please note that the command line arguments provided as part of ExtraCommandArgs will not overwrite the default command line arguments.
+                    items:
+                      type: string
+                    type: array
                   logFormat:
                     description: LogFormat refers to the log format used by the Application
                       Controller component. Defaults to ArgoCDDefaultLogFormat if
