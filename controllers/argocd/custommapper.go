@@ -206,26 +206,23 @@ func (r *ReconcileArgoCD) clusterSecretResourceMapper(ctx context.Context, o cli
 func (r *ReconcileArgoCD) applicationSetSCMTLSConfigMapMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
 
-	argocds := &argoproj.ArgoCDList{}
-	if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
-		return result
-	}
+	if o.GetName() == common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName {
+		argocds := &argoproj.ArgoCDList{}
+		if err := r.Client.List(context.TODO(), argocds, &client.ListOptions{Namespace: o.GetNamespace()}); err != nil {
+			return result
+		}
 
-	if len(argocds.Items) != 1 {
-		return result
-	}
-	appSet := argocds.Items[0].Spec.ApplicationSet
-	if appSet != nil && appSet.SCMRootCAConfigMap != "" {
-		if o.GetName() == argocds.Items[0].Spec.ApplicationSet.SCMRootCAConfigMap {
+		if len(argocds.Items) != 1 {
+			return result
+		}
 
-			argocd := argocds.Items[0]
-			namespacedName := client.ObjectKey{
-				Name:      argocd.Name,
-				Namespace: argocd.Namespace,
-			}
-			result = []reconcile.Request{
-				{NamespacedName: namespacedName},
-			}
+		argocd := argocds.Items[0]
+		namespacedName := client.ObjectKey{
+			Name:      argocd.Name,
+			Namespace: argocd.Namespace,
+		}
+		result = []reconcile.Request{
+			{NamespacedName: namespacedName},
 		}
 	}
 
