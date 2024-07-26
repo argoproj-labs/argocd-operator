@@ -46,6 +46,9 @@ func IsRouteAPIAvailable() bool {
 // verifyRouteAPI will verify that the Route API is present.
 func verifyRouteAPI() error {
 	found, err := argoutil.VerifyAPI(routev1.GroupName, routev1.GroupVersion.Version)
+	// One option is to directly check the API registration directly instead of checking
+	// the API availability using the discovery client.
+	//found, err := argoutil.IsAPIRegistered(routev1.GroupName, routev1.GroupVersion.Version)
 	if err != nil {
 		return err
 	}
