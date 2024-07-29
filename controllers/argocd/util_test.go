@@ -580,6 +580,11 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			extraCommandArgsChangedResult([]string{"--app-hard-resync", "--app-resync"}),
 		},
 		{
+			"configured duplicate extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
+			defaultResult,
+		},
+		{
 			"configured empty extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{})},
 			defaultResult,
