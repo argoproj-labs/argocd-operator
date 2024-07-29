@@ -480,26 +480,8 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
-	extraCommandArgsChangedResult := func(l string) []string {
-		return []string{
-			"argocd-application-controller",
-			"--operation-processors",
-			"10",
-			"--redis",
-			"argocd-redis.argocd.svc.cluster.local:6379",
-			"--repo-server",
-			"argocd-repo-server.argocd.svc.cluster.local:8081",
-			"--status-processors",
-			"20",
-			"--kubectl-parallelism-limit",
-			"10",
-			"--loglevel",
-			"info",
-			"--logformat",
-			"text",
-			"--app-hard-resync",
-			"--app-resync",
-		}
+	extraCommandArgsChangedResult := func(l []string) []string {
+		return append(defaultResult, l...)
 	}
 
 	cmdTests := []struct {
@@ -595,7 +577,7 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"configured extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{"--app-hard-resync", "--app-resync"})},
-			extraCommandArgsChangedResult("--app-hard-resync, --app-resync"),
+			extraCommandArgsChangedResult([]string{"--app-hard-resync", "--app-resync"}),
 		},
 		{
 			"configured empty extraCommandArgs",
