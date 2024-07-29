@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: example-argocd-application-controller 
+  name: example-argocd-application-controller
+  namespace: test-1-38-controller-extra-command
 spec:
   template:
     spec:
