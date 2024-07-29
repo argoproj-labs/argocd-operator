@@ -51,6 +51,12 @@ func logLevel(l string) argoCDOpt {
 	}
 }
 
+func extraCommandArgs(l []string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.ExtraCommandArgs = l
+	}
+}
+
 func appSync(s int) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
@@ -474,6 +480,28 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
+	extraCommandArgsChangedResult := func(l string) []string {
+		return []string{
+			"argocd-application-controller",
+			"--operation-processors",
+			"10",
+			"--redis",
+			"argocd-redis.argocd.svc.cluster.local:6379",
+			"--repo-server",
+			"argocd-repo-server.argocd.svc.cluster.local:8081",
+			"--status-processors",
+			"20",
+			"--kubectl-parallelism-limit",
+			"10",
+			"--loglevel",
+			"info",
+			"--logformat",
+			"text",
+			"--app-hard-resync",
+			"--app-resync",
+		}
+	}
+
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
@@ -563,6 +591,16 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			"configured error loglevel",
 			[]argoCDOpt{logLevel("error")},
 			logLevelChangedResult("error"),
+		},
+		{
+			"configured extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--app-hard-resync", "--app-resync"})},
+			extraCommandArgsChangedResult("--app-hard-resync, --app-resync"),
+		},
+		{
+			"configured empty extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{})},
+			defaultResult,
 		},
 	}
 
