@@ -48,6 +48,7 @@ func VerifyAPI(group string, version string) (bool, error) {
 
 	if err = discovery.ServerSupportsVersion(k8s, gv); err != nil {
 		// error, API not available, check if its registered.
+		log.Info(fmt.Sprintf("%s/%s API not available, checking if its registered", group, version))
 		return IsAPIRegistered(group, version)
 	}
 
@@ -74,12 +75,13 @@ func IsAPIRegistered(group string, version string) (bool, error) {
 		Get(context.TODO(), fmt.Sprintf("%s.%s", version, group), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("%s/%s API is not registered", group, version))
 			return false, nil
 		} else {
+			log.Error(err, fmt.Sprintf("%s/%s API registration check failed.", group, version))
 			return false, err
 		}
 	}
-
-	log.Info(fmt.Sprintf("%s/%s API registered", group, version))
+	log.Info(fmt.Sprintf("%s/%s API is registered", group, version))
 	return true, nil
 }
