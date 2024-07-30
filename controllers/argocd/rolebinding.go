@@ -339,6 +339,15 @@ func newRoleBindingWithNameForApplicationSourceNamespaces(namespace string, cr *
 }
 
 func (r *ReconcileArgoCD) reconcileClusterRoleBinding(name string, role *v1.ClusterRole, cr *argoproj.ArgoCD) error {
+	if name == common.ArgoCDApplicationControllerComponentAdmin || name == common.ArgoCDApplicationControllerComponentView {
+		// Don't create ClusterRoleBinding
+		return nil
+	}
+
+	if err := verifyInstallationMode(cr, true); err != nil {
+		log.Error(err, "error occurred in reconcileClusterRoleBinding")
+		return nil
+	}
 
 	// Check if user doesn't want to use default ClusterRole, hence default ClusterRoleBinding is also not required
 	if cr.Spec.DefaultClusterScopedRoleDisabled {

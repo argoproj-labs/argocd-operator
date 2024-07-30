@@ -28,6 +28,37 @@ func policyRuleForApplicationController() []v1.PolicyRule {
 	}
 }
 
+func policyRuleForApplicationControllerView() []v1.PolicyRule {
+
+	return []v1.PolicyRule{
+		{
+			APIGroups: []string{
+				"*",
+			},
+			Resources: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+		}, {
+			NonResourceURLs: []string{
+				"*",
+			},
+			Verbs: []string{
+				"get",
+				"list",
+			},
+		},
+	}
+}
+
+func policyRuleForApplicationControllerAdmin() []v1.PolicyRule {
+	return []v1.PolicyRule{}
+}
+
 func policyRuleForRedis(client client.Client) []v1.PolicyRule {
 	rules := []v1.PolicyRule{
 		{
@@ -384,6 +415,12 @@ func getPolicyRuleClusterRoleList() []struct {
 		}, {
 			name:       common.ArgoCDServerComponent,
 			policyRule: policyRuleForServerClusterRole(),
+		}, {
+			name:       common.ArgoCDApplicationControllerComponentView,
+			policyRule: policyRuleForApplicationControllerView(),
+		}, {
+			name:       common.ArgoCDApplicationControllerComponentAdmin,
+			policyRule: policyRuleForApplicationControllerAdmin(),
 		},
 	}
 }
