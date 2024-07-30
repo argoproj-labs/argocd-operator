@@ -1200,6 +1200,28 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, cr.Spec.Server.InitContainers...)
 	}
 
+	serverVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		}, {
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/server/tls",
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/server/tls/redis",
+		},
+	}
+
+	if cr.Spec.Server.VolumeMounts != nil {
+		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.Server.VolumeMounts...)
+	}
+
 	deploy.Spec.Template.Spec.Containers = []corev1.Container{{
 		Command:         getArgoServerCommand(cr, useTLSForRedis),
 		Image:           getArgoContainerImage(cr),
@@ -1246,26 +1268,11 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			}, {
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/server/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/server/tls/redis",
-			},
-		},
+		VolumeMounts: serverVolumeMounts,
 	}}
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, "argocd-server")
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+
+	serverVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
@@ -1305,6 +1312,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			},
 		},
 	}
+
+	if cr.Spec.Server.Volumes != nil {
+		serverVolumes = append(serverVolumes, cr.Spec.Server.Volumes...)
+	}
+
+	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas

@@ -249,6 +249,7 @@ metadata:
     certified: "false"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     createdAt: "2024-07-22T11:00:53Z"
 =======
     createdAt: "2024-07-24T12:15:21Z"
@@ -256,6 +257,9 @@ metadata:
 =======
     createdAt: "2024-07-24T12:24:51Z"
 >>>>>>> 1755b6b (chore: make bundle)
+=======
+    createdAt: "2024-07-30T07:24:03Z"
+>>>>>>> 499db6c (feat: add support for volumes and volume mounts)
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4

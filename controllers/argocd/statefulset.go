@@ -572,6 +572,21 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		ss.Spec.Template.Spec.InitContainers = append(ss.Spec.Template.Spec.InitContainers, cr.Spec.Controller.InitContainers...)
 	}
 
+	controllerVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/controller/tls",
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/controller/tls/redis",
+		},
+	}
+
+	if cr.Spec.Controller.VolumeMounts != nil {
+		controllerVolumeMounts = append(controllerVolumeMounts, cr.Spec.Controller.VolumeMounts...)
+	}
+
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
@@ -604,16 +619,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 			RunAsNonRoot: boolPtr(true),
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/controller/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/controller/tls/redis",
-			},
-		},
+		VolumeMounts: controllerVolumeMounts,
 	}}
 
 	if cr.Spec.Controller.SidecarContainers != nil {
@@ -622,7 +628,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
-	podSpec.Volumes = []corev1.Volume{
+
+	controllerVolumes := []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
@@ -642,6 +649,12 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 		},
 	}
+
+	if cr.Spec.Controller.Volumes != nil {
+		controllerVolumes = append(controllerVolumes, cr.Spec.Controller.Volumes...)
+	}
+
+	podSpec.Volumes = controllerVolumes
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{

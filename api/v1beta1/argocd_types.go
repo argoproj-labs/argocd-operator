@@ -123,6 +123,11 @@ type ArgoCDApplicationControllerSpec struct {
 	// by the operator.
 	// Please note that the command line arguments provided as part of ExtraCommandArgs will not overwrite the default command line arguments.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
+	// Volumes adds volumes to the Argo CD Controller container.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts adds volumeMounts to the Argo CD Controller container.
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -627,6 +632,12 @@ type ArgoCDServerSpec struct {
 
 	// Enabled is the flag to enable ArgoCD Server during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Volumes adds volumes to the Argo CD Server container.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts adds volumeMounts to the Argo CD Server container.
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
