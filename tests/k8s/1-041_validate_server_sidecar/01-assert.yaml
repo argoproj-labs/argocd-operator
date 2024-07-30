@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+spec:
+  selector:
+      matchLabels:
+        app.kubernetes.io/name: argocd-server
+  template:
+    spec:
+      containers:
+      - name: argocd-server
+      - name: sidecar
+        image: busybox
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 32Mi
+
