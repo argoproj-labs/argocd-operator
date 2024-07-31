@@ -185,6 +185,8 @@ Sharding.clustersPerShard | 1 | The number of clusters that need to be handles b
 ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
 InitContainers | [Empty] | List of init containers for the ArgoCD Application Controller component. This field is optional.
 SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
 
 ### Controller Example
 
@@ -1243,7 +1245,8 @@ LogFormat | text | The log format to be used by the ArgoCD Server component. Val
 Env | [Empty] | Environment to set for the server workloads.
 InitContainers | [Empty] | List of init containers for the ArgoCD Server component. This field is optional.
 SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Server component. This field is optional.
-
+Volumes | [Empty] | Configure addition volumes for the Argo CD server component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
 
 
 ### Server Autoscale Options
