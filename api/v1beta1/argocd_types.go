@@ -111,6 +111,11 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Enabled is the flag to enable the Application Controller during ArgoCD installation. (optional, default `true`)
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// Extra Command arguments allows users to pass command line arguments to controller workload. They get added to default command line arguments provided
+	// by the operator.
+	// Please note that the command line arguments provided as part of ExtraCommandArgs will not overwrite the default command line arguments.
+	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {

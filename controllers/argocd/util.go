@@ -174,6 +174,14 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
 
+	// check if extra args are present
+	extraArgs := cr.Spec.Controller.ExtraCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+	cmd = append(cmd, extraArgs...)
+
 	return cmd
 }
 

@@ -182,6 +182,7 @@ Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
+ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
 
 ### Controller Example
 
@@ -254,6 +255,26 @@ spec:
       enabled: true
       replicas: 5
 ```
+
+The following example shows how to configure extra command arguments for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    extraCommandArgs:
+    - --app-hard-resync
+    - --app-resync
+```
+
+!!! note
+    ExtraCommandArgs will not be added, if one of these commands is already part of the command with same or different value.
+
 
 ## Disable Admin
 
