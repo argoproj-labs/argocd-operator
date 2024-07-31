@@ -136,6 +136,7 @@ func (in *ArgoCDApplicationControllerSpec) DeepCopyInto(out *ArgoCDApplicationCo
 		in, out := &in.ExtraCommandArgs, &out.ExtraCommandArgs
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))

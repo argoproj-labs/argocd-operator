@@ -7607,6 +7607,7 @@ spec:
                       Please note that the command line arguments provided as part of ExtraCommandArgs will not overwrite the default command line arguments.
                     items:
                       type: string
+                    type: array
                   initContainers:
                     description: InitContainers defines the list of initialization
                       containers for the Application Controller component.
