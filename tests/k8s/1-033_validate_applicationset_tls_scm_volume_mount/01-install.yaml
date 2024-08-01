@@ -53,4 +53,4 @@ metadata:
   namespace: test-1-32-appsets-scm-tls-mount
 spec:
   applicationSet:
-    scmRootCAConfigMap: test-1-32-appsets-scm-tls-cm
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
