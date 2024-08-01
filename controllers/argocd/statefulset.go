@@ -567,6 +567,26 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
 	// Let user specify their own environment first
 	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
+
+	if cr.Spec.Controller.InitContainers != nil {
+		ss.Spec.Template.Spec.InitContainers = append(ss.Spec.Template.Spec.InitContainers, cr.Spec.Controller.InitContainers...)
+	}
+
+	controllerVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/controller/tls",
+		},
+		{
+			Name:      common.ArgoCDRedisServerTLSSecretName,
+			MountPath: "/app/config/controller/tls/redis",
+		},
+	}
+
+	if cr.Spec.Controller.VolumeMounts != nil {
+		controllerVolumeMounts = append(controllerVolumeMounts, cr.Spec.Controller.VolumeMounts...)
+	}
+
 	podSpec := &ss.Spec.Template.Spec
 	podSpec.Containers = []corev1.Container{{
 		Command:         getArgoApplicationControllerCommand(cr, useTLSForRedis),
@@ -599,20 +619,17 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 			RunAsNonRoot: boolPtr(true),
 		},
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "argocd-repo-server-tls",
-				MountPath: "/app/config/controller/tls",
-			},
-			{
-				Name:      common.ArgoCDRedisServerTLSSecretName,
-				MountPath: "/app/config/controller/tls/redis",
-			},
-		},
+		VolumeMounts: controllerVolumeMounts,
 	}}
+
+	if cr.Spec.Controller.SidecarContainers != nil {
+		ss.Spec.Template.Spec.Containers = append(ss.Spec.Template.Spec.Containers, cr.Spec.Controller.SidecarContainers...)
+	}
+
 	AddSeccompProfileForOpenShift(r.Client, podSpec)
 	podSpec.ServiceAccountName = nameWithSuffix("argocd-application-controller", cr)
-	podSpec.Volumes = []corev1.Volume{
+
+	controllerVolumes := []corev1.Volume{
 		{
 			Name: "argocd-repo-server-tls",
 			VolumeSource: corev1.VolumeSource{
@@ -632,6 +649,12 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			},
 		},
 	}
+
+	if cr.Spec.Controller.Volumes != nil {
+		controllerVolumes = append(controllerVolumes, cr.Spec.Controller.Volumes...)
+	}
+
+	podSpec.Volumes = controllerVolumes
 
 	ss.Spec.Template.Spec.Affinity = &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
@@ -718,7 +741,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
 			changed = true
 		}
-
+		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers, ss.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
+			changed = true
+		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			ss.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
@@ -739,6 +765,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 		if !reflect.DeepEqual(ss.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = ss.Spec.Replicas
+			changed = true
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[1:],
+			existing.Spec.Template.Spec.Containers[1:]) {
+			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
+				ss.Spec.Template.Spec.Containers[1:]...)
 			changed = true
 		}
 

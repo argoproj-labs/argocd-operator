@@ -183,6 +183,10 @@ Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Applicatio
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
 ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
+InitContainers | [Empty] | List of init containers for the ArgoCD Application Controller component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
 
 ### Controller Example
 
@@ -1238,7 +1242,12 @@ Replicas | [Empty] | The number of replicas for the ArgoCD Server. Must be great
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
-Env | [Empty] | Environment to set for the server workloads
+Env | [Empty] | Environment to set for the server workloads.
+InitContainers | [Empty] | List of init containers for the ArgoCD Server component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Server component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the Argo CD server component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
+
 
 ### Server Autoscale Options
 
