@@ -47,7 +47,7 @@ func VerifyAPI(group string, version string) (bool, error) {
 	}
 
 	if err = discovery.ServerSupportsVersion(k8s, gv); err != nil {
-		// error, API not available, check if its registered.
+		// error, API not available, check if it is registered.
 		log.Info(fmt.Sprintf("%s/%s API not available, checking if its registered", group, version))
 		return IsAPIRegistered(group, version)
 	}
