@@ -236,6 +236,18 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 			{ContainerPort: 8443, Name: "https", Protocol: "TCP"},
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
+		SecurityContext: &corev1.SecurityContext{
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{
+					"ALL",
+				},
+			},
+			AllowPrivilegeEscalation: boolPtr(false),
+			RunAsNonRoot:             boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
+		},
 		ReadinessProbe: &corev1.Probe{
 			TimeoutSeconds:      240,
 			InitialDelaySeconds: 120,
@@ -626,6 +638,18 @@ func newKeycloakDeployment(cr *argoproj.ArgoCD) *k8sappsv1.Deployment {
 							Ports: []corev1.ContainerPort{
 								{Name: "http", ContainerPort: httpPort},
 								{Name: "https", ContainerPort: portTLS},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{
+										"ALL",
+									},
+								},
+								AllowPrivilegeEscalation: boolPtr(false),
+								RunAsNonRoot:             boolPtr(true),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: "RuntimeDefault",
+								},
 							},
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{

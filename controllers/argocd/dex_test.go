@@ -280,6 +280,9 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						},
 					},
 					RunAsNonRoot: boolPtr(true),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: "RuntimeDefault",
+					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{
@@ -330,6 +333,9 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 						},
 					},
 					RunAsNonRoot: boolPtr(true),
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: "RuntimeDefault",
+					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
@@ -401,6 +407,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 							RunAsNonRoot: boolPtr(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: "RuntimeDefault",
+							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{
@@ -451,6 +460,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 							RunAsNonRoot: boolPtr(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: "RuntimeDefault",
+							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
@@ -514,6 +526,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 							RunAsNonRoot: boolPtr(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: "RuntimeDefault",
+							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{
@@ -577,6 +592,9 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 								},
 							},
 							RunAsNonRoot: boolPtr(true),
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: "RuntimeDefault",
+							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
