@@ -38,7 +38,7 @@ import (
 )
 
 const (
-	ApplicationSetGitlabSCMTlsCertPath = "/app/tls/scm"
+	ApplicationSetGitlabSCMTlsCertPath = "/app/tls/scm/"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.

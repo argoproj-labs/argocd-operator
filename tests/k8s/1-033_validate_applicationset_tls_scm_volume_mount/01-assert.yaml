@@ -38,7 +38,7 @@ spec:
           - --loglevel
           - info
           - --scm-root-ca-path
-          - /app/tls/scm
+          - /app/tls/scm/
           volumeMounts:
           - mountPath: /app/config/ssh
             name: ssh-known-hosts
@@ -50,7 +50,7 @@ spec:
             name: gpg-keyring
           - mountPath: /tmp
             name: tmp
-          - mountPath: /app/tls/scm
+          - mountPath: /app/tls/scm/
             name: appset-gitlab-scm-tls-cert
       volumes:
       - configMap:
