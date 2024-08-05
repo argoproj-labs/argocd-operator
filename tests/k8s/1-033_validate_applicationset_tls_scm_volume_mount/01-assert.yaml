@@ -38,7 +38,7 @@ spec:
           - --loglevel
           - info
           - --scm-root-ca-path
-          - /app/tls/scm/
+          - /app/tls/scm/cert
           volumeMounts:
           - mountPath: /app/config/ssh
             name: ssh-known-hosts

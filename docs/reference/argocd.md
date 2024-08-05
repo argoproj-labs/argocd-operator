@@ -138,6 +138,20 @@ spec:
   applicationSet:
     scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 ```
+Note: This is a sample config-map to use to mount your certificate. The key value should be 'cert' , this is used as the filename that is mounted. Other key names will not work, and this bug will be addressed later.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-appset-gitlab-scm-tls-certs-cm
+  namespace: test-1-32-appsets-scm-tls-mount
+data:
+  cert: |
+    -----BEGIN CERTIFICATE-----
+    ... (certificate contents) ...
+    -----END CERTIFICATE-----
+```    
 
 ## Config Management Plugins
 
