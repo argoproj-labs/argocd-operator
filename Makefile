@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.11.0
+VERSION ?= 0.12.0
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -199,6 +199,7 @@ bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metada
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
+	sed -i 's/control-plane: argocd-operator/control-plane: controller-manager/g' bundle/manifests/argocd-operator-webhook-service_v1_service.yaml bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml bundle/manifests/argocd-operator.clusterserviceversion.yaml
 	rm -fr deploy/olm-catalog/argocd-operator/$(VERSION)
 	mkdir -p deploy/olm-catalog/argocd-operator/$(VERSION)
 	cp -r bundle/manifests/* deploy/olm-catalog/argocd-operator/$(VERSION)/
