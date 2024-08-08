@@ -348,7 +348,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	}
 
 	// Use Route host if available, override Ingress if both exist
-	if IsRouteAPIAvailable() {
+	if cr.Spec.Server.Route.Enabled {
 		route := newRouteWithSuffix("server", cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
