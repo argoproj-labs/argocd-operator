@@ -38,7 +38,8 @@ import (
 )
 
 const (
-	ApplicationSetGitlabSCMTlsCertPath = "/app/tls/scm/cert"
+	ApplicationSetGitlabSCMTlsCertPath  = "/app/tls/scm/cert"
+	ApplicationSetGitlabSCMTlsMountPath = "/app/tls/scm/"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
@@ -359,7 +360,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 	if addSCMGitlabVolumeMount {
 		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
 			Name:      "appset-gitlab-scm-tls-cert",
-			MountPath: ApplicationSetGitlabSCMTlsCertPath,
+			MountPath: ApplicationSetGitlabSCMTlsMountPath,
 		})
 	}
 	return container

@@ -85,7 +85,7 @@ Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller (`--kubectl-parallelism-limit` flag)
-SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/cert"` path.
+SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/"` path.
 Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
 SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
 SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
@@ -125,7 +125,7 @@ spec:
 
 ### Add Self signed TLS Certificate for Gitlab SCM Provider to ApplicationSets Controller
 
-ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can store the certificate in the config map and specify the config map name using `spec.applicationSet.SCMRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.SCMRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/cert`.
+ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can create a ConfigMap named - 'argocd-appset-gitlab-scm-tls-certs-cm' and store the certificate in this config map. Specify the config map name in `spec.applicationSet.scmRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.scmRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/`.
 
 Below example shows how a user can add scmRootCaPath to the ApplicationSet controller.
 ```yaml
@@ -137,8 +137,24 @@ metadata:
     example: applicationset
 spec:
   applicationSet:
-    SCMRootCAConfigMap: example-gitlab-scm-tls-cert
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 ```
+!!! important
+
+Please note that the key in the ConfigMap should be named 'cert', as this is used as the filename that is mounted. Other key names will not work due to an upstream bug that will be addressed later. Additionally, ensure that the ConfigMap is named argocd-appset-gitlab-scm-tls-certs-cm. Below is a sample ConfigMap that can be used to mount your certificate.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-appset-gitlab-scm-tls-certs-cm
+  namespace: test-1-32-appsets-scm-tls-mount
+data:
+  cert: |
+    -----BEGIN CERTIFICATE-----
+    ... (certificate contents) ...
+    -----END CERTIFICATE-----
+```    
 
 ## Config Management Plugins
 

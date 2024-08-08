@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: test-1-32-appsets-scm-tls-cm
+  name: argocd-appset-gitlab-scm-tls-certs-cm
   namespace: test-1-32-appsets-scm-tls-mount
 data:
   cert: |
@@ -53,4 +53,4 @@ metadata:
   namespace: test-1-32-appsets-scm-tls-mount
 spec:
   applicationSet:
-    scmRootCAConfigMap: test-1-32-appsets-scm-tls-cm
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
