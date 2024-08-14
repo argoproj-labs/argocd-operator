@@ -548,6 +548,33 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
+		{
+			name: "should overwrite if the TLS secret is created by the OpenShift Service CA",
+			want: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      common.ArgoCDServerTLSSecretName,
+						Namespace: cr.Namespace,
+						Annotations: map[string]string{
+							"service.beta.openshift.io/originating-service-name": serviceName,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: serviceName,
+								Kind: "Service",
+							},
+						},
+					},
+				}
+				err := k8sClient.Create(context.Background(), secret)
+				assert.NoError(t, err)
+			},
+		},
 	}
 
 	for _, test := range tt {
@@ -574,6 +601,68 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, test.want, route.Spec.TLS.Termination)
 
+		})
+	}
+}
+
+func TestIsCreatedByServiceCA(t *testing.T) {
+	cr := makeArgoCD()
+	serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDServerTLSSecretName,
+			Namespace: cr.Namespace,
+			Annotations: map[string]string{
+				"service.beta.openshift.io/originating-service-name": serviceName,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name: serviceName,
+					Kind: "Service",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		want         bool
+		updateSecret func(s *corev1.Secret)
+	}{
+		{
+			"secret is created by OpenShift Service CA",
+			true,
+			func(s *corev1.Secret) {},
+		},
+		{
+			"secret is not created by OpenShift Service CA",
+			false,
+			func(s *corev1.Secret) {
+				s.Annotations = nil
+				s.OwnerReferences = nil
+			},
+		},
+		{
+			"secret doesn't have the OpenShift Service CA annotation",
+			false,
+			func(s *corev1.Secret) {
+				s.Annotations = nil
+			},
+		},
+		{
+			"secret is not owned by the correct CR",
+			false,
+			func(s *corev1.Secret) {
+				s.OwnerReferences = nil
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testSecret := secret.DeepCopy()
+			test.updateSecret(testSecret)
+			assert.Equal(t, test.want, isCreatedByServiceCA(cr.Name, *testSecret))
 		})
 	}
 }

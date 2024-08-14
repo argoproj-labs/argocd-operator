@@ -236,10 +236,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromString("https"),
 		}
 
-		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, &corev1.Secret{})
+		tlsSecret := &corev1.Secret{}
+		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
 		// Since Passthrough was the default policy in the previous versions of the operator, we don't want to
 		// break users who have already configured a TLS secret for Passthrough.
-		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && route.Spec.TLS != nil && route.Spec.TLS.Termination == routev1.TLSTerminationPassthrough {
+		// We continue with Passthrough if we find a TLS secret that was manually configured
+		// by the user and not by the OpenShift Service CA.
+		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && !isCreatedByServiceCA(cr.Name, *tlsSecret) {
 			route.Spec.TLS = &routev1.TLSConfig{
 				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 				Termination:                   routev1.TLSTerminationPassthrough,
@@ -257,6 +260,8 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		route.Spec.TLS = cr.Spec.Server.Route.TLS
 	}
 
+	log.Info(fmt.Sprintf("Using %s termination policy for the Server Route", string(route.Spec.TLS.Termination)))
+
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("server", cr)
 
@@ -272,6 +277,30 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		return r.Client.Create(context.TODO(), route)
 	}
 	return r.Client.Update(context.TODO(), route)
+}
+
+// isCreatedByServiceCA checks if the secret was created by the OpenShift Service CA
+func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
+	serviceName := fmt.Sprintf("%s-%s", crName, "server")
+	serviceAnnFound := false
+	if secret.Annotations != nil {
+		value, ok := secret.Annotations["service.beta.openshift.io/originating-service-name"]
+		if ok && value == serviceName {
+			serviceAnnFound = true
+		}
+	}
+
+	if !serviceAnnFound {
+		return false
+	}
+
+	for _, ref := range secret.OwnerReferences {
+		if ref.Kind == "Service" && ref.Name == serviceName {
+			return true
+		}
+	}
+
+	return false
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
