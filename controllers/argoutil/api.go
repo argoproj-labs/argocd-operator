@@ -15,11 +15,15 @@
 package argoutil
 
 import (
+	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
+	aggregator "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -43,10 +47,41 @@ func VerifyAPI(group string, version string) (bool, error) {
 	}
 
 	if err = discovery.ServerSupportsVersion(k8s, gv); err != nil {
-		// error, API not available
-		return false, nil
+		// error, API not available, check if it is registered.
+		log.Info(fmt.Sprintf("%s/%s API not available, checking if its registered", group, version))
+		return IsAPIRegistered(group, version)
 	}
 
 	log.Info(fmt.Sprintf("%s/%s API verified", group, version))
+	return true, nil
+}
+
+// IsAPIRegistered returns true if the API is registered irrespective of
+// whether the API status is available or not.
+func IsAPIRegistered(group string, version string) (bool, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Error(err, "unable to get k8s config")
+		return false, err
+	}
+
+	client, err := aggregator.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "unable to create a kube-aggregator client")
+		return false, err
+	}
+
+	_, err = client.ApiregistrationV1().APIServices().
+		Get(context.TODO(), fmt.Sprintf("%s.%s", version, group), metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("%s/%s API is not registered", group, version))
+			return false, nil
+		} else {
+			log.Error(err, fmt.Sprintf("%s/%s API registration check failed.", group, version))
+			return false, err
+		}
+	}
+	log.Info(fmt.Sprintf("%s/%s API is registered", group, version))
 	return true, nil
 }
