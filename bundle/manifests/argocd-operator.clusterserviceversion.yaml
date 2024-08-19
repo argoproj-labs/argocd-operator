@@ -252,7 +252,7 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/argoproj-labs/argocd-operator
     support: Argo CD
-  name: argocd-operator.v0.11.0
+  name: argocd-operator.v0.11.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -1712,6 +1712,13 @@ spec:
           verbs:
           - get
         - apiGroups:
+          - apiregistration.k8s.io
+          resources:
+          - apiservices
+          verbs:
+          - get
+          - list
+        - apiGroups:
           - apps
           resources:
           - daemonsets
@@ -1981,8 +1988,8 @@ spec:
   maturity: alpha
   provider:
     name: Argo CD Community
-  replaces: argocd-operator.v0.10.1
-  version: 0.11.0
+  replaces: argocd-operator.v0.11.0
+  version: 0.11.1
   webhookdefinitions:
   - admissionReviewVersions:
     - v1alpha1

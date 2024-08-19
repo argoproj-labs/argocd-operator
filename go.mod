@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.21
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.11.5
+	github.com/argoproj/argo-cd/v2 v2.11.7
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
@@ -23,6 +23,7 @@ require (
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kube-aggregator v0.29.0
 	sigs.k8s.io/controller-runtime v0.16.3
 )
 
