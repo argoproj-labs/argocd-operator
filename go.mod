@@ -1,8 +1,6 @@
 module github.com/argoproj-labs/argocd-operator
 
-go 1.21.0
-
-toolchain go1.21.9
+go 1.21
 
 require (
 	github.com/argoproj/argo-cd/v2 v2.12.1
