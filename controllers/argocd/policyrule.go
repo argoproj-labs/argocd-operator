@@ -495,6 +495,8 @@ func policyRuleForApplicationSetController() []v1.PolicyRule {
 			},
 			Verbs: []string{
 				"get",
+				"list",
+				"watch",
 			},
 		},
 
