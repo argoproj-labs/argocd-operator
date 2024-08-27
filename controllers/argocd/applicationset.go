@@ -764,9 +764,12 @@ func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
 	tag := ""
 
 	// First pull from spec, if it exists
-	if cr.Spec.ApplicationSet != nil {
+	if cr.Spec.ApplicationSet.Image != "" && cr.Spec.ApplicationSet.Version != "" {
 		img = cr.Spec.ApplicationSet.Image
 		tag = cr.Spec.ApplicationSet.Version
+	} else if cr.Spec.Image != "" && cr.Spec.Version != "" && cr.Spec.ApplicationSet.Image == "" && cr.Spec.ApplicationSet.Version == "" {
+		img = cr.Spec.Image
+		tag = cr.Spec.Version
 	}
 
 	// If spec is empty, use the defaults

@@ -344,9 +344,31 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 	tests := []struct {
 		name                   string
 		appSetField            *argoproj.ArgoCDApplicationSet
+		argocdField            argoproj.ArgoCDSpec
 		envVars                map[string]string
 		expectedContainerImage string
 	}{
+		{
+			name:        "fields are set in argocd spec and not on appsetspec",
+			appSetField: &argoproj.ArgoCDApplicationSet{},
+			argocdField: argoproj.ArgoCDSpec{
+				Image:   "test",
+				Version: "sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+			},
+			expectedContainerImage: "test@sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+		},
+		{
+			name: "fields are set in both argocdSpec and on appsetSpec",
+			appSetField: &argoproj.ArgoCDApplicationSet{
+				Image:   "custom-image",
+				Version: "sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+			},
+			argocdField: argoproj.ArgoCDSpec{
+				Image:   "test",
+				Version: "sha256:b835999eb5cf75d01a2678cd9710952566c9ffe746d04b83a6a0a2849f926d9c",
+			},
+			expectedContainerImage: "custom-image@sha256:b835999eb5cf75d01a2678cd971095926d9c2566c9ffe746d04b83a6a0a2849f",
+		},
 		{
 			name:                   "unspecified fields should use default",
 			appSetField:            &argoproj.ArgoCDApplicationSet{},
@@ -410,6 +432,11 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 			r := makeTestReconciler(cl, sch)
 			cm := newConfigMapWithName(getCAConfigMapName(a), a)
 			r.Client.Create(context.Background(), cm, &client.CreateOptions{})
+
+			if test.argocdField.Image != "" {
+				a.Spec.Image = test.argocdField.Image
+				a.Spec.Version = test.argocdField.Version
+			}
 
 			a.Spec.ApplicationSet = test.appSetField
 
