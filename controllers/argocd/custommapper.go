@@ -159,7 +159,7 @@ func (r *ReconcileArgoCD) namespaceResourceMapper(ctx context.Context, o client.
 			return result
 		}
 		for _, argocd := range argocds.Items {
-			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, false) {
+			if glob.MatchStringInList(argocd.Spec.SourceNamespaces, namespaceName, glob.GLOB) {
 				namespacedName := client.ObjectKey{
 					Name:      argocd.Name,
 					Namespace: argocd.Namespace,
