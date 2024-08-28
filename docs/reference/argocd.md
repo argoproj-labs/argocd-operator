@@ -276,6 +276,53 @@ spec:
       replicas: 5
 ```
 
+The following example shows how to configure initContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
 The following example shows how to configure extra command arguments for the ArgoCD Application Controller component.
 
 ```yaml
@@ -1395,6 +1442,53 @@ spec:
       wildcardPolicy: None
     service:
       type: ClusterIP
+```
+
+The following example shows how to configure initContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
 ```
 
 ## Status Badge Enabled
