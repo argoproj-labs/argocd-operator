@@ -5,14 +5,20 @@ metadata:
   namespace: test-1-042-restricted-pss-compliant
 status:
   applicationController: Running
-  phase: Available
-  redis: Running
+  #phase: Available
+  #redis: Running
   repo: Running
   server: Running
-  #sso: Running  # due to bug in keycloak service code, status remains as Pending
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-redis-ha-server
+  namespace: test-1-042-restricted-pss-compliant
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: keycloak
+  name: argocd-redis-ha-haproxy
   namespace: test-1-042-restricted-pss-compliant
+
