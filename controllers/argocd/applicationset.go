@@ -761,25 +761,24 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 }
 
 func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
+
 	defaultImg, defaultTag := false, false
-
-	img := ""
-	tag := ""
-
-	// First pull from spec, if it exists
-	if cr.Spec.ApplicationSet != nil {
-		img = cr.Spec.ApplicationSet.Image
-		tag = cr.Spec.ApplicationSet.Version
-	}
-
-	// If spec is empty, use the defaults
+	img := cr.Spec.ApplicationSet.Image
 	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
+		img = cr.Spec.Image
+		if img == "" {
+			img = common.ArgoCDDefaultArgoImage
+			defaultImg = true
+		}
 	}
+
+	tag := cr.Spec.ApplicationSet.Version
 	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
+		tag = cr.Spec.Version
+		if tag == "" {
+			tag = common.ArgoCDDefaultArgoVersion
+			defaultTag = true
+		}
 	}
 
 	// If an env var is specified then use that, but don't override the spec values (if they are present)
