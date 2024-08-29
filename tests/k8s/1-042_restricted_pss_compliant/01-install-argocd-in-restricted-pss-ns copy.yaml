@@ -1,0 +1,28 @@
+# test will fail on clusters with less than 3 nodes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-042-restricted-pss-compliant
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: test-1-042-restricted-pss-compliant
+spec:
+  applicationSet:
+    enabled: true
+  notifications:
+    enabled: true
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
