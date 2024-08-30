@@ -1090,6 +1090,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		deploy.Spec.Replicas = replicas
 	}
 
+	if cr.Spec.Repo.CustomPodAnnotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.CustomPodAnnotations
+	}
+
+	if cr.Spec.Repo.CustomPodLabels != nil {
+		for key, value := range cr.Spec.Repo.CustomPodLabels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
@@ -1158,6 +1168,20 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			existing.Spec.Template.Spec.DeprecatedServiceAccount = deploy.Spec.Template.Spec.ServiceAccountName
+			changed = true
+		}
+
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.CustomPodAnnotations
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			changed = true
+		}
+
+		for key, value := range cr.Spec.Repo.CustomPodLabels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changed = true
 		}
 
@@ -1327,6 +1351,16 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Server.SidecarContainers...)
 	}
 
+	if cr.Spec.Server.CustomPodAnnotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Server.CustomPodAnnotations
+	}
+
+	if cr.Spec.Server.CustomPodLabels != nil {
+		for key, value := range cr.Spec.Server.CustomPodLabels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Server.IsEnabled() {
@@ -1383,6 +1417,21 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				changed = true
 			}
 		}
+
+		deploy.Spec.Template.Annotations = cr.Spec.Server.CustomPodAnnotations
+
+		for key, value := range cr.Spec.Server.CustomPodLabels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			changed = true
+		}
+
 		if changed {
 			return r.Client.Update(context.TODO(), existing)
 		}
