@@ -12,7 +12,11 @@ spec:
         cpu: 125m
         memory: 128Mi
     route:
-      enabled: true
+      enabled: false
+    customPodLabels:
+      asdf: server
+    customPodAnnotations:
+      asdf: server
   repo:
     resources:
       limits:
@@ -21,6 +25,10 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
+    customPodLabels:
+      asdf: repo
+    customPodAnnotations:
+      asdf: repojorge
   ha:
     enabled: false
     resources:
@@ -56,3 +64,12 @@ spec:
       requests:
         cpu: 250m
         memory: 1024Mi
+    customPodLabels:
+      asdf: controller
+    customPodAnnotations:
+      asdf: controller
+  applicationSet:
+    customPodLabels:
+      asdf: applicationSet
+    customPodAnnotations:
+      asdf: applicationSet

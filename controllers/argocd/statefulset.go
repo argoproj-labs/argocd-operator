@@ -717,6 +717,16 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
+	if cr.Spec.Controller.CustomPodAnnotations != nil {
+		ss.Spec.Template.Annotations = cr.Spec.Controller.CustomPodAnnotations
+	}
+
+	if cr.Spec.Controller.CustomPodLabels != nil {
+		for key, value := range cr.Spec.Controller.CustomPodLabels {
+			ss.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Controller.IsEnabled() {
@@ -772,6 +782,20 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				ss.Spec.Template.Spec.Containers[1:]...)
+			changed = true
+		}
+
+		ss.Spec.Template.Annotations = cr.Spec.Controller.CustomPodAnnotations
+		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+			changed = true
+		}
+
+		for key, value := range cr.Spec.Controller.CustomPodLabels {
+			ss.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = ss.Spec.Template.Labels
 			changed = true
 		}
 
