@@ -13,12 +13,6 @@ spec:
         memory: 128Mi
     route:
       enabled: false
-    customPodLabels:
-      custom: label
-      asdf: server
-    customPodAnnotations:
-      asdf: server
-      custom: annotation
   repo:
     resources:
       limits:
@@ -27,12 +21,6 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
-    customPodLabels:
-      custom: label
-      asdf: repo
-    customPodAnnotations:
-      asdf: repo
-      custom: annotation
   ha:
     enabled: false
     resources:
@@ -68,12 +56,6 @@ spec:
       requests:
         cpu: 250m
         memory: 1024Mi
-    customPodLabels:
-      custom: label
-      asdf: controller
-    customPodAnnotations:
-      asdf: controller
-      custom: annotation
   applicationSet:
     customPodLabels:
       custom: label
