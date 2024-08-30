@@ -66,6 +66,16 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   env:
                     description: Env lets you specify environment for applicationSet
                       controller pods
@@ -421,6 +431,16 @@ spec:
                       Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency.
                     type: string
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   env:
                     description: Env lets you specify environment for application
                       controller pods
@@ -1627,6 +1647,16 @@ spec:
                       The value specified here can currently be:
                       - openshift - Use the OpenShift service CA to request TLS config
                     type: string
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   env:
                     description: Env lets you specify environment for repo server
                       pods
@@ -6298,6 +6328,16 @@ spec:
                     required:
                     - enabled
                     type: object
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   env:
                     description: Env lets you specify environment for API server pods
                     items:
@@ -7105,6 +7145,16 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   enabled:
                     description: Enabled is the flag to enable the Application Set
                       Controller during ArgoCD installation. (optional, default `true`)
@@ -7481,6 +7531,16 @@ spec:
                       Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency.
                     type: string
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   enabled:
                     description: Enabled is the flag to enable the Application Controller
                       during ArgoCD installation. (optional, default `true`)
@@ -12921,6 +12981,16 @@ spec:
                       The value specified here can currently be:
                       - openshift - Use the OpenShift service CA to request TLS config
                     type: string
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   enabled:
                     description: Enabled is the flag to enable Repo Server during
                       ArgoCD installation. (optional, default `true`)
@@ -17595,6 +17665,16 @@ spec:
                         type: object
                     required:
                     - enabled
+                    type: object
+                  customPodAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  customPodLabels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
                     type: object
                   enabled:
                     description: Enabled is the flag to enable ArgoCD Server during
