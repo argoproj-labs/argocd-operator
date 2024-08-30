@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.12.0
+VERSION ?= 0.12.1
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -162,7 +162,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 ##@ E2E
 
 e2e: ## Run operator e2e tests
-	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml 
+	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 

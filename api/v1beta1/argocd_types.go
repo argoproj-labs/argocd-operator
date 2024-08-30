@@ -128,6 +128,12 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// VolumeMounts adds volumeMounts to the Argo CD Controller container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -195,6 +201,12 @@ type ArgoCDApplicationSet struct {
 
 	// SCMProviders defines the list of allowed custom SCM provider API URLs
 	SCMProviders []string `json:"scmProviders,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
@@ -529,6 +541,12 @@ type ArgoCDRepoSpec struct {
 
 	// Remote specifies the remote URL of the Repo Server container. (optional, by default, a local instance managed by the operator is used.)
 	Remote *string `json:"remote,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -638,6 +656,12 @@ type ArgoCDServerSpec struct {
 
 	// VolumeMounts adds volumeMounts to the Argo CD Server container.
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// Custom annotations to pods deployed by the operator
+	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
+
+	// Custom labels to pods deployed by the operator
+	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {
