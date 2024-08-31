@@ -2,8 +2,8 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
 - script: |
-    val=$(k get po -n test-043 -oyaml | grep custom | wc -l)
-    if test "$val != 16"; then
+    val=$(kubectl get po -n test-043 -oyaml | grep custom | wc -l)
+    if [ "$val" -ne 16 ]; then
         echo "Expected all the custom labels and annotations"
         exit 1
     fi
