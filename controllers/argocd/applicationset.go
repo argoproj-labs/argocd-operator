@@ -276,6 +276,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext)
 			!reflect.DeepEqual(existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
+
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {
 			existing.Spec.Template.Spec.Containers = podSpec.Containers
