@@ -109,11 +109,6 @@ type ArgoCDApplicationControllerSpec struct {
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// Custom annotations to pods deployed by the operator
-	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
-
-	// Custom labels to pods deployed by the operator
-	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -163,12 +158,6 @@ type ArgoCDApplicationSet struct {
 
 	// LogLevel describes the log level that should be used by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel if not set.  Valid options are debug,info, error, and warn.
 	LogLevel string `json:"logLevel,omitempty"`
-
-	// Custom annotations to pods deployed by the operator
-	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
-
-	// Custom labels to pods deployed by the operator
-	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 
 	WebhookServer WebhookServerSpec `json:"webhookServer,omitempty"`
 }
@@ -483,11 +472,6 @@ type ArgoCDRepoSpec struct {
 	// SidecarContainers defines the list of sidecar containers for the repo server deployment
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 
-	// Custom annotations to pods deployed by the operator
-	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
-
-	// Custom labels to pods deployed by the operator
-	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -579,11 +563,6 @@ type ArgoCDServerSpec struct {
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
 
-	// Custom annotations to pods deployed by the operator
-	CustomPodAnnotations map[string]string `json:"customPodAnnotations,omitempty"`
-
-	// Custom labels to pods deployed by the operator
-	CustomPodLabels map[string]string `json:"customPodLabels,omitempty"`
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
