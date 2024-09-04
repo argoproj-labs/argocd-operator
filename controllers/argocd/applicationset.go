@@ -273,8 +273,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) ||
-			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext)
-		!reflect.DeepEqual(existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext) ||
+			!reflect.DeepEqual(existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {

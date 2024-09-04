@@ -108,7 +108,6 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Env lets you specify environment for application controller pods
 	Env []corev1.EnvVar `json:"env,omitempty"`
-
 }
 
 // ArgoCDApplicationControllerShardSpec defines the options available for enabling sharding for the Application Controller component.
@@ -471,7 +470,6 @@ type ArgoCDRepoSpec struct {
 
 	// SidecarContainers defines the list of sidecar containers for the repo server deployment
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
-
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.
@@ -562,7 +560,6 @@ type ArgoCDServerSpec struct {
 	// ExtraCommandArgs will not be added, if one of these commands is already part of the server command
 	// with same or different value.
 	ExtraCommandArgs []string `json:"extraCommandArgs,omitempty"`
-
 }
 
 // ArgoCDServerServiceSpec defines the Service options for Argo CD Server component.
