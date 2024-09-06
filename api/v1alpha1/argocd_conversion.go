@@ -61,6 +61,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	//nolint:staticcheck
 	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
@@ -130,6 +131,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	//nolint:staticcheck
 	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL

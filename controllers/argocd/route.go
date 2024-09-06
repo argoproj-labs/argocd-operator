@@ -106,6 +106,7 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		//nolint:staticcheck
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -114,6 +115,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Route found, do nothing
 	}
 
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}

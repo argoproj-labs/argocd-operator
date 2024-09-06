@@ -1,21 +1,18 @@
 run:
   timeout: 2m
-  skip-files:
-    - ".*_test\\.go"
-  skip-dirs:
-    - vendor/
 linters:
   enable:
-    - vet
-    - deadcode
+    - govet
+    - unused
     - goimports
-    - varcheck
-    - structcheck
     - ineffassign
     - unconvert
     - unparam
+issues:
+  exclude-files:
+    - ".*_test\\.go"
+  exclude-dirs:
+    - vendor/
 linters-settings:
   goimports:
     local-prefixes: github.com/argoproj-labs/argocd-operator
-service:
-  golangci-lint-version: 1.56.2
