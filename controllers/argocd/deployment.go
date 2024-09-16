@@ -1105,12 +1105,12 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		deploy.Spec.Replicas = replicas
 	}
 
-	if cr.Spec.Repo.CustomPodAnnotations != nil {
-		deploy.Spec.Template.Annotations = cr.Spec.Repo.CustomPodAnnotations
+	if cr.Spec.Repo.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
 	}
 
-	if cr.Spec.Repo.CustomPodLabels != nil {
-		for key, value := range cr.Spec.Repo.CustomPodLabels {
+	if cr.Spec.Repo.Labels != nil {
+		for key, value := range cr.Spec.Repo.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
 	}
@@ -1190,13 +1190,13 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			changed = true
 		}
 
-		deploy.Spec.Template.Annotations = cr.Spec.Repo.CustomPodAnnotations
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 			changed = true
 		}
 
-		for key, value := range cr.Spec.Repo.CustomPodLabels {
+		for key, value := range cr.Spec.Repo.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
@@ -1370,12 +1370,12 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Server.SidecarContainers...)
 	}
 
-	if cr.Spec.Server.CustomPodAnnotations != nil {
-		deploy.Spec.Template.Annotations = cr.Spec.Server.CustomPodAnnotations
+	if cr.Spec.Server.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
 	}
 
-	if cr.Spec.Server.CustomPodLabels != nil {
-		for key, value := range cr.Spec.Server.CustomPodLabels {
+	if cr.Spec.Server.Labels != nil {
+		for key, value := range cr.Spec.Server.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
 	}
@@ -1442,9 +1442,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			}
 		}
 
-		deploy.Spec.Template.Annotations = cr.Spec.Server.CustomPodAnnotations
+		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
 
-		for key, value := range cr.Spec.Server.CustomPodLabels {
+		for key, value := range cr.Spec.Server.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {

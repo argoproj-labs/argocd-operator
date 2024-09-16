@@ -742,12 +742,12 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
-	if cr.Spec.Controller.CustomPodAnnotations != nil {
-		ss.Spec.Template.Annotations = cr.Spec.Controller.CustomPodAnnotations
+	if cr.Spec.Controller.Annotations != nil {
+		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
 	}
 
-	if cr.Spec.Controller.CustomPodLabels != nil {
-		for key, value := range cr.Spec.Controller.CustomPodLabels {
+	if cr.Spec.Controller.Labels != nil {
+		for key, value := range cr.Spec.Controller.Labels {
 			ss.Spec.Template.Labels[key] = value
 		}
 	}
@@ -814,13 +814,13 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 
-		ss.Spec.Template.Annotations = cr.Spec.Controller.CustomPodAnnotations
+		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
 			changed = true
 		}
 
-		for key, value := range cr.Spec.Controller.CustomPodLabels {
+		for key, value := range cr.Spec.Controller.Labels {
 			ss.Spec.Template.Labels[key] = value
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {

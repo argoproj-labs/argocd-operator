@@ -7105,12 +7105,12 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
-                  customPodAnnotations:
+                  Annotations:
                     additionalProperties:
                       type: string
                     description: Custom annotations to pods deployed by the operator
                     type: object
-                  customPodLabels:
+                  Labels:
                     additionalProperties:
                       type: string
                     description: Custom labels to pods deployed by the operator
@@ -7482,6 +7482,11 @@ spec:
                 description: Controller defines the Application Controller options
                   for ArgoCD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   appSync:
                     description: |-
                       AppSync is used to control the sync frequency, by default the ArgoCD
@@ -7491,16 +7496,6 @@ spec:
                       Set this to a duration, e.g. 10m or 600s to control the synchronisation
                       frequency.
                     type: string
-                  customPodAnnotations:
-                    additionalProperties:
-                      type: string
-                    description: Custom annotations to pods deployed by the operator
-                    type: object
-                  customPodLabels:
-                    additionalProperties:
-                      type: string
-                    description: Custom labels to pods deployed by the operator
-                    type: object
                   enabled:
                     description: Enabled is the flag to enable the Application Controller
                       during ArgoCD installation. (optional, default `true`)
@@ -8948,6 +8943,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   logFormat:
                     description: LogFormat refers to the log format used by the Application
                       Controller component. Defaults to ArgoCDDefaultLogFormat if
@@ -12935,22 +12935,22 @@ spec:
               repo:
                 description: Repo defines the repo server options for Argo CD.
                 properties:
+                  Annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  Labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   autotls:
                     description: |-
                       AutoTLS specifies the method to use for automatic TLS configuration for the repo server
                       The value specified here can currently be:
                       - openshift - Use the OpenShift service CA to request TLS config
                     type: string
-                  customPodAnnotations:
-                    additionalProperties:
-                      type: string
-                    description: Custom annotations to pods deployed by the operator
-                    type: object
-                  customPodLabels:
-                    additionalProperties:
-                      type: string
-                    description: Custom labels to pods deployed by the operator
-                    type: object
                   enabled:
                     description: Enabled is the flag to enable Repo Server during
                       ArgoCD installation. (optional, default `true`)
@@ -17564,6 +17564,16 @@ spec:
               server:
                 description: Server defines the options for the ArgoCD Server component.
                 properties:
+                  Annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
+                  Labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   autoscale:
                     description: Autoscale defines the autoscale options for the Argo
                       CD Server component.
@@ -17625,16 +17635,6 @@ spec:
                         type: object
                     required:
                     - enabled
-                    type: object
-                  customPodAnnotations:
-                    additionalProperties:
-                      type: string
-                    description: Custom annotations to pods deployed by the operator
-                    type: object
-                  customPodLabels:
-                    additionalProperties:
-                      type: string
-                    description: Custom labels to pods deployed by the operator
                     type: object
                   enabled:
                     description: Enabled is the flag to enable ArgoCD Server during

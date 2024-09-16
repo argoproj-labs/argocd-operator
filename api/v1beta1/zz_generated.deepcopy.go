@@ -151,15 +151,15 @@ func (in *ArgoCDApplicationControllerSpec) DeepCopyInto(out *ArgoCDApplicationCo
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.CustomPodAnnotations != nil {
-		in, out := &in.CustomPodAnnotations, &out.CustomPodAnnotations
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
 	}
-	if in.CustomPodLabels != nil {
-		in, out := &in.CustomPodLabels, &out.CustomPodLabels
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
@@ -213,15 +213,15 @@ func (in *ArgoCDApplicationSet) DeepCopyInto(out *ArgoCDApplicationSet) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.CustomPodAnnotations != nil {
-		in, out := &in.CustomPodAnnotations, &out.CustomPodAnnotations
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
 	}
-	if in.CustomPodLabels != nil {
-		in, out := &in.CustomPodLabels, &out.CustomPodLabels
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
@@ -695,15 +695,15 @@ func (in *ArgoCDRepoSpec) DeepCopyInto(out *ArgoCDRepoSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.CustomPodAnnotations != nil {
-		in, out := &in.CustomPodAnnotations, &out.CustomPodAnnotations
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
 	}
-	if in.CustomPodLabels != nil {
-		in, out := &in.CustomPodLabels, &out.CustomPodLabels
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
@@ -899,15 +899,15 @@ func (in *ArgoCDServerSpec) DeepCopyInto(out *ArgoCDServerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.CustomPodAnnotations != nil {
-		in, out := &in.CustomPodAnnotations, &out.CustomPodAnnotations
+	if in.Annotations != nil {
+		in, out := &in.Annotations, &out.Annotations
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
 		}
 	}
-	if in.CustomPodLabels != nil {
-		in, out := &in.CustomPodLabels, &out.CustomPodLabels
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val

@@ -5,31 +5,31 @@ You can easily add labels and annotations to the pods of the server, repo, appli
 ```[yaml]
 spec:
   server:
-    customPodLabels:
+    labels:
       custom: label
       custom2: server
-    customPodAnnotations:
+    annotations:
       custom: annotation
       custom2: server
   repo:
-    customPodLabels:
+    labels:
       custom: label
       custom2: repo
-    customPodAnnotations:
+    annotations:
       custom: annotation
       custom2: repo
   controller:
-    customPodLabels:
+    labels:
       custom: label
       custom2: controller
-    customPodAnnotations:
+    annotations:
       custom: annotation
       custom2: controller
   applicationSet:
-    customPodLabels:
+    labels:
       custom: label
       custom2: applicationSet
-    customPodAnnotations:
+    annotations:
       custom: annotation
       custom2: applicationSet
 ```
