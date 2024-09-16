@@ -203,10 +203,10 @@ type ArgoCDApplicationSet struct {
 	SCMProviders []string `json:"scmProviders,omitempty"`
 
 	// Custom annotations to pods deployed by the operator
-	Annotations map[string]string `json:"Annotations,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Custom labels to pods deployed by the operator
-	Labels map[string]string `json:"Labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {
@@ -543,10 +543,10 @@ type ArgoCDRepoSpec struct {
 	Remote *string `json:"remote,omitempty"`
 
 	// Custom annotations to pods deployed by the operator
-	Annotations map[string]string `json:"Annotations,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Custom labels to pods deployed by the operator
-	Labels map[string]string `json:"Labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
@@ -658,10 +658,10 @@ type ArgoCDServerSpec struct {
 	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Custom annotations to pods deployed by the operator
-	Annotations map[string]string `json:"Annotations,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Custom labels to pods deployed by the operator
-	Labels map[string]string `json:"Labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 func (a *ArgoCDServerSpec) IsEnabled() bool {

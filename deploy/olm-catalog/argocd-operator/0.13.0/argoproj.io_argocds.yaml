@@ -7105,6 +7105,11 @@ spec:
                 description: ArgoCDApplicationSet defines whether the Argo CD ApplicationSet
                   controller should be installed.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   enabled:
                     description: Enabled is the flag to enable the Application Set
                       Controller during ArgoCD installation. (optional, default `true`)
@@ -7236,6 +7241,11 @@ spec:
                   image:
                     description: Image is the Argo CD ApplicationSet image (optional)
                     type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   logLevel:
                     description: LogLevel describes the log level that should be used
                       by the ApplicationSet controller. Defaults to ArgoCDDefaultLogLevel
@@ -7472,6 +7482,11 @@ spec:
                 description: Controller defines the Application Controller options
                   for ArgoCD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   appSync:
                     description: |-
                       AppSync is used to control the sync frequency, by default the ArgoCD
@@ -8928,6 +8943,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   logFormat:
                     description: LogFormat refers to the log format used by the Application
                       Controller component. Defaults to ArgoCDDefaultLogFormat if
@@ -12915,6 +12935,11 @@ spec:
               repo:
                 description: Repo defines the repo server options for Argo CD.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   autotls:
                     description: |-
                       AutoTLS specifies the method to use for automatic TLS configuration for the repo server
@@ -14375,6 +14400,11 @@ spec:
                       - name
                       type: object
                     type: array
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   logFormat:
                     description: LogFormat describes the log format that should be
                       used by the Repo Server. Defaults to ArgoCDDefaultLogFormat
@@ -17534,6 +17564,11 @@ spec:
               server:
                 description: Server defines the options for the ArgoCD Server component.
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Custom annotations to pods deployed by the operator
+                    type: object
                   autoscale:
                     description: Autoscale defines the autoscale options for the Argo
                       CD Server component.
@@ -19163,6 +19198,11 @@ spec:
                   insecure:
                     description: Insecure toggles the insecure flag.
                     type: boolean
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Custom labels to pods deployed by the operator
+                    type: object
                   logFormat:
                     description: LogFormat refers to the log level to be used by the
                       ArgoCD Server component. Defaults to ArgoCDDefaultLogFormat
