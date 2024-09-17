@@ -533,6 +533,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
 			log.Info("Redis exists but should be disabled. Deleting existing redis.")
 			return r.Client.Delete(context.TODO(), deploy)
+		} else if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+			log.Info("Redis remote exists but redis deployment should be disabled. Deleting existing redis.")
+			return r.Client.Delete(context.TODO(), deploy)
 		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
@@ -1113,6 +1116,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
 			return r.Client.Delete(context.TODO(), existing)
+		} else if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+			log.Info("Repo Server remote field exists, Repo Server deployment should be disabled. Deleting Repo Server.")
+			return r.Client.Delete(context.TODO(), deploy)
 		}
 
 		changed := false
@@ -1185,6 +1191,11 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
+	}
+
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+		log.Info("Custom Repo Endpoint. Skipping starting Repo Server.")
+		return nil
 	}
 
 	if !cr.Spec.Repo.IsEnabled() {
