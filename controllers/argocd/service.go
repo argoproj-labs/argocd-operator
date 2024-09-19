@@ -276,6 +276,9 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		if cr.Spec.HA.Enabled {
 			return r.Client.Delete(context.TODO(), svc)
 		}
+		if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -296,6 +299,11 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRedisPort),
 		},
+	}
+
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		log.Info("Skipping service creation, redis remote is enabled")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
@@ -361,6 +369,10 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
+		if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+			log.Info("skip creating repo server service, repo remote is enabled")
+			return r.Client.Update(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -386,6 +398,11 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
 		},
+	}
+
+	if cr.Spec.Repo.IsEnabled() && cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+		log.Info("skip creating repo server service, repo remote is enabled")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
