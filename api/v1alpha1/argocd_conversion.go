@@ -13,7 +13,7 @@ var conversionLogger = ctrl.Log.WithName("conversion-webhook")
 
 // ConvertTo converts this (v1alpha1) ArgoCD to the Hub version (v1beta1).
 func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
-	conversionLogger.Info("v1alpha1 to v1beta1 conversion requested.")
+	conversionLogger.V(1).Info("v1alpha1 to v1beta1 conversion requested.")
 	dst := dstRaw.(*v1beta1.ArgoCD)
 
 	// ObjectMeta conversion
@@ -105,7 +105,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 
 // ConvertFrom converts from the Hub version (v1beta1) to this (v1alpha1) version.
 func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
-	conversionLogger.Info("v1beta1 to v1alpha1 conversion requested.")
+	conversionLogger.V(1).Info("v1beta1 to v1alpha1 conversion requested.")
 
 	src := srcRaw.(*v1beta1.ArgoCD)
 
@@ -237,7 +237,7 @@ func ConvertAlphaToBetaWebhookServer(src *WebhookServerSpec) *v1beta1.WebhookSer
 		dst = &v1beta1.WebhookServerSpec{
 			Host:    src.Host,
 			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
-			Route:   v1beta1.ArgoCDRouteSpec(src.Route),
+			Route:   ConvertAlphaToBetaRoute(src.Route),
 		}
 	}
 	return dst
@@ -263,10 +263,14 @@ func ConvertAlphaToBetaGrafana(src *ArgoCDGrafanaSpec) *v1beta1.ArgoCDGrafanaSpe
 	var dst *v1beta1.ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     ConvertAlphaToBetaRoute(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
@@ -279,7 +283,7 @@ func ConvertAlphaToBetaPrometheus(src *ArgoCDPrometheusSpec) *v1beta1.ArgoCDProm
 			Enabled: src.Enabled,
 			Host:    src.Host,
 			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
-			Route:   v1beta1.ArgoCDRouteSpec(src.Route),
+			Route:   ConvertAlphaToBetaRoute(src.Route),
 			Size:    src.Size,
 		}
 	}
@@ -351,10 +355,26 @@ func ConvertAlphaToBetaServer(src *ArgoCDServerSpec) *v1beta1.ArgoCDServerSpec {
 			LogFormat:        src.LogFormat,
 			Replicas:         src.Replicas,
 			Resources:        src.Resources,
-			Route:            v1beta1.ArgoCDRouteSpec(src.Route),
+			Route:            ConvertAlphaToBetaRoute(src.Route),
 			Service:          v1beta1.ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
+		}
+	}
+	return dst
+}
+
+func ConvertAlphaToBetaRoute(src ArgoCDRouteSpec) v1beta1.ArgoCDRouteSpec {
+	dst := v1beta1.ArgoCDRouteSpec{
+		Annotations:    src.Annotations,
+		Labels:         src.Labels,
+		Enabled:        src.Enabled,
+		Path:           src.Path,
+		WildcardPolicy: src.WildcardPolicy,
+	}
+	if src.TLS != nil {
+		dst.TLS = &v1beta1.ArgoCDRouteTLS{
+			TLSConfig: *src.TLS,
 		}
 	}
 	return dst
@@ -457,7 +477,7 @@ func ConvertBetaToAlphaWebhookServer(src *v1beta1.WebhookServerSpec) *WebhookSer
 		dst = &WebhookServerSpec{
 			Host:    src.Host,
 			Ingress: ArgoCDIngressSpec(src.Ingress),
-			Route:   ArgoCDRouteSpec(src.Route),
+			Route:   ConvertBetaToAlphaRoute(src.Route),
 		}
 	}
 	return dst
@@ -483,10 +503,14 @@ func ConvertBetaToAlphaGrafana(src *v1beta1.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpe
 	var dst *ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     ConvertBetaToAlphaRoute(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
@@ -499,7 +523,7 @@ func ConvertBetaToAlphaPrometheus(src *v1beta1.ArgoCDPrometheusSpec) *ArgoCDProm
 			Enabled: src.Enabled,
 			Host:    src.Host,
 			Ingress: ArgoCDIngressSpec(src.Ingress),
-			Route:   ArgoCDRouteSpec(src.Route),
+			Route:   ConvertBetaToAlphaRoute(src.Route),
 			Size:    src.Size,
 		}
 	}
@@ -570,12 +594,27 @@ func ConvertBetaToAlphaServer(src *v1beta1.ArgoCDServerSpec) *ArgoCDServerSpec {
 			LogFormat:        src.LogFormat,
 			Replicas:         src.Replicas,
 			Resources:        src.Resources,
-			Route:            ArgoCDRouteSpec(src.Route),
+			Route:            ConvertBetaToAlphaRoute(src.Route),
 			Service:          ArgoCDServerServiceSpec(src.Service),
 			Env:              src.Env,
 			ExtraCommandArgs: src.ExtraCommandArgs,
 		}
 	}
+	return dst
+}
+
+func ConvertBetaToAlphaRoute(src v1beta1.ArgoCDRouteSpec) ArgoCDRouteSpec {
+	dst := ArgoCDRouteSpec{
+		Annotations:    src.Annotations,
+		Labels:         src.Labels,
+		Enabled:        src.Enabled,
+		Path:           src.Path,
+		WildcardPolicy: src.WildcardPolicy,
+	}
+	if src.TLS != nil {
+		dst.TLS = &src.TLS.TLSConfig
+	}
+
 	return dst
 }
 

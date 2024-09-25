@@ -7424,6 +7424,11 @@ spec:
                               key:
                                 description: key provides key file contents
                                 type: string
+                              secretName:
+                                description: |-
+                                  SecretName references a TLS secret containing the certificate and key data.
+                                  This data will be automatically populated into the Route's .spec.key and .spec.certificate fields.
+                                type: string
                               termination:
                                 description: termination indicates termination type.
                                 type: string
@@ -12217,6 +12222,11 @@ spec:
                           key:
                             description: key provides key file contents
                             type: string
+                          secretName:
+                            description: |-
+                              SecretName references a TLS secret containing the certificate and key data.
+                              This data will be automatically populated into the Route's .spec.key and .spec.certificate fields.
+                            type: string
                           termination:
                             description: termination indicates termination type.
                             type: string
@@ -12766,6 +12776,11 @@ spec:
                             type: string
                           key:
                             description: key provides key file contents
+                            type: string
+                          secretName:
+                            description: |-
+                              SecretName references a TLS secret containing the certificate and key data.
+                              This data will be automatically populated into the Route's .spec.key and .spec.certificate fields.
                             type: string
                           termination:
                             description: termination indicates termination type.
@@ -19279,6 +19294,11 @@ spec:
                             type: string
                           key:
                             description: key provides key file contents
+                            type: string
+                          secretName:
+                            description: |-
+                              SecretName references a TLS secret containing the certificate and key data.
+                              This data will be automatically populated into the Route's .spec.key and .spec.certificate fields.
                             type: string
                           termination:
                             description: termination indicates termination type.

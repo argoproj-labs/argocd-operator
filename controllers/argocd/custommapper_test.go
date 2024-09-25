@@ -942,3 +942,82 @@ func TestReconcileArgoCD_namespaceResourceMapperForWildCardNamespaceWithoutManag
 		})
 	}
 }
+
+func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
+
+	emptyReq := []reconcile.Request{}
+	reconcileReq := []reconcile.Request{{
+		NamespacedName: client.ObjectKey{
+			Name:      testArgoCDName,
+			Namespace: testNamespace,
+		},
+	}}
+
+	tests := []struct {
+		name        string
+		argocd      *argoproj.ArgoCD
+		expectedReq []reconcile.Request
+	}{
+		{
+			name: "tls secret for Server in ArgoCD CR",
+			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Server.Route.TLS = &argoproj.ArgoCDRouteTLS{
+					SecretName: "user-tls",
+				}
+			}),
+			expectedReq: reconcileReq,
+		},
+		{
+			name: "tls secret for Prometheus in ArgoCD CR",
+			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Prometheus.Route.TLS = &argoproj.ArgoCDRouteTLS{
+					SecretName: "user-tls",
+				}
+			}),
+			expectedReq: reconcileReq,
+		},
+		{
+			name: "tls secret for ApplicationSet in ArgoCD CR",
+			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
+				a.Spec.ApplicationSet.WebhookServer.Route.TLS = &argoproj.ArgoCDRouteTLS{
+					SecretName: "user-tls",
+				}
+			}),
+			expectedReq: reconcileReq,
+		},
+		{
+			name: "tls secret not referenced in ArgoCD CR",
+			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Server.Route.Enabled = true
+			}),
+			expectedReq: emptyReq,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resObjs := []client.Object{test.argocd}
+			subresObjs := []client.Object{test.argocd}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "user-tls",
+					Namespace: testNamespace,
+				},
+				Type: corev1.SecretTypeTLS,
+				Data: map[string][]byte{
+					corev1.TLSCertKey:       []byte("Y2VydGlmY2F0ZQ=="),
+					corev1.TLSPrivateKeyKey: []byte("cHJpdmF0ZS1rZXk="),
+				},
+			}
+
+			req := r.tlsSecretMapper(context.TODO(), secret)
+			assert.Equal(t, test.expectedReq, req)
+		})
+	}
+}

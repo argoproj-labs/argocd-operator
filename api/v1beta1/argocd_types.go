@@ -551,10 +551,22 @@ type ArgoCDRouteSpec struct {
 	Path string `json:"path,omitempty"`
 
 	// TLS provides the ability to configure certificates and termination for the Route.
-	TLS *routev1.TLSConfig `json:"tls,omitempty"`
+	TLS *ArgoCDRouteTLS `json:"tls,omitempty"`
 
 	// WildcardPolicy if any for the route. Currently only 'Subdomain' or 'None' is allowed.
 	WildcardPolicy *routev1.WildcardPolicyType `json:"wildcardPolicy,omitempty"`
+}
+
+// ArgoCDRouteTLS defines the TLS configuration for a Route in ArgoCD
+type ArgoCDRouteTLS struct {
+	// SecretName references a TLS secret containing the certificate and key data.
+	// This data will be automatically populated into the Route's .spec.key and .spec.certificate fields.
+	SecretName string `json:"secretName,omitempty"`
+
+	// TLSConfig expands the OpenShift Route's TLS fields inline.
+	// It is recommended to use the SecretName field to configure TLS data,
+	// rather than manually setting the .key and .certificate fields in ArgoCD.
+	routev1.TLSConfig `json:",inline"`
 }
 
 // ArgoCDServerAutoscaleSpec defines the desired state for autoscaling the Argo CD Server component.

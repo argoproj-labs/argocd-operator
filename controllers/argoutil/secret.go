@@ -15,6 +15,7 @@
 package argoutil
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -65,4 +66,27 @@ func NewSecretWithName(cr *argoproj.ArgoCD, name string) *corev1.Secret {
 // NewSecretWithSuffix returns a new Secret based on the given metadata with the provided suffix on the Name.
 func NewSecretWithSuffix(cr *argoproj.ArgoCD, suffix string) *corev1.Secret {
 	return NewSecretWithName(cr, fmt.Sprintf("%s-%s", cr.Name, suffix))
+}
+
+func CreateTLSSecret(client client.Client, name string, namespace string, data map[string][]byte) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: data,
+	}
+	return client.Create(context.TODO(), &secret)
+}
+
+func CreateSecret(client client.Client, name string, namespace string, data map[string][]byte) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: data,
+	}
+	return client.Create(context.TODO(), &secret)
 }

@@ -65,10 +65,48 @@ func isOwnerOfInterest(owner v1.OwnerReference) bool {
 	return false
 }
 
+// isUserManagedSecret checks if the given secret is referenced in the ArgoCD CR for configuring the Argo CD instance.
+// User-managed secrets are referenced by the ArgoCD CR but are not owned by Operator itself (i.e. managed by the user).
+// Returns the namespaced name of the ArgoCD instance if found and a boolean indicating whether the secret is user-managed.
+func (r *ReconcileArgoCD) isUserManagedSecret(ctx context.Context, o client.Object) (client.ObjectKey, bool) {
+	namespacedName := client.ObjectKey{}
+	var ok bool
+
+	// List ArgoCD instances in the same namespace as the secret.
+	argocds := &argoproj.ArgoCDList{}
+	err := r.Client.List(ctx, argocds, &client.ListOptions{Namespace: o.GetNamespace()})
+	if err != nil {
+		return namespacedName, false
+	}
+	// Return false if no ArgoCD instance or more than one is detected in the namespace.
+	if len(argocds.Items) != 1 {
+		return namespacedName, false
+	}
+	argocd := argocds.Items[0]
+	namespacedName.Name = argocd.Name
+	namespacedName.Namespace = argocd.Namespace
+
+	// Check if the secret is referenced in the ArgoCD CR.
+	if argocd.Spec.Server.Route.TLS != nil && argocd.Spec.Server.Route.TLS.SecretName == o.GetName() {
+		ok = true
+	} else if argocd.Spec.Prometheus.Route.TLS != nil && argocd.Spec.Prometheus.Route.TLS.SecretName == o.GetName() {
+		ok = true
+	} else if argocd.Spec.ApplicationSet != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS.SecretName == o.GetName() {
+		ok = true
+	}
+
+	return namespacedName, ok
+}
+
 // tlsSecretMapper maps a watch event on a secret of type TLS back to the
 // ArgoCD object that we want to reconcile.
 func (r *ReconcileArgoCD) tlsSecretMapper(ctx context.Context, o client.Object) []reconcile.Request {
 	var result = []reconcile.Request{}
+
+	// Check if secret is user-managed, meaning it is referenced in the ArgoCD CR for configuration.
+	if namespacedName, ok := r.isUserManagedSecret(ctx, o); ok {
+		return []reconcile.Request{{NamespacedName: namespacedName}}
+	}
 
 	if !isSecretOfInterest(o) {
 		return result

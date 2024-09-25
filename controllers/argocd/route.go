@@ -165,7 +165,10 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Prometheus.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Prometheus.Route.TLS
+		err := r.overrideRouteTLS(cr.Spec.Prometheus.Route.TLS, route)
+		if err != nil {
+			return err
+		}
 	}
 
 	route.Spec.To.Kind = "Service"
@@ -259,7 +262,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Server.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Server.Route.TLS
+		err := r.overrideRouteTLS(cr.Spec.Server.Route.TLS, route)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Info(fmt.Sprintf("Using %s termination policy for the Server Route", string(route.Spec.TLS.Termination)))
@@ -355,21 +361,19 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	if cr.Spec.ApplicationSet.WebhookServer.Route.TLS != nil {
 		tls := &routev1.TLSConfig{}
 
+		// Set Certificate & Key
+		routeCopy := route.DeepCopy()
+		err := r.overrideRouteTLS(cr.Spec.ApplicationSet.WebhookServer.Route.TLS, routeCopy)
+		if err != nil {
+			return err
+		}
+		tls = routeCopy.Spec.TLS
+
 		// Set Termination
 		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination != "" {
 			tls.Termination = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination
 		} else {
 			tls.Termination = routev1.TLSTerminationEdge
-		}
-
-		// Set Certificate
-		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate != "" {
-			tls.Certificate = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate
-		}
-
-		// Set Key
-		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key != "" {
-			tls.Key = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key
 		}
 
 		// Set CACertificate
@@ -463,4 +467,41 @@ func shortenHostname(hostname string) (string, error) {
 		}
 	}
 	return resultHostname, nil
+}
+
+// overrideRouteTLS modifies the Route's TLS settings to match the configurations specified in the ArgoCD CR.
+// It updates the Route's TLS configuration either by using the fields directly in the TLSConfig or by referencing
+// a Kubernetes TLS secret if provided via the SecretName field.
+func (r *ReconcileArgoCD) overrideRouteTLS(tls *argoproj.ArgoCDRouteTLS, route *routev1.Route) error {
+
+	route.Spec.TLS = &tls.TLSConfig
+	if tls.TLSConfig.Key != "" || tls.TLSConfig.Certificate != "" {
+		// TODO: Emit a Kubernetes event to notify users about the deprecated `.tls.key` and `.tls.certificate` fields.
+		// These fields are deprecated in favor of using `.tls.secretName` to reference a Kubernetes TLS secret.
+		log.Info("Deprecated: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.secretName` to reference a TLS secret instead.")
+	}
+
+	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
+	// This secret must be of type `kubernetes.io/tls` and contain `tls.key` and `tls.crt` data.
+	// TODO: Investigate use of `route.spec.tls.externalCertificate` to configure external secrets
+	// for TLS once this feature reaches GA. See OpenShift documentation:
+	// https://docs.openshift.com/container-platform/4.16/networking/routes/secured-routes.html#nw-ingress-route-secret-load-external-cert_secured-routes
+	if tls.SecretName != "" {
+		secret := &corev1.Secret{}
+		err := argoutil.FetchObject(r.Client, route.ObjectMeta.Namespace, tls.SecretName, secret)
+		if err != nil {
+			return err
+		}
+		if secret.Type != corev1.SecretTypeTLS {
+			return fmt.Errorf("secret %s in namespace %s is not of type kubernetes.io/tls",
+				secret.ObjectMeta.Name, secret.ObjectMeta.Namespace)
+		}
+
+		// No need to perform further checks on the secret data, as Kubernetes will reject
+		// the TLS secret if it does not contain both `tls.key` and `tls.crt` keys.
+		route.Spec.TLS.Certificate = string(secret.Data[corev1.TLSCertKey])
+		route.Spec.TLS.Key = string(secret.Data[corev1.TLSPrivateKeyKey])
+	}
+
+	return nil
 }
