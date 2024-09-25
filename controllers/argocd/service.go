@@ -451,22 +451,24 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 
 	existingSVC := &corev1.Service{}
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, existingSVC) {
+		changed := false
 		if !cr.Spec.Server.IsEnabled() {
 			return r.Client.Delete(context.TODO(), svc)
 		}
-		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
+		if ensureAutoTLSAnnotation(r.Client, existingSVC, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
+			changed = true
 		}
-		if !cr.Spec.Repo.IsEnabled() {
-			return nil
-		}
-		changed := false
 		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
+			existingSVC.Spec.Type = svc.Spec.Type
 			changed = true
 		}
 		if changed {
-			return r.Client.Update(context.TODO(), svc)
+			return r.Client.Update(context.TODO(), existingSVC)
 		}
+		return nil
+	}
+
+	if !cr.Spec.Server.IsEnabled() {
 		return nil
 	}
 	return r.Client.Create(context.TODO(), svc)
