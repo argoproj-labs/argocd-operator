@@ -493,6 +493,7 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						},
 					},
 				}
+				//nolint:staticcheck
 				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{
 					Enabled: true,
 					TLS: &v1beta1.ArgoCDRouteTLS{
