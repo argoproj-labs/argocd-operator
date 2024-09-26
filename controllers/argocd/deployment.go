@@ -357,7 +357,7 @@ func getDexServerAddress(cr *argoproj.ArgoCD) string {
 
 // getRepoServerAddress will return the Argo CD repo server address.
 func getRepoServerAddress(cr *argoproj.ArgoCD) string {
-	if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+	if cr.Spec.Repo.IsRemote() {
 		return *cr.Spec.Repo.Remote
 	}
 	return fqdnServiceRef("repo-server", common.ArgoCDDefaultRepoServerPort, cr)
@@ -533,7 +533,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
 			log.Info("Redis exists but should be disabled. Deleting existing redis.")
 			return r.Client.Delete(context.TODO(), deploy)
-		} else if cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+		} else if cr.Spec.Redis.IsRemote() {
 			log.Info("Redis remote exists but redis deployment should be disabled. Deleting existing redis.")
 			return r.Client.Delete(context.TODO(), deploy)
 		}
@@ -578,7 +578,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.Remote != nil && *cr.Spec.Redis.Remote != "" {
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.IsRemote() {
 		log.Info("Custom Redis Endpoint. Skipping starting redis.")
 		return nil
 	}
@@ -1116,7 +1116,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
 			return r.Client.Delete(context.TODO(), existing)
-		} else if cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+		} else if cr.Spec.Repo.IsRemote() {
 			log.Info("Repo Server remote field exists, Repo Server deployment should be disabled. Deleting Repo Server.")
 			return r.Client.Delete(context.TODO(), deploy)
 		}
@@ -1193,7 +1193,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		return nil // Deployment found with nothing to do, move along...
 	}
 
-	if cr.Spec.Redis.IsEnabled() && cr.Spec.Repo.Remote != nil && *cr.Spec.Repo.Remote != "" {
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Repo.IsRemote() {
 		log.Info("Custom Repo Endpoint. Skipping starting Repo Server.")
 		return nil
 	}
