@@ -31,7 +31,7 @@ In this example, only the controller component is disabled, while all other comp
 
 # Specifying External URLs for Redis and RepoServer Components
 When disabling core components like Redis or Repo Server, you may wish to provide an external URL for components running in external clusters. The remote URL can be set using the `spec.<component>.remote` flag (where the component can only be `redis` or `repo`).
-Using `spec.<component>.remote` will skip the deployment. 
+Using `spec.<component>.remote` will skip the deployment & service creation. 
 For example,
 
 ```yaml
