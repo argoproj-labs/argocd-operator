@@ -479,37 +479,29 @@ func TestAlphaToBetaConversion(t *testing.T) {
 			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
 				cr.Spec.Server.Route = v1beta1.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &v1beta1.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Termination: routev1.TLSTerminationEdge,
-						},
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
 					},
 				}
 				cr.Spec.Prometheus.Route = v1beta1.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &v1beta1.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Termination: routev1.TLSTerminationEdge,
-						},
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
 					},
 				}
 				//nolint:staticcheck
 				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &v1beta1.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Termination: routev1.TLSTerminationEdge,
-						},
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
 					},
 				}
 				cr.Spec.ApplicationSet = &v1beta1.ArgoCDApplicationSet{
 					WebhookServer: v1beta1.WebhookServerSpec{
 						Route: v1beta1.ArgoCDRouteSpec{
 							Enabled: true,
-							TLS: &v1beta1.ArgoCDRouteTLS{
-								TLSConfig: routev1.TLSConfig{
-									Termination: routev1.TLSTerminationEdge,
-								},
+							TLS: &routev1.TLSConfig{
+								Termination: routev1.TLSTerminationEdge,
 							},
 						},
 					},

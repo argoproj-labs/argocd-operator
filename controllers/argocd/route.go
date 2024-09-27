@@ -472,23 +472,25 @@ func shortenHostname(hostname string) (string, error) {
 // overrideRouteTLS modifies the Route's TLS settings to match the configurations specified in the ArgoCD CR.
 // It updates the Route's TLS configuration either by using the fields directly in the TLSConfig or by referencing
 // a Kubernetes TLS secret if provided via the SecretName field.
-func (r *ReconcileArgoCD) overrideRouteTLS(tls *argoproj.ArgoCDRouteTLS, route *routev1.Route) error {
+func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route) error {
 
-	route.Spec.TLS = &tls.TLSConfig
-	if tls.TLSConfig.Key != "" || tls.TLSConfig.Certificate != "" {
+	route.Spec.TLS = tls.DeepCopy()
+	if tls.Key != "" || tls.Certificate != "" {
 		// TODO: Emit a Kubernetes event to notify users about the deprecated `.tls.key` and `.tls.certificate` fields.
-		// These fields are deprecated in favor of using `.tls.secretName` to reference a Kubernetes TLS secret.
-		log.Info("Deprecated: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.secretName` to reference a TLS secret instead.")
+		// These fields are deprecated in favor of using `.tls.externalCertificate` to reference a Kubernetes TLS secret.
+		log.Info("Deprecated: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
 	}
 
 	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
-	// This secret must be of type `kubernetes.io/tls` and contain `tls.key` and `tls.crt` data.
-	// TODO: Investigate use of `route.spec.tls.externalCertificate` to configure external secrets
-	// for TLS once this feature reaches GA. See OpenShift documentation:
+	// The secret must be of type `kubernetes.io/tls` and contain `tls.key` and `tls.crt` data.
+	// Currently, we map data from the secret referenced in `.tls.externalCertificate` to the Route object's `tls.key` and `tls.certificate` fields.
+	// This is necessary because the `route.spec.tls.externalCertificate` field is Technology Preview (TP) and not available on OCP versions below 4.14.
+	// TODO: Remove the custom logic below once the feature reaches GA and we stop supporting OCP < 4.14.
+	// For more details about the feature, see the OpenShift documentation:
 	// https://docs.openshift.com/container-platform/4.16/networking/routes/secured-routes.html#nw-ingress-route-secret-load-external-cert_secured-routes
-	if tls.SecretName != "" {
+	if tls.ExternalCertificate != nil && tls.ExternalCertificate.Name != "" {
 		secret := &corev1.Secret{}
-		err := argoutil.FetchObject(r.Client, route.ObjectMeta.Namespace, tls.SecretName, secret)
+		err := argoutil.FetchObject(r.Client, route.ObjectMeta.Namespace, tls.ExternalCertificate.Name, secret)
 		if err != nil {
 			return err
 		}
@@ -502,6 +504,8 @@ func (r *ReconcileArgoCD) overrideRouteTLS(tls *argoproj.ArgoCDRouteTLS, route *
 		route.Spec.TLS.Certificate = string(secret.Data[corev1.TLSCertKey])
 		route.Spec.TLS.Key = string(secret.Data[corev1.TLSPrivateKeyKey])
 	}
+	// explicitly set `ExternalCertificate` to nil for the actual Route objects to avoid issues on clusters.
+	route.Spec.TLS.ExternalCertificate = nil
 
 	return nil
 }

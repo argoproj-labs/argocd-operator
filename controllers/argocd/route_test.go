@@ -280,11 +280,9 @@ func TestReconcileRouteApplicationSetTlsTermination(t *testing.T) {
 				Host: "webhook-test.org",
 				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &argoproj.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Termination:                   routev1.TLSTerminationPassthrough,
-							InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
-						},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationPassthrough,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 					},
 				},
 			},
@@ -338,14 +336,12 @@ func TestReconcileRouteApplicationSetTls(t *testing.T) {
 			WebhookServer: argoproj.WebhookServerSpec{
 				Route: argoproj.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &argoproj.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Certificate:                   "test-certificate",
-							Key:                           "test-key",
-							CACertificate:                 "test-ca-certificate",
-							DestinationCACertificate:      "test-destination-ca-certificate",
-							InsecureEdgeTerminationPolicy: "Redirect",
-						},
+					TLS: &routev1.TLSConfig{
+						Certificate:                   "test-certificate",
+						Key:                           "test-key",
+						CACertificate:                 "test-ca-certificate",
+						DestinationCACertificate:      "test-destination-ca-certificate",
+						InsecureEdgeTerminationPolicy: "Redirect",
 					},
 					Annotations:    map[string]string{"my-annotation-key": "my-annotation-value"},
 					Labels:         map[string]string{"my-label-key": "my-label-value"},
@@ -520,10 +516,8 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 			want: routev1.TLSTerminationEdge,
 			updateArgoCD: func(cr *argoproj.ArgoCD) {
 				cr.Spec.Server.Route.Enabled = true
-				cr.Spec.Server.Route.TLS = &argoproj.ArgoCDRouteTLS{
-					TLSConfig: routev1.TLSConfig{
-						Termination: routev1.TLSTerminationEdge,
-					},
+				cr.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					Termination: routev1.TLSTerminationEdge,
 				}
 			},
 			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {},
@@ -754,17 +748,15 @@ func TestOverrideRouteTLSData(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		newTLSConfig     *argoproj.ArgoCDRouteTLS
+		newTLSConfig     *routev1.TLSConfig
 		expectErr        bool
 		expectedRouteTLS *routev1.TLSConfig
 	}{
 		{
 			name: "embedded tls data",
-			newTLSConfig: &argoproj.ArgoCDRouteTLS{
-				TLSConfig: routev1.TLSConfig{
-					Certificate: "crt",
-					Key:         "key",
-				},
+			newTLSConfig: &routev1.TLSConfig{
+				Certificate: "crt",
+				Key:         "key",
 			},
 			expectedRouteTLS: &routev1.TLSConfig{
 				Certificate: "crt",
@@ -773,8 +765,10 @@ func TestOverrideRouteTLSData(t *testing.T) {
 		},
 		{
 			name: "tls data in secret",
-			newTLSConfig: &argoproj.ArgoCDRouteTLS{
-				SecretName: "valid-secret",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "valid-secret",
+				},
 			},
 			expectedRouteTLS: &routev1.TLSConfig{
 				Certificate: string(crt),
@@ -783,12 +777,12 @@ func TestOverrideRouteTLSData(t *testing.T) {
 		},
 		{
 			name: "conflicting TLS data",
-			newTLSConfig: &argoproj.ArgoCDRouteTLS{
-				SecretName: "valid-secret",
-				TLSConfig: routev1.TLSConfig{
-					Termination: routev1.TLSTerminationReencrypt,
-					Certificate: "embedded-crt",
-					Key:         "embedded-key",
+			newTLSConfig: &routev1.TLSConfig{
+				Termination: routev1.TLSTerminationReencrypt,
+				Certificate: "embedded-crt",
+				Key:         "embedded-key",
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "valid-secret",
 				},
 			},
 			expectedRouteTLS: &routev1.TLSConfig{
@@ -799,15 +793,19 @@ func TestOverrideRouteTLSData(t *testing.T) {
 		},
 		{
 			name: "invalid secret type",
-			newTLSConfig: &argoproj.ArgoCDRouteTLS{
-				SecretName: "non-tls-secret",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "non-tls-secret",
+				},
 			},
 			expectErr: true,
 		},
 		{
 			name: "non-existing secret",
-			newTLSConfig: &argoproj.ArgoCDRouteTLS{
-				SecretName: "non-existing-secret",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "non-existing-secret",
+				},
 			},
 			expectErr: true,
 		},
@@ -865,12 +863,10 @@ func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
 				a.Spec.Prometheus.Enabled = true
 				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &argoproj.ArgoCDRouteTLS{
-						TLSConfig: routev1.TLSConfig{
-							Termination: routev1.TLSTerminationPassthrough,
-							Key:         "key",
-							Certificate: "crt",
-						},
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationPassthrough,
+						Key:         "key",
+						Certificate: "crt",
 					},
 				}
 			}),
@@ -887,8 +883,10 @@ func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
 				a.Spec.Prometheus.Enabled = true
 				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &argoproj.ArgoCDRouteTLS{
-						SecretName: "valid-secret",
+					TLS: &routev1.TLSConfig{
+						ExternalCertificate: &routev1.LocalObjectReference{
+							Name: "valid-secret",
+						},
 					},
 				}
 			}),
@@ -904,8 +902,10 @@ func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
 				a.Spec.Prometheus.Enabled = true
 				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
 					Enabled: true,
-					TLS: &argoproj.ArgoCDRouteTLS{
-						SecretName: "non-existing-secret",
+					TLS: &routev1.TLSConfig{
+						ExternalCertificate: &routev1.LocalObjectReference{
+							Name: "non-existing-secret",
+						},
 					},
 				}
 			}),

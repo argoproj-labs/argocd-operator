@@ -87,11 +87,11 @@ func (r *ReconcileArgoCD) isUserManagedSecret(ctx context.Context, o client.Obje
 	namespacedName.Namespace = argocd.Namespace
 
 	// Check if the secret is referenced in the ArgoCD CR.
-	if argocd.Spec.Server.Route.TLS != nil && argocd.Spec.Server.Route.TLS.SecretName == o.GetName() {
+	if argocd.Spec.Server.Route.UseExternalCertificate() && argocd.Spec.Server.Route.TLS.ExternalCertificate.Name == o.GetName() {
 		ok = true
-	} else if argocd.Spec.Prometheus.Route.TLS != nil && argocd.Spec.Prometheus.Route.TLS.SecretName == o.GetName() {
+	} else if argocd.Spec.Prometheus.Route.UseExternalCertificate() && argocd.Spec.Prometheus.Route.TLS.ExternalCertificate.Name == o.GetName() {
 		ok = true
-	} else if argocd.Spec.ApplicationSet != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS.SecretName == o.GetName() {
+	} else if argocd.Spec.ApplicationSet != nil && argocd.Spec.ApplicationSet.WebhookServer.Route.UseExternalCertificate() && argocd.Spec.ApplicationSet.WebhookServer.Route.TLS.ExternalCertificate.Name == o.GetName() {
 		ok = true
 	}
 

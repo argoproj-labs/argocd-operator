@@ -961,8 +961,10 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 		{
 			name: "tls secret for Server in ArgoCD CR",
 			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Server.Route.TLS = &argoproj.ArgoCDRouteTLS{
-					SecretName: "user-tls",
+				a.Spec.Server.Route.TLS = &routev1.TLSConfig{
+					ExternalCertificate: &routev1.LocalObjectReference{
+						Name: "user-tls",
+					},
 				}
 			}),
 			expectedReq: reconcileReq,
@@ -970,8 +972,10 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 		{
 			name: "tls secret for Prometheus in ArgoCD CR",
 			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
-				a.Spec.Prometheus.Route.TLS = &argoproj.ArgoCDRouteTLS{
-					SecretName: "user-tls",
+				a.Spec.Prometheus.Route.TLS = &routev1.TLSConfig{
+					ExternalCertificate: &routev1.LocalObjectReference{
+						Name: "user-tls",
+					},
 				}
 			}),
 			expectedReq: reconcileReq,
@@ -980,8 +984,10 @@ func TestReconcileArgoCD_tlsSecretMapperUserManagedSecret(t *testing.T) {
 			name: "tls secret for ApplicationSet in ArgoCD CR",
 			argocd: makeArgoCD(func(a *argoproj.ArgoCD) {
 				a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{}
-				a.Spec.ApplicationSet.WebhookServer.Route.TLS = &argoproj.ArgoCDRouteTLS{
-					SecretName: "user-tls",
+				a.Spec.ApplicationSet.WebhookServer.Route.TLS = &routev1.TLSConfig{
+					ExternalCertificate: &routev1.LocalObjectReference{
+						Name: "user-tls",
+					},
 				}
 			}),
 			expectedReq: reconcileReq,
