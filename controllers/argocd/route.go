@@ -471,7 +471,7 @@ func shortenHostname(hostname string) (string, error) {
 
 // overrideRouteTLS modifies the Route's TLS settings to match the configurations specified in the ArgoCD CR.
 // It updates the Route's TLS configuration either by using the fields directly in the TLSConfig or by referencing
-// a Kubernetes TLS secret if provided via the SecretName field.
+// a Kubernetes TLS secret if provided via the ExternalCertificate field.
 func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route) error {
 
 	route.Spec.TLS = tls.DeepCopy()
