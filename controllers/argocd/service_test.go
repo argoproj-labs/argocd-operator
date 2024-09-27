@@ -6,8 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -79,5 +81,53 @@ func TestEnsureAutoTLSAnnotation(t *testing.T) {
 		// Annotation does not exist, no update required
 		needUpdate = ensureAutoTLSAnnotation(fakeClient, svc, "some-secret", false)
 		assert.Equal(t, needUpdate, false)
+	})
+}
+
+func TestReconcileServerService(t *testing.T) {
+	a := makeTestArgoCD()
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+	a = makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.Service.Type = "NodePort"
+	})
+	serverService := newServiceWithSuffix("server", "server", a)
+	t.Run("Server Service Created when the Server Service is not found ", func(t *testing.T) {
+		err := r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, serverService)
+		assert.True(t, errors.IsNotFound(err))
+
+		err = r.reconcileServerService(a)
+		assert.NoError(t, err)
+
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, serverService)
+		assert.NoError(t, err)
+		assert.Equal(t, a.Spec.Server.Service.Type, serverService.Spec.Type)
+	})
+
+	t.Run("Server Service Type update ", func(t *testing.T) {
+		// Reconcile with previous existing Server Service with a different Type
+		a.Spec.Server.Service.Type = "ClusterIP"
+		assert.NotEqual(t, a.Spec.Server.Service.Type, serverService.Spec.Type)
+
+		err := r.reconcileServerService(a)
+		assert.NoError(t, err)
+
+		// Existing Server is found and has the argoCD new Server Service Type
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: testNamespace,
+		}, serverService)
+		assert.NoError(t, err)
+		assert.Equal(t, a.Spec.Server.Service.Type, serverService.Spec.Type)
 	})
 }
