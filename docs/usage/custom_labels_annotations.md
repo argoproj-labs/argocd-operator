@@ -1,6 +1,6 @@
 # Custom Annotations and Labels
 
-You can easily add labels and annotations to the pods of the server, repo, application set controller, and application controller.
+You can add labels and annotations to the pods of the server, repo, application set controller, and application controller.
 
 ```[yaml]
 spec:
