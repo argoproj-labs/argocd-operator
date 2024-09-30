@@ -5,13 +5,9 @@ metadata:
 spec:
   template:
     metadata:
-      annotations:
-        custom: annotation
-        custom2: server
+      annotations: {}
       labels:
         app.kubernetes.io/name: argocd-sample-server
-        custom: label
-        custom2: server
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -20,13 +16,9 @@ metadata:
 spec:
   template:
     metadata:
-      annotations:
-        custom: annotation
-        custom2: repo
+      annotations: {}
       labels:
         app.kubernetes.io/name: argocd-sample-repo-server
-        custom: label
-        custom2: repo
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -35,13 +27,9 @@ metadata:
 spec:
   template:
     metadata:
-      annotations:
-        custom: annotation
-        custom2: controller
+      annotations: {}
       labels:
         app.kubernetes.io/name: argocd-sample-application-controller
-        custom: label
-        custom2: controller
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -50,10 +38,6 @@ metadata:
 spec:
   template:
     metadata:
-      annotations:
-        custom: annotation
-        custom2: applicationSet
+      annotations: {}
       labels:
         app.kubernetes.io/name: argocd-sample-applicationset-controller
-        custom: label
-        custom2: applicationSet
