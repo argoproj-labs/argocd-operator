@@ -207,6 +207,12 @@ type ArgoCDApplicationSet struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// Volumes adds volumes to the Argo CD ApplicationSet Controller container.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// VolumeMounts adds volumeMounts to the Argo CD ApplicationSet Controller container.
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (a *ArgoCDApplicationSet) IsEnabled() bool {

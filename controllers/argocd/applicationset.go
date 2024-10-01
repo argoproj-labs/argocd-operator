@@ -184,7 +184,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	if sa != nil {
 		podSpec.ServiceAccountName = sa.ObjectMeta.Name
 	}
-	podSpec.Volumes = []corev1.Volume{
+
+	serverVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
@@ -228,6 +229,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			},
 		},
 	}
+	if cr.Spec.ApplicationSet.Volumes != nil {
+		serverVolumes = append(serverVolumes, cr.Spec.ApplicationSet.Volumes...)
+	}
+	podSpec.Volumes = serverVolumes
 	addSCMGitlabVolumeMount := false
 	if scmRootCAConfigMapName := getSCMRootCAConfigMapName(cr); scmRootCAConfigMapName != "" {
 		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
@@ -322,6 +327,42 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 	// Environment specified in the CR take precedence over everything else
 	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
 
+	// Default VolumeMounts for ApplicationSetController
+	serverVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		},
+		{
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "gpg-keys",
+			MountPath: "/app/config/gpg/source",
+		},
+		{
+			Name:      "gpg-keyring",
+			MountPath: "/app/config/gpg/keys",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+	}
+
+	// Optional extra VolumeMounts for ApplicationSetController
+	if cr.Spec.ApplicationSet.VolumeMounts != nil {
+		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.ApplicationSet.VolumeMounts...)
+	}
+
+	if addSCMGitlabVolumeMount {
+		serverVolumeMounts = append(serverVolumeMounts, corev1.VolumeMount{
+			Name:      "appset-gitlab-scm-tls-cert",
+			MountPath: ApplicationSetGitlabSCMTlsMountPath,
+		})
+	}
+
 	container := corev1.Container{
 		Command:         r.getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
@@ -329,28 +370,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 		Resources:       getApplicationSetResources(cr),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			},
-			{
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "gpg-keys",
-				MountPath: "/app/config/gpg/source",
-			},
-			{
-				Name:      "gpg-keyring",
-				MountPath: "/app/config/gpg/keys",
-			},
-			{
-				Name:      "tmp",
-				MountPath: "/tmp",
-			},
-		},
+		VolumeMounts:    serverVolumeMounts,
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 7000,
@@ -374,12 +394,6 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 				Type: "RuntimeDefault",
 			},
 		},
-	}
-	if addSCMGitlabVolumeMount {
-		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      "appset-gitlab-scm-tls-cert",
-			MountPath: ApplicationSetGitlabSCMTlsMountPath,
-		})
 	}
 	return container
 }

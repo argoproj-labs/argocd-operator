@@ -103,10 +103,10 @@ func TestReconcileApplicationSet_CreateDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the created Deployment has the expected properties
-	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, nil, nil, a)
 }
 
-func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, a *argoproj.ArgoCD) {
+func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment *appsv1.Deployment, sa *corev1.ServiceAccount, extraVolumes *[]corev1.Volume, extraVolumeMounts *[]corev1.VolumeMount, a *argoproj.ArgoCD) {
 	assert.Equal(t, deployment.Spec.Template.Spec.ServiceAccountName, sa.ObjectMeta.Name)
 	appsetAssertExpectedLabels(t, &deployment.ObjectMeta)
 
@@ -174,8 +174,44 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 		})
 	}
 
+	if extraVolumes != nil {
+		volumes = append(volumes, *extraVolumes...)
+	}
+
 	if diff := cmp.Diff(volumes, deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile applicationset-controller deployment volumes:\n%s", diff)
+	}
+
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		},
+		{
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "gpg-keys",
+			MountPath: "/app/config/gpg/source",
+		},
+		{
+			Name:      "gpg-keyring",
+			MountPath: "/app/config/gpg/keys",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+	}
+
+	if extraVolumeMounts != nil {
+		volumeMounts = append(volumeMounts, *extraVolumeMounts...)
+	}
+
+	// Verify VolumeMounts
+	if diff := cmp.Diff(volumeMounts, deployment.Spec.Template.Spec.Containers[0].VolumeMounts); diff != "" {
+		t.Fatalf("failed to reconcile applicationset-controller deployment volume mounts:\n%s", diff)
 	}
 
 	expectedSelector := &metav1.LabelSelector{
@@ -249,6 +285,61 @@ func TestReconcileApplicationSetProxyConfiguration(t *testing.T) {
 
 }
 
+func TestReconcileApplicationSetVolumes(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	extraVolumes := []corev1.Volume{
+		{
+			Name: "example-volume",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+
+	extraVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "example-volume",
+			MountPath: "/mnt/data",
+		},
+	}
+
+	a := makeTestArgoCD()
+	a.Spec.ApplicationSet = &argoproj.ArgoCDApplicationSet{
+		Volumes:      extraVolumes,
+		VolumeMounts: extraVolumeMounts,
+	}
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	sa := corev1.ServiceAccount{}
+
+	// Reconcile the ApplicationSet deployment
+	assert.NoError(t, r.reconcileApplicationSetDeployment(a, &sa))
+
+	// Get the deployment after reconciliation
+	deployment := &appsv1.Deployment{}
+	err := r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment,
+	)
+	if err != nil {
+		t.Fatalf("failed to get deployment: %v", err)
+	}
+
+	// Ensure the created Deployment has the expected properties
+	checkExpectedDeploymentValues(t, r, deployment, &sa, &extraVolumes, &extraVolumeMounts, a)
+}
+
 func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -294,7 +385,7 @@ func TestReconcileApplicationSet_UpdateExistingDeployments(t *testing.T) {
 		deployment))
 
 	// Ensure the updated Deployment has the expected properties
-	checkExpectedDeploymentValues(t, r, deployment, &sa, a)
+	checkExpectedDeploymentValues(t, r, deployment, &sa, nil, nil, a)
 
 }
 
@@ -454,7 +545,7 @@ func TestReconcileApplicationSet_Deployments_SpecOverride(t *testing.T) {
 
 			specImage := deployment.Spec.Template.Spec.Containers[0].Image
 			assert.Equal(t, test.expectedContainerImage, specImage)
-			checkExpectedDeploymentValues(t, r, deployment, &sa, a)
+			checkExpectedDeploymentValues(t, r, deployment, &sa, nil, nil, a)
 		})
 	}
 
