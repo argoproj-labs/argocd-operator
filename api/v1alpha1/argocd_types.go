@@ -687,6 +687,9 @@ type ArgoCDSpec struct {
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
 
+	// EnableArgoRolloutUI will add the argo rollout UI extension in ArgoCD Dashboard.
+	EnableArgoRolloutUI bool `json:"enableArgoRolloutUI,omitempty"`
+
 	// ExtraConfig can be used to add fields to Argo CD configmap that are not supported by Argo CD CRD.
 	//
 	// Note: ExtraConfig takes precedence over Argo CD CRD.

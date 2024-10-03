@@ -775,6 +775,10 @@ spec:
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
                 type: boolean
+              enableArgoRolloutUI:
+                description: EnableArgoRolloutUI will add the argo rollout UI extension
+                  in ArgoCD Dashboard.
+                type: boolean
               extraConfig:
                 additionalProperties:
                   type: string
@@ -12243,6 +12247,10 @@ spec:
                 type: boolean
               disableAdmin:
                 description: DisableAdmin will disable the admin user.
+                type: boolean
+              enableArgoRolloutUI:
+                description: EnableArgoRolloutUI will add the argo rollout UI extension
+                  in ArgoCD Dashboard.
                 type: boolean
               extraConfig:
                 additionalProperties:
