@@ -63,7 +63,67 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName(t *testing.T) 
 		})
 	}
 }
+func TestReconcileArgoCD_reconcile_ServerIngress_serverHost(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
 
+	nginx := "nginx"
+
+	tests := []struct {
+		name             string
+		ingressClassName *string
+		host             string
+	}{
+		{
+			name:             "New Server host specified",
+			ingressClassName: &nginx,
+			host:             "foo.bar",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Server.Ingress.Enabled = true
+				a.Spec.Server.Ingress.IngressClassName = test.ingressClassName
+			})
+
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+			cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(cl, sch)
+			err := r.reconcileArgoServerIngress(a)
+			assert.NoError(t, err)
+
+			ingress := &networkingv1.Ingress{}
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-server",
+				Namespace: testNamespace,
+			}, ingress)
+			assert.NoError(t, err)
+			assert.Equal(t, test.ingressClassName, ingress.Spec.IngressClassName)
+			assert.Equal(t, "argocd", ingress.Spec.TLS[0].Hosts[0])
+			a = makeTestArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Server.Ingress.Enabled = true
+				a.Spec.Server.Ingress.IngressClassName = test.ingressClassName
+				a.Spec.Server.Host = test.host
+			})
+
+			err = r.reconcileArgoServerIngress(a)
+			assert.NoError(t, err)
+			err = r.Client.Get(context.TODO(), types.NamespacedName{
+				Name:      "argocd-server",
+				Namespace: testNamespace,
+			}, ingress)
+			assert.NoError(t, err)
+			assert.Equal(t, test.host, ingress.Spec.TLS[0].Hosts[0])
+			assert.Equal(t, test.host, ingress.Spec.Rules[0].Host)
+			assert.Equal(t, test.ingressClassName, ingress.Spec.IngressClassName)
+		})
+	}
+}
 func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName_update(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 
@@ -102,7 +162,7 @@ func TestReconcileArgoCD_reconcile_ServerIngress_ingressClassName_update(t *test
 		Namespace: testNamespace,
 	}, updatedIngress)
 	assert.NoError(t, err)
-	assert.Equal(t, a.Spec.Server.Ingress.IngressClassName, updatedIngress.Spec.IngressClassName)
+	assert.Equal(t, *a.Spec.Server.Ingress.IngressClassName, *updatedIngress.Spec.IngressClassName)
 
 }
 
