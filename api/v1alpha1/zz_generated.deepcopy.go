@@ -738,7 +738,7 @@ func (in *ArgoCDRouteSpec) DeepCopyInto(out *ArgoCDRouteSpec) {
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(routev1.TLSConfig)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.WildcardPolicy != nil {
 		in, out := &in.WildcardPolicy, &out.WildcardPolicy

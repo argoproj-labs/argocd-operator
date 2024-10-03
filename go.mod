@@ -13,7 +13,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.0
-	github.com/openshift/api v3.9.1-0.20190916204813-cdbe64fb0c91+incompatible
+	github.com/openshift/api v0.0.0-20240906151052-5d963dce87aa
 	github.com/openshift/client-go v0.0.0-20200325131901-f7baeb993edb
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1

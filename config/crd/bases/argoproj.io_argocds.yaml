@@ -341,7 +341,9 @@ spec:
                                   certificate contents
                                 type: string
                               certificate:
-                                description: certificate provides certificate contents
+                                description: |-
+                                  certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                                  chain. Do not include a CA certificate.
                                 type: string
                               destinationCACertificate:
                                 description: |-
@@ -351,25 +353,64 @@ spec:
                                   the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                                   verify.
                                 type: string
+                              externalCertificate:
+                                description: |-
+                                  externalCertificate provides certificate contents as a secret reference.
+                                  This should be a single serving certificate, not a certificate
+                                  chain. Do not include a CA certificate. The secret referenced should
+                                  be present in the same namespace as that of the Route.
+                                  Forbidden when `certificate` is set.
+                                properties:
+                                  name:
+                                    description: |-
+                                      name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                type: object
+                                x-kubernetes-map-type: atomic
                               insecureEdgeTerminationPolicy:
                                 description: |-
                                   insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                                   each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                                  * Allow - traffic is sent to the server on the insecure port (default)
-                                  * Disable - no traffic is allowed on the insecure port.
+                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                                  * None - no traffic is allowed on the insecure port.
                                   * Redirect - clients are redirected to the secure port.
+                                enum:
+                                - Allow
+                                - None
+                                - Redirect
+                                - ""
                                 type: string
                               key:
                                 description: key provides key file contents
                                 type: string
                               termination:
-                                description: termination indicates termination type.
+                                description: |-
+                                  termination indicates termination type.
+
+
+                                  * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                                  * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                                  * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                                  Note: passthrough termination is incompatible with httpHeader actions
+                                enum:
+                                - edge
+                                - reencrypt
+                                - passthrough
                                 type: string
                             required:
                             - termination
                             type: object
+                            x-kubernetes-validations:
+                            - message: 'cannot have both spec.tls.termination: passthrough
+                                and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                              rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                                ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                                : true'
                           wildcardPolicy:
                             description: WildcardPolicy if any for the route. Currently
                               only 'Subdomain' or 'None' is allowed.
@@ -909,7 +950,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -919,25 +962,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
@@ -1459,7 +1541,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -1469,25 +1553,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
@@ -6635,7 +6758,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -6645,25 +6770,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
@@ -7401,7 +7565,9 @@ spec:
                                   certificate contents
                                 type: string
                               certificate:
-                                description: certificate provides certificate contents
+                                description: |-
+                                  certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                                  chain. Do not include a CA certificate.
                                 type: string
                               destinationCACertificate:
                                 description: |-
@@ -7411,25 +7577,64 @@ spec:
                                   the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                                   verify.
                                 type: string
+                              externalCertificate:
+                                description: |-
+                                  externalCertificate provides certificate contents as a secret reference.
+                                  This should be a single serving certificate, not a certificate
+                                  chain. Do not include a CA certificate. The secret referenced should
+                                  be present in the same namespace as that of the Route.
+                                  Forbidden when `certificate` is set.
+                                properties:
+                                  name:
+                                    description: |-
+                                      name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    type: string
+                                type: object
+                                x-kubernetes-map-type: atomic
                               insecureEdgeTerminationPolicy:
                                 description: |-
                                   insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                                   each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                                  * Allow - traffic is sent to the server on the insecure port (default)
-                                  * Disable - no traffic is allowed on the insecure port.
+                                  * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                                  * None - no traffic is allowed on the insecure port.
                                   * Redirect - clients are redirected to the secure port.
+                                enum:
+                                - Allow
+                                - None
+                                - Redirect
+                                - ""
                                 type: string
                               key:
                                 description: key provides key file contents
                                 type: string
                               termination:
-                                description: termination indicates termination type.
+                                description: |-
+                                  termination indicates termination type.
+
+
+                                  * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                                  * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                                  * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                                  Note: passthrough termination is incompatible with httpHeader actions
+                                enum:
+                                - edge
+                                - reencrypt
+                                - passthrough
                                 type: string
                             required:
                             - termination
                             type: object
+                            x-kubernetes-validations:
+                            - message: 'cannot have both spec.tls.termination: passthrough
+                                and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                              rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                                ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                                : true'
                           wildcardPolicy:
                             description: WildcardPolicy if any for the route. Currently
                               only 'Subdomain' or 'None' is allowed.
@@ -12194,7 +12399,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -12204,25 +12411,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
@@ -12744,7 +12990,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -12754,25 +13002,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
@@ -19257,7 +19544,9 @@ spec:
                               certificate contents
                             type: string
                           certificate:
-                            description: certificate provides certificate contents
+                            description: |-
+                              certificate provides certificate contents. This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate.
                             type: string
                           destinationCACertificate:
                             description: |-
@@ -19267,25 +19556,64 @@ spec:
                               the short service name (service.namespace.svc), which allows infrastructure generated certificates to automatically
                               verify.
                             type: string
+                          externalCertificate:
+                            description: |-
+                              externalCertificate provides certificate contents as a secret reference.
+                              This should be a single serving certificate, not a certificate
+                              chain. Do not include a CA certificate. The secret referenced should
+                              be present in the same namespace as that of the Route.
+                              Forbidden when `certificate` is set.
+                            properties:
+                              name:
+                                description: |-
+                                  name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                type: string
+                            type: object
+                            x-kubernetes-map-type: atomic
                           insecureEdgeTerminationPolicy:
                             description: |-
                               insecureEdgeTerminationPolicy indicates the desired behavior for insecure connections to a route. While
                               each router may make its own decisions on which ports to expose, this is normally port 80.
 
 
-                              * Allow - traffic is sent to the server on the insecure port (default)
-                              * Disable - no traffic is allowed on the insecure port.
+                              * Allow - traffic is sent to the server on the insecure port (edge/reencrypt terminations only) (default).
+                              * None - no traffic is allowed on the insecure port.
                               * Redirect - clients are redirected to the secure port.
+                            enum:
+                            - Allow
+                            - None
+                            - Redirect
+                            - ""
                             type: string
                           key:
                             description: key provides key file contents
                             type: string
                           termination:
-                            description: termination indicates termination type.
+                            description: |-
+                              termination indicates termination type.
+
+
+                              * edge - TLS termination is done by the router and http is used to communicate with the backend (default)
+                              * passthrough - Traffic is sent straight to the destination without the router providing TLS termination
+                              * reencrypt - TLS termination is done by the router and https is used to communicate with the backend
+
+
+                              Note: passthrough termination is incompatible with httpHeader actions
+                            enum:
+                            - edge
+                            - reencrypt
+                            - passthrough
                             type: string
                         required:
                         - termination
                         type: object
+                        x-kubernetes-validations:
+                        - message: 'cannot have both spec.tls.termination: passthrough
+                            and spec.tls.insecureEdgeTerminationPolicy: Allow'
+                          rule: 'has(self.termination) && has(self.insecureEdgeTerminationPolicy)
+                            ? !((self.termination==''passthrough'') && (self.insecureEdgeTerminationPolicy==''Allow''))
+                            : true'
                       wildcardPolicy:
                         description: WildcardPolicy if any for the route. Currently
                           only 'Subdomain' or 'None' is allowed.
