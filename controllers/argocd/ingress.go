@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,21 +93,14 @@ func (r *ReconcileArgoCD) reconcileIngresses(cr *argoproj.ArgoCD) error {
 // reconcileArgoServerIngress will ensure that the ArgoCD Server Ingress is present.
 func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error {
 	ingress := newIngressWithSuffix("server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, ingress) {
-		if !cr.Spec.Server.Ingress.Enabled {
+	existingIngress := newIngressWithSuffix("server", cr)
+	objectFound := argoutil.IsObjectFound(r.Client, cr.Namespace, ingress.Name, existingIngress)
+
+	if !cr.Spec.Server.Ingress.Enabled {
+		if objectFound {
 			// Ingress exists but enabled flag has been set to false, delete the Ingress
 			return r.Client.Delete(context.TODO(), ingress)
 		}
-
-		// If Ingress found and enabled, make sure the ingressClassName is up-to-date
-		if ingress.Spec.IngressClassName != cr.Spec.Server.Ingress.IngressClassName {
-			ingress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
-			return r.Client.Update(context.TODO(), ingress)
-		}
-		return nil // Ingress found and enabled, do nothing
-	}
-
-	if !cr.Spec.Server.Ingress.Enabled {
 		return nil // Ingress not enabled, move along...
 	}
 
@@ -164,7 +158,30 @@ func (r *ReconcileArgoCD) reconcileArgoServerIngress(cr *argoproj.ArgoCD) error 
 	if len(cr.Spec.Server.Ingress.TLS) > 0 {
 		ingress.Spec.TLS = cr.Spec.Server.Ingress.TLS
 	}
-
+	if objectFound {
+		changed := false
+		// If Ingress found and enabled, make sure the ingressClassName is up-to-date
+		if existingIngress.Spec.IngressClassName != cr.Spec.Server.Ingress.IngressClassName {
+			changed = true
+			existingIngress.Spec.IngressClassName = cr.Spec.Server.Ingress.IngressClassName
+		}
+		if !reflect.DeepEqual(cr.Spec.Server.Ingress.Annotations, existingIngress.ObjectMeta.Annotations) {
+			changed = true
+			existingIngress.ObjectMeta.Annotations = cr.Spec.Server.Ingress.Annotations
+		}
+		if !reflect.DeepEqual(ingress.Spec.Rules, existingIngress.Spec.Rules) {
+			changed = true
+			existingIngress.Spec.Rules = ingress.Spec.Rules
+		}
+		if !reflect.DeepEqual(ingress.Spec.TLS, existingIngress.Spec.TLS) {
+			changed = true
+			existingIngress.Spec.TLS = ingress.Spec.TLS
+		}
+		if changed {
+			return r.Client.Update(context.TODO(), existingIngress)
+		}
+		return nil // Ingress with no changes to apply, do nothing
+	}
 	if err := controllerutil.SetControllerReference(cr, ingress, r.Scheme); err != nil {
 		return err
 	}
