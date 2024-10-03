@@ -371,7 +371,7 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		}
 		if cr.Spec.Repo.IsRemote() {
 			log.Info("skip creating repo server service, repo remote is enabled")
-			return r.Client.Update(context.TODO(), svc)
+			return r.Client.Delete(context.TODO(), svc)
 		}
 		return nil // Service found, do nothing
 	}
