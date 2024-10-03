@@ -22,6 +22,8 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -464,8 +466,24 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			cm.Data[common.ArgoCDKeyOIDCConfig] = existingCM.Data[common.ArgoCDKeyOIDCConfig]
 		}
 
+		changed := false
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
+			changed = true
+		}
+
+		// Compare OwnerReferences
+		var refChanged bool
+		var err error
+		if refChanged, err = validateOwnerReferences(cr, existingCM, r.Scheme); err != nil {
+			return err
+		}
+
+		if refChanged {
+			changed = true
+		}
+
+		if changed {
 			return r.Client.Update(context.TODO(), existingCM)
 		}
 		return nil // Do nothing as there is no change in the configmap.
@@ -539,6 +557,50 @@ func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argop
 		return r.Client.Update(context.TODO(), cm)
 	}
 	return nil // ConfigMap exists and nothing to do, move along...
+}
+
+// validateOwnerReferences checks if OwnerReferences is changed
+func validateOwnerReferences(cr *argoproj.ArgoCD, cm *corev1.ConfigMap, scheme *runtime.Scheme) (bool, error) {
+	changed := false
+
+	if cm.OwnerReferences != nil {
+		ref := cm.OwnerReferences[0]
+
+		gvk, err := apiutil.GVKForObject(cr, scheme)
+		if err != nil {
+			return false, err
+		}
+
+		if ref.APIVersion != gvk.GroupVersion().String() {
+			cm.OwnerReferences[0].APIVersion = gvk.GroupVersion().String()
+			changed = true
+		}
+
+		if ref.Kind != gvk.Kind {
+			cm.OwnerReferences[0].Kind = gvk.Kind
+			changed = true
+		}
+
+		if ref.UID != cr.GetUID() {
+			cm.OwnerReferences[0].UID = cr.GetUID()
+			changed = true
+		}
+
+		if ref.Name != cr.GetName() {
+			cm.OwnerReferences[0].Name = cr.GetName()
+			changed = true
+		}
+		return changed, nil
+
+	}
+
+	if cm.OwnerReferences == nil {
+		if err := controllerutil.SetControllerReference(cr, cm, scheme); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
 }
 
 // reconcileRedisConfiguration will ensure that all of the Redis ConfigMaps are present for the given ArgoCD.

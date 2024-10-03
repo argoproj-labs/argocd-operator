@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -422,20 +423,6 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if !cr.Spec.Server.IsEnabled() {
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
-		}
-		return nil // Service found, do nothing
-	}
-
-	if !cr.Spec.Repo.IsEnabled() {
-		return nil
-	}
-
 	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -460,6 +447,29 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
+	}
+
+	existingSVC := &corev1.Service{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, existingSVC) {
+		changed := false
+		if !cr.Spec.Server.IsEnabled() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		if ensureAutoTLSAnnotation(r.Client, existingSVC, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
+			changed = true
+		}
+		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
+			existingSVC.Spec.Type = svc.Spec.Type
+			changed = true
+		}
+		if changed {
+			return r.Client.Update(context.TODO(), existingSVC)
+		}
+		return nil
+	}
+
+	if !cr.Spec.Server.IsEnabled() {
+		return nil
 	}
 	return r.Client.Create(context.TODO(), svc)
 }

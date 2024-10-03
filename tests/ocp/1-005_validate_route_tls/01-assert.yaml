@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example
+status:
+  phase: Available
+  applicationSetController: Running
+  server: Running
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: example-server
+spec:
+  to:
+    kind: Service
+    name: example-server
+    weight: 100
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: reencrypt
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: example-applicationset-controller-webhook
+spec:
+  to:
+    kind: Service
+    name: example-applicationset-controller
+    weight: 100
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

@@ -1134,3 +1134,11 @@ func (p SSOProviderType) ToLower() SSOProviderType {
 	str := string(p)
 	return SSOProviderType(strings.ToLower(str))
 }
+
+// UseExternalCertificate return true if .route.tls.externalCertificate is set
+func (r *ArgoCDRouteSpec) UseExternalCertificate() bool {
+	if r != nil && r.TLS != nil && r.TLS.ExternalCertificate != nil {
+		return true
+	}
+	return false
+}

@@ -78,6 +78,12 @@ func (r *ReconcileArgoCD) reconcileServiceAccounts(cr *argoproj.ArgoCD) error {
 }
 
 func (r *ReconcileArgoCD) reconcileServiceAccountClusterPermissions(name string, rules []v1.PolicyRule, cr *argoproj.ArgoCD) error {
+
+	if name == common.ArgoCDApplicationControllerComponentAdmin || name == common.ArgoCDApplicationControllerComponentView {
+		// Don't create ServiceAccounts
+		return nil
+	}
+
 	var role *v1.ClusterRole
 	var err error
 

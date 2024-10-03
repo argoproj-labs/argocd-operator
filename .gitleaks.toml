@@ -1,0 +1,10 @@
+[allowlist]
+  description = "Global Allowlist"
+
+  # Ignore based on any subset of the file path
+  paths = [
+
+    # Ignore anything with the word anywhere in the path
+    '''1-005_validate_route_tls''',
+
+  ]

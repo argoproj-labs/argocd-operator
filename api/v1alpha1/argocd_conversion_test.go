@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	"testing"
 
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/networking/v1"
@@ -440,6 +441,70 @@ func TestAlphaToBetaConversion(t *testing.T) {
 						},
 					},
 					Insecure: true,
+				}
+			}),
+		},
+		{
+			name: "ArgoCD Example - Route TLS",
+			input: makeTestArgoCDAlpha(func(cr *ArgoCD) {
+				cr.Spec.Server.Route = ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				cr.Spec.Prometheus.Route = ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				cr.Spec.Grafana.Route = ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				cr.Spec.ApplicationSet = &ArgoCDApplicationSet{
+					WebhookServer: WebhookServerSpec{
+						Route: ArgoCDRouteSpec{
+							Enabled: true,
+							TLS: &routev1.TLSConfig{
+								Termination: routev1.TLSTerminationEdge,
+							},
+						},
+					},
+				}
+			}),
+			expectedOutput: makeTestArgoCDBeta(func(cr *v1beta1.ArgoCD) {
+				cr.Spec.Server.Route = v1beta1.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				cr.Spec.Prometheus.Route = v1beta1.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				//nolint:staticcheck
+				cr.Spec.Grafana.Route = v1beta1.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationEdge,
+					},
+				}
+				cr.Spec.ApplicationSet = &v1beta1.ArgoCDApplicationSet{
+					WebhookServer: v1beta1.WebhookServerSpec{
+						Route: v1beta1.ArgoCDRouteSpec{
+							Enabled: true,
+							TLS: &routev1.TLSConfig{
+								Termination: routev1.TLSTerminationEdge,
+							},
+						},
+					},
 				}
 			}),
 		},
