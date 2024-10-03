@@ -41,3 +41,4 @@ spec:
       annotations: {}
       labels:
         app.kubernetes.io/name: argocd-sample-applicationset-controller
+
