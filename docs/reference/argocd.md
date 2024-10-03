@@ -896,6 +896,7 @@ DisableTLSVerification | false | defines whether the redis server should be acce
 Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDIS_IMAGE` environment variable.
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
+Remote | "" | Specifies the remote URL of redis running in external clusters, also disables Redis component. This field is optional.
 
 ### Redis Example
 

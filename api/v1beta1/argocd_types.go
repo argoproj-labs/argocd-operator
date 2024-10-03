@@ -465,6 +465,10 @@ func (a *ArgoCDRedisSpec) IsEnabled() bool {
 	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
 }
 
+func (a *ArgoCDRedisSpec) IsRemote() bool {
+	return a.Remote != nil && *a.Remote != ""
+}
+
 // ArgoCDRepoSpec defines the desired state for the Argo CD repo server component.
 type ArgoCDRepoSpec struct {
 
@@ -533,6 +537,10 @@ type ArgoCDRepoSpec struct {
 
 func (a *ArgoCDRepoSpec) IsEnabled() bool {
 	return a.Enabled == nil || (a.Enabled != nil && *a.Enabled)
+}
+
+func (a *ArgoCDRepoSpec) IsRemote() bool {
+	return a.Remote != nil && *a.Remote != ""
 }
 
 // ArgoCDRouteSpec defines the desired state for an OpenShift Route.

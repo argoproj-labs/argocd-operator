@@ -2291,3 +2291,58 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 		})
 	}
 }
+
+// If `remote` field is used in CR, then the component resources should not be created
+func TestReconcileArgoCD_reconcileRedisWithRemote(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	redisRemote := "https://remote.redis.instance"
+
+	cr.Spec.Redis.Remote = &redisRemote
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-redis\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Redis.Remote = nil
+
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, d))
+}
+
+func TestReconcileArgoCD_reconcileRepoServerWithRemote(t *testing.T) {
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	repoServerRemote := "https://remote.repo-server.instance"
+
+	cr.Spec.Repo.Remote = &repoServerRemote
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+
+	d := &appsv1.Deployment{}
+
+	assert.ErrorContains(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d),
+		"deployments.apps \""+cr.Name+"-repo-server\" not found")
+
+	// once remote is set to nil, reconciliation should trigger deployment resource creation
+	cr.Spec.Repo.Remote = nil
+
+	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+}
