@@ -246,6 +246,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 		}
 	}
 
+	if cr.Spec.ApplicationSet.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.ApplicationSet.Annotations
+	}
+
+	if cr.Spec.ApplicationSet.Labels != nil {
+		for key, value := range cr.Spec.ApplicationSet.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+
 	podSpec.Containers = []corev1.Container{
 		r.applicationSetContainer(cr, addSCMGitlabVolumeMount),
 	}
@@ -263,7 +273,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) ||
-			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext)
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext) ||
+			!reflect.DeepEqual(existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {
@@ -276,6 +287,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...

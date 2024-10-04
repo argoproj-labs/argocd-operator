@@ -742,6 +742,16 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 	}
 
+	if cr.Spec.Controller.Annotations != nil {
+		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
+	}
+
+	if cr.Spec.Controller.Labels != nil {
+		for key, value := range cr.Spec.Controller.Labels {
+			ss.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Controller.IsEnabled() {
@@ -804,9 +814,23 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 
+		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
+		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+			changed = true
+		}
+
+		for key, value := range cr.Spec.Controller.Labels {
+			ss.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = ss.Spec.Template.Labels
+			changed = true
+		}
 		if changed {
 			return r.Client.Update(context.TODO(), existing)
 		}
+
 		return nil // StatefulSet found with nothing to do, move along...
 	}
 

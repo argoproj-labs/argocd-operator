@@ -162,7 +162,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 ##@ E2E
 
 e2e: ## Run operator e2e tests
-	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml 
+	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 

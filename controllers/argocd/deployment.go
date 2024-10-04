@@ -1109,6 +1109,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		deploy.Spec.Replicas = replicas
 	}
 
+	if cr.Spec.Repo.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
+	}
+
+	if cr.Spec.Repo.Labels != nil {
+		for key, value := range cr.Spec.Repo.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newDeploymentWithSuffix("repo-server", "repo-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
@@ -1184,6 +1194,20 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			existing.Spec.Template.Spec.DeprecatedServiceAccount = deploy.Spec.Template.Spec.ServiceAccountName
+			changed = true
+		}
+
+		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			changed = true
+		}
+
+		for key, value := range cr.Spec.Repo.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changed = true
 		}
 
@@ -1358,6 +1382,16 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Server.SidecarContainers...)
 	}
 
+	if cr.Spec.Server.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
+	}
+
+	if cr.Spec.Server.Labels != nil {
+		for key, value := range cr.Spec.Server.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+	}
+
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Server.IsEnabled() {
@@ -1419,6 +1453,21 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				changed = true
 			}
 		}
+
+		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
+
+		for key, value := range cr.Spec.Server.Labels {
+			deploy.Spec.Template.Labels[key] = value
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			changed = true
+		}
+		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
+			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			changed = true
+		}
+
 		if changed {
 			return r.Client.Update(context.TODO(), existing)
 		}
