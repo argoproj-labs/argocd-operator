@@ -13,6 +13,7 @@ Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
+[**Clusters**](#clusters) | `clusters` | Defines specific cluster options for managing Argo CD clusters.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
@@ -155,6 +156,25 @@ data:
     ... (certificate contents) ...
     -----END CERTIFICATE-----
 ```    
+
+## Clusters
+
+Defines options related to cluster management in Argo CD. Currently, it only allows customization of the local cluster's name.
+
+### Local Cluster Name Example
+
+The following example sets the cluster name to `example-cluster` in the `<argocd-name>-default-cluster-config` secret.
+
+``` yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+spec:
+  clusters:
+    local:
+      name: example-cluster
+```
 
 ## Config Management Plugins
 

@@ -1,0 +1,17 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 120
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+status:
+  phase: Available
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-default-cluster-config
+data:
+  name: YW5vdGhlci10ZXN0LWNsdXN0ZXI= # another-test-cluster

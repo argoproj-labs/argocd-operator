@@ -289,6 +289,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: Clusters defines specific cluster options for managing Argo CD
+          clusters.
+        displayName: Clusters
+        path: clusters
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'

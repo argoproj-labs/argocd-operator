@@ -767,6 +767,20 @@ type ArgoCDNodePlacementSpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
+// ArgoCDLocalClusterSpec defines the configuration for the local cluster in Argo CD
+type ArgoCDLocalClusterSpec struct {
+
+	// Name represents the name of the local cluster
+	Name string `json:"name,omitempty"`
+}
+
+// ArgoCDClustersSpec defines options related to cluster management in Argo CD
+type ArgoCDClustersSpec struct {
+
+	// Local provides the configuration for the local cluster
+	Local ArgoCDLocalClusterSpec `json:"local,omitempty"`
+}
+
 // ArgoCDSpec defines the desired state of ArgoCD
 // +k8s:openapi-gen=true
 type ArgoCDSpec struct {
@@ -777,6 +791,10 @@ type ArgoCDSpec struct {
 	// ApplicationInstanceLabelKey is the key name where Argo CD injects the app name as a tracking label.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Instance Label Key'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
+
+	// Clusters defines specific cluster options for managing Argo CD clusters.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Clusters",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	Clusters ArgoCDClustersSpec `json:"clusters,omitempty"`
 
 	// ConfigManagementPlugins is used to specify additional config management plugins.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Config Management Plugins'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}

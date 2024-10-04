@@ -7679,6 +7679,18 @@ spec:
                 required:
                 - content
                 type: object
+              clusters:
+                description: Clusters defines specific cluster options for managing
+                  Argo CD clusters.
+                properties:
+                  local:
+                    description: Local provides the configuration for the local cluster
+                    properties:
+                      name:
+                        description: Name represents the name of the local cluster
+                        type: string
+                    type: object
+                type: object
               configManagementPlugins:
                 description: ConfigManagementPlugins is used to specify additional
                   config management plugins.
