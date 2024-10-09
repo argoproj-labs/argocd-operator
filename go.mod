@@ -3,7 +3,7 @@ module github.com/argoproj-labs/argocd-operator
 go 1.21
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.10.16
+	github.com/argoproj/argo-cd/v2 v2.10.17
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.3.0
 	github.com/google/go-cmp v0.6.0
@@ -66,7 +66,7 @@ require (
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
