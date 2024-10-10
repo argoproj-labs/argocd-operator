@@ -520,6 +520,9 @@ type ArgoCDServerSpec struct {
 	// Autoscale defines the autoscale options for the Argo CD Server component.
 	Autoscale ArgoCDServerAutoscaleSpec `json:"autoscale,omitempty"`
 
+	// EnableRolloutUI will add the argo rollout UI extension in ArgoCD Dashboard.
+	EnableRolloutUI bool `json:"enableRolloutUI,omitempty"`
+
 	// GRPC defines the state for the Argo CD Server GRPC options.
 	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
 
@@ -686,9 +689,6 @@ type ArgoCDSpec struct {
 
 	// DisableAdmin will disable the admin user.
 	DisableAdmin bool `json:"disableAdmin,omitempty"`
-
-	// EnableArgoRolloutUI will add the argo rollout UI extension in ArgoCD Dashboard.
-	EnableArgoRolloutUI bool `json:"enableArgoRolloutUI,omitempty"`
 
 	// ExtraConfig can be used to add fields to Argo CD configmap that are not supported by Argo CD CRD.
 	//

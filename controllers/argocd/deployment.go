@@ -1374,7 +1374,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
-	if cr.Spec.EnableArgoRolloutUI {
+	if cr.Spec.Server.EnableRolloutUI {
 
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
 
@@ -1389,7 +1389,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-	} else if !cr.Spec.EnableArgoRolloutUI {
+	} else if !cr.Spec.Server.EnableRolloutUI {
 		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
 		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, "extensions")
 		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, "extensions")
@@ -1411,7 +1411,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if cr.Spec.Server.Labels != nil {
 		for key, value := range cr.Spec.Server.Labels {
 			deploy.Spec.Template.Labels[key] = value
+
 		}
+	}
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
 		return err
 	}
@@ -1580,8 +1582,17 @@ func getRolloutInitContainer() []corev1.Container {
 				},
 			},
 			SecurityContext: &corev1.SecurityContext{
-				RunAsUser:                int64Ptr(1000),
 				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				RunAsNonRoot: boolPtr(true),
+				RunAsUser:    int64Ptr(999),
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: "RuntimeDefault",
+				},
 			},
 		},
 	}
