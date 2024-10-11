@@ -1295,6 +1295,7 @@ The following properties are available for configuring the Argo CD Server compon
 Name | Default | Description
 --- | --- | ---
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+EnableRolloutUI | [Empty] | It enables/disables the extension for Rollout UI in ArgoCD UI when set to true/false.
 [ExtraCommandArgs](#server-command-arguments) | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.

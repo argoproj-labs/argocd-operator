@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+spec:
+  selector:
+      matchLabels:
+        app.kubernetes.io/name: argocd-server
+  template:
+    spec:
+      initContainers:
+        - name: rollout-extension
+          image: quay.io/argoprojlabs/argocd-extension-installer:v0.0.5
+          env:
+          - name: EXTENSION_URL
+            value: https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.5/extension.tar
+          volumeMounts:
+            - name: extensions
+              mountPath: /tmp/extensions/
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+      volumeMounts:
+        - name: extensions
+          mountPath: /tmp/extensions/
+      volumes:
+        - name: extensions
+          emptyDir: {}  
+      containers:
+      - name: argocd-server

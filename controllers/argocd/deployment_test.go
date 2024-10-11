@@ -1450,11 +1450,22 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 		},
 		deployment))
 
+	// Check for the init container
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
 	assert.Equal(t, "rollout-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
 	assert.Equal(t, common.ArgoCDRolloutExtensionImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
 
-	// Remove the init container
+	// Check for the volume
+	foundVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+		}
+	}
+	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
+
+	// Disable rollout UI
 	a.Spec.Server.EnableRolloutUI = false
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
@@ -1468,6 +1479,15 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
 	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+	// Check that volume is removed
+	foundVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+		}
+	}
+	assert.False(t, foundVolume, "expected volume 'extensions' to be removed")
+
 }
 
 func TestArgoCDServerCommand_isMergable(t *testing.T) {

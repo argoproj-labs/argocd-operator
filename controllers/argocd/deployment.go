@@ -1411,7 +1411,6 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if cr.Spec.Server.Labels != nil {
 		for key, value := range cr.Spec.Server.Labels {
 			deploy.Spec.Template.Labels[key] = value
-
 		}
 	}
 	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
