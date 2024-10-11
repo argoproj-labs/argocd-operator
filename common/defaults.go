@@ -231,6 +231,9 @@ const (
 	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
 	ArgoCDDefaultResourceInclusions = ""
 
+	// ArgoCDRolloutExtensionImage is the default image for ArgoCD Rollout Extension Installer
+	ArgoCDRolloutExtensionImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.5"
+
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048
 

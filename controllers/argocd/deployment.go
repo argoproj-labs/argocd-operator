@@ -1568,7 +1568,7 @@ func getRolloutInitContainer() []corev1.Container {
 	return []corev1.Container{
 		{
 			Name:  "rollout-extension",
-			Image: "quay.io/argoprojlabs/argocd-extension-installer:v0.0.5",
+			Image: common.ArgoCDRolloutExtensionImage,
 			Env: []corev1.EnvVar{
 				{
 					Name:  "EXTENSION_URL",
