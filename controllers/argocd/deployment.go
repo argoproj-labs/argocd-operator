@@ -1587,7 +1587,6 @@ func getRolloutInitContainer() []corev1.Container {
 						"ALL",
 					},
 				},
-				RunAsNonRoot: boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
