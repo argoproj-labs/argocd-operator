@@ -24,10 +24,6 @@ spec:
               mountPath: /tmp/extensions/
           securityContext:
             runAsNonRoot: true
-            runAsUser: 999
-      volumeMounts:
-        - name: extensions
-          mountPath: /tmp/extensions/
       volumes:
         - name: extensions
           emptyDir: {}  

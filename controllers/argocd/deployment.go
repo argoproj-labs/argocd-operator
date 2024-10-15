@@ -1571,7 +1571,7 @@ func getRolloutInitContainer() []corev1.Container {
 			Env: []corev1.EnvVar{
 				{
 					Name:  "EXTENSION_URL",
-					Value: "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.5/extension.tar",
+					Value: common.ArgoCDRolloutExtensionURL,
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -1588,7 +1588,6 @@ func getRolloutInitContainer() []corev1.Container {
 					},
 				},
 				RunAsNonRoot: boolPtr(true),
-				RunAsUser:    int64Ptr(999),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},
