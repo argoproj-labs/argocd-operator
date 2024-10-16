@@ -6410,8 +6410,8 @@ spec:
                     required:
                     - enabled
                     type: object
-                  enableRolloutUI:
-                    description: EnableRolloutUI will add the argo rollout UI extension
+                  enableRolloutsUI:
+                    description: EnableRolloutsUI will add the Argo Rollouts UI extension
                       in ArgoCD Dashboard.
                     type: boolean
                   env:
@@ -17911,8 +17911,8 @@ spec:
                     required:
                     - enabled
                     type: object
-                  enableRolloutUI:
-                    description: EnableRolloutUI will add the argo rollout UI extension
+                  enableRolloutsUI:
+                    description: EnableRolloutsUI will add the Argo Rollouts UI extension
                       in ArgoCD Dashboard.
                     type: boolean
                   enabled:

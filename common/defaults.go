@@ -231,11 +231,11 @@ const (
 	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
 	ArgoCDDefaultResourceInclusions = ""
 
-	// ArgoCDRolloutExtensionImage is the default image for ArgoCD Rollout Extension Installer
-	ArgoCDRolloutExtensionImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8"
+	// ArgoCDExtensionInstallerImage is the default image for ArgoCD Extension Installer that can be used to install UI extensions like Rollouts extension.
+	ArgoCDExtensionInstallerImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8"
 
-	// ArgoCDRolloutExtensionURL is the URL used to download the extension.js file from the latest tar release
-	ArgoCDRolloutExtensionURL = "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
+	// ArgoRolloutsExtensionURL is the URL used to download the extension.js file from the latest rollout-extension tar release
+	ArgoRolloutsExtensionURL = "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048

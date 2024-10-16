@@ -1429,7 +1429,7 @@ func TestReconcile_SidecarContainers(t *testing.T) {
 
 func TestReconcileServer_RolloutUI(t *testing.T) {
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Server.EnableRolloutUI = true
+		a.Spec.Server.EnableRolloutsUI = true
 	})
 
 	resObjs := []client.Object{a}
@@ -1453,7 +1453,7 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	// Check for the init container
 	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
 	assert.Equal(t, "rollout-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
-	assert.Equal(t, common.ArgoCDRolloutExtensionImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
+	assert.Equal(t, common.ArgoCDExtensionInstallerImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
 
 	// Check for the volume
 	foundVolume := false
@@ -1465,8 +1465,8 @@ func TestReconcileServer_RolloutUI(t *testing.T) {
 	}
 	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
 
-	// Disable rollout UI
-	a.Spec.Server.EnableRolloutUI = false
+	// Disable rollouts UI
+	a.Spec.Server.EnableRolloutsUI = false
 
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(

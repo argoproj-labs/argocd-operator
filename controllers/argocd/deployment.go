@@ -1374,7 +1374,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
-	if cr.Spec.Server.EnableRolloutUI {
+	if cr.Spec.Server.EnableRolloutsUI {
 
 		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
 
@@ -1389,7 +1389,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-	} else if !cr.Spec.Server.EnableRolloutUI {
+	} else if !cr.Spec.Server.EnableRolloutsUI {
 		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
 		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, "extensions")
 		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, "extensions")
@@ -1567,11 +1567,11 @@ func getRolloutInitContainer() []corev1.Container {
 	return []corev1.Container{
 		{
 			Name:  "rollout-extension",
-			Image: common.ArgoCDRolloutExtensionImage,
+			Image: common.ArgoCDExtensionInstallerImage,
 			Env: []corev1.EnvVar{
 				{
 					Name:  "EXTENSION_URL",
-					Value: common.ArgoCDRolloutExtensionURL,
+					Value: common.ArgoRolloutsExtensionURL,
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{

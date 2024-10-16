@@ -4,4 +4,4 @@ metadata:
   name: argocd
 spec:
   server:
-    enableRolloutUI: true
+    enableRolloutsUI: true

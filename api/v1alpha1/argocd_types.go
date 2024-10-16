@@ -520,8 +520,8 @@ type ArgoCDServerSpec struct {
 	// Autoscale defines the autoscale options for the Argo CD Server component.
 	Autoscale ArgoCDServerAutoscaleSpec `json:"autoscale,omitempty"`
 
-	// EnableRolloutUI will add the argo rollout UI extension in ArgoCD Dashboard.
-	EnableRolloutUI bool `json:"enableRolloutUI,omitempty"`
+	// EnableRolloutsUI will add the Argo Rollouts UI extension in ArgoCD Dashboard.
+	EnableRolloutsUI bool `json:"enableRolloutsUI,omitempty"`
 
 	// GRPC defines the state for the Argo CD Server GRPC options.
 	GRPC ArgoCDServerGRPCSpec `json:"grpc,omitempty"`
