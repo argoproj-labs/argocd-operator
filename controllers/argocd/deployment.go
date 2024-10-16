@@ -1374,6 +1374,28 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 	deploy.Spec.Template.Spec.Volumes = serverVolumes
 
+	if cr.Spec.Server.EnableRolloutsUI {
+
+		deploy.Spec.Template.Spec.InitContainers = append(deploy.Spec.Template.Spec.InitContainers, getRolloutInitContainer()...)
+
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = append(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+			Name:      "extensions",
+			MountPath: "/tmp/extensions/",
+		})
+
+		deploy.Spec.Template.Spec.Volumes = append(deploy.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: "extensions",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	} else if !cr.Spec.Server.EnableRolloutsUI {
+		deploy.Spec.Template.Spec.InitContainers = removeInitContainer(deploy.Spec.Template.Spec.InitContainers, "rollout-extension")
+		deploy.Spec.Template.Spec.Volumes = removeVolume(deploy.Spec.Template.Spec.Volumes, "extensions")
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = removeVolumeMount(deploy.Spec.Template.Spec.Containers[0].VolumeMounts, "extensions")
+
+	}
+
 	if replicas := getArgoCDServerReplicas(cr); replicas != nil {
 		deploy.Spec.Replicas = replicas
 	}
@@ -1390,6 +1412,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		for key, value := range cr.Spec.Server.Labels {
 			deploy.Spec.Template.Labels[key] = value
 		}
+	}
+	if err := applyReconcilerHook(cr, deploy, ""); err != nil {
+		return err
 	}
 
 	existing := newDeploymentWithSuffix("server", "server", cr)
@@ -1536,4 +1561,65 @@ func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment,
 		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
 		*changed = true
 	}
+}
+
+func getRolloutInitContainer() []corev1.Container {
+	return []corev1.Container{
+		{
+			Name:  "rollout-extension",
+			Image: common.ArgoCDExtensionInstallerImage,
+			Env: []corev1.EnvVar{
+				{
+					Name:  "EXTENSION_URL",
+					Value: common.ArgoRolloutsExtensionURL,
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "extensions",
+					MountPath: "/tmp/extensions/",
+				},
+			},
+			SecurityContext: &corev1.SecurityContext{
+				AllowPrivilegeEscalation: boolPtr(false),
+				Capabilities: &corev1.Capabilities{
+					Drop: []corev1.Capability{
+						"ALL",
+					},
+				},
+				SeccompProfile: &corev1.SeccompProfile{
+					Type: "RuntimeDefault",
+				},
+			},
+		},
+	}
+}
+
+func removeInitContainer(initContainers []corev1.Container, name string) []corev1.Container {
+	for i, container := range initContainers {
+		if container.Name == name {
+			// Remove the init container by slicing it out
+			return append(initContainers[:i], initContainers[i+1:]...)
+		}
+	}
+	// If the init container is not found, return the original list
+	return initContainers
+}
+
+func removeVolume(volumes []corev1.Volume, name string) []corev1.Volume {
+	for i, volume := range volumes {
+		if volume.Name == name {
+			return append(volumes[:i], volumes[i+1:]...)
+		}
+	}
+	return volumes
+}
+
+func removeVolumeMount(volumeMounts []corev1.VolumeMount, name string) []corev1.VolumeMount {
+	for i, volumeMount := range volumeMounts {
+		if volumeMount.Name == name {
+			return append(volumeMounts[:i], volumeMounts[i+1:]...)
+		}
+	}
+	return volumeMounts
 }

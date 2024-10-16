@@ -6421,6 +6421,10 @@ spec:
                     required:
                     - enabled
                     type: object
+                  enableRolloutsUI:
+                    description: EnableRolloutsUI will add the Argo Rollouts UI extension
+                      in ArgoCD Dashboard.
+                    type: boolean
                   env:
                     description: Env lets you specify environment for API server pods
                     items:
@@ -17918,6 +17922,10 @@ spec:
                     required:
                     - enabled
                     type: object
+                  enableRolloutsUI:
+                    description: EnableRolloutsUI will add the Argo Rollouts UI extension
+                      in ArgoCD Dashboard.
+                    type: boolean
                   enabled:
                     description: Enabled is the flag to enable ArgoCD Server during
                       ArgoCD installation. (optional, default `true`)

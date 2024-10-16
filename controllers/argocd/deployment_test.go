@@ -1427,6 +1427,69 @@ func TestReconcile_SidecarContainers(t *testing.T) {
 	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 }
 
+func TestReconcileServer_RolloutUI(t *testing.T) {
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Server.EnableRolloutsUI = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Check for the init container
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+	assert.Equal(t, "rollout-extension", deployment.Spec.Template.Spec.InitContainers[0].Name)
+	assert.Equal(t, common.ArgoCDExtensionInstallerImage, deployment.Spec.Template.Spec.InitContainers[0].Image)
+
+	// Check for the volume
+	foundVolume := false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+			assert.NotNil(t, vol.VolumeSource.EmptyDir)
+		}
+	}
+	assert.True(t, foundVolume, "expected volume 'extensions' to be present")
+
+	// Disable rollouts UI
+	a.Spec.Server.EnableRolloutsUI = false
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.InitContainers, 0)
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+	// Check that volume is removed
+	foundVolume = false
+	for _, vol := range deployment.Spec.Template.Spec.Volumes {
+		if vol.Name == "extensions" {
+			foundVolume = true
+		}
+	}
+	assert.False(t, foundVolume, "expected volume 'extensions' to be removed")
+
+}
+
 func TestArgoCDServerCommand_isMergable(t *testing.T) {
 	cmd := []string{"--server", "foo.svc.cluster.local", "--path", "/bar"}
 	extraCMDArgs := []string{"--extra-path", "/"}
