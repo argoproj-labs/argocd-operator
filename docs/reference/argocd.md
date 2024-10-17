@@ -89,6 +89,8 @@ SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applications
 Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
 SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
 SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
 
 ### ApplicationSet Controller Example
 
