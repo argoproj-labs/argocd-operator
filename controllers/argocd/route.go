@@ -165,7 +165,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Prometheus.Route.TLS != nil {
-		err := r.overrideRouteTLS(cr.Spec.Prometheus.Route.TLS, route)
+		err := r.overrideRouteTLS(cr.Spec.Prometheus.Route.TLS, route, cr)
 		if err != nil {
 			return err
 		}
@@ -262,7 +262,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Server.Route.TLS != nil {
-		err := r.overrideRouteTLS(cr.Spec.Server.Route.TLS, route)
+		err := r.overrideRouteTLS(cr.Spec.Server.Route.TLS, route, cr)
 		if err != nil {
 			return err
 		}
@@ -363,7 +363,7 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 
 		// Set Certificate & Key
 		routeCopy := route.DeepCopy()
-		err := r.overrideRouteTLS(cr.Spec.ApplicationSet.WebhookServer.Route.TLS, routeCopy)
+		err := r.overrideRouteTLS(cr.Spec.ApplicationSet.WebhookServer.Route.TLS, routeCopy, cr)
 		if err != nil {
 			return err
 		}
@@ -472,13 +472,14 @@ func shortenHostname(hostname string) (string, error) {
 // overrideRouteTLS modifies the Route's TLS settings to match the configurations specified in the ArgoCD CR.
 // It updates the Route's TLS configuration either by using the fields directly in the TLSConfig or by referencing
 // a Kubernetes TLS secret if provided via the ExternalCertificate field.
-func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route) error {
-
+func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route, cr *argoproj.ArgoCD) error {
 	route.Spec.TLS = tls.DeepCopy()
 	if tls.Key != "" || tls.Certificate != "" {
-		// TODO: Emit a Kubernetes event to notify users about the deprecated `.tls.key` and `.tls.certificate` fields.
+		// Send an event when deprecated field key and certificate is used
+		argoutil.CreateEvent(r.Client, "Warning", "Deprecated Field Used", "key and certificate fields are deprecated", "Deprecated Field", cr.ObjectMeta, cr.TypeMeta)
+
 		// These fields are deprecated in favor of using `.tls.externalCertificate` to reference a Kubernetes TLS secret.
-		log.Info("Deprecated: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
+		log.Info("Warning: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
 	}
 
 	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
