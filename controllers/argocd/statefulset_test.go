@@ -411,6 +411,29 @@ func TestReconcileArgoCD_reconcileApplicationController_withSharding(t *testing.
 					}},
 			},
 		},
+		{
+			sharding: argoproj.ArgoCDApplicationControllerShardSpec{
+				DynamicScalingEnabled: boolPtr(true),
+				MinShards:             2,
+				MaxShards:             4,
+				ClustersPerShard:      1,
+			},
+			replicas: 2,
+			vars: []corev1.EnvVar{
+				{Name: "ARGOCD_CONTROLLER_REPLICAS", Value: "2"},
+				{Name: "HOME", Value: "/home/argocd"},
+				{Name: "REDIS_PASSWORD", Value: "",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: fmt.Sprintf("argocd-redis-initial-password"),
+							},
+							Key: "admin.password",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, st := range tests {
