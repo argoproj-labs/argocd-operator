@@ -164,6 +164,9 @@ const (
 	// ArgoCDKeyUsersAnonymousEnabled is the configuration key for anonymous user access.
 	ArgoCDKeyUsersAnonymousEnabled = "users.anonymous.enabled"
 
+	// ArgoCDKeyWebTerminalEnabled is the configuration key for enabling the web terminal.
+	ArgoCDKeyWebTerminalEnabled = "exec.enabled"
+
 	// ArgoCDDexImageEnvName is the environment variable used to get the image
 	// to used for the Dex container.
 	ArgoCDDexImageEnvName = "ARGOCD_DEX_IMAGE"
