@@ -476,10 +476,10 @@ func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev
 	route.Spec.TLS = tls.DeepCopy()
 	if tls.Key != "" || tls.Certificate != "" {
 		// Send an event when deprecated field key and certificate is used
-		argoutil.CreateEvent(r.Client, "Warning", "Deprecated Field Used", "key and certificate fields are deprecated", "Deprecated Field", cr.ObjectMeta, cr.TypeMeta)
+		argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", "Using key and certificate fields are not recommended", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
 
 		// These fields are deprecated in favor of using `.tls.externalCertificate` to reference a Kubernetes TLS secret.
-		log.Info("Warning: Using `.tls.key` and `.tls.certificate` in ArgoCD CR is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
+		log.Info("WARNING: Using `.tls.key` and `.tls.certificate` are insecure fields in ArgoCD CR and is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
 	}
 
 	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
