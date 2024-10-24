@@ -1,6 +1,3 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestAssert
-timeout: 720
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ArgoCD
@@ -15,3 +12,24 @@ metadata:
   name: argocd-application-controller
 status:
   replicas: 3
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+commands:
+- script: |
+    stsReplicas=$(kubectl get sts argocd-application-controller -n $NAMESPACE -o jsonpath='{.status.replicas}')
+    echo "$stsReplicas"
+    if test "$stsReplicas" != "3"; then
+      echo "FAILED! Number of replicas not equal to desired replicas"
+      exit 1
+    fi
+    
+    replicaEnvVariable=$(kubectl exec -it -n $NAMESPACE argocd-application-controller-0 -- printenv | grep -i ARGOCD_CONTROLLER_REPLICAS)
+    echo "$replicaEnvVariable"
+    if test "$replicaEnvVariable" != "ARGOCD_CONTROLLER_REPLICAS=3"; then
+      echo "FAILED! ARGOCD_CONTROLLER_REPLICAS not equal to desired replicas"
+      exit 1
+    fi
+    exit 0
+

@@ -24,4 +24,11 @@ commands:
       echo "FAILED! Number of replicas not equal to maxShards"
       exit 1
     fi
+    
+    replicaEnvVariable=$(kubectl exec -it -n $NAMESPACE argocd-application-controller-0 -- printenv | grep -i ARGOCD_CONTROLLER_REPLICAS)
+    echo "$replicaEnvVariable"
+    if test "$replicaEnvVariable" != "ARGOCD_CONTROLLER_REPLICAS=4"; then
+      echo "FAILED! ARGOCD_CONTROLLER_REPLICAS not equal to maxShards"
+      exit 1
+    fi
     exit 0
