@@ -469,7 +469,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	return r.Client.Create(context.TODO(), ss)
 }
 
-func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
+func getArgoControllerContainerEnv(cr *argoproj.ArgoCD, replicas int32) []corev1.EnvVar {
 	env := make([]corev1.EnvVar, 0)
 
 	env = append(env, corev1.EnvVar{
@@ -489,10 +489,10 @@ func getArgoControllerContainerEnv(cr *argoproj.ArgoCD) []corev1.EnvVar {
 		},
 	})
 
-	if cr.Spec.Controller.Sharding.Enabled {
+	if cr.Spec.Controller.Sharding.Enabled || (cr.Spec.Controller.Sharding.DynamicScalingEnabled != nil && *cr.Spec.Controller.Sharding.DynamicScalingEnabled) {
 		env = append(env, corev1.EnvVar{
 			Name:  "ARGOCD_CONTROLLER_REPLICAS",
-			Value: fmt.Sprint(cr.Spec.Controller.Sharding.Replicas),
+			Value: fmt.Sprint(replicas),
 		})
 	}
 
@@ -564,7 +564,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	ss.Spec.Replicas = &replicas
 	controllerEnv := cr.Spec.Controller.Env
 	// Sharding setting explicitly overrides a value set in the env
-	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr), true)
+	controllerEnv = argoutil.EnvMerge(controllerEnv, getArgoControllerContainerEnv(cr, replicas), true)
 	// Let user specify their own environment first
 	controllerEnv = argoutil.EnvMerge(controllerEnv, proxyEnvVars(), false)
 	podSpec := &ss.Spec.Template.Spec
