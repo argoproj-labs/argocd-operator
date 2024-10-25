@@ -630,7 +630,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		cr := makeTestArgoCD(tt.opts...)
-		env := getArgoControllerContainerEnv(cr)
+		env := getArgoControllerContainerEnv(cr, 1)
 
 		if !reflect.DeepEqual(env, tt.want) {
 			t.Fatalf("got %#v, want %#v", env, tt.want)
