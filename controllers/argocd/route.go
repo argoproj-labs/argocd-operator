@@ -474,12 +474,26 @@ func shortenHostname(hostname string) (string, error) {
 // a Kubernetes TLS secret if provided via the ExternalCertificate field.
 func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route, cr *argoproj.ArgoCD) error {
 	route.Spec.TLS = tls.DeepCopy()
+
+	// Send an event when deprecated field key and certificate is used
 	if tls.Key != "" || tls.Certificate != "" {
-		// Send an event when deprecated field key and certificate is used
-		argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", "Using key and certificate fields are not recommended", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
+		// Emit event for each instance providing users with deprecation notice for `.spec.SSO` subfields if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.TLSInsecureWarningEmitted {
+			err := argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", "WARNING: .tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
+			if err != nil {
+				return err
+			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{TLSInsecureWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.TLSInsecureWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
+		}
 
 		// These fields are deprecated in favor of using `.tls.externalCertificate` to reference a Kubernetes TLS secret.
-		log.Info("WARNING: Using `.tls.key` and `.tls.certificate` are insecure fields in ArgoCD CR and is not recommended. Use `.tls.externalCertificate` to reference a TLS secret instead.")
+		log.Info("WARNING: .tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.")
 	}
 
 	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
