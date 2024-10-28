@@ -819,7 +819,7 @@ func TestOverrideRouteTLSData(t *testing.T) {
 				},
 			}
 
-			err := r.overrideRouteTLS(test.newTLSConfig, &route, nil)
+			err := r.overrideRouteTLS(test.newTLSConfig, &route, argoCD)
 
 			if test.expectErr {
 				assert.Error(t, err)
