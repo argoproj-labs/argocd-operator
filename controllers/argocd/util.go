@@ -1204,6 +1204,7 @@ type DeprecationEventEmissionStatus struct {
 	SSOSpecDeprecationWarningEmitted    bool
 	DexSpecDeprecationWarningEmitted    bool
 	DisableDexDeprecationWarningEmitted bool
+	TLSInsecureWarningEmitted           bool
 }
 
 // DeprecationEventEmissionTracker map stores the namespace containing ArgoCD instance as key and DeprecationEventEmissionStatus as value,
