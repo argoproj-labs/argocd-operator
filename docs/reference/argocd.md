@@ -262,6 +262,10 @@ spec:
 !!! note
     In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
 
+!!!note
+    After enabling the `dynamicScalingEnabled`, the argocd-controller instances will restart while scaling up or scaling down.
+
+
 The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
 
 ```yaml
