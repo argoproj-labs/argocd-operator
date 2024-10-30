@@ -479,7 +479,7 @@ func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev
 	if tls.Key != "" || tls.Certificate != "" {
 		// Emit event for each instance providing users with deprecation notice for `.spec.SSO` subfields if not emitted already
 		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.TLSInsecureWarningEmitted {
-			err := argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", "WARNING: .tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
+			err := argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", "Warning: .tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
 			if err != nil {
 				return err
 			}
