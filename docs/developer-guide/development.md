@@ -63,7 +63,13 @@ git switch -c MY_BRANCH
 
 #### Building and testing locally
 
-To run the operator locally on your machine (outside a container), invoke the following make target:
+To run the operator locally against a k8s cluster on your machine first you need to fetch dependencies:
+``` bash
+go mod tidy 
+go mod vendor
+```
+
+Then invoke the following make target:
 
 ``` bash
 make install run
@@ -125,8 +131,26 @@ Specify the bundle image to include using the `BUNDLE_IMG` variable
 make catalog-build BUNDLE_IMG=quay.io/my-org/argocd-operator-bundle:latest CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 make catalog-push CATALOG_IMG=quay.io/my-org/argocd-operator-index:latest
 ```
+For more infomation see [build operator images to test on a cluster.](https://argocd-operator.readthedocs.io/en/latest/developer-guide/development/#building-the-operator-images-to-test-on-a-cluster)
 
-### Build and Verify Argo CD Operator Docs
+Once the operator is installed, you would need to configure an ArgoCD instance that the operator would manage. The sample instance configuration is below:
+``` yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: basic
+spec: {}
+```
+Store your ArgoCD configuration in a yaml file and execute below command to configure the ArgoCD instance.
+
+``` bash
+kubectl apply -f <path_to_yaml_file>
+```
+For configuring specific properties based on the use case, you can look at the entire list of the configurable properties [here.](https://argocd-operator.readthedocs.io/en/latest/reference/argocd/)
+
+### Build and Verify ArgoCD Operator Docs
 
 **Note**: Please note that you need to have `Python3` Installed as a prerequisite.
 
