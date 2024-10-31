@@ -24,22 +24,35 @@ check_for_sem_ver() {
 download_manifests() {
     for argocd_crd_file in $ARGOCD_CRD_FILES;do
         output_file=argoproj.io_$(echo "${argocd_crd_file}" | sed -e s/-crd.yaml/s.yaml/g)
-        wget https://raw.githubusercontent.com/argoproj/argo-cd/refs/tags/${ARGOCD_VERSION}/manifests/crds/${argocd_crd_file} -O bundle/manifests/${output_file}
+        wget -q "https://raw.githubusercontent.com/argoproj/argo-cd/refs/tags/${ARGOCD_VERSION}/manifests/crds/${argocd_crd_file}" -O bundle/manifests/${output_file}
     done
 }
 
 check_for_local_changes() {
-    local_modified_files=$(git status --porcelain | grep "bundle/manifests/argoproj.io_app" | cat)
-    if [[ ! -z "${local_modified_files}" ]]; then
+    local_modified_files=$(git status --porcelain)
+    if [[ ! -z "${local_modified_files}" && "${local_modified_files}}" =~ "bundle/manifests/argoproj.io_app" ]]; then
         echo "[WARN] There are unexpected local changes to the argo-cd CRD manifests."
         echo "${local_modified_files}"
         echo "Please update the CRDs from the argo-cd repository, ensure that there are no diffs and re-submit"
         exit 1
     else
         echo "No local changes to argo-cd CRD manifests"
+        return
     fi
 }
 
+LINT="false"
+if [[ $# > 0 ]]; then
+  if [[ $1 == "lint" ]];then
+    LINT="true"
+  else
+    echo "Invalid option $1"
+    exit 0
+  fi
+fi
+
 check_for_sem_ver
 download_manifests
-check_for_local_changes
+if [[ "${LINT}" == "true" ]]; then
+  check_for_local_changes
+fi

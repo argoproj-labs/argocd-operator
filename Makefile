@@ -285,4 +285,9 @@ catalog-push: ## Push a catalog image.
 # Lint Argo CD CRDs for the version specified in go.mod.
 .PHONY: lint-argocd-crds
 lint-argocd-crds:
-	$(SHELL) hack/check-argocd-crds.sh
+	$(SHELL) hack/manage-argocd-crds.sh lint
+
+# Update Argo CD CRDs for the version specified in go.mod.
+.PHONY: update-argocd-crds
+update-argocd-crds:
+	$(SHELL) hack/manage-argocd-crds.sh
