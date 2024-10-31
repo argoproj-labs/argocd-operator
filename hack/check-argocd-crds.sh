@@ -13,7 +13,7 @@ ARGOCD_CRD_FILES="application-crd.yaml applicationset-crd.yaml appproject-crd.ya
 
 check_for_sem_ver() {
   if [[ $ARGOCD_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9])?$ ]]; then
-    echo "Valid argo-cd version: $ARGOCD_VERSION"
+    echo "argo-cd version from go.mod: $ARGOCD_VERSION"
     return
   else
     echo "[WARN] argo-cd module version from go.mod does not match the semver pattern."
@@ -29,7 +29,7 @@ download_manifests() {
 }
 
 check_for_local_changes() {
-    local_modified_files=$(git status --porcelain | grep "bundle/manifests/argoproj.io_app")
+    local_modified_files=$(git status --porcelain | grep "bundle/manifests/argoproj.io_app" | cat)
     if [[ ! -z "${local_modified_files}" ]]; then
         echo "[WARN] There are unexpected local changes to the argo-cd CRD manifests."
         echo "${local_modified_files}"
