@@ -172,6 +172,10 @@ const (
 	// to used for the argocd container.
 	ArgoCDImageEnvName = "ARGOCD_IMAGE"
 
+	// ArgoCDExtensionImageEnvName is the environment variable used to get the image
+	// to be used for the Argo-CD extension image
+	ArgoCDExtensionImageEnvName = "ARGOCD_EXTENSION_IMAGE"
+
 	// ArgoCDKeycloakImageEnvName is the environment variable used to get the image
 	// to used for the Keycloak container.
 	ArgoCDKeycloakImageEnvName = "ARGOCD_KEYCLOAK_IMAGE"
