@@ -2419,13 +2419,7 @@ func Test_getRolloutInitContainer(t *testing.T) {
 		wantEnv   []corev1.EnvVar
 	}{
 		{
-			name:      "when running in gitops",
-			envSet:    true,
-			wantImage: "updated_container",
-			wantEnv:   nil,
-		},
-		{
-			name:      "when running in gitops",
+			name:      "when running in argocd-operator",
 			envSet:    false,
 			wantImage: "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
 			wantEnv: []corev1.EnvVar{
@@ -2434,6 +2428,12 @@ func Test_getRolloutInitContainer(t *testing.T) {
 					Value: common.ArgoRolloutsExtensionURL,
 				},
 			},
+		},
+		{
+			name:      "when running in gitops-operator",
+			envSet:    true,
+			wantImage: "updated_container",
+			wantEnv:   nil,
 		},
 	}
 	for _, tt := range tests {
