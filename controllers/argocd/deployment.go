@@ -1564,16 +1564,9 @@ func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment,
 }
 
 func getRolloutInitContainer() []corev1.Container {
-	return []corev1.Container{
+	containers := []corev1.Container{
 		{
-			Name:  "rollout-extension",
-			Image: common.ArgoCDExtensionInstallerImage,
-			Env: []corev1.EnvVar{
-				{
-					Name:  "EXTENSION_URL",
-					Value: common.ArgoRolloutsExtensionURL,
-				},
-			},
+			Name: "rollout-extension",
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "extensions",
@@ -1593,6 +1586,18 @@ func getRolloutInitContainer() []corev1.Container {
 			},
 		},
 	}
+
+	if value, exists := os.LookupEnv(common.ArgoCDExtensionImageEnvName); exists {
+		containers[0].Image = value
+	} else {
+		containers[0].Image = common.ArgoCDExtensionInstallerImage
+		containers[0].Env = []corev1.EnvVar{
+			{
+				Name:  "EXTENSION_URL",
+				Value: common.ArgoRolloutsExtensionURL,
+			}}
+	}
+	return containers
 }
 
 func removeInitContainer(initContainers []corev1.Container, name string) []corev1.Container {

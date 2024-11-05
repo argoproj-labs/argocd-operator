@@ -3,6 +3,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -2408,4 +2409,45 @@ func TestReconcileArgoCD_reconcileRepoServerWithRemote(t *testing.T) {
 
 	assert.NoError(t, r.reconcileRepoDeployment(cr, false))
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-repo-server", Namespace: cr.Namespace}, d))
+}
+
+func Test_getRolloutInitContainer(t *testing.T) {
+	tests := []struct {
+		name      string
+		envSet    bool
+		wantImage string
+		wantEnv   []corev1.EnvVar
+	}{
+		{
+			name:      "when running in argocd-operator",
+			envSet:    false,
+			wantImage: "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8",
+			wantEnv: []corev1.EnvVar{
+				{
+					Name:  "EXTENSION_URL",
+					Value: common.ArgoRolloutsExtensionURL,
+				},
+			},
+		},
+		{
+			name:      "when running in gitops-operator",
+			envSet:    true,
+			wantImage: "updated_container",
+			wantEnv:   nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSet {
+				err := os.Setenv(common.ArgoCDExtensionImageEnvName, "updated_container")
+				assert.NoError(t, err)
+			}
+
+			containers := getRolloutInitContainer()
+
+			assert.Equalf(t, tt.wantImage, containers[0].Image, "Image check")
+			assert.Equalf(t, tt.wantEnv, containers[0].Env, "Env check")
+
+		})
+	}
 }
