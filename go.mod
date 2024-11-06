@@ -5,7 +5,7 @@ go 1.21.0
 toolchain go1.21.9
 
 require (
-	github.com/argoproj/argo-cd/v2 v2.12.6
+	github.com/argoproj/argo-cd/v2 v2.12.7
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/coreos/prometheus-operator v0.40.0
 	github.com/go-logr/logr v1.4.2
