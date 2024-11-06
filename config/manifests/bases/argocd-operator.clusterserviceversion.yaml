@@ -191,16 +191,14 @@ spec:
         displayName: Storage
         path: storage
       statusDescriptors:
-      - description: 'Phase is a simple, high-level summary of where the ArgoCDExport
-          is in its lifecycle. There are five possible phase values: Pending: The
-          ArgoCDExport has been accepted by the Kubernetes system, but one or more
-          of the required resources have not been created. Running: All of the containers
-          for the ArgoCDExport are still running, or in the process of starting or
-          restarting. Succeeded: All containers for the ArgoCDExport have terminated
-          in success, and will not be restarted. Failed: At least one container has
-          terminated in failure, either exited with non-zero status or was terminated
-          by the system. Unknown: For some reason the state of the ArgoCDExport could
-          not be obtained.'
+      - description: |-
+          Phase is a simple, high-level summary of where the ArgoCDExport is in its lifecycle.
+          There are five possible phase values:
+          Pending: The ArgoCDExport has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the containers for the ArgoCDExport are still running, or in the process of starting or restarting.
+          Succeeded: All containers for the ArgoCDExport have terminated in success, and will not be restarted.
+          Failed: At least one container has terminated in failure, either exited with non-zero status or was terminated by the system.
+          Unknown: For some reason the state of the ArgoCDExport could not be obtained.
         displayName: Phase
         path: phase
         x-descriptors:
@@ -474,26 +472,30 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:podCount
-      - description: DefaultPolicy is the name of the default role which Argo CD will
-          falls back to, when authorizing API requests (optional). If omitted or empty,
-          users may be still be able to login, but will see no apps, projects, etc...
+      - description: |-
+          DefaultPolicy is the name of the default role which Argo CD will falls back to, when
+          authorizing API requests (optional). If omitted or empty, users may be still be able to login,
+          but will see no apps, projects, etc...
         displayName: Default Policy'
         path: rbac.defaultPolicy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
-          inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
-          for additional information.'
+      - description: |-
+          Policy is CSV containing user-defined RBAC policies and role definitions.
+          Policy rules are in the form:
+            p, subject, resource, action, object, effect
+          Role definitions and bindings are in the form:
+            g, subject, inherited-subject
+          See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md for additional information.
         displayName: Policy
         path: rbac.policy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Scopes controls which OIDC scopes to examine during rbac enforcement
-          (in addition to `sub` scope). If omitted, defaults to: ''[groups]''.'
+      - description: |-
+          Scopes controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+          If omitted, defaults to: '[groups]'.
         displayName: Scopes
         path: rbac.scopes
         x-descriptors:
@@ -665,8 +667,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: UsersAnonymousEnabled toggles anonymous user access. The anonymous
-          users get default role permissions specified argocd-rbac-cm.
+      - description: |-
+          UsersAnonymousEnabled toggles anonymous user access.
+          The anonymous users get default role permissions specified argocd-rbac-cm.
         displayName: Anonymous Users Enabled'
         path: usersAnonymousEnabled
         x-descriptors:
@@ -680,96 +683,90 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
       statusDescriptors:
-      - description: 'ApplicationController is a simple, high-level summary of where
-          the Argo CD application controller component is in its lifecycle. There
-          are four possible ApplicationController values: Pending: The Argo CD application
-          controller component has been accepted by the Kubernetes system, but one
-          or more of the required resources have not been created. Running: All of
-          the required Pods for the Argo CD application controller component are in
-          a Ready state. Failed: At least one of the  Argo CD application controller
-          component Pods had a failure. Unknown: The state of the Argo CD application
-          controller component could not be obtained.'
+      - description: |-
+          ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
+          There are four possible ApplicationController values:
+          Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
+          Failed: At least one of the  Argo CD application controller component Pods had a failure.
+          Unknown: The state of the Argo CD application controller component could not be obtained.
         displayName: ApplicationController
         path: applicationController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'ApplicationSetController is a simple, high-level summary of
-          where the Argo CD applicationSet controller component is in its lifecycle.
-          There are four possible ApplicationSetController values: Pending: The Argo
-          CD applicationSet controller component has been accepted by the Kubernetes
-          system, but one or more of the required resources have not been created.
-          Running: All of the required Pods for the Argo CD applicationSet controller
-          component are in a Ready state. Failed: At least one of the  Argo CD applicationSet
-          controller component Pods had a failure. Unknown: The state of the Argo
-          CD applicationSet controller component could not be obtained.'
+      - description: |-
+          ApplicationSetController is a simple, high-level summary of where the Argo CD applicationSet controller component is in its lifecycle.
+          There are four possible ApplicationSetController values:
+          Pending: The Argo CD applicationSet controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD applicationSet controller component are in a Ready state.
+          Failed: At least one of the  Argo CD applicationSet controller component Pods had a failure.
+          Unknown: The state of the Argo CD applicationSet controller component could not be obtained.
         displayName: ApplicationSetController
         path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'NotificationsController is a simple, high-level summary of where
-          the Argo CD notifications controller component is in its lifecycle. There
-          are four possible NotificationsController values: Pending: The Argo CD notifications
-          controller component has been accepted by the Kubernetes system, but one
-          or more of the required resources have not been created. Running: All of
-          the required Pods for the Argo CD notifications controller component are
-          in a Ready state. Failed: At least one of the  Argo CD notifications controller
-          component Pods had a failure. Unknown: The state of the Argo CD notifications
-          controller component could not be obtained.'
+      - description: |-
+          NotificationsController is a simple, high-level summary of where the Argo CD notifications controller component is in its lifecycle.
+          There are four possible NotificationsController values:
+          Pending: The Argo CD notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD notifications controller component are in a Ready state.
+          Failed: At least one of the  Argo CD notifications controller component Pods had a failure.
+          Unknown: The state of the Argo CD notifications controller component could not be obtained.
         displayName: NotificationsController
         path: notificationsController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Phase is a simple, high-level summary of where the ArgoCD is
-          in its lifecycle. There are four possible phase values: Pending: The ArgoCD
-          has been accepted by the Kubernetes system, but one or more of the required
-          resources have not been created. Available: All of the resources for the
-          ArgoCD are ready. Failed: At least one resource has experienced a failure.
-          Unknown: The state of the ArgoCD phase could not be obtained.'
+      - description: |-
+          Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
+          There are four possible phase values:
+          Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Available: All of the resources for the ArgoCD are ready.
+          Failed: At least one resource has experienced a failure.
+          Unknown: The state of the ArgoCD phase could not be obtained.
         displayName: Phase
         path: phase
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Redis is a simple, high-level summary of where the Argo CD Redis
-          component is in its lifecycle. There are four possible redis values: Pending:
-          The Argo CD Redis component has been accepted by the Kubernetes system,
-          but one or more of the required resources have not been created. Running:
-          All of the required Pods for the Argo CD Redis component are in a Ready
-          state. Failed: At least one of the  Argo CD Redis component Pods had a failure.
-          Unknown: The state of the Argo CD Redis component could not be obtained.'
+      - description: |-
+          Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
+          There are four possible redis values:
+          Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
+          Failed: At least one of the  Argo CD Redis component Pods had a failure.
+          Unknown: The state of the Argo CD Redis component could not be obtained.
         displayName: Redis
         path: redis
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Repo is a simple, high-level summary of where the Argo CD Repo
-          component is in its lifecycle. There are four possible repo values: Pending:
-          The Argo CD Repo component has been accepted by the Kubernetes system, but
-          one or more of the required resources have not been created. Running: All
-          of the required Pods for the Argo CD Repo component are in a Ready state.
+      - description: |-
+          Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
+          There are four possible repo values:
+          Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
           Failed: At least one of the  Argo CD Repo component Pods had a failure.
-          Unknown: The state of the Argo CD Repo component could not be obtained.'
+          Unknown: The state of the Argo CD Repo component could not be obtained.
         displayName: Repo
         path: repo
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Server is a simple, high-level summary of where the Argo CD
-          server component is in its lifecycle. There are four possible server values:
-          Pending: The Argo CD server component has been accepted by the Kubernetes
-          system, but one or more of the required resources have not been created.
-          Running: All of the required Pods for the Argo CD server component are in
-          a Ready state. Failed: At least one of the  Argo CD server component Pods
-          had a failure. Unknown: The state of the Argo CD server component could
-          not be obtained.'
+      - description: |-
+          Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
+          There are four possible server values:
+          Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD server component are in a Ready state.
+          Failed: At least one of the  Argo CD server component Pods had a failure.
+          Unknown: The state of the Argo CD server component could not be obtained.
         displayName: Server
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak)
-          component is in its lifecycle. There are four possible sso values: Pending:
-          The Argo CD SSO component has been accepted by the Kubernetes system, but
-          one or more of the required resources have not been created. Running: All
-          of the required Pods for the Argo CD SSO component are in a Ready state.
-          Failed: At least one of the  Argo CD SSO component Pods had a failure. Unknown:
-          The state of the Argo CD SSO component could not be obtained.'
+      - description: |-
+          SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak) component is in its lifecycle.
+          There are four possible sso values:
+          Pending: The Argo CD SSO component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD SSO component are in a Ready state.
+          Failed: At least one of the  Argo CD SSO component Pods had a failure.
+          Unknown: The state of the Argo CD SSO component could not be obtained.
         displayName: SSO
         path: sso
         x-descriptors:
@@ -1075,26 +1072,30 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:podCount
-      - description: DefaultPolicy is the name of the default role which Argo CD will
-          falls back to, when authorizing API requests (optional). If omitted or empty,
-          users may be still be able to login, but will see no apps, projects, etc...
+      - description: |-
+          DefaultPolicy is the name of the default role which Argo CD will falls back to, when
+          authorizing API requests (optional). If omitted or empty, users may be still be able to login,
+          but will see no apps, projects, etc...
         displayName: Default Policy'
         path: rbac.defaultPolicy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Policy is CSV containing user-defined RBAC policies and role
-          definitions. Policy rules are in the form: p, subject, resource, action,
-          object, effect Role definitions and bindings are in the form: g, subject,
-          inherited-subject See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md
-          for additional information.'
+      - description: |-
+          Policy is CSV containing user-defined RBAC policies and role definitions.
+          Policy rules are in the form:
+            p, subject, resource, action, object, effect
+          Role definitions and bindings are in the form:
+            g, subject, inherited-subject
+          See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md for additional information.
         displayName: Policy
         path: rbac.policy
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:RBAC
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Scopes controls which OIDC scopes to examine during rbac enforcement
-          (in addition to `sub` scope). If omitted, defaults to: ''[groups]''.'
+      - description: |-
+          Scopes controls which OIDC scopes to examine during rbac enforcement (in addition to `sub` scope).
+          If omitted, defaults to: '[groups]'.
         displayName: Scopes
         path: rbac.scopes
         x-descriptors:
@@ -1132,10 +1133,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: 'Deprecated field. Support dropped in v1beta1 version. ResourceCustomizations
-          customizes resource behavior. Keys are in the form: group/Kind. Please note
-          that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences,
-          and ResourceActions.'
+      - description: |-
+          Deprecated field. Support dropped in v1beta1 version.
+          ResourceCustomizations customizes resource behavior. Keys are in the form: group/Kind. Please note that this is being deprecated in favor of ResourceHealthChecks, ResourceIgnoreDifferences, and ResourceActions.
         displayName: Resource Customizations'
         path: resourceCustomizations
         x-descriptors:
@@ -1275,8 +1275,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
         - urn:alm:descriptor:com.tectonic.ui:advanced
-      - description: UsersAnonymousEnabled toggles anonymous user access. The anonymous
-          users get default role permissions specified argocd-rbac-cm.
+      - description: |-
+          UsersAnonymousEnabled toggles anonymous user access.
+          The anonymous users get default role permissions specified argocd-rbac-cm.
         displayName: Anonymous Users Enabled'
         path: usersAnonymousEnabled
         x-descriptors:
@@ -1290,96 +1291,90 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD
         - urn:alm:descriptor:com.tectonic.ui:text
       statusDescriptors:
-      - description: 'ApplicationController is a simple, high-level summary of where
-          the Argo CD application controller component is in its lifecycle. There
-          are four possible ApplicationController values: Pending: The Argo CD application
-          controller component has been accepted by the Kubernetes system, but one
-          or more of the required resources have not been created. Running: All of
-          the required Pods for the Argo CD application controller component are in
-          a Ready state. Failed: At least one of the  Argo CD application controller
-          component Pods had a failure. Unknown: The state of the Argo CD application
-          controller component could not be obtained.'
+      - description: |-
+          ApplicationController is a simple, high-level summary of where the Argo CD application controller component is in its lifecycle.
+          There are four possible ApplicationController values:
+          Pending: The Argo CD application controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD application controller component are in a Ready state.
+          Failed: At least one of the  Argo CD application controller component Pods had a failure.
+          Unknown: The state of the Argo CD application controller component could not be obtained.
         displayName: ApplicationController
         path: applicationController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'ApplicationSetController is a simple, high-level summary of
-          where the Argo CD applicationSet controller component is in its lifecycle.
-          There are four possible ApplicationSetController values: Pending: The Argo
-          CD applicationSet controller component has been accepted by the Kubernetes
-          system, but one or more of the required resources have not been created.
-          Running: All of the required Pods for the Argo CD applicationSet controller
-          component are in a Ready state. Failed: At least one of the  Argo CD applicationSet
-          controller component Pods had a failure. Unknown: The state of the Argo
-          CD applicationSet controller component could not be obtained.'
+      - description: |-
+          ApplicationSetController is a simple, high-level summary of where the Argo CD applicationSet controller component is in its lifecycle.
+          There are four possible ApplicationSetController values:
+          Pending: The Argo CD applicationSet controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD applicationSet controller component are in a Ready state.
+          Failed: At least one of the  Argo CD applicationSet controller component Pods had a failure.
+          Unknown: The state of the Argo CD applicationSet controller component could not be obtained.
         displayName: ApplicationSetController
         path: applicationSetController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'NotificationsController is a simple, high-level summary of where
-          the Argo CD notifications controller component is in its lifecycle. There
-          are four possible NotificationsController values: Pending: The Argo CD notifications
-          controller component has been accepted by the Kubernetes system, but one
-          or more of the required resources have not been created. Running: All of
-          the required Pods for the Argo CD notifications controller component are
-          in a Ready state. Failed: At least one of the  Argo CD notifications controller
-          component Pods had a failure. Unknown: The state of the Argo CD notifications
-          controller component could not be obtained.'
+      - description: |-
+          NotificationsController is a simple, high-level summary of where the Argo CD notifications controller component is in its lifecycle.
+          There are four possible NotificationsController values:
+          Pending: The Argo CD notifications controller component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD notifications controller component are in a Ready state.
+          Failed: At least one of the  Argo CD notifications controller component Pods had a failure.
+          Unknown: The state of the Argo CD notifications controller component could not be obtained.
         displayName: NotificationsController
         path: notificationsController
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Phase is a simple, high-level summary of where the ArgoCD is
-          in its lifecycle. There are four possible phase values: Pending: The ArgoCD
-          has been accepted by the Kubernetes system, but one or more of the required
-          resources have not been created. Available: All of the resources for the
-          ArgoCD are ready. Failed: At least one resource has experienced a failure.
-          Unknown: The state of the ArgoCD phase could not be obtained.'
+      - description: |-
+          Phase is a simple, high-level summary of where the ArgoCD is in its lifecycle.
+          There are four possible phase values:
+          Pending: The ArgoCD has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Available: All of the resources for the ArgoCD are ready.
+          Failed: At least one resource has experienced a failure.
+          Unknown: The state of the ArgoCD phase could not be obtained.
         displayName: Phase
         path: phase
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Redis is a simple, high-level summary of where the Argo CD Redis
-          component is in its lifecycle. There are four possible redis values: Pending:
-          The Argo CD Redis component has been accepted by the Kubernetes system,
-          but one or more of the required resources have not been created. Running:
-          All of the required Pods for the Argo CD Redis component are in a Ready
-          state. Failed: At least one of the  Argo CD Redis component Pods had a failure.
-          Unknown: The state of the Argo CD Redis component could not be obtained.'
+      - description: |-
+          Redis is a simple, high-level summary of where the Argo CD Redis component is in its lifecycle.
+          There are four possible redis values:
+          Pending: The Argo CD Redis component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD Redis component are in a Ready state.
+          Failed: At least one of the  Argo CD Redis component Pods had a failure.
+          Unknown: The state of the Argo CD Redis component could not be obtained.
         displayName: Redis
         path: redis
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Repo is a simple, high-level summary of where the Argo CD Repo
-          component is in its lifecycle. There are four possible repo values: Pending:
-          The Argo CD Repo component has been accepted by the Kubernetes system, but
-          one or more of the required resources have not been created. Running: All
-          of the required Pods for the Argo CD Repo component are in a Ready state.
+      - description: |-
+          Repo is a simple, high-level summary of where the Argo CD Repo component is in its lifecycle.
+          There are four possible repo values:
+          Pending: The Argo CD Repo component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD Repo component are in a Ready state.
           Failed: At least one of the  Argo CD Repo component Pods had a failure.
-          Unknown: The state of the Argo CD Repo component could not be obtained.'
+          Unknown: The state of the Argo CD Repo component could not be obtained.
         displayName: Repo
         path: repo
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'Server is a simple, high-level summary of where the Argo CD
-          server component is in its lifecycle. There are four possible server values:
-          Pending: The Argo CD server component has been accepted by the Kubernetes
-          system, but one or more of the required resources have not been created.
-          Running: All of the required Pods for the Argo CD server component are in
-          a Ready state. Failed: At least one of the  Argo CD server component Pods
-          had a failure. Unknown: The state of the Argo CD server component could
-          not be obtained.'
+      - description: |-
+          Server is a simple, high-level summary of where the Argo CD server component is in its lifecycle.
+          There are four possible server values:
+          Pending: The Argo CD server component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD server component are in a Ready state.
+          Failed: At least one of the  Argo CD server component Pods had a failure.
+          Unknown: The state of the Argo CD server component could not be obtained.
         displayName: Server
         path: server
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak)
-          component is in its lifecycle. There are four possible sso values: Pending:
-          The Argo CD SSO component has been accepted by the Kubernetes system, but
-          one or more of the required resources have not been created. Running: All
-          of the required Pods for the Argo CD SSO component are in a Ready state.
-          Failed: At least one of the  Argo CD SSO component Pods had a failure. Unknown:
-          The state of the Argo CD SSO component could not be obtained.'
+      - description: |-
+          SSO is a simple, high-level summary of where the Argo CD SSO(Dex/Keycloak) component is in its lifecycle.
+          There are four possible sso values:
+          Pending: The Argo CD SSO component has been accepted by the Kubernetes system, but one or more of the required resources have not been created.
+          Running: All of the required Pods for the Argo CD SSO component are in a Ready state.
+          Failed: At least one of the  Argo CD SSO component Pods had a failure.
+          Unknown: The state of the Argo CD SSO component could not be obtained.
         displayName: SSO
         path: sso
         x-descriptors:
