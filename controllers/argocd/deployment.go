@@ -345,46 +345,50 @@ func isMergable(extraArgs []string, cmd []string) error {
 
 // appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
 func appendUniqueArgs(cmd []string, extraArgs []string) []string {
-	// Parse cmd into a map to track both flags and their associated values
-	existingArgs := make(map[string]string)
+	// Parse cmd into a map to track flags and their indices
+	existingArgs := make(map[string]int) // Map to track index of each flag in cmd
 	for i := 0; i < len(cmd); i++ {
 		arg := cmd[i]
 		if strings.HasPrefix(arg, "--") {
 			// Check if the next item is a value (not another flag)
 			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
-				existingArgs[arg] = cmd[i+1] // Store flag-value pair
-				i++                          // Skip the value
+				existingArgs[arg] = i
+				i++ // Skip the value
 			} else {
-				existingArgs[arg] = "" // Store flag without value
+				existingArgs[arg] = i
 			}
 		}
 	}
 
-	// Iterate over extraArgs and append only if the flag and value do not already exist in cmd
+	// Iterate over extraArgs to append or override existing flags
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if strings.HasPrefix(arg, "--") {
-			// If this flag already exists in cmd, skip it
-			if _, exists := existingArgs[arg]; exists {
+			if index, exists := existingArgs[arg]; exists {
+				// If the flag exists, check if we need to override its value
 				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-					i++ // Skip the associated value
+					// If the flag has a value in extraArgs,update it in cmd
+					if index+1 < len(cmd) && !strings.HasPrefix(cmd[index+1], "--") {
+						cmd[index+1] = extraArgs[i+1] // Override the existing value
+					} else {
+						// Insert the new value if it didn't previously have one
+						cmd = append(cmd[:index+1], append([]string{extraArgs[i+1]}, cmd[index+1:]...)...)
+					}
+					i++ // Skip the value in extraArgs
 				}
-				continue
-			}
-
-			// Append the flag to cmd
-			cmd = append(cmd, arg)
-
-			// Check if this flag has an associated value
-			if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
-				cmd = append(cmd, extraArgs[i+1])
-				existingArgs[arg] = extraArgs[i+1] // Track flag-value pair
-				i++                                // Skip the value
 			} else {
-				existingArgs[arg] = "" // Track flag without a value
+				// Append the new flag and its value if not present
+				cmd = append(cmd, arg)
+				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+					cmd = append(cmd, extraArgs[i+1])
+					existingArgs[arg] = len(cmd) - 2 // Update index tracking
+					i++                              // Skip the value
+				} else {
+					existingArgs[arg] = len(cmd) - 1 // Update index tracking
+				}
 			}
 		} else {
-			// If it's not a flag, append it directly (non-flag argument)
+			// Append non-flag arguments directly
 			cmd = append(cmd, arg)
 		}
 	}
