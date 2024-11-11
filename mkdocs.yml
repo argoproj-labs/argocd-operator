@@ -62,6 +62,8 @@ nav:
     - Custom labels and annotations: usage/custom_labels_annotations.md
   - Reference:
     - ArgoCD: reference/argocd.md
+    - ApplicationSet:
+        - Policies: reference/applicationSet.md
     - ArgoCDExport: reference/argocdexport.md
     - API Docs: reference/api.html.md
     - NotificationsConfiguration: reference/notificationsconfiguration.md
