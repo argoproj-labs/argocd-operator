@@ -2,7 +2,11 @@
 
 You can add labels and annotations to the pods of the server, repo, application set controller, and application controller.
 
-```[yaml]
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
 spec:
   server:
     labels:
