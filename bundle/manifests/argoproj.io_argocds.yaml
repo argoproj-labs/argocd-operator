@@ -442,6 +442,16 @@ spec:
                     description: URL defines an optional URL to be used as banner
                       message link
                     type: string
+                  permanent:
+                    description: Permanent defines if the banner is sticky (permanent) using a boolean
+                    type: boolean
+                  position:
+                    description: Position defines the banner's position - top, bottom or both
+                    enum:
+                      - top
+                      - bottom
+                      - both
+                    type: string
                 required:
                 - content
                 type: object
