@@ -91,6 +91,8 @@ SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace w
 SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
 Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
 VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### ApplicationSet Controller Example
 
@@ -205,6 +207,8 @@ InitContainers | [Empty] | List of init containers for the ArgoCD Application Co
 SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
 Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
 VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Controller Example
 
@@ -949,6 +953,8 @@ InitContainers | [Empty] | List of init containers for the repo server deploymen
 SidecarContainers | [Empty] | List of sidecar containers for the repo server deployment. This field is optional.
 Enabled | true | Flag to enable repo server during ArgoCD installation.
 Remote | [Empty] | Specifies the remote URL of the repo server container. By default, it points to a local instance managed by the operator. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Pass Command Arguments To Repo Server
 
@@ -1318,6 +1324,8 @@ InitContainers | [Empty] | List of init containers for the ArgoCD Server compone
 SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Server component. This field is optional.
 Volumes | [Empty] | Configure addition volumes for the Argo CD server component. This field is optional.
 VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 
 ### Server Autoscale Options
