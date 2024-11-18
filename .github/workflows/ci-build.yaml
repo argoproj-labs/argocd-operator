@@ -6,6 +6,8 @@ on:
       - 'release-*'
       - 'rhos-*'
   pull_request:
+    paths-ignore:
+      - "docs/**"
     branches:
       - 'master'
       - 'release-*'
