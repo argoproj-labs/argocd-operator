@@ -1,0 +1,16 @@
+name: Lint Argo CD CRDs
+on:
+  pull_request:
+    branches:
+      - 'master'
+      - 'release-*'
+      - 'rhos-*'
+jobs:
+  lint_code:
+    name: Run golangci-lint on PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run linter
+        run: make lint-argocd-crds
