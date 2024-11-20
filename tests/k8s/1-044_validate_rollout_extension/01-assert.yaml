@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+spec:
+  selector:
+      matchLabels:
+        app.kubernetes.io/name: argocd-server
+  template:
+    spec:
+      initContainers:
+        - name: rollout-extension
+          image: quay.io/argoprojlabs/argocd-extension-installer:v0.0.8
+          env:
+          - name: EXTENSION_URL
+            value: https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar
+          volumeMounts:
+            - name: extensions
+              mountPath: /tmp/extensions/
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: argocd-ssh-known-hosts-cm
+        name: ssh-known-hosts
+      - configMap:
+          defaultMode: 420
+          name: argocd-tls-certs-cm
+        name: tls-certs
+      - name: argocd-repo-server-tls
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: argocd-repo-server-tls
+      - name: argocd-operator-redis-tls
+        secret:
+          defaultMode: 420
+          optional: true
+          secretName: argocd-operator-redis-tls
+      - emptyDir: {}
+        name: extensions
+      containers:
+      - name: argocd-server
+        volumeMounts:
+        - mountPath: /app/config/ssh
+          name: ssh-known-hosts
+        - mountPath: /app/config/tls
+          name: tls-certs
+        - mountPath: /app/config/server/tls
+          name: argocd-repo-server-tls
+        - mountPath: /app/config/server/tls/redis
+          name: argocd-operator-redis-tls
+        - mountPath: /tmp/extensions/
+          name: extensions

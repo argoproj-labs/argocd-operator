@@ -18,6 +18,12 @@ const (
 	// ArgoCDApplicationControllerComponent is the name of the application controller control plane component
 	ArgoCDApplicationControllerComponent = "argocd-application-controller"
 
+	// ArgoCDApplicationControllerComponentView is the name of aggregated ClusterRole to configure view permissions for the application controller control plane component
+	ArgoCDApplicationControllerComponentView = "argocd-application-controller-view"
+
+	// ArgoCDApplicationControllerComponentAdmin is the name of aggregated ClusterRole to configure admin permissions for the application controller control plane component
+	ArgoCDApplicationControllerComponentAdmin = "argocd-application-controller-admin"
+
 	// ArgoCDApplicationControllerDefaultShardReplicas is the default number of replicas that the ArgoCD Application Controller Should Use
 	ArgocdApplicationControllerDefaultReplicas = 1
 
@@ -64,7 +70,7 @@ const (
 	ArgoCDDefaultArgoImage = "quay.io/argoproj/argocd"
 
 	// ArgoCDDefaultArgoVersion is the Argo CD container image digest to use when version not specified.
-	ArgoCDDefaultArgoVersion = "sha256:d2c274ff26c7ab164907de05826bdfe2e6f326af70edd0bb83194b75fbb71f9e" // v2.11.2
+	ArgoCDDefaultArgoVersion = "sha256:68894064bc381c19ea951029510aa614bd26bf46c2ec65ea445c7d8d095a9417" // v2.12.3
 
 	// ArgoCDDefaultBackupKeyLength is the length of the generated default backup key.
 	ArgoCDDefaultBackupKeyLength = 32
@@ -122,7 +128,7 @@ const (
 	ArgoCDDefaultExportJobImage = "quay.io/argoprojlabs/argocd-operator-util"
 
 	// ArgoCDDefaultExportJobVersion is the export job container image tag to use when not specified.
-	ArgoCDDefaultExportJobVersion = "sha256:298747d7eb4d3d4d4f928e907afca4bfd89dc4568ca225e8133d050e55d6785e" // 0.10.1
+	ArgoCDDefaultExportJobVersion = "sha256:43f74879ce38af1e0ce37dc159332efd282b63da3eda43e71de9cecfa45df153" // 0.12.0
 
 	// ArgoCDDefaultExportLocalCapicity is the default capacity to use for local export.
 	ArgoCDDefaultExportLocalCapicity = "2Gi"
@@ -224,6 +230,12 @@ const (
 
 	// ArgoCDDefaultResourceInclusions is the default resource inclusions.
 	ArgoCDDefaultResourceInclusions = ""
+
+	// ArgoCDExtensionInstallerImage is the default image for ArgoCD Extension Installer that can be used to install UI extensions like Rollouts extension.
+	ArgoCDExtensionInstallerImage = "quay.io/argoprojlabs/argocd-extension-installer:v0.0.8"
+
+	// ArgoRolloutsExtensionURL is the URL used to download the extension.js file from the latest rollout-extension tar release
+	ArgoRolloutsExtensionURL = "https://github.com/argoproj-labs/rollout-extension/releases/download/v0.3.6/extension.tar"
 
 	// ArgoCDDefaultRSAKeySize is the default RSA key size when not specified.
 	ArgoCDDefaultRSAKeySize = 2048

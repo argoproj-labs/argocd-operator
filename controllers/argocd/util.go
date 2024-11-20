@@ -164,7 +164,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 	cmd = append(cmd, "--status-processors", fmt.Sprint(getArgoServerStatusProcessors(cr)))
 	cmd = append(cmd, "--kubectl-parallelism-limit", fmt.Sprint(getArgoControllerParellismLimit(cr)))
 
-	if cr.Spec.SourceNamespaces != nil && len(cr.Spec.SourceNamespaces) > 0 {
+	if len(cr.Spec.SourceNamespaces) > 0 {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
@@ -173,6 +173,14 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 	cmd = append(cmd, "--logformat")
 	cmd = append(cmd, getLogFormat(cr.Spec.Controller.LogFormat))
+
+	// check if extra args are present
+	extraArgs := cr.Spec.Controller.ExtraCommandArgs
+	err := isMergable(extraArgs, cmd)
+	if err != nil {
+		return cmd
+	}
+	cmd = append(cmd, extraArgs...)
 
 	return cmd
 }
@@ -340,7 +348,7 @@ func (r *ReconcileArgoCD) getArgoServerURI(cr *argoproj.ArgoCD) string {
 	}
 
 	// Use Route host if available, override Ingress if both exist
-	if IsRouteAPIAvailable() {
+	if cr.Spec.Server.Route.Enabled {
 		route := newRouteWithSuffix("server", cr)
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 			host = route.Spec.Host
@@ -1196,6 +1204,7 @@ type DeprecationEventEmissionStatus struct {
 	SSOSpecDeprecationWarningEmitted    bool
 	DexSpecDeprecationWarningEmitted    bool
 	DisableDexDeprecationWarningEmitted bool
+	TLSInsecureWarningEmitted           bool
 }
 
 // DeprecationEventEmissionTracker map stores the namespace containing ArgoCD instance as key and DeprecationEventEmissionStatus as value,
@@ -1419,7 +1428,7 @@ func (r *ReconcileArgoCD) getSourceNamespaces(cr *argoproj.ArgoCD) ([]string, er
 	}
 
 	for _, namespace := range namespaces.Items {
-		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, false) {
+		if glob.MatchStringInList(cr.Spec.SourceNamespaces, namespace.Name, glob.GLOB) {
 			sourceNamespaces = append(sourceNamespaces, namespace.Name)
 		}
 	}

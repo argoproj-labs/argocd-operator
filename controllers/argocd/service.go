@@ -17,6 +17,7 @@ package argocd
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,6 +71,7 @@ func newServiceWithSuffix(suffix string, component string, cr *argoproj.ArgoCD) 
 func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("grafana", "grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
+		//nolint:staticcheck
 		if !cr.Spec.Grafana.Enabled {
 			// Service exists but enabled flag has been set to false, delete the Service
 			return r.Client.Delete(context.TODO(), svc)
@@ -78,6 +80,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaService(cr *argoproj.ArgoCD) error {
 		return nil // Service found, do nothing
 	}
 
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled {
 		return nil // Grafana not enabled, do nothing.
 	}
@@ -273,6 +276,9 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 		if cr.Spec.HA.Enabled {
 			return r.Client.Delete(context.TODO(), svc)
 		}
+		if cr.Spec.Redis.IsRemote() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -293,6 +299,11 @@ func (r *ReconcileArgoCD) reconcileRedisService(cr *argoproj.ArgoCD) error {
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRedisPort),
 		},
+	}
+
+	if cr.Spec.Redis.IsEnabled() && cr.Spec.Redis.IsRemote() {
+		log.Info("Skipping service creation, redis remote is enabled")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
@@ -358,6 +369,10 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDRepoServerTLSSecretName, cr.Spec.Repo.WantsAutoTLS()) {
 			return r.Client.Update(context.TODO(), svc)
 		}
+		if cr.Spec.Repo.IsRemote() {
+			log.Info("skip creating repo server service, repo remote is enabled")
+			return r.Client.Delete(context.TODO(), svc)
+		}
 		return nil // Service found, do nothing
 	}
 
@@ -383,6 +398,11 @@ func (r *ReconcileArgoCD) reconcileRepoService(cr *argoproj.ArgoCD) error {
 			Protocol:   corev1.ProtocolTCP,
 			TargetPort: intstr.FromInt(common.ArgoCDDefaultRepoMetricsPort),
 		},
+	}
+
+	if cr.Spec.Repo.IsEnabled() && cr.Spec.Repo.IsRemote() {
+		log.Info("skip creating repo server service, repo remote is enabled")
+		return nil
 	}
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
@@ -420,20 +440,6 @@ func (r *ReconcileArgoCD) reconcileServerMetricsService(cr *argoproj.ArgoCD) err
 // reconcileServerService will ensure that the Service is present for the Argo CD server component.
 func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 	svc := newServiceWithSuffix("server", "server", cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, svc) {
-		if !cr.Spec.Server.IsEnabled() {
-			return r.Client.Delete(context.TODO(), svc)
-		}
-		if ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
-			return r.Client.Update(context.TODO(), svc)
-		}
-		return nil // Service found, do nothing
-	}
-
-	if !cr.Spec.Repo.IsEnabled() {
-		return nil
-	}
-
 	ensureAutoTLSAnnotation(r.Client, svc, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS())
 
 	svc.Spec.Ports = []corev1.ServicePort{
@@ -458,6 +464,29 @@ func (r *ReconcileArgoCD) reconcileServerService(cr *argoproj.ArgoCD) error {
 
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
+	}
+
+	existingSVC := &corev1.Service{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, svc.Name, existingSVC) {
+		changed := false
+		if !cr.Spec.Server.IsEnabled() {
+			return r.Client.Delete(context.TODO(), svc)
+		}
+		if ensureAutoTLSAnnotation(r.Client, existingSVC, common.ArgoCDServerTLSSecretName, cr.Spec.Server.WantsAutoTLS()) {
+			changed = true
+		}
+		if !reflect.DeepEqual(svc.Spec.Type, existingSVC.Spec.Type) {
+			existingSVC.Spec.Type = svc.Spec.Type
+			changed = true
+		}
+		if changed {
+			return r.Client.Update(context.TODO(), existingSVC)
+		}
+		return nil
+	}
+
+	if !cr.Spec.Server.IsEnabled() {
+		return nil
 	}
 	return r.Client.Create(context.TODO(), svc)
 }

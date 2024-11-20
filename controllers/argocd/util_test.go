@@ -51,6 +51,12 @@ func logLevel(l string) argoCDOpt {
 	}
 }
 
+func extraCommandArgs(l []string) argoCDOpt {
+	return func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.ExtraCommandArgs = l
+	}
+}
+
 func appSync(s int) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.AppSync = &metav1.Duration{Duration: time.Second * time.Duration(s)}
@@ -474,6 +480,10 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		}
 	}
 
+	extraCommandArgsChangedResult := func(l []string) []string {
+		return append(defaultResult, l...)
+	}
+
 	cmdTests := []struct {
 		name string
 		opts []argoCDOpt
@@ -564,6 +574,21 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 			[]argoCDOpt{logLevel("error")},
 			logLevelChangedResult("error"),
 		},
+		{
+			"configured extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--app-hard-resync", "--app-resync"})},
+			extraCommandArgsChangedResult([]string{"--app-hard-resync", "--app-resync"}),
+		},
+		{
+			"overriding default argument using extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
+			defaultResult,
+		},
+		{
+			"configured empty extraCommandArgs",
+			[]argoCDOpt{extraCommandArgs([]string{})},
+			defaultResult,
+		},
 	}
 
 	for _, tt := range cmdTests {
@@ -605,7 +630,7 @@ func TestGetArgoApplicationContainerEnv(t *testing.T) {
 
 	for _, tt := range cmdTests {
 		cr := makeTestArgoCD(tt.opts...)
-		env := getArgoControllerContainerEnv(cr)
+		env := getArgoControllerContainerEnv(cr, 1)
 
 		if !reflect.DeepEqual(env, tt.want) {
 			t.Fatalf("got %#v, want %#v", env, tt.want)

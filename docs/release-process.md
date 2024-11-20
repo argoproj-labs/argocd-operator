@@ -1,5 +1,9 @@
 # Argo CD Operator Release Process
 
+!!! note 
+
+    Currently argocd-operator can only support releasing versions which are the next highest release. Z-stream releases for minor versions which are not the highest minor version are not possible at this time. This functionality will be possible once argocd-operator switches from a single subscription channel (currently "alpha") model to release-based subscription channels, as [this GitHub issue](https://github.com/argoproj-labs/argocd-operator/issues/1436) explains.
+
 ## Prerequisites
 
 Before beginning, make sure you have push access to the following repositories in quay.io:
@@ -122,13 +126,15 @@ selector:
 
 * Go to the `community-operators/operators/argocd-operator` folder.
 
-* Copy the relevant release folder from the actual argocd-operator's `deploy/olm-catalog/argocd-operator` folder into this folder.
+* Create a new folder for the release with two child folders inside of it; one called `manifests` and one called `metadata`.
 
-* Edit the `argocd-operator.package.yaml` file and update the value of the `currentCSV` field.
+* In the `manifests` folder, copy and paste the files from the actual argocd-operator's `deploy/olm-catalog/argocd-operator/[release-version]` folder.
 
-* Edit the CSV file in the new release folder, and add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
+* Also in the `manifests` folder, edit the CSV file to add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
 
-* Commit and push the changes, then create a PR. The PR merge process should be automatic if all the checks pass; once the PR is merged then continue on to the next step. 
+* In the `metadata` folder, create a file called `annotations.yaml`. The content of this file can be copied from the previous argocd-operator release version in this repository. 
+
+* Commit, sign and push the changes, then create a PR. The PR merge process should be automatic if all the checks pass; once the PR is merged then continue on to the next step. 
 
 ----
 
@@ -138,22 +144,24 @@ selector:
 
 * Go to the `community-operators-prod/operators/argocd-operator` folder.
 
-* Copy the relevant release folder from the actual argocd-operator's `deploy/olm-catalog/argocd-operator` folder into this folder.
+* Create a new folder for the release with two child folders inside of it; one called `manifests` and one called `metadata`.
 
-* Edit the `argocd-operator.package.yaml` file and update the value of the `currentCSV` field.
+* In the `manifests` folder, copy and paste the files from the actual argocd-operator's `deploy/olm-catalog/argocd-operator/[release-version]` folder.
 
-* Edit the CSV file in the new release folder, and add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
+* Also in the `manifests` folder, edit the CSV file to add a `containerImage` tag to the metadata section. Copy the value from the `image` tag already found in the file.
 
-* Commit and push the changes, then create a PR. The PR process should be automatic for this repository as well. 
+* In the `metadata` folder, create a file called `annotations.yaml`. The content of this file can be copied from the previous argocd-operator release version in this repository. 
 
-## Setting up the next version
+* Commit, sign and push the changes, then create a PR. The PR process should be automatic for this repository as well if all the checks pass. 
 
-* In the `argocd-operator` repo, synchronize any changes in the release folder under `deploy/olm-catalog/argocd-operator` on the release branch back to the master branch (ensure the folder is an exact copy of what's on the release branch).
+## Synchonizing changes back to master branch and setting up the next version
+
+* In the `argocd-operator` repo, you have to synchronize the changes from the release branch back to the master branch. After doing this run `make bundle`. (Note: this will revert some of the changes you made earlier, but this is okay for the master branch. Without running `make bundle` the tests will not pass, and ignoring those and merging regardless will make all future PR's also fail.)
 
 * Update the `VERSION` in the Makefile in the `argocd-operator` repo's master branch to the next version (e.g. from `0.2.0 to 0.3.0).
 
 * In `config/manifests/bases/argocd-operator.clusterserviceversion.yaml`, update the `replaces:` field to be the current version (the one you just released), and the `version:` field to be the next version. 
 
-* Run `make bundle` to generate the intial bundle manifests for the next version. (You may need to also run `go mod vendor` and `go mod tidy`)
+* Run `make bundle` again to generate the initial bundle manifests for the next version. (You may need to also run `go mod vendor` and `go mod tidy`)
 
 * Commit and push the changes, then create a PR to argocd-operator's master branch.

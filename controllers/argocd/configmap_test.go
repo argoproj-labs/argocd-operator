@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -1039,4 +1040,70 @@ func Test_reconcileRBAC(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, cm.Data["policy.matchMode"], matcherMode)
+}
+
+func Test_validateOwnerReferences(t *testing.T) {
+	a := makeTestArgoCD()
+	uid := uuid.NewUUID()
+	a.UID = uid
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+	cm := newConfigMapWithName(common.ArgoCDConfigMapName, a)
+
+	// verify when OwnerReferences is not set
+	_, err := validateOwnerReferences(a, cm, r.Scheme)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
+	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
+	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
+	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+
+	// verify when APIVersion is changed
+	cm.OwnerReferences[0].APIVersion = "test"
+
+	changed, err := validateOwnerReferences(a, cm, r.Scheme)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
+	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
+	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
+	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+
+	// verify when Kind is changed
+	cm.OwnerReferences[0].Kind = "test"
+
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
+	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
+	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
+	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+
+	// verify when Kind is changed
+	cm.OwnerReferences[0].Name = "test"
+
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
+	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
+	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
+	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
+
+	// verify when UID is changed
+	cm.OwnerReferences[0].UID = "test"
+
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
+	assert.Equal(t, cm.OwnerReferences[0].Kind, "ArgoCD")
+	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
+	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
 }

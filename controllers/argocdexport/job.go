@@ -186,6 +186,9 @@ func newExportPodSpec(cr *argoproj.ArgoCDExport, argocdName string, client clien
 				},
 			},
 			RunAsNonRoot: boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: getArgoExportVolumeMounts(),
 	}}

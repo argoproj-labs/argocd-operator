@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -121,7 +122,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		}
 		// only skip creation of dex and redisHa roles for namespaces that no argocd instance is deployed in
 		if len(list.Items) < 1 {
-			// namespace doesn't contain argocd instance, so skipe all the ArgoCD internal roles
+			// namespace doesn't contain argocd instance, so skip all the ArgoCD internal roles
 			if cr.ObjectMeta.Namespace != namespace.Name && (name != common.ArgoCDApplicationControllerComponent && name != common.ArgoCDServerComponent) {
 				continue
 			}
@@ -279,59 +280,96 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 	return nil
 }
 
-func (r *ReconcileArgoCD) reconcileClusterRole(name string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
+func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules []v1.PolicyRule, cr *argoproj.ArgoCD) (*v1.ClusterRole, error) {
 
 	allowed := false
 	if allowedNamespace(cr.Namespace, os.Getenv("ARGOCD_CLUSTER_CONFIG_NAMESPACES")) {
+		// namespace is allowed to host cluster-scoped Argo CD instance
 		allowed = true
 	}
 
-	// Check if it is cluster-scoped instance namespace and user doesn't want to use default ClusterRole
-	if allowed && cr.Spec.DefaultClusterScopedRoleDisabled {
-
-		// In case DefaultClusterScopedRoleDisabled was false earlier and default ClusterRole was created, then delete it.
-		existingClusterRole := &v1.ClusterRole{}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(name, cr)}, existingClusterRole); err == nil {
-
-			// Default ClusterRole exists, now delete it
-			if err := r.Client.Delete(context.TODO(), existingClusterRole); err != nil {
-				return nil, fmt.Errorf("failed to delete existing cluster role for the service account associated with %s : %s", name, err)
-			}
-		}
-
-		// Don't create a default ClusterRole
+	if err := verifyInstallationMode(cr, allowed); err != nil {
+		log.Error(err, "error occurred in reconcileClusterRole")
 		return nil, nil
 	}
 
-	clusterRole := newClusterRole(name, policyRules, cr)
-	if err := applyReconcilerHook(cr, clusterRole, ""); err != nil {
+	// if custom ClusterRole mode is enabled then do nothing and return
+	useCustomClusterRole, err := checkCustomClusterRoleMode(r, cr, componentName, allowed)
+	if useCustomClusterRole {
+		if err == nil {
+			// Do nothing as user wants to have custom ClusterRole
+			return nil, nil
+		}
+	}
+	if err != nil {
 		return nil, err
 	}
 
-	existingClusterRole := &v1.ClusterRole{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: clusterRole.Name}, existingClusterRole)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", name, err)
-		}
-		if !allowed {
-			// Do Nothing
+	expectedClusterRole := newClusterRole(componentName, policyRules, cr)
+
+	if allowed && cr.Spec.AggregatedClusterRoles {
+		// if aggregated ClusterRole mode is enabled, then add required fields in ClusterRole
+		configureAggregatedClusterRole(cr, expectedClusterRole, componentName)
+	} else {
+		// if current mode is default mode, but last one was aggregated mode, then delete ClusterRoles for View and Admin permissions
+		if componentName == common.ArgoCDApplicationControllerComponentView || componentName == common.ArgoCDApplicationControllerComponentAdmin {
+			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, expectedClusterRole); err == nil {
+				if err := r.Client.Delete(context.TODO(), expectedClusterRole); err != nil {
+					return nil, fmt.Errorf("failed to delete aggregated ClusterRoles: %s", expectedClusterRole.Name)
+				}
+			} else {
+				// if it is "Not Found" error then ignore it else return the error
+				if !apierrors.IsNotFound(err) {
+					return nil, err
+				}
+			}
+
+			// Do Nothing and return, as ClusterRoles for View and Admin permissions are not required in default mode
 			return nil, nil
 		}
-		return clusterRole, r.Client.Create(context.TODO(), clusterRole)
+
+		// default ClusterRole mode is enabled and permissions can be update using a Hook if needed
+		if err := applyReconcilerHook(cr, expectedClusterRole, ""); err != nil {
+			return nil, err
+		}
+	}
+
+	// if ClusterRole does not exist then create new, if it does then match required fields
+	existingClusterRole := &v1.ClusterRole{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, existingClusterRole)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to reconcile the cluster role for the service account associated with %s : %s", componentName, err)
+		}
+
+		if !allowed {
+			// no need to create ClusterRole as namespace can not host cluster-scoped Argo CD instance
+			return nil, nil
+		}
+
+		return expectedClusterRole, r.Client.Create(context.TODO(), expectedClusterRole)
 	}
 
 	if !allowed {
+		// delete existing ClusterRole as namespace can not host cluster-scoped Argo CD instance
 		return nil, r.Client.Delete(context.TODO(), existingClusterRole)
 	}
 
-	// if the Rules differ, update the Role
-	if !reflect.DeepEqual(existingClusterRole.Rules, clusterRole.Rules) {
-		existingClusterRole.Rules = clusterRole.Rules
+	changed := false
+
+	// if existing ClusterRole field values differ from expected values then update them
+	if cr.Spec.AggregatedClusterRoles {
+		changed = matchAggregatedClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+	} else {
+		changed = matchDefaultClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+	}
+
+	if changed {
 		if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
 			return nil, err
 		}
 	}
+
 	return existingClusterRole, nil
 }
 
@@ -340,6 +378,155 @@ func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) er
 		if err := c.Delete(context.TODO(), &clusterRole); err != nil {
 			return fmt.Errorf("failed to delete ClusterRole %q during cleanup: %w", clusterRole.Name, err)
 		}
+	}
+	return nil
+}
+
+// checkCustomClusterRoleMode checks if custom ClusterRole mode is enabled and deletes default ClusterRoles if they exist
+func checkCustomClusterRoleMode(r *ReconcileArgoCD, cr *argoproj.ArgoCD, componentName string, allowed bool) (bool, error) {
+	// check if it is cluster-scoped instance namespace and user doesn't want to use default ClusterRole
+	if allowed && cr.Spec.DefaultClusterScopedRoleDisabled {
+
+		// in case DefaultClusterScopedRoleDisabled was false earlier and default ClusterRole was created, then delete it.
+		existingClusterRole := &v1.ClusterRole{}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(componentName, cr)}, existingClusterRole); err == nil {
+			// default ClusterRole exists, now delete it
+			if err := r.Client.Delete(context.TODO(), existingClusterRole); err != nil {
+				return true, fmt.Errorf("failed to delete existing cluster role for the service account associated with %s : %s", componentName, err)
+			}
+		} else {
+			// if it is "Not Found" error then ignore it else return the error
+			if !apierrors.IsNotFound(err) {
+				return true, err
+			}
+		}
+
+		// don't create a default ClusterRole and return
+		return true, nil
+	}
+
+	// custom ClusterRole is not enabled, continue process
+	return false, nil
+}
+
+// configureAggregatedClusterRole updates the ClusterRole and adds required fields for aggregated ClusterRole mode
+func configureAggregatedClusterRole(cr *argoproj.ArgoCD, clusterRole *v1.ClusterRole, componentName string) {
+
+	// if it is base ClusterRole then add AggregationRule, Annotations fields and remove default Rules
+	if componentName == common.ArgoCDApplicationControllerComponent {
+		clusterRole.AggregationRule = &v1.AggregationRule{
+			ClusterRoleSelectors: []metav1.LabelSelector{
+				{
+					MatchLabels: map[string]string{
+						common.ArgoCDAggregateToControllerLabelKey: "true",
+						common.ArgoCDKeyManagedBy:                  cr.Name,
+					},
+				},
+			},
+		}
+		clusterRole.Annotations[common.AutoUpdateAnnotationKey] = "true"
+		clusterRole.Rules = []v1.PolicyRule{}
+	}
+
+	// if ClusterRole is for Admin permissions then add AggregationRule and Labels
+	if componentName == common.ArgoCDApplicationControllerComponentAdmin {
+		clusterRole.AggregationRule = &v1.AggregationRule{
+			ClusterRoleSelectors: []metav1.LabelSelector{
+				{
+					MatchLabels: map[string]string{
+						common.ArgoCDAggregateToAdminLabelKey: "true",
+						common.ArgoCDKeyManagedBy:             cr.Name,
+					},
+				},
+			},
+		}
+		clusterRole.Labels[common.ArgoCDAggregateToControllerLabelKey] = "true"
+	}
+
+	// if ClusterRole is for View permissions then add Labels
+	if componentName == common.ArgoCDApplicationControllerComponentView {
+		clusterRole.Labels[common.ArgoCDAggregateToControllerLabelKey] = "true"
+	}
+}
+
+// matchAggregatedClusterRoleFields compares field values of expected and existing ClusterRoles for aggregated ClusterRole
+func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) bool {
+	changed := false
+	aggregatedClusterRoleExists := true
+
+	// if it is base ClusterRole then compare AggregationRule, Annotations and Rules
+	if name == common.ArgoCDApplicationControllerComponent {
+
+		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
+			aggregatedClusterRoleExists = false
+			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
+			existingClusterRole.Annotations = expectedClusterRole.Annotations
+			changed = true
+		}
+
+		// if existing ClusterRole is not Aggregated ClusterRole then only make Rules empty
+		if !aggregatedClusterRoleExists {
+			existingClusterRole.Rules = []v1.PolicyRule{}
+		}
+	}
+
+	// if ClusterRole is for View permissions then compare Labels
+	if name == common.ArgoCDApplicationControllerComponentView {
+		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
+			existingClusterRole.Labels = expectedClusterRole.Labels
+			changed = true
+		}
+	}
+
+	// if ClusterRole is for Admin permissions then compare AggregationRule and Labels
+	if name == common.ArgoCDApplicationControllerComponentAdmin {
+		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
+			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
+			existingClusterRole.Labels = expectedClusterRole.Labels
+			changed = true
+		}
+	}
+
+	return changed
+}
+
+// matchDefaultClusterRoleFields compares field values of expected and existing ClusterRoles for default ClusterRole
+func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) bool {
+	changed := false
+
+	// if it is base ClusterRole then compare AggregationRule and Annotations
+	if name == common.ArgoCDApplicationControllerComponent {
+		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
+			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
+			changed = true
+		}
+
+		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
+			existingClusterRole.Annotations = expectedClusterRole.Annotations
+			changed = true
+		}
+	}
+
+	// for all default ClusterRoles compare Rules
+	if !reflect.DeepEqual(existingClusterRole.Rules, expectedClusterRole.Rules) {
+		existingClusterRole.Rules = expectedClusterRole.Rules
+		changed = true
+	}
+
+	return changed
+}
+
+func verifyInstallationMode(cr *argoproj.ArgoCD, allowed bool) error {
+	if allowed && cr.Spec.DefaultClusterScopedRoleDisabled && cr.Spec.AggregatedClusterRoles {
+		return fmt.Errorf("Custom Cluster Roles and Aggregated Cluster Roles can not be used together.")
 	}
 	return nil
 }

@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.10.1
+VERSION ?= 0.13.0
 
 # Try to detect Docker or Podman
 CONTAINER_RUNTIME := $(shell command -v docker 2> /dev/null || command -v podman 2> /dev/null)
@@ -34,7 +34,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Set the Operator SDK version to use.
 # This is useful for CI or a project to utilize a specific version of the operator-sdk toolkit.
-OPERATOR_SDK_VERSION ?= v1.11.0
+OPERATOR_SDK_VERSION ?= v1.35.0
 
 
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
@@ -50,8 +50,6 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):v$(VERSION)
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 LD_FLAGS = "-X github.com/argoproj-labs/argocd-operator/version.Version=$(VERSION)"
 
@@ -89,7 +87,7 @@ help: ## Display this help.
 ##@ Development
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
@@ -106,10 +104,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 build: generate fmt vet ## Build manager binary.
-	go build -ldflags=$(LD_FLAGS) -o bin/manager main.go
+	go build -ldflags=$(LD_FLAGS) -o bin/manager cmd/main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	REDIS_CONFIG_PATH="build/redis" go run -ldflags=$(LD_FLAGS) ./main.go
+	REDIS_CONFIG_PATH="build/redis" go run -ldflags=$(LD_FLAGS) ./cmd/main.go
 
 docker-build: test ## Build docker image with the manager.
 	$(CONTAINER_RUNTIME) build --build-arg LD_FLAGS=$(LD_FLAGS) -t ${IMG} .
@@ -141,6 +139,10 @@ endif
 
 ##@ Deployment
 
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	## TODO: Remove sed usage after all v1alpha1 references are updated to v1beta1 in codebase.
 	## For local testing, conversion webhook defined in crd makes call to webhook for each v1alpha1 reference
@@ -148,25 +150,25 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 	$(KUSTOMIZE) build config/crd | sed '/conversion:/,/- v1beta1/d' |kubectl apply --server-side=true -f -
 
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply --server-side=true -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ E2E
 
 e2e: ## Run operator e2e tests
-	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml 
+	kubectl kuttl test ./tests/k8s --config ./tests/kuttl-tests.yaml
 
 all: test install run e2e ## UnitTest, Run the operator locally and execute e2e tests.
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
@@ -197,6 +199,7 @@ bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metada
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
+	sed -i 's/control-plane: argocd-operator/control-plane: controller-manager/g' bundle/manifests/argocd-operator-webhook-service_v1_service.yaml bundle/manifests/argocd-operator-controller-manager-metrics-service_v1_service.yaml bundle/manifests/argocd-operator.clusterserviceversion.yaml
 	rm -fr deploy/olm-catalog/argocd-operator/$(VERSION)
 	mkdir -p deploy/olm-catalog/argocd-operator/$(VERSION)
 	cp -r bundle/manifests/* deploy/olm-catalog/argocd-operator/$(VERSION)/
@@ -248,7 +251,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.20.0/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else

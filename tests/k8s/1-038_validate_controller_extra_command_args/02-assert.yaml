@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-argocd-application-controller 
+  namespace: test-1-38-controller-extra-command
+spec:
+  template:
+    spec:
+      containers:
+      - command:
+        - argocd-application-controller
+        - --operation-processors
+        - "10"
+        - --redis
+        - example-argocd-redis.test-1-38-controller-extra-command.svc.cluster.local:6379
+        - --repo-server
+        - example-argocd-repo-server.test-1-38-controller-extra-command.svc.cluster.local:8081
+        - --status-processors
+        - "20"
+        - --kubectl-parallelism-limit
+        - "10"
+        - --loglevel
+        - info
+        - --logformat
+        - text
+        - --app-hard-resync

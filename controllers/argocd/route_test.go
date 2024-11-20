@@ -24,6 +24,7 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 func TestReconcileRouteSetLabels(t *testing.T) {
@@ -548,6 +549,33 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 				assert.NoError(t, err)
 			},
 		},
+		{
+			name: "should overwrite if the TLS secret is created by the OpenShift Service CA",
+			want: routev1.TLSTerminationReencrypt,
+			updateArgoCD: func(cr *argoproj.ArgoCD) {
+				cr.Spec.Server.Route.Enabled = true
+			},
+			createResources: func(k8sClient client.Client, cr *argoproj.ArgoCD) {
+				serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
+				secret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      common.ArgoCDServerTLSSecretName,
+						Namespace: cr.Namespace,
+						Annotations: map[string]string{
+							"service.beta.openshift.io/originating-service-name": serviceName,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: serviceName,
+								Kind: "Service",
+							},
+						},
+					},
+				}
+				err := k8sClient.Create(context.Background(), secret)
+				assert.NoError(t, err)
+			},
+		},
 	}
 
 	for _, test := range tt {
@@ -574,6 +602,68 @@ func TestReconcileRouteTLSConfig(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, test.want, route.Spec.TLS.Termination)
 
+		})
+	}
+}
+
+func TestIsCreatedByServiceCA(t *testing.T) {
+	cr := makeArgoCD()
+	serviceName := fmt.Sprintf("%s-%s", cr.Name, "server")
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      common.ArgoCDServerTLSSecretName,
+			Namespace: cr.Namespace,
+			Annotations: map[string]string{
+				"service.beta.openshift.io/originating-service-name": serviceName,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Name: serviceName,
+					Kind: "Service",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		want         bool
+		updateSecret func(s *corev1.Secret)
+	}{
+		{
+			"secret is created by OpenShift Service CA",
+			true,
+			func(s *corev1.Secret) {},
+		},
+		{
+			"secret is not created by OpenShift Service CA",
+			false,
+			func(s *corev1.Secret) {
+				s.Annotations = nil
+				s.OwnerReferences = nil
+			},
+		},
+		{
+			"secret doesn't have the OpenShift Service CA annotation",
+			false,
+			func(s *corev1.Secret) {
+				s.Annotations = nil
+			},
+		},
+		{
+			"secret is not owned by the correct CR",
+			false,
+			func(s *corev1.Secret) {
+				s.OwnerReferences = nil
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testSecret := secret.DeepCopy()
+			test.updateSecret(testSecret)
+			assert.Equal(t, test.want, isCreatedByServiceCA(cr.Name, *testSecret))
 		})
 	}
 }
@@ -632,5 +722,229 @@ func testNamespacedName(name string) types.NamespacedName {
 	return types.NamespacedName{
 		Name:      name,
 		Namespace: testNamespace,
+	}
+}
+
+func TestOverrideRouteTLSData(t *testing.T) {
+	routeAPIFound = true
+	logf.SetLogger(ZapLogger(true))
+
+	argoCD := makeArgoCD()
+	resObjs := []client.Object{argoCD}
+	subresObjs := []client.Object{argoCD}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+	fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(fakeClient, sch)
+
+	crt := []byte("Y2VydGlmY2F0ZQ==")
+	key := []byte("cHJpdmF0ZS1rZXk=")
+	tlsData := map[string][]byte{
+		"tls.crt": crt,
+		"tls.key": key,
+	}
+	assert.NoError(t, argoutil.CreateTLSSecret(r.Client, "valid-secret", testNamespace, tlsData))
+	assert.NoError(t, argoutil.CreateSecret(r.Client, "non-tls-secret", testNamespace, tlsData))
+
+	tests := []struct {
+		name             string
+		newTLSConfig     *routev1.TLSConfig
+		expectErr        bool
+		expectedRouteTLS *routev1.TLSConfig
+	}{
+		{
+			name: "embedded tls data",
+			newTLSConfig: &routev1.TLSConfig{
+				Certificate: "crt",
+				Key:         "key",
+			},
+			expectedRouteTLS: &routev1.TLSConfig{
+				Certificate: "crt",
+				Key:         "key",
+			},
+		},
+		{
+			name: "tls data in secret",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "valid-secret",
+				},
+			},
+			expectedRouteTLS: &routev1.TLSConfig{
+				Certificate: string(crt),
+				Key:         string(key),
+			},
+		},
+		{
+			name: "conflicting TLS data",
+			newTLSConfig: &routev1.TLSConfig{
+				Termination: routev1.TLSTerminationReencrypt,
+				Certificate: "embedded-crt",
+				Key:         "embedded-key",
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "valid-secret",
+				},
+			},
+			expectedRouteTLS: &routev1.TLSConfig{
+				Termination: routev1.TLSTerminationReencrypt,
+				Certificate: string(crt),
+				Key:         string(key),
+			},
+		},
+		{
+			name: "invalid secret type",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "non-tls-secret",
+				},
+			},
+			expectErr: true,
+		},
+		{
+			name: "non-existing secret",
+			newTLSConfig: &routev1.TLSConfig{
+				ExternalCertificate: &routev1.LocalObjectReference{
+					Name: "non-existing-secret",
+				},
+			},
+			expectErr: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			route := routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: testNamespace,
+				},
+			}
+
+			err := r.overrideRouteTLS(test.newTLSConfig, &route, argoCD)
+
+			if test.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.Equal(t, *test.expectedRouteTLS, *route.Spec.TLS)
+			}
+		})
+	}
+}
+
+func TestReconilePrometheusRouteWithExternalTLSData(t *testing.T) {
+
+	prometheusRouteName := testArgoCDName + "-prometheus"
+
+	crt := []byte("Y2VydGlmY2F0ZQ==")
+	key := []byte("cHJpdmF0ZS1rZXk=")
+
+	tests := []struct {
+		name        string
+		argocd      argoproj.ArgoCD
+		routeName   string
+		expectErr   bool
+		expectedTLS *routev1.TLSConfig
+	}{
+		{
+			name: "prometheus route without tls data",
+			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Prometheus = argoproj.ArgoCDPrometheusSpec{
+					Enabled: true,
+					Route: argoproj.ArgoCDRouteSpec{
+						Enabled: true,
+					},
+				}
+			}),
+			routeName:   prometheusRouteName,
+			expectedTLS: nil,
+		},
+		{
+			name: "prometheus route with embedded tls data (deprecated method)",
+			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Prometheus.Enabled = true
+				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						Termination: routev1.TLSTerminationPassthrough,
+						Key:         "key",
+						Certificate: "crt",
+					},
+				}
+			}),
+			routeName: prometheusRouteName,
+			expectedTLS: &routev1.TLSConfig{
+				Termination: routev1.TLSTerminationPassthrough,
+				Key:         "key",
+				Certificate: "crt",
+			},
+		},
+		{
+			name: "prometheus route with tls data in secret",
+			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Prometheus.Enabled = true
+				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						ExternalCertificate: &routev1.LocalObjectReference{
+							Name: "valid-secret",
+						},
+					},
+				}
+			}),
+			routeName: prometheusRouteName,
+			expectedTLS: &routev1.TLSConfig{
+				Certificate: string(crt),
+				Key:         string(key),
+			},
+		},
+		{
+			name: "prometheus route with non-existing secret",
+			argocd: *makeArgoCD(func(a *argoproj.ArgoCD) {
+				a.Spec.Prometheus.Enabled = true
+				a.Spec.Prometheus.Route = argoproj.ArgoCDRouteSpec{
+					Enabled: true,
+					TLS: &routev1.TLSConfig{
+						ExternalCertificate: &routev1.LocalObjectReference{
+							Name: "non-existing-secret",
+						},
+					},
+				}
+			}),
+			routeName: prometheusRouteName,
+			expectErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			routeAPIFound = true
+			ctx := context.TODO()
+			a := &test.argocd
+			logf.SetLogger(ZapLogger(true))
+			resObjs := []client.Object{a}
+			subresObjs := []client.Object{a}
+			runtimeObjs := []runtime.Object{}
+			sch := makeTestReconcilerScheme(argoproj.AddToScheme, configv1.Install, routev1.Install)
+			fakeClient := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+			r := makeTestReconciler(fakeClient, sch)
+			tlsData := map[string][]byte{
+				"tls.crt": crt,
+				"tls.key": key,
+			}
+			assert.NoError(t, argoutil.CreateTLSSecret(r.Client, "valid-secret", testNamespace, tlsData))
+			req := reconcile.Request{
+				NamespacedName: testNamespacedName(testArgoCDName),
+			}
+
+			_, err := r.Reconcile(ctx, req)
+			if test.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				route := routev1.Route{}
+				err = argoutil.FetchObject(r.Client, a.Namespace, test.routeName, &route)
+				assert.NoError(t, err)
+				assert.Equal(t, test.expectedTLS, route.Spec.TLS)
+			}
+		})
 	}
 }

@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  namespace: test-1-38-controller-extra-command
+spec:
+  controller:
+    extraCommandArgs:
+    - --app-hard-resync

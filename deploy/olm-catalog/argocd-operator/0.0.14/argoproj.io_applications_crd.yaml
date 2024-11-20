@@ -640,7 +640,7 @@ spec:
                     description: Revision holds the revision of the sync
                     type: string
                   source:
-                    description: ApplicationSource contains information about github repository, path within repository and target application environment.
+                    description: ApplicationSource contains information about GitHub repository, path within repository and target application environment.
                     properties:
                       chart:
                         description: Chart is a Helm chart name
@@ -1424,7 +1424,7 @@ spec:
                           type: string
                       type: object
                     source:
-                      description: ApplicationSource contains information about github repository, path within repository and target application environment.
+                      description: ApplicationSource contains information about GitHub repository, path within repository and target application environment.
                       properties:
                         chart:
                           description: Chart is a Helm chart name

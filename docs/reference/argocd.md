@@ -35,6 +35,7 @@ Name | Default | Description
 [**Prometheus**](#prometheus-options) | [Object] | Prometheus configuration options.
 [**RBAC**](#rbac-options) | [Object] | RBAC configuration options.
 [**Redis**](#redis-options) | [Object] | Redis configuration options.
+[**Repo**](#repo-options) | [Object] | Repo Server configuration options.
 [**ResourceHealthChecks**](#resource-customizations) | [Empty] | Customizes resource health check behavior.
 [**ResourceIgnoreDifferences**](#resource-customizations) | [Empty] | Customizes resource ignore difference behavior.
 [**ResourceActions**](#resource-customizations) | [Empty] | Customizes resource action behavior.
@@ -84,10 +85,14 @@ Resources | [Empty] | The container compute resources.
 LogLevel | info | The log level to be used by the ArgoCD Application Controller component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Application Controller component. Valid options are text or json.
 ParallelismLimit | 10 | The kubectl parallelism limit to set for the controller (`--kubectl-parallelism-limit` flag)
-SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/cert"` path.
+SCMRootCAConfigMap (#add-tls-certificate-for-gitlab-scm-provider-to-applicationsets-controller) | [Empty] | The name of the config map that stores the Gitlab SCM Provider's TLS certificate which will be mounted on the ApplicationSet Controller at `"/app/tls/scm/"` path.
 Enabled|true|Flag to enable/disable the ApplicationSet Controller during ArgoCD installation.
 SourceNamespaces|[Empty]|List of namespaces other than control-plane namespace where appsets can be created.
 SCMProviders|[Empty]|List of allowed Source Code Manager (SCM) providers URL.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### ApplicationSet Controller Example
 
@@ -124,7 +129,7 @@ spec:
 
 ### Add Self signed TLS Certificate for Gitlab SCM Provider to ApplicationSets Controller
 
-ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can store the certificate in the config map and specify the config map name using `spec.applicationSet.SCMRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.SCMRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/cert`.
+ApplicationSetController added a new option `--scm-root-ca-path` and expects the self-signed TLS certificate to be mounted on the path specified and to be used for Gitlab SCM Provider and Gitlab Pull Request Provider. To set this option, you can create a ConfigMap named - 'argocd-appset-gitlab-scm-tls-certs-cm' and store the certificate in this config map. Specify the config map name in `spec.applicationSet.scmRootCAConfigMap` in ArgoCD CR. When the parameter `spec.applicationSet.scmRootCAConfigMap` is set in ArgoCD CR, the operator checks for ConfigMap in the same namespace as the ArgoCD instance and mounts the Certificate stored in ConfigMap to ApplicationSet Controller pods at the path `/app/tls/scm/`.
 
 Below example shows how a user can add scmRootCaPath to the ApplicationSet controller.
 ```yaml
@@ -136,8 +141,24 @@ metadata:
     example: applicationset
 spec:
   applicationSet:
-    SCMRootCAConfigMap: example-gitlab-scm-tls-cert
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 ```
+!!! important
+
+Please note that the key in the ConfigMap should be named 'cert', as this is used as the filename that is mounted. Other key names will not work due to an upstream bug that will be addressed later. Additionally, ensure that the ConfigMap is named argocd-appset-gitlab-scm-tls-certs-cm. Below is a sample ConfigMap that can be used to mount your certificate.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-appset-gitlab-scm-tls-certs-cm
+  namespace: test-1-32-appsets-scm-tls-mount
+data:
+  cert: |
+    -----BEGIN CERTIFICATE-----
+    ... (certificate contents) ...
+    -----END CERTIFICATE-----
+```    
 
 ## Config Management Plugins
 
@@ -181,6 +202,13 @@ Sharding.dynamicScalingEnabled | true | Whether to enable dynamic scaling of the
 Sharding.minShards | 1 | The minimum number of replicas of the ArgoCD Application Controller component. | Must be greater than 0 |
 Sharding.maxShards | 1 | The maximum number of replicas of the ArgoCD Application Controller component. | Must be greater than `Sharding.minShards` |
 Sharding.clustersPerShard | 1 | The number of clusters that need to be handles by each shard. In case the replica count has reached the maxShards, the shards will manage more than one cluster. | Must be greater than 0 |
+ExtraCommandArgs | [Empty] | Allows users to pass command line arguments to controller workload. They get added to default command line arguments provided by the operator. |  |
+InitContainers | [Empty] | List of init containers for the ArgoCD Application Controller component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Application Controller component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the ArgoCD Application Controller component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the ArgoCD Application Controller component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Controller Example
 
@@ -238,6 +266,10 @@ spec:
 !!! note
     In case the number of replicas required is less than the minShards the number of replicas will be set as minShards. Similarly, if the required number of replicas exceeds maxShards, the replica count will be set as maxShards.
 
+!!!note
+    After enabling the `dynamicScalingEnabled`, the argocd-controller instances will restart while scaling up or scaling down.
+
+
 The following example shows how to enable dynamic scaling of the ArgoCD Application Controller component.
 
 ```yaml
@@ -253,6 +285,73 @@ spec:
       enabled: true
       replicas: 5
 ```
+
+The following example shows how to configure initContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure extra command arguments for the ArgoCD Application Controller component.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  controller:
+    extraCommandArgs:
+    - --app-hard-resync
+    - --app-resync
+```
+
+!!! note
+    ExtraCommandArgs will not be added, if one of these commands is already part of the command with same or different value.
+
 
 ## Disable Admin
 
@@ -807,6 +906,7 @@ DisableTLSVerification | false | defines whether the redis server should be acce
 Image | `redis` | The container image for Redis. This overrides the `ARGOCD_REDIS_IMAGE` environment variable.
 Resources | [Empty] | The container compute resources.
 Version | 5.0.3 (SHA) | The tag to use with the Redis container image.
+Remote | "" | Specifies the remote URL of redis running in external clusters, also disables Redis component. This field is optional.
 
 ### Redis Example
 
@@ -847,6 +947,14 @@ LogFormat | text | The log format to be used by the ArgoCD Repo Server. Valid op
 ExecTimeout | 180 | Execution timeout in seconds for rendering tools (e.g. Helm, Kustomize)
 Env | [Empty] | Environment to set for the repository server workloads
 Replicas | [Empty] | The number of replicas for the ArgoCD Repo Server. Must be greater than or equal to 0.
+Volumes | [Empty] | Configure addition volumes for the repo server deployment. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the repo server deployment. This field is optional.
+InitContainers | [Empty] | List of init containers for the repo server deployment. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the repo server deployment. This field is optional.
+Enabled | true | Flag to enable repo server during ArgoCD installation.
+Remote | [Empty] | Specifies the remote URL of the repo server container. By default, it points to a local instance managed by the operator. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
 
 ### Pass Command Arguments To Repo Server
 
@@ -1199,6 +1307,7 @@ The following properties are available for configuring the Argo CD Server compon
 Name | Default | Description
 --- | --- | ---
 [Autoscale](#server-autoscale-options) | [Object] | Server autoscale configuration options.
+EnableRolloutsUI | [Empty] | It enables/disables the extension for Argo Rollouts UI in ArgoCD UI when set to true/false.
 [ExtraCommandArgs](#server-command-arguments) | [Empty] | List of arguments that will be added to the existing arguments set by the operator.
 [GRPC](#server-grpc-options) | [Object] | GRPC configuration options.
 Host | example-argocd | The hostname to use for Ingress/Route resources.
@@ -1210,7 +1319,14 @@ Replicas | [Empty] | The number of replicas for the ArgoCD Server. Must be great
 Service.Type | ClusterIP | The ServiceType to use for the Service resource.
 LogLevel | info | The log level to be used by the ArgoCD Server component. Valid options are debug, info, error, and warn.
 LogFormat | text | The log format to be used by the ArgoCD Server component. Valid options are text or json.
-Env | [Empty] | Environment to set for the server workloads
+Env | [Empty] | Environment to set for the server workloads.
+InitContainers | [Empty] | List of init containers for the ArgoCD Server component. This field is optional.
+SidecarContainers | [Empty] | List of sidecar containers for the ArgoCD Server component. This field is optional.
+Volumes | [Empty] | Configure addition volumes for the Argo CD server component. This field is optional.
+VolumeMounts | [Empty] | Configure addition volume mounts for the Argo CD server component. This field is optional.
+Annotations | [Empty] | Custom annotations to pods deployed by the operator
+Labels | [Empty] | Custom labels to pods deployed by the operator
+
 
 ### Server Autoscale Options
 
@@ -1342,6 +1458,53 @@ spec:
       wildcardPolicy: None
     service:
       type: ClusterIP
+```
+
+The following example shows how to configure initContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    initContainers:
+    - name: argocd-init
+      image: nginx:latest
+      imagePullPolicy: Always
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
+```
+
+The following example shows how to configure sidecarContainers for the ArgoCD Server component.
+
+```yaml
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+  labels:
+    example: controller
+spec:
+  server:
+    sidecarContainers:
+    - name: sidecar
+      image: busybox
+      resources:
+        limits:
+          cpu: 50m
+          memory: 64Mi
+        requests:
+          cpu: 10m
+          memory: 32Mi
 ```
 
 ## Status Badge Enabled

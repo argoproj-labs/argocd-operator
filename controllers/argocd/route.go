@@ -106,6 +106,7 @@ func (r *ReconcileArgoCD) reconcileRoutes(cr *argoproj.ArgoCD) error {
 func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 	route := newRouteWithSuffix("grafana", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
+		//nolint:staticcheck
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
 			return r.Client.Delete(context.TODO(), route)
@@ -114,6 +115,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		return nil // Route found, do nothing
 	}
 
+	//nolint:staticcheck
 	if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 		return nil // Grafana itself or Route not enabled, do nothing.
 	}
@@ -163,7 +165,10 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Prometheus.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Prometheus.Route.TLS
+		err := r.overrideRouteTLS(cr.Spec.Prometheus.Route.TLS, route, cr)
+		if err != nil {
+			return err
+		}
 	}
 
 	route.Spec.To.Kind = "Service"
@@ -236,10 +241,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 			TargetPort: intstr.FromString("https"),
 		}
 
-		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, &corev1.Secret{})
+		tlsSecret := &corev1.Secret{}
+		isTLSSecretFound := argoutil.IsObjectFound(r.Client, cr.Namespace, common.ArgoCDServerTLSSecretName, tlsSecret)
 		// Since Passthrough was the default policy in the previous versions of the operator, we don't want to
 		// break users who have already configured a TLS secret for Passthrough.
-		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && route.Spec.TLS != nil && route.Spec.TLS.Termination == routev1.TLSTerminationPassthrough {
+		// We continue with Passthrough if we find a TLS secret that was manually configured
+		// by the user and not by the OpenShift Service CA.
+		if cr.Spec.Server.Route.TLS == nil && isTLSSecretFound && !isCreatedByServiceCA(cr.Name, *tlsSecret) {
 			route.Spec.TLS = &routev1.TLSConfig{
 				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 				Termination:                   routev1.TLSTerminationPassthrough,
@@ -254,8 +262,13 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 
 	// Allow override of TLS options for the Route
 	if cr.Spec.Server.Route.TLS != nil {
-		route.Spec.TLS = cr.Spec.Server.Route.TLS
+		err := r.overrideRouteTLS(cr.Spec.Server.Route.TLS, route, cr)
+		if err != nil {
+			return err
+		}
 	}
+
+	log.Info(fmt.Sprintf("Using %s termination policy for the Server Route", string(route.Spec.TLS.Termination)))
 
 	route.Spec.To.Kind = "Service"
 	route.Spec.To.Name = nameWithSuffix("server", cr)
@@ -272,6 +285,30 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		return r.Client.Create(context.TODO(), route)
 	}
 	return r.Client.Update(context.TODO(), route)
+}
+
+// isCreatedByServiceCA checks if the secret was created by the OpenShift Service CA
+func isCreatedByServiceCA(crName string, secret corev1.Secret) bool {
+	serviceName := fmt.Sprintf("%s-%s", crName, "server")
+	serviceAnnFound := false
+	if secret.Annotations != nil {
+		value, ok := secret.Annotations["service.beta.openshift.io/originating-service-name"]
+		if ok && value == serviceName {
+			serviceAnnFound = true
+		}
+	}
+
+	if !serviceAnnFound {
+		return false
+	}
+
+	for _, ref := range secret.OwnerReferences {
+		if ref.Kind == "Service" && ref.Name == serviceName {
+			return true
+		}
+	}
+
+	return false
 }
 
 // reconcileApplicationSetControllerWebhookRoute will ensure that the ArgoCD Server Route is present.
@@ -324,21 +361,19 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	if cr.Spec.ApplicationSet.WebhookServer.Route.TLS != nil {
 		tls := &routev1.TLSConfig{}
 
+		// Set Certificate & Key
+		routeCopy := route.DeepCopy()
+		err := r.overrideRouteTLS(cr.Spec.ApplicationSet.WebhookServer.Route.TLS, routeCopy, cr)
+		if err != nil {
+			return err
+		}
+		tls = routeCopy.Spec.TLS
+
 		// Set Termination
 		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination != "" {
 			tls.Termination = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Termination
 		} else {
 			tls.Termination = routev1.TLSTerminationEdge
-		}
-
-		// Set Certificate
-		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate != "" {
-			tls.Certificate = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Certificate
-		}
-
-		// Set Key
-		if cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key != "" {
-			tls.Key = cr.Spec.ApplicationSet.WebhookServer.Route.TLS.Key
 		}
 
 		// Set CACertificate
@@ -432,4 +467,60 @@ func shortenHostname(hostname string) (string, error) {
 		}
 	}
 	return resultHostname, nil
+}
+
+// overrideRouteTLS modifies the Route's TLS settings to match the configurations specified in the ArgoCD CR.
+// It updates the Route's TLS configuration either by using the fields directly in the TLSConfig or by referencing
+// a Kubernetes TLS secret if provided via the ExternalCertificate field.
+func (r *ReconcileArgoCD) overrideRouteTLS(tls *routev1.TLSConfig, route *routev1.Route, cr *argoproj.ArgoCD) error {
+	route.Spec.TLS = tls.DeepCopy()
+
+	// Send an event when deprecated field key and certificate is used
+	if tls.Key != "" || tls.Certificate != "" {
+		// Emit event for each instance providing users with warning message for `.tls.key` & `tls.certificate` subfields if not emitted already
+		if currentInstanceEventEmissionStatus, ok := DeprecationEventEmissionTracker[cr.Namespace]; !ok || !currentInstanceEventEmissionStatus.TLSInsecureWarningEmitted {
+			err := argoutil.CreateEvent(r.Client, "Warning", "Insecure field Used", ".tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.", "InsecureFields", cr.ObjectMeta, cr.TypeMeta)
+			if err != nil {
+				return err
+			}
+
+			if !ok {
+				currentInstanceEventEmissionStatus = DeprecationEventEmissionStatus{TLSInsecureWarningEmitted: true}
+			} else {
+				currentInstanceEventEmissionStatus.TLSInsecureWarningEmitted = true
+			}
+			DeprecationEventEmissionTracker[cr.Namespace] = currentInstanceEventEmissionStatus
+		}
+
+		// These fields are deprecated in favor of using `.tls.externalCertificate` to reference a Kubernetes TLS secret.
+		log.Info("WARNING: .tls.key and .tls.certificate are insecure in ArgoCD CR and not recommended. Use .tls.externalCertificate to reference a TLS secret instead.")
+	}
+
+	// Populate the Route's `tls.key` and `tls.certificate` fields with data from the specified Kubernetes TLS secret.
+	// The secret must be of type `kubernetes.io/tls` and contain `tls.key` and `tls.crt` data.
+	// Currently, we map data from the secret referenced in `.tls.externalCertificate` to the Route object's `tls.key` and `tls.certificate` fields.
+	// This is necessary because the `route.spec.tls.externalCertificate` field is Technology Preview (TP) and not available on OCP versions below 4.14.
+	// TODO: Remove the custom logic below once the feature reaches GA and we stop supporting OCP < 4.14.
+	// For more details about the feature, see the OpenShift documentation:
+	// https://docs.openshift.com/container-platform/4.16/networking/routes/secured-routes.html#nw-ingress-route-secret-load-external-cert_secured-routes
+	if tls.ExternalCertificate != nil && tls.ExternalCertificate.Name != "" {
+		secret := &corev1.Secret{}
+		err := argoutil.FetchObject(r.Client, route.ObjectMeta.Namespace, tls.ExternalCertificate.Name, secret)
+		if err != nil {
+			return err
+		}
+		if secret.Type != corev1.SecretTypeTLS {
+			return fmt.Errorf("secret %s in namespace %s is not of type kubernetes.io/tls",
+				secret.ObjectMeta.Name, secret.ObjectMeta.Namespace)
+		}
+
+		// No need to perform further checks on the secret data, as Kubernetes will reject
+		// the TLS secret if it does not contain both `tls.key` and `tls.crt` keys.
+		route.Spec.TLS.Certificate = string(secret.Data[corev1.TLSCertKey])
+		route.Spec.TLS.Key = string(secret.Data[corev1.TLSPrivateKeyKey])
+	}
+	// explicitly set `ExternalCertificate` to nil for the actual Route objects to avoid issues on clusters.
+	route.Spec.TLS.ExternalCertificate = nil
+
+	return nil
 }

@@ -6,6 +6,8 @@ on:
       - 'release-*'
       - 'rhos-*'
   pull_request:
+    paths-ignore:
+      - "docs/**"
     branches:
       - 'master'
       - 'release-*'
@@ -30,7 +32,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: Restore go build cache
         uses: actions/cache@v4
@@ -75,7 +77,7 @@ jobs:
       - name: Setup Golang
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - name: GH actions workaround - Kill XSP4 process
         run: |
           sudo pkill mono || true
@@ -97,7 +99,7 @@ jobs:
           set -o pipefail
           make install generate fmt vet
           # Use tee to flush output to the log.  Other solutions like stdbuf don't work, not sure why.
-          REDIS_CONFIG_PATH="build/redis" go run ./main.go 2>&1 | tee /tmp/e2e-operator-run.log &
+          REDIS_CONFIG_PATH="build/redis" go run ./cmd/main.go 2>&1 | tee /tmp/e2e-operator-run.log &
       - name: Run tests
         run: |
           set -o pipefail

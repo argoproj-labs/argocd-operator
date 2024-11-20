@@ -38,14 +38,15 @@ spec:
       requests:
         cpu: 250m
         memory: 256Mi
-  dex:
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-      requests:
-        cpu: 250m
-        memory: 128Mi
+  sso:
+    dex:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
   redis:
     resources:
       limits:

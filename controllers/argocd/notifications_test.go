@@ -181,6 +181,9 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 					"ALL",
 				},
 			},
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{

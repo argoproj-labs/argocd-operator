@@ -38,7 +38,8 @@ import (
 )
 
 const (
-	ApplicationSetGitlabSCMTlsCertPath = "/app/tls/scm/cert"
+	ApplicationSetGitlabSCMTlsCertPath  = "/app/tls/scm/cert"
+	ApplicationSetGitlabSCMTlsMountPath = "/app/tls/scm/"
 )
 
 // getArgoApplicationSetCommand will return the command for the ArgoCD ApplicationSet component.
@@ -183,7 +184,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 	if sa != nil {
 		podSpec.ServiceAccountName = sa.ObjectMeta.Name
 	}
-	podSpec.Volumes = []corev1.Volume{
+
+	serverVolumes := []corev1.Volume{
 		{
 			Name: "ssh-known-hosts",
 			VolumeSource: corev1.VolumeSource{
@@ -227,6 +229,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			},
 		},
 	}
+	if cr.Spec.ApplicationSet.Volumes != nil {
+		serverVolumes = append(serverVolumes, cr.Spec.ApplicationSet.Volumes...)
+	}
+	podSpec.Volumes = serverVolumes
 	addSCMGitlabVolumeMount := false
 	if scmRootCAConfigMapName := getSCMRootCAConfigMapName(cr); scmRootCAConfigMapName != "" {
 		cm := newConfigMapWithName(scmRootCAConfigMapName, cr)
@@ -242,6 +248,16 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 					},
 				},
 			})
+		}
+	}
+
+	if cr.Spec.ApplicationSet.Annotations != nil {
+		deploy.Spec.Template.Annotations = cr.Spec.ApplicationSet.Annotations
+	}
+
+	if cr.Spec.ApplicationSet.Labels != nil {
+		for key, value := range cr.Spec.ApplicationSet.Labels {
+			deploy.Spec.Template.Labels[key] = value
 		}
 	}
 
@@ -261,7 +277,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			!reflect.DeepEqual(existing.Spec.Template.Labels, deploy.Spec.Template.Labels) ||
 			!reflect.DeepEqual(existing.Spec.Selector, deploy.Spec.Selector) ||
 			!reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) ||
-			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations)
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) ||
+			!reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].SecurityContext, deploy.Spec.Template.Spec.Containers[0].SecurityContext) ||
+			!reflect.DeepEqual(existing.Spec.Template.Annotations, deploy.Spec.Template.Annotations)
 
 		// If the Deployment already exists, make sure the values we care about are up-to-date
 		if deploymentsDifferent {
@@ -273,6 +291,9 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 			existing.Spec.Selector = deploy.Spec.Selector
 			existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
 			existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -306,6 +327,42 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 	// Environment specified in the CR take precedence over everything else
 	appSetEnv = argoutil.EnvMerge(appSetEnv, proxyEnvVars(), false)
 
+	// Default VolumeMounts for ApplicationSetController
+	serverVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "ssh-known-hosts",
+			MountPath: "/app/config/ssh",
+		},
+		{
+			Name:      "tls-certs",
+			MountPath: "/app/config/tls",
+		},
+		{
+			Name:      "gpg-keys",
+			MountPath: "/app/config/gpg/source",
+		},
+		{
+			Name:      "gpg-keyring",
+			MountPath: "/app/config/gpg/keys",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
+	}
+
+	// Optional extra VolumeMounts for ApplicationSetController
+	if cr.Spec.ApplicationSet.VolumeMounts != nil {
+		serverVolumeMounts = append(serverVolumeMounts, cr.Spec.ApplicationSet.VolumeMounts...)
+	}
+
+	if addSCMGitlabVolumeMount {
+		serverVolumeMounts = append(serverVolumeMounts, corev1.VolumeMount{
+			Name:      "appset-gitlab-scm-tls-cert",
+			MountPath: ApplicationSetGitlabSCMTlsMountPath,
+		})
+	}
+
 	container := corev1.Container{
 		Command:         r.getArgoApplicationSetCommand(cr),
 		Env:             appSetEnv,
@@ -313,28 +370,7 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 		ImagePullPolicy: corev1.PullAlways,
 		Name:            "argocd-applicationset-controller",
 		Resources:       getApplicationSetResources(cr),
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				Name:      "ssh-known-hosts",
-				MountPath: "/app/config/ssh",
-			},
-			{
-				Name:      "tls-certs",
-				MountPath: "/app/config/tls",
-			},
-			{
-				Name:      "gpg-keys",
-				MountPath: "/app/config/gpg/source",
-			},
-			{
-				Name:      "gpg-keyring",
-				MountPath: "/app/config/gpg/keys",
-			},
-			{
-				Name:      "tmp",
-				MountPath: "/tmp",
-			},
-		},
+		VolumeMounts:    serverVolumeMounts,
 		Ports: []corev1.ContainerPort{
 			{
 				ContainerPort: 7000,
@@ -354,13 +390,10 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 			AllowPrivilegeEscalation: boolPtr(false),
 			ReadOnlyRootFilesystem:   boolPtr(true),
 			RunAsNonRoot:             boolPtr(true),
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
-	}
-	if addSCMGitlabVolumeMount {
-		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      "appset-gitlab-scm-tls-cert",
-			MountPath: ApplicationSetGitlabSCMTlsCertPath,
-		})
 	}
 	return container
 }
@@ -757,25 +790,24 @@ func (r *ReconcileArgoCD) reconcileApplicationSetRoleBinding(cr *argoproj.ArgoCD
 }
 
 func getApplicationSetContainerImage(cr *argoproj.ArgoCD) string {
+
 	defaultImg, defaultTag := false, false
-
-	img := ""
-	tag := ""
-
-	// First pull from spec, if it exists
-	if cr.Spec.ApplicationSet != nil {
-		img = cr.Spec.ApplicationSet.Image
-		tag = cr.Spec.ApplicationSet.Version
-	}
-
-	// If spec is empty, use the defaults
+	img := cr.Spec.ApplicationSet.Image
 	if img == "" {
-		img = common.ArgoCDDefaultArgoImage
-		defaultImg = true
+		img = cr.Spec.Image
+		if img == "" {
+			img = common.ArgoCDDefaultArgoImage
+			defaultImg = true
+		}
 	}
+
+	tag := cr.Spec.ApplicationSet.Version
 	if tag == "" {
-		tag = common.ArgoCDDefaultArgoVersion
-		defaultTag = true
+		tag = cr.Spec.Version
+		if tag == "" {
+			tag = common.ArgoCDDefaultArgoVersion
+			defaultTag = true
+		}
 	}
 
 	// If an env var is specified then use that, but don't override the spec values (if they are present)

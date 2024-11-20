@@ -21,6 +21,8 @@ spec:
            allowPrivilegeEscalation: false
            readOnlyRootFilesystem: true 
            runAsNonRoot: true
+           seccompProfile:
+             type: RuntimeDefault 
       volumes:
       - name: manager-config
         configMap:

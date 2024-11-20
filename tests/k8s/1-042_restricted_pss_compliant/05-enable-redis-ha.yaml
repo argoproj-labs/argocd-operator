@@ -1,0 +1,9 @@
+# test will fail on clusters with less than 3 nodes
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: test-1-042-restricted-pss-compliant
+spec:
+  ha:
+    enabled: true

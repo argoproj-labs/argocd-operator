@@ -9,7 +9,7 @@ metadata:
   namespace: test-1-32-appsets-scm-tls-mount
 spec:
   applicationSet:
-    scmRootCAConfigMap: test-1-32-appsets-scm-tls-cm
+    scmRootCAConfigMap: argocd-appset-gitlab-scm-tls-certs-cm
 status:
   phase: Available
 ---
@@ -50,7 +50,7 @@ spec:
             name: gpg-keyring
           - mountPath: /tmp
             name: tmp
-          - mountPath: /app/tls/scm/cert
+          - mountPath: /app/tls/scm/
             name: appset-gitlab-scm-tls-cert
       volumes:
       - configMap:

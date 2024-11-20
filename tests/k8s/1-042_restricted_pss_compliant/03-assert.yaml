@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: test-1-042-restricted-pss-compliant
+status:
+  applicationController: Running
+  phase: Available
+  redis: Running
+  repo: Running
+  server: Running
+  #sso: Running  # due to bug in keycloak service code, status remains as Pending
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: test-1-042-restricted-pss-compliant

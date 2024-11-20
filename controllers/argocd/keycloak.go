@@ -21,6 +21,7 @@ import (
 	json "encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
@@ -236,6 +237,7 @@ func getKeycloakContainer(cr *argoproj.ArgoCD) corev1.Container {
 			{ContainerPort: 8443, Name: "https", Protocol: "TCP"},
 			{ContainerPort: 8888, Name: "ping", Protocol: "TCP"},
 		},
+		SecurityContext: restrictedContainerSecurityContext(),
 		ReadinessProbe: &corev1.Probe{
 			TimeoutSeconds:      240,
 			InitialDelaySeconds: 120,
@@ -627,6 +629,7 @@ func newKeycloakDeployment(cr *argoproj.ArgoCD) *k8sappsv1.Deployment {
 								{Name: "http", ContainerPort: httpPort},
 								{Name: "https", ContainerPort: portTLS},
 							},
+							SecurityContext: restrictedContainerSecurityContext(),
 							ReadinessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
 									HTTPGet: &corev1.HTTPGetAction{
@@ -1328,11 +1331,21 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
 	} else {
+		changed := false
 		// Handle Image upgrades
 		desiredImage := getKeycloakContainerImage(cr)
 		if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
 			existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+			changed = true
+		}
 
+		desiredSecurityContext := restrictedContainerSecurityContext()
+		if !reflect.DeepEqual(existingDC.Spec.Template.Spec.Containers[0].SecurityContext, desiredSecurityContext) {
+			existingDC.Spec.Template.Spec.Containers[0].SecurityContext = desiredSecurityContext
+			changed = true
+		}
+
+		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				return r.Client.Update(context.TODO(), existingDC)
 			})
@@ -1431,11 +1444,21 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 		log.Error(err, fmt.Sprintf("Keycloak Deployment not found or being created for ArgoCD %s in namespace %s",
 			cr.Name, cr.Namespace))
 	} else {
+		changed := false
 		// Handle Image upgrades
 		desiredImage := getKeycloakContainerImage(cr)
 		if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredImage {
 			existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredImage
+			changed = true
+		}
 
+		desiredSecurityContext := restrictedContainerSecurityContext()
+		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredSecurityContext) {
+			existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredSecurityContext
+			changed = true
+		}
+
+		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 				return r.Client.Update(context.TODO(), existingDeployment)
 			})
@@ -1490,4 +1513,19 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 	}
 
 	return nil
+}
+
+func restrictedContainerSecurityContext() *corev1.SecurityContext {
+	return &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{
+				"ALL",
+			},
+		},
+		AllowPrivilegeEscalation: boolPtr(false),
+		RunAsNonRoot:             boolPtr(true),
+		SeccompProfile: &corev1.SeccompProfile{
+			Type: "RuntimeDefault",
+		},
+	}
 }

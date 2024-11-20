@@ -37,18 +37,20 @@ nav:
     - OpenShift: install/openshift.md
     - Operator Lifecycle Manager: install/olm.md
     - Manual Installation: install/manual.md
-  - Usage: 
+  - Usage:
     - Basics: usage/basics.md
     - Config Management: usage/config_management_2.0.md
     - Custom Tooling: usage/customization.md
     - Deploy Resources to Different Namespaces: usage/deploy-to-different-namespaces.md
     - Export: usage/export.md
     - ExtraConfig: usage/extra-config.md
-    - High Availability: usage/ha.md
+    - High Availability:
+      - Redis: usage/ha/redis.md
+      - Repo Server: usage/ha/repo-server.md
     - Ingress: usage/ingress.md
     - Insights: usage/insights.md
     - Dex: usage/dex.md
-    - Keycloak: 
+    - Keycloak:
       - Kubernetes: usage/keycloak/kubernetes.md
       - OpenShift: usage/keycloak/openshift.md
     - Notifications: usage/notifications.md
@@ -57,14 +59,17 @@ nav:
     - Custom Roles: usage/custom_roles.md
     - Apps in Any Namespace: usage/apps-in-any-namespace.md
     - Appsets in Any Namespace: usage/appsets-in-any-namespace.md
+    - Custom labels and annotations: usage/custom_labels_annotations.md
   - Reference:
     - ArgoCD: reference/argocd.md
+    - ApplicationSet:
+        - Policies: reference/applicationSet.md
     - ArgoCDExport: reference/argocdexport.md
     - API Docs: reference/api.html.md
     - NotificationsConfiguration: reference/notificationsconfiguration.md
-  - Contributing: 
+  - Contributing:
       - Contributing: developer-guide/contributing.md
-      - Development: 
+      - Development:
           - Setup: developer-guide/development.md
           - OLM Environment: developer-guide/olm-env.md
           - OpenAPI: developer-guide/openapi.md

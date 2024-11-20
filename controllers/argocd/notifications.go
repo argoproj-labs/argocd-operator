@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -79,7 +78,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsController(cr *argoproj.ArgoCD) 
 func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.ArgoCD) error {
 
 	defaultNotificationsConfigurationCR := &v1alpha1.NotificationsConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
+		ObjectMeta: v1.ObjectMeta{
 			Name:      DefaultNotificationsConfigurationInstanceName,
 			Namespace: cr.Namespace,
 		},
@@ -394,6 +393,9 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 					"ALL",
 				},
 			},
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: "RuntimeDefault",
+			},
 		},
 		VolumeMounts: []corev1.VolumeMount{
 			{
@@ -473,6 +475,11 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
+		deploymentChanged = true
+	}
+
+	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
+		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
 		deploymentChanged = true
 	}
 

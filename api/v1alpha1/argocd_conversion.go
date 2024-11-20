@@ -13,7 +13,7 @@ var conversionLogger = ctrl.Log.WithName("conversion-webhook")
 
 // ConvertTo converts this (v1alpha1) ArgoCD to the Hub version (v1beta1).
 func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
-	conversionLogger.Info("v1alpha1 to v1beta1 conversion requested.")
+	conversionLogger.V(1).Info("v1alpha1 to v1beta1 conversion requested.")
 	dst := dstRaw.(*v1beta1.ArgoCD)
 
 	// ObjectMeta conversion
@@ -61,6 +61,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	//nolint:staticcheck
 	dst.Spec.Grafana = *ConvertAlphaToBetaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertAlphaToBetaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
@@ -94,6 +95,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*v1beta1.Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
+	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 
 	// Status conversion
 	dst.Status = v1beta1.ArgoCDStatus(src.Status)
@@ -103,7 +105,7 @@ func (src *ArgoCD) ConvertTo(dstRaw conversion.Hub) error {
 
 // ConvertFrom converts from the Hub version (v1beta1) to this (v1alpha1) version.
 func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
-	conversionLogger.Info("v1beta1 to v1alpha1 conversion requested.")
+	conversionLogger.V(1).Info("v1beta1 to v1alpha1 conversion requested.")
 
 	src := srcRaw.(*v1beta1.ArgoCD)
 
@@ -129,6 +131,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.ExtraConfig = src.Spec.ExtraConfig
 	dst.Spec.GATrackingID = src.Spec.GATrackingID
 	dst.Spec.GAAnonymizeUsers = src.Spec.GAAnonymizeUsers
+	//nolint:staticcheck
 	dst.Spec.Grafana = *ConvertBetaToAlphaGrafana(&src.Spec.Grafana)
 	dst.Spec.HA = *ConvertBetaToAlphaHA(&src.Spec.HA)
 	dst.Spec.HelpChatURL = src.Spec.HelpChatURL
@@ -162,6 +165,7 @@ func (dst *ArgoCD) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.Spec.Version = src.Spec.Version
 	dst.Spec.Banner = (*Banner)(src.Spec.Banner)
 	dst.Spec.DefaultClusterScopedRoleDisabled = src.Spec.DefaultClusterScopedRoleDisabled
+	dst.Spec.AggregatedClusterRoles = src.Spec.AggregatedClusterRoles
 
 	// Status conversion
 	dst.Status = ArgoCDStatus(src.Status)
@@ -259,10 +263,14 @@ func ConvertAlphaToBetaGrafana(src *ArgoCDGrafanaSpec) *v1beta1.ArgoCDGrafanaSpe
 	var dst *v1beta1.ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &v1beta1.ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   v1beta1.ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     v1beta1.ArgoCDRouteSpec(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
@@ -479,10 +487,14 @@ func ConvertBetaToAlphaGrafana(src *v1beta1.ArgoCDGrafanaSpec) *ArgoCDGrafanaSpe
 	var dst *ArgoCDGrafanaSpec
 	if src != nil {
 		dst = &ArgoCDGrafanaSpec{
-			Enabled: src.Enabled,
-			Host:    src.Host,
-			Image:   src.Image,
-			Ingress: ArgoCDIngressSpec(src.Ingress),
+			Enabled:   src.Enabled,
+			Host:      src.Host,
+			Image:     src.Image,
+			Ingress:   ArgoCDIngressSpec(src.Ingress),
+			Resources: src.Resources,
+			Route:     ArgoCDRouteSpec(src.Route),
+			Size:      src.Size,
+			Version:   src.Version,
 		}
 	}
 	return dst
