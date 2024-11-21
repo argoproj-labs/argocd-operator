@@ -9,6 +9,7 @@ rules:
   resources:
   - configmaps
   verbs:
+  - '*'
   - create
   - delete
   - get
@@ -19,12 +20,10 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps
   - endpoints
   - events
   - namespaces
   - persistentvolumeclaims
-  - pods
   - secrets
   - serviceaccounts
   - services
@@ -35,6 +34,12 @@ rules:
   - ""
   resources:
   - pods
+  verbs:
+  - '*'
+  - get
+- apiGroups:
+  - ""
+  resources:
   - pods/log
   verbs:
   - get
@@ -73,27 +78,12 @@ rules:
   resources:
   - applications
   - appprojects
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
   - argocdexports
   - argocdexports/finalizers
   - argocdexports/status
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
   - argocds
   - argocds/finalizers
   - argocds/status
-  verbs:
-  - '*'
-- apiGroups:
-  - argoproj.io
-  resources:
   - notificationsconfigurations
   - notificationsconfigurations/finalizers
   verbs:
@@ -161,11 +151,6 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - '*'
-  verbs:
-  - '*'
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - clusterrolebindings
   - clusterroles
   verbs:

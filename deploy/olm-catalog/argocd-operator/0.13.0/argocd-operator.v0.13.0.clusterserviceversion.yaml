@@ -247,7 +247,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2024-11-21T07:16:39Z"
+    createdAt: "2024-11-21T10:34:59Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -1683,6 +1683,7 @@ spec:
           resources:
           - configmaps
           verbs:
+          - '*'
           - create
           - delete
           - get
@@ -1693,12 +1694,10 @@ spec:
         - apiGroups:
           - ""
           resources:
-          - configmaps
           - endpoints
           - events
           - namespaces
           - persistentvolumeclaims
-          - pods
           - secrets
           - serviceaccounts
           - services
@@ -1709,6 +1708,12 @@ spec:
           - ""
           resources:
           - pods
+          verbs:
+          - '*'
+          - get
+        - apiGroups:
+          - ""
+          resources:
           - pods/log
           verbs:
           - get
@@ -1747,27 +1752,12 @@ spec:
           resources:
           - applications
           - appprojects
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocdexports
           - argocdexports/finalizers
           - argocdexports/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - argocds
           - argocds/finalizers
           - argocds/status
-          verbs:
-          - '*'
-        - apiGroups:
-          - argoproj.io
-          resources:
           - notificationsconfigurations
           - notificationsconfigurations/finalizers
           verbs:
@@ -1835,11 +1825,6 @@ spec:
           - rbac.authorization.k8s.io
           resources:
           - '*'
-          verbs:
-          - '*'
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
           - clusterrolebindings
           - clusterroles
           verbs:

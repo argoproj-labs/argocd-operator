@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -281,7 +281,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_statefulset_status_replicas{statefulset=\"%s\", namespace=\"%s\"} != kube_statefulset_status_replicas_ready{statefulset=\"%s\", namespace=\"%s\"} ", cr.Name+"-application-controller", cr.Namespace, cr.Name+"-application-controller", cr.Namespace),
 					},
-					For: "1m",
+					For: NewDuration("1m"),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -295,7 +295,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-server", cr.Namespace, cr.Name+"-server", cr.Namespace),
 					},
-					For: "1m",
+					For: NewDuration("1m"),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -309,7 +309,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-repo-server", cr.Namespace, cr.Name+"-repo-server", cr.Namespace),
 					},
-					For: "1m",
+					For: NewDuration("1m"),
 					Labels: map[string]string{
 						"severity": "critical",
 					},
@@ -323,7 +323,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-applicationset-controller", cr.Namespace, cr.Name+"-applicationset-controller", cr.Namespace),
 					},
-					For: "5m",
+					For: NewDuration("5m"),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -337,7 +337,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-dex-server", cr.Namespace, cr.Name+"-dex-server", cr.Namespace),
 					},
-					For: "5m",
+					For: NewDuration("5m"),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -351,7 +351,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-notifications-controller", cr.Namespace, cr.Name+"-notifications-controller", cr.Namespace),
 					},
-					For: "5m",
+					For: NewDuration("5m"),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -365,7 +365,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 						Type:   intstr.String,
 						StrVal: fmt.Sprintf("kube_deployment_status_replicas{deployment=\"%s\", namespace=\"%s\"} != kube_deployment_status_replicas_ready{deployment=\"%s\", namespace=\"%s\"} ", cr.Name+"-redis", cr.Namespace, cr.Name+"-redis", cr.Namespace),
 					},
-					For: "5m",
+					For: NewDuration("5m"),
 					Labels: map[string]string{
 						"severity": "warning",
 					},
@@ -394,4 +394,9 @@ func newPrometheusRule(namespace, alertRuleName string) *monitoringv1.Prometheus
 		Spec: monitoringv1.PrometheusRuleSpec{},
 	}
 	return promRule
+}
+
+func NewDuration(d string) *monitoringv1.Duration {
+	duration := monitoringv1.Duration(d)
+	return &duration
 }
