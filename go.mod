@@ -3,6 +3,8 @@ module github.com/argoproj-labs/argocd-operator
 go 1.22.0
 
 require (
+	// Pin github.com/argoproj/argo-cd/v2 to v2.12.3
+	// ref: https://github.com/argoproj-labs/argocd-operator/pull/1606#issuecomment-2490948356
 	github.com/argoproj/argo-cd/v2 v2.12.3
 	github.com/cert-manager/cert-manager v1.14.4
 	github.com/coreos/prometheus-operator v0.40.0
