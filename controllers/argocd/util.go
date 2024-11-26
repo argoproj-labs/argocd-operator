@@ -32,6 +32,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/argoproj/argo-cd/v2/util/glob"
+	"github.com/go-logr/logr"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -624,14 +625,14 @@ func loadTemplateFile(path string, params map[string]string) (string, error) {
 	tmpl, err := template.ParseFiles(path)
 	if err != nil {
 		log.Error(err, "unable to parse template")
-		return "", err
+		return "", fmt.Errorf("unable to parse template. error: %w", err)
 	}
 
 	buf := new(bytes.Buffer)
 	err = tmpl.Execute(buf, params)
 	if err != nil {
 		log.Error(err, "unable to execute template")
-		return "", err
+		return "", fmt.Errorf("unable to execute template. error: %w", err)
 	}
 	return buf.String(), nil
 }
@@ -1299,8 +1300,9 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDKeyPartOf: common.ArgoCDAppName}}
 	roles, err := k8sClient.RbacV1().Roles(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to list roles for namespace: %s", sourceNS))
-		return err
+		message := fmt.Sprintf("failed to list roles for namespace: %s", sourceNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Delete all the retrieved roles
@@ -1315,8 +1317,9 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 	// List all the roles bindings created for ArgoCD using the label selector
 	roleBindings, err := k8sClient.RbacV1().RoleBindings(sourceNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS))
-		return err
+		message := fmt.Sprintf("failed to list role bindings for namespace: %s", sourceNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Delete all the retrieved role bindings
@@ -1337,8 +1340,9 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{common.ArgoCDSecretTypeLabel: "cluster"}}
 	secrets, err := k8sClient.CoreV1().Secrets(ownerNS).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.Set(labelSelector.MatchLabels).String()})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS))
-		return err
+		message := fmt.Sprintf("failed to retrieve secrets for namespace: %s", ownerNS)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 	for _, secret := range secrets.Items {
 		if string(secret.Data["server"]) != common.ArgoCDDefaultServer {
@@ -1360,8 +1364,9 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 			// Update the secret with the updated list of namespaces
 			argoutil.LogResourceUpdate(log, &secret, "removing managed namespace", sourceNS)
 			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
-				log.Error(err, fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS))
-				return err
+				message := fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS)
+				log.Error(err, message)
+				return fmt.Errorf("%s error: %w", message, err)
 			}
 		}
 	}
@@ -1720,5 +1725,81 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 				source[key] = value
 			}
 		}
+	}
+}
+
+// updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
+func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
+
+	if changed {
+		// get the latest version of argocd instance before updating
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			return err
+		}
+
+		cr.Status.Conditions = newConditions
+
+		if err := k8sClient.Status().Update(ctx, cr); err != nil {
+			log.Error(err, "unable to update RolloutManager status condition")
+			return err
+		}
+	}
+	return nil
+}
+
+// insertOrUpdateConditionsInSlice is a generic function for inserting/updating metav1.Condition into a slice of []metav1.Condition
+func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
+
+	// Check if condition with same type is already set, if Yes then check if content is same,
+	// If content is not same update LastTransitionTime
+	index := -1
+	for i, Condition := range existingConditions {
+		if Condition.Type == newCondition.Type {
+			index = i
+			break
+		}
+	}
+
+	now := metav1.Now()
+
+	changed := false
+
+	if index == -1 {
+		newCondition.LastTransitionTime = now
+		existingConditions = append(existingConditions, newCondition)
+		changed = true
+
+	} else if existingConditions[index].Message != newCondition.Message ||
+		existingConditions[index].Reason != newCondition.Reason ||
+		existingConditions[index].Status != newCondition.Status {
+
+		newCondition.LastTransitionTime = now
+		existingConditions[index] = newCondition
+		changed = true
+	}
+
+	return changed, existingConditions
+
+}
+
+// createCondition returns Condition based on input provided.
+// 1. Returns Success condition if no error message is provided, all fields are default.
+// 2. If Message is provided, it returns Failed condition having all default fields except Message.
+func createCondition(message string) metav1.Condition {
+	if message == "" {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionType,
+			Reason:  argoproj.ArgoCDConditionReasonSuccess,
+			Message: "",
+			Status:  metav1.ConditionTrue,
+		}
+	}
+
+	return metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
+		Message: message,
+		Status:  metav1.ConditionFalse,
 	}
 }

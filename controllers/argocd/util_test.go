@@ -1173,3 +1173,156 @@ func TestRetainKubernetesData(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition(""), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition("some error"), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update error condition
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition("some other error"), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some other error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update success condition
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition(""), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestInsertOrUpdateConditionsInSlice_add_new_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	existingConditions := []metav1.Condition{}
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionTrue,
+		Reason:  "test reason",
+		Message: "test message",
+	}
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+
+	assert.True(t, changed)
+	assert.Len(t, conditions, 1)
+	assert.Equal(t, conditions[0].Type, newCondition.Type)
+	assert.Equal(t, conditions[0].Status, newCondition.Status)
+	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[0].Message, newCondition.Message)
+}
+
+func TestInsertOrUpdateConditionsInSlice_change_existing_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	existingConditions := []metav1.Condition{
+		{
+			Type:    argoproj.ArgoCDConditionType,
+			Status:  metav1.ConditionTrue,
+			Reason:  "test reason",
+			Message: "test message",
+		},
+	}
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionFalse,
+		Reason:  "Updated test reason",
+		Message: "Updated test message",
+	}
+
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+
+	assert.True(t, changed)
+	assert.Len(t, conditions, 1)
+	assert.Equal(t, conditions[0].Type, newCondition.Type)
+	assert.Equal(t, conditions[0].Status, newCondition.Status)
+	assert.Equal(t, conditions[0].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[0].Message, newCondition.Message)
+}
+
+func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	newCondition := metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Status:  metav1.ConditionTrue,
+		Reason:  "test reason",
+		Message: "test message",
+	}
+	unrelatedCondition := metav1.Condition{
+		Type:    "UnrelatedCondition",
+		Status:  metav1.ConditionFalse,
+		Reason:  "some reason",
+		Message: "some message",
+	}
+	existingConditions := []metav1.Condition{
+		unrelatedCondition,
+	}
+
+	changed, conditions := insertOrUpdateConditionsInSlice(newCondition, existingConditions)
+	assert.True(t, changed)
+	assert.Len(t, conditions, 2)
+
+	//Check that the unrelated condition is still present
+	assert.Equal(t, conditions[0].Type, unrelatedCondition.Type)
+	assert.Equal(t, conditions[0].Status, unrelatedCondition.Status)
+	assert.Equal(t, conditions[0].Reason, unrelatedCondition.Reason)
+	assert.Equal(t, conditions[0].Message, unrelatedCondition.Message)
+
+	//Check that the new condition was added
+	assert.Equal(t, conditions[1].Type, newCondition.Type)
+	assert.Equal(t, conditions[1].Status, newCondition.Status)
+	assert.Equal(t, conditions[1].Reason, newCondition.Reason)
+	assert.Equal(t, conditions[1].Message, newCondition.Message)
+}

@@ -998,18 +998,18 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDSecret.Name, Namespace: argoCDSecret.Namespace}, argoCDSecret)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("ArgoCD secret not found for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("ArgoCD secret not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(oAuthClientSecret)
 	argoutil.LogResourceUpdate(log, argoCDSecret, "updating client secret for keycloak oidc")
 	err = r.Client.Update(context.TODO(), argoCDSecret)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Create openshift OAuthClient
@@ -1068,38 +1068,36 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	argoCDCM := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoCDCM.Name, Namespace: argoCDCM.Namespace}, argoCDCM)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("ArgoCD configmap not found for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-
-		return err
+		message := fmt.Sprintf("ArgoCD configmap not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	argoCDCM.Data[common.ArgoCDKeyOIDCConfig] = string(o)
 	argoutil.LogResourceUpdate(log, argoCDCM, "updating oidc config with keycloak realm")
 	err = r.Client.Update(context.TODO(), argoCDCM)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Update RBAC for ArgoCD Instance.
 	argoRBACCM := newConfigMapWithName(common.ArgoCDRBACConfigMapName, cr)
 	err = r.Client.Get(context.TODO(), types.NamespacedName{Name: argoRBACCM.Name, Namespace: argoRBACCM.Namespace}, argoRBACCM)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("ArgoCD RBAC configmap not found for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-
-		return err
+		message := fmt.Sprintf("ArgoCD RBAC configmap not found for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	argoRBACCM.Data["scopes"] = "[groups,email]"
 	argoutil.LogResourceUpdate(log, argoRBACCM, "updating rbac scopes for keycloak")
 	err = r.Client.Update(context.TODO(), argoRBACCM)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	return nil
@@ -1116,9 +1114,9 @@ func handleKeycloakPodDeletion(dc *appsv1.DeploymentConfig) error {
 	// Initialize deployment config client.
 	dcClient, err := oappsv1client.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create apps client for Deployment config %s in namespace %s",
-			dc.Name, dc.Namespace))
-		return err
+		message := fmt.Sprintf("unable to create apps client for Deployment config %s in namespace %s", dc.Name, dc.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
@@ -1175,17 +1173,17 @@ func deleteKeycloakConfiguration(cr *argoproj.ArgoCD) error {
 func deleteKeycloakConfigForOpenShift(cr *argoproj.ArgoCD) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// Initialize template client.
 	templateclient, err := templatev1client.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create Template client for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("unable to create Template client for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	log.Info(fmt.Sprintf("Delete Template Instance for ArgoCD %s in namespace %s",
@@ -1214,9 +1212,9 @@ func deleteOAuthClient(cr *argoproj.ArgoCD) error {
 
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	// We use the foreground propagation policy to ensure that the garbage
@@ -1228,9 +1226,9 @@ func deleteOAuthClient(cr *argoproj.ArgoCD) error {
 	// Delete OAuthClient created for keycloak.
 	oauth, err := oauthclient.NewForConfig(cfg)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to create oAuth client for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("unable to create oAuth client for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 	log.Info(fmt.Sprintf("Delete OAuthClient for ArgoCD %s in namespace %s",
 		cr.Name, cr.Namespace))
@@ -1257,9 +1255,9 @@ func deleteKeycloakConfigForK8s(cr *argoproj.ArgoCD) error {
 
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("unable to get k8s config for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(cfg)
@@ -1387,9 +1385,9 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 			// Create a keycloak realm and publish.
 			response, err := createRealm(cfg)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
-					cr.Name, cr.Namespace))
-				return err
+				message := fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+				log.Error(err, message)
+				return fmt.Errorf("%s error: %w", message, err)
 			}
 
 			if response == successResponse {
@@ -1428,9 +1426,9 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 		// or when user requests to update the OIDC configuration through `.spec.sso.keycloak.rootCA`.
 		err = r.updateArgoCDConfiguration(cr, keycloakRouteURL)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
+			message := fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+			log.Error(err, message)
+			return fmt.Errorf("%s error: %w", message, err)
 		}
 	}
 
@@ -1442,9 +1440,9 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 
 	err := r.newKeycloakInstance(cr)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed creating keycloak instance for ArgoCD %s in Namespace %s",
-			cr.Name, cr.Namespace))
-		return err
+		message := fmt.Sprintf("Failed creating keycloak instance for ArgoCD %s in Namespace %s", cr.Name, cr.Namespace)
+		log.Error(err, message)
+		return fmt.Errorf("%s error: %w", message, err)
 	}
 
 	existingDeployment := &k8sappsv1.Deployment{
@@ -1507,9 +1505,9 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 			// Create a keycloak realm and publish.
 			response, err := createRealm(cfg)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s",
-					cr.Name, cr.Namespace))
-				return err
+				message := fmt.Sprintf("Failed posting keycloak realm configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+				log.Error(err, message)
+				return fmt.Errorf("%s error: %w", message, err)
 			}
 
 			if response == successResponse {
@@ -1529,9 +1527,9 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 		// or when user requests to update the OIDC configuration through `.spec.sso.keycloak.rootCA`.
 		err = r.updateArgoCDConfiguration(cr, kIngURL)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s",
-				cr.Name, cr.Namespace))
-			return err
+			message := fmt.Sprintf("Failed to update OIDC Configuration for ArgoCD %s in namespace %s", cr.Name, cr.Namespace)
+			log.Error(err, message)
+			return fmt.Errorf("%s error: %w", message, err)
 		}
 	}
 
