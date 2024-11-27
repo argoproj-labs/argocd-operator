@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-argocd-applicationset-controller
+spec:
+  template:
+    metadata:
+      labels:
+        example: basic
+    spec:
+      containers:
+        - image: "testimage:tag001"
+          name: argocd-applicationset-controller
+  selector:
+    matchLabels:
+      example: basic
