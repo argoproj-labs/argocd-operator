@@ -117,11 +117,26 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 	labelSelector, err := labels.Parse(r.LabelSelector)
 	if err != nil {
 		reqLogger.Info(fmt.Sprintf("error parsing the labelSelector '%s'.", labelSelector))
+
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
+
 		return reconcile.Result{}, err
 	}
+
 	// Match the value of labelSelector from ReconcileArgoCD to labels from the argocd instance
 	if !labelSelector.Matches(labels.Set(argocd.Labels)) {
 		reqLogger.Info(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector))
+
+		if error := updateStatusConditionOfArgoCD(ctx,
+			createCondition(fmt.Sprintf("the ArgoCD instance '%s' does not match the label selector '%s' and skipping for reconciliation", request.NamespacedName, r.LabelSelector)),
+			argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
+
 		return reconcile.Result{}, fmt.Errorf("error: failed to reconcile ArgoCD instance: '%s'", request.NamespacedName)
 	}
 
@@ -161,24 +176,49 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 
 		if argocd.IsDeletionFinalizerPresent() {
 			if err := r.deleteClusterResources(argocd); err != nil {
+				if error := updateStatusConditionOfArgoCD(ctx, createCondition(fmt.Sprintf("failed to delete ClusterResources: %v", err)), argocd, r.Client, log); error != nil {
+					log.Error(error, "unable to update status of ArgoCD")
+					return reconcile.Result{}, error
+				}
+
 				return reconcile.Result{}, fmt.Errorf("failed to delete ClusterResources: %w", err)
 			}
 
 			if isRemoveManagedByLabelOnArgoCDDeletion() {
 				if err := r.removeManagedByLabelFromNamespaces(argocd.Namespace); err != nil {
+					if error := updateStatusConditionOfArgoCD(ctx, createCondition(fmt.Sprintf("failed to remove label from namespace[%v], error: %v", argocd.Namespace, err)), argocd, r.Client, log); error != nil {
+						log.Error(error, "unable to update status of ArgoCD")
+						return reconcile.Result{}, error
+					}
+
 					return reconcile.Result{}, fmt.Errorf("failed to remove label from namespace[%v], error: %w", argocd.Namespace, err)
 				}
 			}
 
 			if err := r.removeUnmanagedSourceNamespaceResources(argocd); err != nil {
+				if error := updateStatusConditionOfArgoCD(ctx, createCondition(fmt.Sprintf("failed to remove resources from sourceNamespaces, error: %v", err)), argocd, r.Client, log); error != nil {
+					log.Error(error, "unable to update status of ArgoCD")
+					return reconcile.Result{}, error
+				}
+
 				return reconcile.Result{}, fmt.Errorf("failed to remove resources from sourceNamespaces, error: %w", err)
 			}
 
 			if err := r.removeUnmanagedApplicationSetSourceNamespaceResources(argocd); err != nil {
+				if error := updateStatusConditionOfArgoCD(ctx, createCondition(fmt.Sprintf("failed to remove resources from applicationSetSourceNamespaces, error: %v", err)), argocd, r.Client, log); error != nil {
+					log.Error(error, "unable to update status of ArgoCD")
+					return reconcile.Result{}, error
+				}
+
 				return reconcile.Result{}, fmt.Errorf("failed to remove resources from applicationSetSourceNamespaces, error: %w", err)
 			}
 
 			if err := r.removeDeletionFinalizer(argocd); err != nil {
+				if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+					log.Error(error, "unable to update status of ArgoCD")
+					return reconcile.Result{}, error
+				}
+
 				return reconcile.Result{}, err
 			}
 
@@ -186,38 +226,73 @@ func (r *ReconcileArgoCD) Reconcile(ctx context.Context, request ctrl.Request) (
 			// is created in the same namespace in the future, that instance is appropriately tracked
 			delete(DeprecationEventEmissionTracker, argocd.Namespace)
 		}
+
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(""), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
 		return reconcile.Result{}, nil
 	}
 
 	if !argocd.IsDeletionFinalizerPresent() {
 		if err := r.addDeletionFinalizer(argocd); err != nil {
+			if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+				log.Error(error, "unable to update status of ArgoCD")
+				return reconcile.Result{}, error
+			}
+
 			return reconcile.Result{}, err
 		}
 	}
 
 	// get the latest version of argocd instance before reconciling
 	if err = r.Client.Get(ctx, request.NamespacedName, argocd); err != nil {
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
 		return reconcile.Result{}, err
 	}
 
 	if err = r.setManagedNamespaces(argocd); err != nil {
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
 		return reconcile.Result{}, err
 	}
 
 	if err = r.setManagedSourceNamespaces(argocd); err != nil {
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
 		return reconcile.Result{}, err
 	}
 
 	if err = r.setManagedApplicationSetSourceNamespaces(argocd); err != nil {
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
+
 		return reconcile.Result{}, err
 	}
 
 	if err := r.reconcileResources(argocd); err != nil {
 		// Error reconciling ArgoCD sub-resources - requeue the request.
+		if error := updateStatusConditionOfArgoCD(ctx, createCondition(err.Error()), argocd, r.Client, log); error != nil {
+			log.Error(error, "unable to update status of ArgoCD")
+			return reconcile.Result{}, error
+		}
 		return reconcile.Result{}, err
 	}
 
 	// Return and don't requeue
+	if error := updateStatusConditionOfArgoCD(ctx, createCondition(""), argocd, r.Client, log); error != nil {
+		log.Error(error, "unable to update status of ArgoCD")
+		return reconcile.Result{}, error
+	}
 	return reconcile.Result{}, nil
 }
 

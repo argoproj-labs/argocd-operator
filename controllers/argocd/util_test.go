@@ -1094,3 +1094,75 @@ func TestReconcileArgoCD_reconcileDexOAuthClientSecret(t *testing.T) {
 	}
 	assert.True(t, tokenExists, "Dex is enabled but unable to create oauth client secret")
 }
+
+func TestUpdateStatusConditionOfArgoCD_Success(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition(""), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
+
+func TestUpdateStatusConditionOfArgoCD_Fail(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	ctx := context.Background()
+	a := makeTestArgoCD(deletedAt(time.Now()))
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	argocd := argoproj.ArgoCD{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-rm-1",
+			Namespace: "test-ns-1",
+		},
+	}
+
+	assert.NoError(t, createNamespace(r, argocd.Namespace, ""))
+	assert.NoError(t, r.Client.Create(ctx, &argocd))
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition("some error"), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update error condition
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition("some other error"), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "some other error")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	// Update success condition
+	assert.NoError(t, updateStatusConditionOfArgoCD(ctx, createCondition(""), &argocd, r.Client, log))
+
+	assert.Equal(t, argocd.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, argocd.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, argocd.Status.Conditions[0].Message, "")
+	assert.Equal(t, argocd.Status.Conditions[0].Status, metav1.ConditionTrue)
+}

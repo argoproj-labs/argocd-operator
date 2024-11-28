@@ -52,6 +52,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1663,4 +1664,80 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 		host = hostname
 	}
 	return host, nil
+}
+
+// updateStatusConditionOfArgoCD calls Set Condition of ArgoCD status
+func updateStatusConditionOfArgoCD(ctx context.Context, condition metav1.Condition, cr *argoproj.ArgoCD, k8sClient client.Client, log logr.Logger) error {
+	changed, newConditions := insertOrUpdateConditionsInSlice(condition, cr.Status.Conditions)
+
+	if changed {
+		// get the latest version of argocd instance before updating
+		if err := k8sClient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, cr); err != nil {
+			return err
+		}
+
+		cr.Status.Conditions = newConditions
+
+		if err := k8sClient.Status().Update(ctx, cr); err != nil {
+			log.Error(err, "unable to update RolloutManager status condition")
+			return err
+		}
+	}
+	return nil
+}
+
+// insertOrUpdateConditionsInSlice is a generic function for inserting/updating metav1.Condition into a slice of []metav1.Condition
+func insertOrUpdateConditionsInSlice(newCondition metav1.Condition, existingConditions []metav1.Condition) (bool, []metav1.Condition) {
+
+	// Check if condition with same type is already set, if Yes then check if content is same,
+	// If content is not same update LastTransitionTime
+	index := -1
+	for i, Condition := range existingConditions {
+		if Condition.Type == newCondition.Type {
+			index = i
+			break
+		}
+	}
+
+	now := metav1.Now()
+
+	changed := false
+
+	if index == -1 {
+		newCondition.LastTransitionTime = now
+		existingConditions = append(existingConditions, newCondition)
+		changed = true
+
+	} else if existingConditions[index].Message != newCondition.Message ||
+		existingConditions[index].Reason != newCondition.Reason ||
+		existingConditions[index].Status != newCondition.Status {
+
+		newCondition.LastTransitionTime = now
+		existingConditions[index] = newCondition
+		changed = true
+	}
+
+	return changed, existingConditions
+
+}
+
+// createCondition returns Condition based on input provided.
+// 1. Returns Success condition if no error message is provided, all fields are default.
+// 2. If Message is provided, it returns Failed condition having all default fields except Message.
+func createCondition(message string) metav1.Condition {
+	if message == "" {
+		return metav1.Condition{
+			Type:    argoproj.ArgoCDConditionType,
+			Reason:  argoproj.ArgoCDConditionReasonSuccess,
+			Message: "",
+			Status:  metav1.ConditionTrue,
+		}
+	}
+
+	return metav1.Condition{
+		Type:    argoproj.ArgoCDConditionType,
+		Reason:  argoproj.ArgoCDConditionReasonErrorOccurred,
+		Message: message,
+		Status:  metav1.ConditionFalse,
+	}
 }
