@@ -1,0 +1,7 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: example-argocd
+spec:
+  controller:
+    respectRBAC: normal
