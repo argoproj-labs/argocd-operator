@@ -1664,3 +1664,27 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 	}
 	return host, nil
 }
+
+// UseApplicationController determines whether Application Controller resources should be created and configured or not
+func UseApplicationController(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDApplicationControllerComponent && cr.Spec.Controller.Enabled != nil {
+		return *cr.Spec.Controller.Enabled
+	}
+	return true
+}
+
+// UseRedis determines whether Redis resources should be created and configured or not
+func UseRedis(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDRedisComponent && cr.Spec.Redis.Enabled != nil {
+		return *cr.Spec.Redis.Enabled
+	}
+	return true
+}
+
+// UseServer determines whether ArgoCD Server resources should be created and configured or not
+func UseServer(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDServerComponent && cr.Spec.Server.Enabled != nil {
+		return *cr.Spec.Server.Enabled
+	}
+	return true
+}

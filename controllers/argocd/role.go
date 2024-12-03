@@ -144,9 +144,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			roles = append(roles, role)
 
-			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
-
-				continue // Dex installation not requested, do nothing
+			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) ||
+				!UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
+				continue // Component installation is not requested, do nothing
 			}
 
 			// Only set ownerReferences for roles in same namespace as ArgoCD CR
@@ -161,6 +161,12 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				return nil, err
 			}
 			continue
+		} else {
+			if !UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
+				if err := r.Client.Delete(context.TODO(), role); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		// Delete the existing default role if custom role is specified
