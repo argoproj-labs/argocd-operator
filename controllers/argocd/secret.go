@@ -361,9 +361,9 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 			if actual != expected {
 				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
 				if changed {
-					expected += ", "
+					explanation += ", "
 				}
-				expected += "argo dex secret"
+				explanation += "argo dex secret"
 				changed = true
 			}
 		}
