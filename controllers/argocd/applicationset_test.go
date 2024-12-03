@@ -1032,6 +1032,15 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		"bar",
 	}
 
+	wantCmd := []string{
+		"entrypoint.sh",
+		"argocd-applicationset-controller",
+		"--argocd-repo-server",
+		"foo.scv.cluster.local:6379",
+		"--loglevel",
+		"info",
+	}
+
 	deployment := &appsv1.Deployment{}
 	assert.NoError(t, r.reconcileApplicationSetController(a))
 
@@ -1082,7 +1091,7 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.ApplicationSet.ExtraCommandArgs = []string{}
@@ -1097,6 +1106,32 @@ func TestArgoCDApplicationSetCommand(t *testing.T) {
 		deployment))
 
 	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When ExtraCommandArgs contains a non-duplicate argument along with a duplicate
+	a.Spec.ApplicationSet.ExtraCommandArgs = []string{
+		"--foo",
+		"bar",
+		"--ping",
+		"pong",
+		"test",
+		"--newarg", // Non-duplicate argument
+		"newvalue",
+		"--newarg", // Duplicate argument passing at once
+		"newvalue",
+	}
+
+	assert.NoError(t, r.reconcileApplicationSetController(a))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-applicationset-controller",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Non-duplicate argument "--newarg" should be added, duplicate "--newarg" which is added twice is ignored
+	cmd = append(cmd, "--newarg", "newvalue")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 }
 
 func TestArgoCDApplicationSetEnv(t *testing.T) {
