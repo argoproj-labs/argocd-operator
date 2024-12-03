@@ -428,41 +428,70 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !(cr.Spec.HA.Enabled && cr.Spec.Redis.IsEnabled()) {
 			// StatefulSet exists but either HA or component enabled flag has been set to false, delete the StatefulSet
+			var explanation string
+			if !cr.Spec.HA.Enabled {
+				explanation = "ha is disabled"
+			} else {
+				explanation = "redis is disabled"
+			}
+			argoutil.LogResourceDeletion(log, existing, explanation)
 			return r.Client.Delete(context.TODO(), existing)
 		}
 
 		desiredImage := getRedisHAContainerImage(cr)
 		changed := false
-		updateNodePlacementStateful(existing, ss, &changed)
+		explanation := ""
+		updateNodePlacementStateful(existing, ss, &changed, &explanation)
 		for i, container := range existing.Spec.Template.Spec.Containers {
 			if container.Image != desiredImage {
 				existing.Spec.Template.Spec.Containers[i].Image = getRedisHAContainerImage(cr)
 				existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' image", container.Name)
 				changed = true
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Resources, existing.Spec.Template.Spec.Containers[i].Resources) {
 				existing.Spec.Template.Spec.Containers[i].Resources = ss.Spec.Template.Spec.Containers[i].Resources
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' resources", container.Name)
 				changed = true
 			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].SecurityContext, existing.Spec.Template.Spec.Containers[i].SecurityContext) {
 				existing.Spec.Template.Spec.Containers[i].SecurityContext = ss.Spec.Template.Spec.Containers[i].SecurityContext
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' security context", container.Name)
 				changed = true
 			}
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
 			existing.Spec.Template.Spec.InitContainers[0].Resources = ss.Spec.Template.Spec.InitContainers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += fmt.Sprintf("init container '%s' resources", existing.Spec.Template.Spec.InitContainers[0].Name)
 			changed = true
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].SecurityContext, existing.Spec.Template.Spec.InitContainers[0].SecurityContext) {
 			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = ss.Spec.Template.Spec.InitContainers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += fmt.Sprintf("init container '%s' security context", existing.Spec.Template.Spec.InitContainers[0].Name)
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 
@@ -486,6 +515,7 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, ss)
 	return r.Client.Create(context.TODO(), ss)
 }
 
@@ -738,6 +768,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 	invalidImagePod := containsInvalidImage(cr, r)
 	if invalidImagePod {
+		argoutil.LogResourceDeletion(log, ss, "one or more pods has an invalid image")
 		if err := r.Client.Delete(context.TODO(), ss); err != nil {
 			return err
 		}
@@ -758,55 +789,89 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	existing := newStatefulSetWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Controller.IsEnabled() {
-			log.Info("Existing application controller found but should be disabled. Deleting Application Controller")
 			// Delete existing deployment for Application Controller, if any ..
+			argoutil.LogResourceDeletion(log, existing, "application controller is disabled")
 			return r.Client.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
+		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
 		desiredCommand := getArgoApplicationControllerCommand(cr, useTLSForRedis)
 		if isRepoServerTLSVerificationRequested(cr) {
 			desiredCommand = append(desiredCommand, "--repo-server-strict-tls")
 		}
-		updateNodePlacementStateful(existing, ss, &changed)
+		updateNodePlacementStateful(existing, ss, &changed, &explanation)
 		if !reflect.DeepEqual(desiredCommand, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = desiredCommand
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container command"
 			changed = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers, ss.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			ss.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = ss.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = ss.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = ss.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = ss.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 		if !reflect.DeepEqual(ss.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = ss.Spec.Replicas
+			if changed {
+				explanation += ", "
+			}
+			explanation += "replicas"
 			changed = true
 		}
 
@@ -814,6 +879,10 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				ss.Spec.Template.Spec.Containers[1:]...)
+			if changed {
+				explanation += ", "
+			}
+			explanation += "additional containers"
 			changed = true
 		}
 
@@ -823,14 +892,23 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "annotations"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = ss.Spec.Template.Labels
+			if changed {
+				explanation += ", "
+			}
+			explanation += "labels"
 			changed = true
 		}
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 
@@ -845,6 +923,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	// Delete existing deployment for Application Controller, if any ..
 	deploy := newDeploymentWithSuffix("application-controller", "application-controller", cr)
 	if argoutil.IsObjectFound(r.Client, deploy.Namespace, deploy.Name, deploy) {
+		argoutil.LogResourceDeletion(log, deploy, "application controller is configured using stateful set, not deployment")
 		if err := r.Client.Delete(context.TODO(), deploy); err != nil {
 			return err
 		}
@@ -853,6 +932,7 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	if err := controllerutil.SetControllerReference(cr, ss, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, ss)
 	return r.Client.Create(context.TODO(), ss)
 }
 
@@ -875,17 +955,26 @@ func (r *ReconcileArgoCD) triggerStatefulSetRollout(sts *appsv1.StatefulSet, key
 	}
 
 	sts.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	argoutil.LogResourceUpdate(log, sts, "to trigger rollout")
 	return r.Client.Update(context.TODO(), sts)
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool) {
+func updateNodePlacementStateful(existing *appsv1.StatefulSet, ss *appsv1.StatefulSet, changed *bool, explanation *string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, ss.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = ss.Spec.Template.Spec.NodeSelector
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "node selector"
 		*changed = true
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, ss.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = ss.Spec.Template.Spec.Tolerations
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "tolerations"
 		*changed = true
 	}
 }

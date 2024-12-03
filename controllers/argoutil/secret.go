@@ -77,6 +77,7 @@ func CreateTLSSecret(client client.Client, name string, namespace string, data m
 		Type: corev1.SecretTypeTLS,
 		Data: data,
 	}
+	LogResourceCreation(log, &secret)
 	return client.Create(context.TODO(), &secret)
 }
 
@@ -88,5 +89,6 @@ func CreateSecret(client client.Client, name string, namespace string, data map[
 		},
 		Data: data,
 	}
+	LogResourceCreation(log, &secret)
 	return client.Create(context.TODO(), &secret)
 }

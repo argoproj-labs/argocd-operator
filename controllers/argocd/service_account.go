@@ -120,7 +120,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 	if exists {
 		if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
 			// Delete any existing Service Account created for Dex since dex is disabled
-			log.Info("deleting the existing Dex service account because dex uninstallation requested")
+			argoutil.LogResourceDeletion(log, sa, "dex is being uninstalled")
 			return sa, r.Client.Delete(context.TODO(), sa)
 		}
 		return sa, nil
@@ -130,8 +130,7 @@ func (r *ReconcileArgoCD) reconcileServiceAccount(name string, cr *argoproj.Argo
 		return nil, err
 	}
 
-	log.Info(fmt.Sprintf("creating serviceaccount %s for Argo CD instance %s in namespace %s", sa.Name, cr.Name, cr.Namespace))
-
+	argoutil.LogResourceCreation(log, sa)
 	err := r.Client.Create(context.TODO(), sa)
 	if err != nil {
 		return nil, err

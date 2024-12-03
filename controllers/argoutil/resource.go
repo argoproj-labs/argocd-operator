@@ -17,6 +17,7 @@ package argoutil
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +29,7 @@ import (
 	argoprojv1alpha1 "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
+	"github.com/go-logr/logr"
 )
 
 // AppendStringMap will append the map `add` to the given map `src` and return the result.
@@ -70,6 +72,9 @@ func CreateEvent(client client.Client, eventType, action, message, reason string
 	event.CreationTimestamp = metav1.Now()
 	event.FirstTimestamp = event.CreationTimestamp
 	event.LastTimestamp = event.CreationTimestamp
+
+	explanation := fmt.Sprintf("involved object: '%s %s/%s', action: '%s', reason: '%s'", typeMeta.Kind, objectMeta.Namespace, objectMeta.Name, action, reason)
+	LogResourceCreation(log, event, explanation)
 	return client.Create(context.TODO(), event)
 }
 
@@ -121,4 +126,45 @@ func AnnotationsForCluster(cr *argoproj.ArgoCD) map[string]string {
 		annotations[key] = val
 	}
 	return annotations
+}
+
+func LogResourceCreation(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Creating", object, explanations...)
+}
+
+func LogResourceUpdate(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Updating", object, explanations...)
+}
+
+func LogResourceDeletion(log logr.Logger, object metav1.Object, explanations ...string) {
+	LogResourceAction(log, "Deleting", object, explanations...)
+}
+
+func LogResourceAction(log logr.Logger, action string, object metav1.Object, explanations ...string) {
+	typeName := reflect.TypeOf(object).String()
+	pos := strings.LastIndex(typeName, ".")
+	if pos >= 0 {
+		typeName = typeName[pos+1:]
+	}
+
+	objectName := object.GetName()
+	if len(objectName) == 0 {
+		objectName = object.GetGenerateName() + "<to-be-generated>"
+	}
+
+	var msg string
+	if len(object.GetNamespace()) == 0 {
+		msg = fmt.Sprintf("%s %s '%s'", action, typeName, objectName)
+	} else {
+		msg = fmt.Sprintf("%s %s '%s/%s'", action, typeName, object.GetNamespace(), objectName)
+	}
+
+	if len(explanations) > 0 {
+		msg += " -"
+		for s := range explanations {
+			msg += " " + explanations[s]
+		}
+	}
+
+	log.Info(msg)
 }
