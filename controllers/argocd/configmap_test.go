@@ -1012,6 +1012,53 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 }
 
+func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Controller.RespectRBAC = "normal"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+
+	if c := cm.Data["resource.respectRBAC"]; c != "normal" {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
+	}
+
+	// update config
+	a.Spec.Controller.RespectRBAC = "strict"
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+	if c := cm.Data["resource.respectRBAC"]; c != "strict" {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
+	}
+
+	// update config
+	a.Spec.Controller.RespectRBAC = ""
+
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
+	if c := cm.Data["resource.respectRBAC"]; c != "" {
+		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
+	}
+}
+
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
 

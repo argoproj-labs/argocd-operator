@@ -134,6 +134,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// RespectRBAC restricts controller from discovering/syncing specific resources, Defaults is empty if not configured. Valid options are strict and normal.
+	RespectRBAC string `json:"respectRBAC,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
