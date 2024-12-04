@@ -1307,6 +1307,22 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -1316,7 +1332,35 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When ExtraCommandArgs contains a non-duplicate argument along with a duplicate
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+		"--logformat", // Duplicate flag and value
+		"text",
+		"--newarg", // Non-duplicate argument
+		"newvalue",
+		"--newarg", // Duplicate argument passing at once
+		"newvalue",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Non-duplicate argument "--newarg" should be added, duplicate "--newarg" which is added twice is ignored
+	cmd = append(cmd, "--newarg", "newvalue")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Server.ExtraCommandArgs = []string{}

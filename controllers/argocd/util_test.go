@@ -582,11 +582,16 @@ func TestGetArgoApplicationControllerCommand(t *testing.T) {
 		{
 			"overriding default argument using extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{"--operation-processors", "15"})},
-			defaultResult,
+			operationProcesorsChangedResult("15"),
 		},
 		{
 			"configured empty extraCommandArgs",
 			[]argoCDOpt{extraCommandArgs([]string{})},
+			defaultResult,
+		},
+		{
+			"configured extraCommandArgs with duplicate values",
+			[]argoCDOpt{extraCommandArgs([]string{"--status-processors", "20"})},
 			defaultResult,
 		},
 	}
