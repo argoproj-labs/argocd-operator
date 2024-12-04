@@ -13,6 +13,7 @@ Name | Default | Description
 --- | --- | ---
 [**ApplicationInstanceLabelKey**](#application-instance-label-key) | `mycompany.com/appname` |  The metadata.label key name where Argo CD injects the app name as a tracking label.
 [**ApplicationSet**](#applicationset-controller-options) | [Object] | ApplicationSet controller configuration options.
+[**Banner**](#banner) | [Object] | Add a UI banner message.
 [**ConfigManagementPlugins**](#config-management-plugins) | [Empty] | Configuration to add a config management plugin.
 [**Controller**](#controller-options) | [Object] | Argo CD Application Controller options.
 [**DisableAdmin**](#disable-admin) | `false` | Disable the admin user.
@@ -48,7 +49,6 @@ Name | Default | Description
 [**TLS**](#tls-options) | [Object] | TLS configuration options.
 [**UsersAnonymousEnabled**](#users-anonymous-enabled) | `true` | Enable anonymous user access.
 [**Version**](#version) | v2.4.0 (SHA) | The tag to use with the container image for all Argo CD components.
-[**Banner**](#banner) | [Object] | Add a UI banner message.
 
 ## Application Instance Label Key
 
@@ -1781,6 +1781,8 @@ Name | Default | Description
 --- | --- | ---
 Banner.Content | [Empty] | The banner message content (required if a banner should be displayed).
 Banner.URL | [Empty] | The banner message link URL (optional).
+Banner.Permanent | false | Defines if the banner is sticky (permanent)
+Banner.position | "top" | The banner massage's position "top", "both" or "bottom"
 
 ### Banner Example
 The following example enables a UI banner with message content and URL.
@@ -1796,4 +1798,6 @@ spec:
   banner:
     content: "Custom Styles - Banners"
     url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/custom-styles/#banners"
+    permanent: true
+    position: "both"
 ```
