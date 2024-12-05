@@ -21,7 +21,7 @@ Install the OLM components manually. If you already have OLM installed, skip to 
 
 Either
 
-- install OLM from here: https://github.com/operator-framework/operator-lifecycle-manager/releases
+- install OLM from [here](https://github.com/operator-framework/operator-lifecycle-manager/releases)
 
 or
 
