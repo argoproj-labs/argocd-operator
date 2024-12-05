@@ -1688,3 +1688,31 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 	}
 	return true
 }
+
+// addKubernetesData checks for any Kubernetes-specific labels or annotations
+// in the live object and updates the source object to ensure critical metadata
+// (like scheduling, topology, or lifecycle information) is retained.
+// This helps avoid loss of important Kubernetes-managed metadata during updates.
+func addKubernetesData(source map[string]string, live map[string]string) map[string]string {
+
+	// List of Kubernetes-specific substrings (wildcard match)
+	patterns := []string{
+		"*kubernetes.io*",
+		"*k8s.io*",
+		"*openshift.io*",
+	}
+
+	for key, value := range live {
+		found := glob.MatchStringInList(patterns, key, glob.GLOB)
+		if found {
+			// Don't override values already present in the source object.
+			// This ensures users have control over Kubernetes-managed data
+			// if they have intentionally set or modified these values in the source object.
+			if _, ok := source[key]; !ok {
+				source[key] = value
+			}
+		}
+	}
+
+	return source
+}

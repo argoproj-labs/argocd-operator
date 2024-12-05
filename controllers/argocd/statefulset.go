@@ -71,6 +71,7 @@ func newStatefulSetWithName(name string, component string, cr *argoproj.ArgoCD) 
 				Labels: map[string]string{
 					common.ArgoCDKeyName: name,
 				},
+				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
 				NodeSelector: common.DefaultNodeSelector(),
@@ -743,7 +744,9 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 	}
 
 	if cr.Spec.Controller.Annotations != nil {
-		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
+		for key, value := range cr.Spec.Controller.Annotations {
+			ss.Spec.Template.Annotations[key] = value
+		}
 	}
 
 	if cr.Spec.Controller.Labels != nil {
@@ -814,15 +817,15 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 			changed = true
 		}
 
-		ss.Spec.Template.Annotations = cr.Spec.Controller.Annotations
+		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		ss.Spec.Template.Labels = addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
+		ss.Spec.Template.Annotations = addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations
 			changed = true
 		}
 
-		for key, value := range cr.Spec.Controller.Labels {
-			ss.Spec.Template.Labels[key] = value
-		}
 		if !reflect.DeepEqual(ss.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = ss.Spec.Template.Labels
 			changed = true
