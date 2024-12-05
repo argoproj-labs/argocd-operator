@@ -3269,8 +3269,10 @@ spec:
                       you would like the Repo server to use
                     type: string
                   sidecarContainers:
-                    description: SidecarContainers defines the list of sidecar containers
-                      for the repo server deployment
+                    description: |-
+                      SidecarContainers defines the list of sidecar containers for the repo
+                      server deployment. If the image field is omitted from a SidecarContainer,
+                      the image for the repo server will be used.
                     items:
                       description: A single application container that you want to
                         run within a pod.
@@ -16430,8 +16432,10 @@ spec:
                       you would like the Repo server to use
                     type: string
                   sidecarContainers:
-                    description: SidecarContainers defines the list of sidecar containers
-                      for the repo server deployment
+                    description: |-
+                      SidecarContainers defines the list of sidecar containers for the repo
+                      server deployment. If the image field is omitted from a SidecarContainer,
+                      the image for the repo server will be used.
                     items:
                       description: A single application container that you want to
                         run within a pod.

@@ -2356,6 +2356,51 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 	}
 }
 
+func TestReconcileArgoCD_reconcileRepoDeployment_sidecarContainerImage(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.Repo.SidecarContainers = []corev1.Container{
+			{
+				Name: "test-sidecar1",
+			},
+			{
+				Name: "test-sidecar2",
+			},
+			{
+				Name:  "test-sidecar3",
+				Image: "test-image",
+			},
+		}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.reconcileRepoDeployment(a, false))
+
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-repo-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.Len(t, deployment.Spec.Template.Spec.Containers, 4)
+	assert.Equal(t, "test-sidecar1", deployment.Spec.Template.Spec.Containers[1].Name)
+	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[1].Image)
+	assert.Equal(t, "test-sidecar2", deployment.Spec.Template.Spec.Containers[2].Name)
+	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[2].Image)
+	assert.Equal(t, "test-sidecar3", deployment.Spec.Template.Spec.Containers[3].Name)
+	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.Containers[3].Image)
+}
+
 // If `remote` field is used in CR, then the component resources should not be created
 func TestReconcileArgoCD_reconcileRedisWithRemote(t *testing.T) {
 	cr := makeTestArgoCD()
