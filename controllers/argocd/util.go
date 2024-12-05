@@ -1693,7 +1693,7 @@ func UseServer(name string, cr *argoproj.ArgoCD) bool {
 // in the live object and updates the source object to ensure critical metadata
 // (like scheduling, topology, or lifecycle information) is retained.
 // This helps avoid loss of important Kubernetes-managed metadata during updates.
-func addKubernetesData(source map[string]string, live map[string]string) map[string]string {
+func addKubernetesData(source map[string]string, live map[string]string) {
 
 	// List of Kubernetes-specific substrings (wildcard match)
 	patterns := []string{
@@ -1713,6 +1713,4 @@ func addKubernetesData(source map[string]string, live map[string]string) map[str
 			}
 		}
 	}
-
-	return source
 }

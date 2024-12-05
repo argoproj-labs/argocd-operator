@@ -273,8 +273,8 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 		existingSpec := existing.Spec.Template.Spec
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		deploy.Spec.Template.Labels = addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		deploy.Spec.Template.Annotations = addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
 		deploymentsDifferent := !reflect.DeepEqual(existingSpec.Containers[0], podSpec.Containers) ||
 			!reflect.DeepEqual(existingSpec.Volumes, podSpec.Volumes) ||

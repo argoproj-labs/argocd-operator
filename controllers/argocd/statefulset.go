@@ -818,8 +818,8 @@ func (r *ReconcileArgoCD) reconcileApplicationControllerStatefulSet(cr *argoproj
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		ss.Spec.Template.Labels = addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
-		ss.Spec.Template.Annotations = addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		addKubernetesData(ss.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(ss.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = ss.Spec.Template.Annotations

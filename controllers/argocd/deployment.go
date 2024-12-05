@@ -1201,8 +1201,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		deploy.Spec.Template.Labels = addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		deploy.Spec.Template.Annotations = addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
@@ -1485,8 +1485,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 		}
 
 		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
-		deploy.Spec.Template.Labels = addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
-		deploy.Spec.Template.Annotations = addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
