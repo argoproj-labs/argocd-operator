@@ -1133,6 +1133,18 @@ func TestRetainKubernetesData(t *testing.T) {
 			},
 		},
 		{
+			name: "Do not override existing Kubernetes-specific keys in source",
+			source: map[string]string{
+				"node.kubernetes.io/pod": "source-true",
+			},
+			live: map[string]string{
+				"node.kubernetes.io/pod": "live-true", // should not override
+			},
+			expected: map[string]string{
+				"node.kubernetes.io/pod": "source-true", // source takes precedence
+			},
+		},
+		{
 			name: "Handles empty live map",
 			source: map[string]string{
 				"custom-label": "custom-value",

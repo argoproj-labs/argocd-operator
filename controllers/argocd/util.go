@@ -1705,7 +1705,12 @@ func addKubernetesData(source map[string]string, live map[string]string) {
 	for key, value := range live {
 		found := glob.MatchStringInList(patterns, key, glob.GLOB)
 		if found {
-			source[key] = value
+			// Don't override values already present in the source object.
+			// This ensures users have control over Kubernetes-managed data
+			// if they have intentionally set or modified these values in the source object.
+			if _, ok := source[key]; !ok {
+				source[key] = value
+			}
 		}
 	}
 }
