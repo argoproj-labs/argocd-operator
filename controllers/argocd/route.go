@@ -109,6 +109,7 @@ func (r *ReconcileArgoCD) reconcileGrafanaRoute(cr *argoproj.ArgoCD) error {
 		//nolint:staticcheck
 		if !cr.Spec.Grafana.Enabled || !cr.Spec.Grafana.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
+			argoutil.LogResourceDeletion(log, route, "grafana or grafana route is disabled")
 			return r.Client.Delete(context.TODO(), route)
 		}
 		log.Info(grafanaDeprecatedWarning)
@@ -131,6 +132,13 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, route.Name, route) {
 		if !cr.Spec.Prometheus.Enabled || !cr.Spec.Prometheus.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
+			var explanation string
+			if !cr.Spec.Prometheus.Enabled {
+				explanation = "prometheus is disabled"
+			} else {
+				explanation = "prometheus route is disabled"
+			}
+			argoutil.LogResourceDeletion(log, route, explanation)
 			return r.Client.Delete(context.TODO(), route)
 		}
 		return nil // Route found, do nothing
@@ -182,6 +190,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRoute(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, route, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, route)
 	return r.Client.Create(context.TODO(), route)
 }
 
@@ -193,6 +202,7 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 	if found {
 		if !cr.Spec.Server.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
+			argoutil.LogResourceDeletion(log, route, "server route is disabled")
 			return r.Client.Delete(context.TODO(), route)
 		}
 	}
@@ -282,8 +292,10 @@ func (r *ReconcileArgoCD) reconcileServerRoute(cr *argoproj.ArgoCD) error {
 		return err
 	}
 	if !found {
+		argoutil.LogResourceCreation(log, route)
 		return r.Client.Create(context.TODO(), route)
 	}
+	argoutil.LogResourceUpdate(log, route)
 	return r.Client.Update(context.TODO(), route)
 }
 
@@ -319,6 +331,13 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 	if found {
 		if cr.Spec.ApplicationSet == nil || !cr.Spec.ApplicationSet.WebhookServer.Route.Enabled {
 			// Route exists but enabled flag has been set to false, delete the Route
+			var explanation string
+			if cr.Spec.ApplicationSet == nil {
+				explanation = "applicationset is disabled"
+			} else {
+				explanation = "applicationset webhook route is disabled"
+			}
+			argoutil.LogResourceDeletion(log, route, explanation)
 			return r.Client.Delete(context.TODO(), route)
 		}
 	}
@@ -414,8 +433,10 @@ func (r *ReconcileArgoCD) reconcileApplicationSetControllerWebhookRoute(cr *argo
 		return err
 	}
 	if !found {
+		argoutil.LogResourceCreation(log, route)
 		return r.Client.Create(context.TODO(), route)
 	}
+	argoutil.LogResourceUpdate(log, route)
 	return r.Client.Update(context.TODO(), route)
 }
 

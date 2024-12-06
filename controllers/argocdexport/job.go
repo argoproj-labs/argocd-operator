@@ -234,6 +234,7 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoproj.ArgoCDExport) erro
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cj.Name, cj) {
 		if *cr.Spec.Schedule != cj.Spec.Schedule {
 			cj.Spec.Schedule = *cr.Spec.Schedule
+			argoutil.LogResourceUpdate(log, cj, "updating the schedule")
 			return r.Client.Update(context.TODO(), cj)
 		}
 		return nil
@@ -256,6 +257,7 @@ func (r *ReconcileArgoCDExport) reconcileCronJob(cr *argoproj.ArgoCDExport) erro
 	if err := controllerutil.SetControllerReference(cr, cj, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, cj)
 	return r.Client.Create(context.TODO(), cj)
 }
 
@@ -287,6 +289,7 @@ func (r *ReconcileArgoCDExport) reconcileJob(cr *argoproj.ArgoCDExport) error {
 	if err := controllerutil.SetControllerReference(cr, job, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, job)
 	return r.Client.Create(context.TODO(), job)
 }
 

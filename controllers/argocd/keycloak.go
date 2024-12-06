@@ -658,6 +658,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 			if err := controllerutil.SetControllerReference(cr, ing, r.Scheme); err != nil {
 				return err
 			}
+			argoutil.LogResourceCreation(log, ing)
 			err = r.Client.Create(context.TODO(), ing)
 			if err != nil {
 				return err
@@ -677,6 +678,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 			if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 				return err
 			}
+			argoutil.LogResourceCreation(log, svc)
 			err = r.Client.Create(context.TODO(), svc)
 			if err != nil {
 				return err
@@ -696,6 +698,7 @@ func (r *ReconcileArgoCD) newKeycloakInstance(cr *argoproj.ArgoCD) error {
 			if err := controllerutil.SetControllerReference(cr, dep, r.Scheme); err != nil {
 				return err
 			}
+			argoutil.LogResourceCreation(log, dep)
 			err = r.Client.Create(context.TODO(), dep)
 			if err != nil {
 				return err
@@ -1001,6 +1004,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	argoCDSecret.Data["oidc.keycloak.clientSecret"] = []byte(oAuthClientSecret)
+	argoutil.LogResourceUpdate(log, argoCDSecret, "updating client secret for keycloak oidc")
 	err = r.Client.Update(context.TODO(), argoCDSecret)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error updating ArgoCD Secret for ArgoCD %s in namespace %s",
@@ -1033,6 +1037,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 		err = r.Client.Get(context.TODO(), types.NamespacedName{Name: oAuthClient.Name}, oAuthClient)
 		if err != nil {
 			if errors.IsNotFound(err) {
+				argoutil.LogResourceCreation(log, oAuthClient)
 				err = r.Client.Create(context.TODO(), oAuthClient)
 				if err != nil {
 					return err
@@ -1070,6 +1075,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	argoCDCM.Data[common.ArgoCDKeyOIDCConfig] = string(o)
+	argoutil.LogResourceUpdate(log, argoCDCM, "updating oidc config with keycloak realm")
 	err = r.Client.Update(context.TODO(), argoCDCM)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error updating OIDC Configuration for ArgoCD %s in namespace %s",
@@ -1088,6 +1094,7 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 	}
 
 	argoRBACCM.Data["scopes"] = "[groups,email]"
+	argoutil.LogResourceUpdate(log, argoRBACCM, "updating rbac scopes for keycloak")
 	err = r.Client.Update(context.TODO(), argoRBACCM)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error updating ArgoCD RBAC configmap %s in namespace %s",
@@ -1114,12 +1121,11 @@ func handleKeycloakPodDeletion(dc *appsv1.DeploymentConfig) error {
 		return err
 	}
 
-	log.Info("Set the Realm Creation status annoation to false")
 	existingDC, err := dcClient.DeploymentConfigs(dc.Namespace).Get(context.TODO(), defaultKeycloakIdentifier, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
-
+	argoutil.LogResourceUpdate(log, existingDC, "setting the realm created status annotation to false")
 	existingDC.Annotations["argocd.argoproj.io/realm-created"] = "false"
 	_, err = dcClient.DeploymentConfigs(dc.Namespace).Update(context.TODO(), existingDC, metav1.UpdateOptions{})
 	if err != nil {
@@ -1311,6 +1317,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 				return err
 			}
 
+			argoutil.LogResourceCreation(log, templateInstanceRef)
 			err = r.Client.Create(context.TODO(), templateInstanceRef)
 			if err != nil {
 				return err
@@ -1332,21 +1339,28 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 			cr.Name, cr.Namespace))
 	} else {
 		changed := false
+		explanation := ""
 		// Handle Image upgrades
 		desiredImage := getKeycloakContainerImage(cr)
 		if existingDC.Spec.Template.Spec.Containers[0].Image != desiredImage {
 			existingDC.Spec.Template.Spec.Containers[0].Image = desiredImage
+			explanation = "container image"
 			changed = true
 		}
 
 		desiredSecurityContext := restrictedContainerSecurityContext()
 		if !reflect.DeepEqual(existingDC.Spec.Template.Spec.Containers[0].SecurityContext, desiredSecurityContext) {
 			existingDC.Spec.Template.Spec.Containers[0].SecurityContext = desiredSecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 
 		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				argoutil.LogResourceUpdate(log, existingDC, "updating", explanation)
 				return r.Client.Update(context.TODO(), existingDC)
 			})
 
@@ -1399,6 +1413,7 @@ func (r *ReconcileArgoCD) reconcileKeycloakForOpenShift(cr *argoproj.ArgoCD) err
 
 				existingDC.Annotations["argocd.argoproj.io/realm-created"] = "true"
 				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+					argoutil.LogResourceUpdate(log, existingDC, "setting the realm created status annotation to true")
 					return r.Client.Update(context.TODO(), existingDC)
 				})
 
@@ -1445,21 +1460,28 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 			cr.Name, cr.Namespace))
 	} else {
 		changed := false
+		explanation := ""
 		// Handle Image upgrades
 		desiredImage := getKeycloakContainerImage(cr)
 		if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredImage {
 			existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredImage
+			explanation = "container image"
 			changed = true
 		}
 
 		desiredSecurityContext := restrictedContainerSecurityContext()
 		if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredSecurityContext) {
 			existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredSecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 
 		if changed {
 			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
 				return r.Client.Update(context.TODO(), existingDeployment)
 			})
 
@@ -1495,6 +1517,7 @@ func (r *ReconcileArgoCD) reconcileKeycloak(cr *argoproj.ArgoCD) error {
 
 				// Update Realm creation. This will avoid posting of realm configuration on further reconciliations.
 				existingDeployment.Annotations["argocd.argoproj.io/realm-created"] = "true"
+				argoutil.LogResourceUpdate(log, existingDeployment, "setting the realm created status annotation to true")
 				err = r.Client.Update(context.TODO(), existingDeployment)
 				if err != nil {
 					return err
