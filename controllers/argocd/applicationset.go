@@ -93,12 +93,7 @@ func (r *ReconcileArgoCD) getArgoApplicationSetCommand(cr *argoproj.ArgoCD) []st
 
 	// ApplicationSet command arguments provided by the user
 	extraArgs := cr.Spec.ApplicationSet.ExtraCommandArgs
-	err = isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-
-	cmd = append(cmd, extraArgs...)
+	cmd = appendUniqueArgs(cmd, extraArgs)
 
 	return cmd
 }

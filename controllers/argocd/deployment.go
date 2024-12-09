@@ -288,11 +288,9 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
 
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
+	cmd = append(cmd, "--staticassets", "/shared/app")
 
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, getDexServerAddress(cr))
+	cmd = append(cmd, "--dex-server", getDexServerAddress(cr))
 
 	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
@@ -315,22 +313,17 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		}
 	}
 
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--loglevel", getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--logformat", getLogFormat(cr.Spec.Server.LogFormat))
 
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
-
+	// Merge extraArgs while ignoring duplicates
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
+	cmd = appendUniqueArgs(cmd, extraArgs)
+
 	if len(cr.Spec.SourceNamespaces) > 0 {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -348,6 +341,59 @@ func isMergable(extraArgs []string, cmd []string) error {
 		}
 	}
 	return nil
+}
+
+// appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
+func appendUniqueArgs(cmd []string, extraArgs []string) []string {
+	// Parse cmd into a map to track flags and their indices
+	existingArgs := make(map[string]int) // Map to track index of each flag in cmd
+	for i := 0; i < len(cmd); i++ {
+		arg := cmd[i]
+		if strings.HasPrefix(arg, "--") {
+			// Check if the next item is a value (not another flag)
+			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
+				existingArgs[arg] = i
+				i++ // Skip the value
+			} else {
+				existingArgs[arg] = i
+			}
+		}
+	}
+
+	// Iterate over extraArgs to append or override existing flags
+	for i := 0; i < len(extraArgs); i++ {
+		arg := extraArgs[i]
+		if strings.HasPrefix(arg, "--") {
+			if index, exists := existingArgs[arg]; exists {
+				// If the flag exists, check if we need to override its value
+				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+					// If the flag has a value in extraArgs,update it in cmd
+					if index+1 < len(cmd) && !strings.HasPrefix(cmd[index+1], "--") {
+						cmd[index+1] = extraArgs[i+1] // Override the existing value
+					} else {
+						// Insert the new value if it didn't previously have one
+						cmd = append(cmd[:index+1], append([]string{extraArgs[i+1]}, cmd[index+1:]...)...)
+					}
+					i++ // Skip the value in extraArgs
+				}
+			} else {
+				// Append the new flag and its value if not present
+				cmd = append(cmd, arg)
+				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+					cmd = append(cmd, extraArgs[i+1])
+					existingArgs[arg] = len(cmd) - 2 // Update index tracking
+					i++                              // Skip the value
+				} else {
+					existingArgs[arg] = len(cmd) - 1 // Update index tracking
+				}
+			}
+		} else {
+			// Append non-flag arguments directly
+			cmd = append(cmd, arg)
+		}
+	}
+
+	return cmd
 }
 
 // getDexServerAddress will return the Dex server address.
