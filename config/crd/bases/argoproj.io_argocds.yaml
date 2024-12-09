@@ -24641,6 +24641,15 @@ spec:
                 description: Version is the tag to use with the ArgoCD container image
                   for all ArgoCD components.
                 type: string
+              webTerminal:
+                description: WebTerminal defines the web terminal options for ArgoCD.
+                properties:
+                  enabled:
+                    description: Enabled defines whether the web terminal is enabled
+                    type: boolean
+                required:
+                - enabled
+                type: object
             type: object
           status:
             description: ArgoCDStatus defines the observed state of ArgoCD

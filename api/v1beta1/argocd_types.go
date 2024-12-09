@@ -930,6 +930,9 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Version",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:fieldGroup:ArgoCD","urn:alm:descriptor:com.tectonic.ui:text"}
 	Version string `json:"version,omitempty"`
 
+	// WebTerminal defines the web terminal options for ArgoCD.
+	WebTerminal ArgoCDWebTerminalSpec `json:"webTerminal,omitempty"`
+
 	// Banner defines an additional banner to be displayed in Argo CD UI
 	Banner *Banner `json:"banner,omitempty"`
 
@@ -1041,6 +1044,12 @@ type ArgoCDTLSSpec struct {
 
 	// InitialCerts defines custom TLS certificates upon creation of the cluster for connecting Git repositories via HTTPS.
 	InitialCerts map[string]string `json:"initialCerts,omitempty"`
+}
+
+// ArgoCDWebTerminalSpec defines the web terminal options for ArgoCD.
+type ArgoCDWebTerminalSpec struct {
+	// Enabled defines whether the web terminal is enabled
+	Enabled bool `json:"enabled"`
 }
 
 type SSHHostsSpec struct {

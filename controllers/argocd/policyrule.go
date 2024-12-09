@@ -5,6 +5,7 @@ import (
 
 	"golang.org/x/mod/semver"
 
+	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	"github.com/argoproj-labs/argocd-operator/common"
 
 	v1 "k8s.io/api/rbac/v1"
@@ -139,8 +140,8 @@ func policyRuleForDexServer() []v1.PolicyRule {
 	}
 }
 
-func policyRuleForServer() []v1.PolicyRule {
-	return []v1.PolicyRule{
+func policyRuleForServer(cr *argoproj.ArgoCD) []v1.PolicyRule {
+	rules := []v1.PolicyRule{
 		{
 			APIGroups: []string{
 				"*",
@@ -217,6 +218,22 @@ func policyRuleForServer() []v1.PolicyRule {
 			},
 		},
 	}
+
+	if cr.Spec.WebTerminal.Enabled {
+		rules = append(rules, v1.PolicyRule{
+			APIGroups: []string{
+				"",
+			},
+			Resources: []string{
+				"pods/exec",
+			},
+			Verbs: []string{
+				"create",
+			},
+		})
+	}
+
+	return rules
 }
 
 func policyRuleForNotificationsController() []v1.PolicyRule {
@@ -374,7 +391,7 @@ func policyRuleForServerClusterRole() []v1.PolicyRule {
 	}
 }
 
-func getPolicyRuleList(client client.Client) []struct {
+func getPolicyRuleList(client client.Client, cr *argoproj.ArgoCD) []struct {
 	name       string
 	policyRule []v1.PolicyRule
 } {
@@ -390,7 +407,7 @@ func getPolicyRuleList(client client.Client) []struct {
 			policyRule: policyRuleForDexServer(),
 		}, {
 			name:       common.ArgoCDServerComponent,
-			policyRule: policyRuleForServer(),
+			policyRule: policyRuleForServer(cr),
 		}, {
 			name:       common.ArgoCDRedisHAComponent,
 			policyRule: policyRuleForRedisHa(client),
