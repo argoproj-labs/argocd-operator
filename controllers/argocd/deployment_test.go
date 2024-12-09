@@ -1888,13 +1888,21 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 	expectedChange := false
 	actualChange := false
-	updateNodePlacement(deployment, deployment, &actualChange)
+	explanation := ""
+	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
 	if actualChange != expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
-	updateNodePlacement(deployment, deployment2, &actualChange)
+	if explanation != "" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
+	}
+
+	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
 	if actualChange == expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+	if explanation != "node selector, tolerations" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
 	}
 }
 

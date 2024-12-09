@@ -75,6 +75,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 	existingHPA := newHorizontalPodAutoscalerWithSuffix("server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existingHPA.Name, existingHPA) {
 		if !cr.Spec.Server.Autoscale.Enabled {
+			argoutil.LogResourceDeletion(log, existingHPA, "server autoscaling is disabled")
 			return r.Client.Delete(context.TODO(), existingHPA) // HorizontalPodAutoscaler found but globally disabled, delete it.
 		}
 
@@ -88,6 +89,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existingHPA, "due to differences from ArgoCD CR")
 			return r.Client.Update(context.TODO(), existingHPA)
 		}
 
@@ -104,6 +106,7 @@ func (r *ReconcileArgoCD) reconcileServerHPA(cr *argoproj.ArgoCD) error {
 		defaultHPA.Spec = *cr.Spec.Server.Autoscale.HPA
 	}
 
+	argoutil.LogResourceCreation(log, defaultHPA)
 	return r.Client.Create(context.TODO(), defaultHPA)
 }
 
