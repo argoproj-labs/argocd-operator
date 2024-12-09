@@ -4,10 +4,15 @@ commands:
 - script: sleep 30
 - script: |
     set -e
-    expected=10
-    wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]' )
-    if ! echo "$wlCommand" | grep -qPz -- "--kubectl-parallelism-limit\\n${expected}(\$|\\n)"; then
+    expected="10"
+    wlCommand=$(kubectl get -n $NAMESPACE statefulset/argocd-application-controller -o jsonpath='{.spec.template.spec.containers[0].command}'| jq -r '.[]')
+    if ! echo "$wlCommand" | grep -Fxq -- "--kubectl-parallelism-limit"; then
       echo "Incorrect or missing --kubectl-parallelism-limit detected."
+      echo "$wlCommand"
+      exit 1
+    fi
+    if ! echo "$wlCommand" | grep -Fxq -- "$expected"; then
+      echo "Incorrect value for --kubectl-parallelism-limit detected."
       echo "$wlCommand"
       exit 1
     fi
