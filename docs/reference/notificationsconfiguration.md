@@ -78,7 +78,7 @@ kind: NotificationsConfiguration
 metadata:
  name: default-notifications-configuration
 spec:
- Subscriptions: |
+ subscriptions:
   subscriptions: |
     # subscription for on-sync-status-unknown trigger notifications
     - recipients:

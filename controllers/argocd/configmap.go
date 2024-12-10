@@ -54,6 +54,15 @@ func getApplicationInstanceLabelKey(cr *argoproj.ArgoCD) string {
 	return key
 }
 
+// setRespectRBAC configures RespectRBAC key and value for ConfigMap.
+func setRespectRBAC(cr *argoproj.ArgoCD, data map[string]string) map[string]string {
+	if cr.Spec.Controller.RespectRBAC != "" &&
+		(cr.Spec.Controller.RespectRBAC == common.ArgoCDValueRespectRBACStrict || cr.Spec.Controller.RespectRBAC == common.ArgoCDValueRespectRBACNormal) {
+		data[common.ArgoCDKeyRespectRBAC] = cr.Spec.Controller.RespectRBAC
+	}
+	return data
+}
+
 // getCAConfigMapName will return the CA ConfigMap name for the given ArgoCD.
 func getCAConfigMapName(cr *argoproj.ArgoCD) string {
 	if len(cr.Spec.TLS.CA.ConfigMapName) > 0 {
@@ -370,7 +379,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 
 	cm.Data = make(map[string]string)
-
+	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)

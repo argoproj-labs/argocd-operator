@@ -3280,8 +3280,10 @@ spec:
                       you would like the Repo server to use
                     type: string
                   sidecarContainers:
-                    description: SidecarContainers defines the list of sidecar containers
-                      for the repo server deployment
+                    description: |-
+                      SidecarContainers defines the list of sidecar containers for the repo
+                      server deployment. If the image field is omitted from a SidecarContainer,
+                      the image for the repo server will be used.
                     items:
                       description: A single application container that you want to
                         run within a pod.
@@ -10897,6 +10899,11 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  respectRBAC:
+                    description: RespectRBAC restricts controller from discovering/syncing
+                      specific resources, Defaults is empty if not configured. Valid
+                      options are strict and normal.
+                    type: string
                   sharding:
                     description: Sharding contains the options for the Application
                       Controller sharding configuration.
@@ -16436,8 +16443,10 @@ spec:
                       you would like the Repo server to use
                     type: string
                   sidecarContainers:
-                    description: SidecarContainers defines the list of sidecar containers
-                      for the repo server deployment
+                    description: |-
+                      SidecarContainers defines the list of sidecar containers for the repo
+                      server deployment. If the image field is omitted from a SidecarContainer,
+                      the image for the repo server will be used.
                     items:
                       description: A single application container that you want to
                         run within a pod.

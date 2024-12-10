@@ -1664,3 +1664,52 @@ func getApplicationSetHTTPServerHost(cr *argoproj.ArgoCD) (string, error) {
 	}
 	return host, nil
 }
+
+// UseApplicationController determines whether Application Controller resources should be created and configured or not
+func UseApplicationController(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDApplicationControllerComponent && cr.Spec.Controller.Enabled != nil {
+		return *cr.Spec.Controller.Enabled
+	}
+	return true
+}
+
+// UseRedis determines whether Redis resources should be created and configured or not
+func UseRedis(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDRedisComponent && cr.Spec.Redis.Enabled != nil {
+		return *cr.Spec.Redis.Enabled
+	}
+	return true
+}
+
+// UseServer determines whether ArgoCD Server resources should be created and configured or not
+func UseServer(name string, cr *argoproj.ArgoCD) bool {
+	if name == common.ArgoCDServerComponent && cr.Spec.Server.Enabled != nil {
+		return *cr.Spec.Server.Enabled
+	}
+	return true
+}
+
+// addKubernetesData checks for any Kubernetes-specific labels or annotations
+// in the live object and updates the source object to ensure critical metadata
+// (like scheduling, topology, or lifecycle information) is retained.
+// This helps avoid loss of important Kubernetes-managed metadata during updates.
+func addKubernetesData(source map[string]string, live map[string]string) {
+
+	// List of Kubernetes-specific substrings (wildcard match)
+	patterns := []string{
+		"*kubernetes.io*",
+		"*k8s.io*",
+		"*openshift.io*",
+	}
+
+	for key, value := range live {
+		found := glob.MatchStringInList(patterns, key, glob.GLOB)
+		if found {
+			// Don't override values already present in the source object.
+			// This allows the operator to update Kubernetes specific data when needed.
+			if _, ok := source[key]; !ok {
+				source[key] = value
+			}
+		}
+	}
+}

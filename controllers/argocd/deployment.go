@@ -395,6 +395,7 @@ func newDeploymentWithName(name string, component string, cr *argoproj.ArgoCD) *
 				Labels: map[string]string{
 					common.ArgoCDKeyName: name,
 				},
+				Annotations: make(map[string]string),
 			},
 			Spec: corev1.PodSpec{
 				NodeSelector: common.DefaultNodeSelector(),
@@ -1017,7 +1018,21 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	}}
 
 	if cr.Spec.Repo.SidecarContainers != nil {
-		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, cr.Spec.Repo.SidecarContainers...)
+		// If no image is specified for a sidecar container, use the default
+		// argo cd repo server image. Copy the containers to avoid changing the
+		// original CR.
+		containers := []corev1.Container{}
+		containers = append(containers, cr.Spec.Repo.SidecarContainers...)
+		image := getRepoServerContainerImage(cr)
+		for i := range containers {
+			if len(containers[i].Image) == 0 {
+				containers[i].Image = image
+				msg := fmt.Sprintf("no image specified for sidecar container \"%s\" in ArgoCD custom resource \"%s/%s\", using default image",
+					containers[i].Name, cr.Namespace, cr.Name)
+				log.Info(msg)
+			}
+		}
+		deploy.Spec.Template.Spec.Containers = append(deploy.Spec.Template.Spec.Containers, containers...)
 	}
 
 	repoServerVolumes := []corev1.Volume{
@@ -1110,7 +1125,9 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	}
 
 	if cr.Spec.Repo.Annotations != nil {
-		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
+		for key, value := range cr.Spec.Repo.Annotations {
+			deploy.Spec.Template.Annotations[key] = value
+		}
 	}
 
 	if cr.Spec.Repo.Labels != nil {
@@ -1197,15 +1214,15 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 			changed = true
 		}
 
-		deploy.Spec.Template.Annotations = cr.Spec.Repo.Annotations
+		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
+
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 			changed = true
 		}
 
-		for key, value := range cr.Spec.Repo.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
 			changed = true
@@ -1405,7 +1422,9 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	if cr.Spec.Server.Annotations != nil {
-		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
+		for key, value := range cr.Spec.Server.Annotations {
+			deploy.Spec.Template.Annotations[key] = value
+		}
 	}
 
 	if cr.Spec.Server.Labels != nil {
@@ -1479,11 +1498,10 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			}
 		}
 
-		deploy.Spec.Template.Annotations = cr.Spec.Server.Annotations
+		// Add Kubernetes-specific labels/annotations from the live object in the source to preserve metadata.
+		addKubernetesData(deploy.Spec.Template.Labels, existing.Spec.Template.Labels)
+		addKubernetesData(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations)
 
-		for key, value := range cr.Spec.Server.Labels {
-			deploy.Spec.Template.Labels[key] = value
-		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
 			changed = true

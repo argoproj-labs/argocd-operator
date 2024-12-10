@@ -134,6 +134,9 @@ type ArgoCDApplicationControllerSpec struct {
 
 	// Custom labels to pods deployed by the operator
 	Labels map[string]string `json:"labels,omitempty"`
+
+	// RespectRBAC restricts controller from discovering/syncing specific resources, Defaults is empty if not configured. Valid options are strict and normal.
+	RespectRBAC string `json:"respectRBAC,omitempty"`
 }
 
 func (a *ArgoCDApplicationControllerSpec) IsEnabled() bool {
@@ -543,7 +546,9 @@ type ArgoCDRepoSpec struct {
 	// InitContainers defines the list of initialization containers for the repo server deployment
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 
-	// SidecarContainers defines the list of sidecar containers for the repo server deployment
+	// SidecarContainers defines the list of sidecar containers for the repo
+	// server deployment. If the image field is omitted from a SidecarContainer,
+	// the image for the repo server will be used.
 	SidecarContainers []corev1.Container `json:"sidecarContainers,omitempty"`
 
 	// Enabled is the flag to enable Repo Server during ArgoCD installation. (optional, default `true`)
