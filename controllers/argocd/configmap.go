@@ -626,45 +626,41 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTL
 // reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if !cr.Spec.HA.Enabled {
-			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
-			return r.Client.Delete(context.TODO(), cm)
-		}
-		return nil // ConfigMap found with nothing changed, move along...
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil // HA not enabled, do nothing.
-	}
-
 	cm.Data = map[string]string{
 		"redis_liveness.sh":    getRedisLivenessScript(useTLSForRedis),
 		"redis_readiness.sh":   getRedisReadinessScript(useTLSForRedis),
 		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
 	}
+	if !cr.Spec.HA.Enabled {
+		// If HA is not enabled, delete the ConfigMap if it exists
+		existingCM := &corev1.ConfigMap{}
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+			return r.Client.Delete(context.TODO(), existingCM)
+		}
+		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
+	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
+
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		// Check if the data has changed
+		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			return r.Client.Update(context.TODO(), existingCM)
+		}
+		return nil // No changes detected
+	}
+
 	return r.Client.Create(context.TODO(), cm)
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
+	// Create or update the ConfigMap if HA is enabled
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		if !cr.Spec.HA.Enabled {
-			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
-			return r.Client.Delete(context.TODO(), cm)
-		}
-		return nil // ConfigMap found with nothing changed, move along...
-	}
-
-	if !cr.Spec.HA.Enabled {
-		return nil // HA not enabled, do nothing.
-	}
-
 	cm.Data = map[string]string{
 		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
@@ -673,9 +669,31 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
 	}
 
+	if !cr.Spec.HA.Enabled {
+		// If HA is not enabled, delete the ConfigMap if it exists
+		existingCM := &corev1.ConfigMap{}
+		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+			return r.Client.Delete(context.TODO(), existingCM)
+		}
+		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
+	}
+
+	// Set the ownership reference
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
+
+	existingCM := &corev1.ConfigMap{}
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+		// Check if the data has changed
+		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
+			existingCM.Data = cm.Data
+			return r.Client.Update(context.TODO(), existingCM)
+		}
+		return nil // No changes detected
+	}
+
+	// Create the ConfigMap if it does not exist
 	return r.Client.Create(context.TODO(), cm)
 }
 
