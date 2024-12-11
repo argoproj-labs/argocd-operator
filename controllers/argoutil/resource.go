@@ -142,6 +142,11 @@ func LogResourceDeletion(log logr.Logger, object metav1.Object, explanations ...
 }
 
 func LogResourceAction(log logr.Logger, action string, object metav1.Object, explanations ...string) {
+	if object == nil {
+		log.Error(nil, "missing object in LogResourceAction")
+		return
+	}
+
 	typeName := reflect.TypeOf(object).String()
 	pos := strings.LastIndex(typeName, ".")
 	if pos >= 0 {
