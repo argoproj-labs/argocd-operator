@@ -33,6 +33,8 @@ import (
 // blank assignment to verify that ReconcileNotificationsConfiguration implements reconcile.Reconciler
 var _ reconcile.Reconciler = &NotificationsConfigurationReconciler{}
 
+var log = logr.Log.WithName("controller_notificationsconfiguration")
+
 // NotificationsConfigurationReconciler reconciles a NotificationsConfiguration object
 type NotificationsConfigurationReconciler struct {
 	client.Client
