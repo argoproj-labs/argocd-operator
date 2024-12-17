@@ -674,6 +674,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 		// Check if the data has changed
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
+			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA Health ConfigMap")
 			return r.Client.Update(context.TODO(), existingCM)
 		}
 		return nil // No changes detected
@@ -713,6 +714,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		// Check if the data has changed
 		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
 			existingCM.Data = cm.Data
+			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA ConfigMap")
 			return r.Client.Update(context.TODO(), existingCM)
 		}
 		return nil // No changes detected
