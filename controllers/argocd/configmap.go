@@ -678,7 +678,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 		}
 		return nil // No changes detected
 	}
-
+	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
@@ -717,7 +717,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		}
 		return nil // No changes detected
 	}
-
+	argoutil.LogResourceCreation(log, cm)
 	// Create the ConfigMap if it does not exist
 	return r.Client.Create(context.TODO(), cm)
 }
