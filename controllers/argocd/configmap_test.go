@@ -1102,7 +1102,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, a)
 
 	// verify when OwnerReferences is not set
-	_, err := validateOwnerReferences(a, cm, r.Scheme)
+	_, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1113,7 +1113,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when APIVersion is changed
 	cm.OwnerReferences[0].APIVersion = "test"
 
-	changed, err := validateOwnerReferences(a, cm, r.Scheme)
+	changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1124,7 +1124,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Kind = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1135,7 +1135,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Name = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1146,7 +1146,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when UID is changed
 	cm.OwnerReferences[0].UID = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")

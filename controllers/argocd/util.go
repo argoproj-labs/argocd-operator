@@ -920,6 +920,7 @@ func (r *ReconcileArgoCD) removeManagedByLabelFromNamespaces(namespace string) e
 			continue
 		}
 		delete(ns.Labels, common.ArgoCDManagedByLabel)
+		argoutil.LogResourceUpdate(log, ns, "removing 'managed-by' label")
 		if err := r.Client.Update(context.TODO(), ns); err != nil {
 			log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", ns.Name))
 		}
@@ -942,6 +943,7 @@ func argocdInstanceSelector(name string) (labels.Selector, error) {
 
 func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = removeString(argocd.GetFinalizers(), common.ArgoCDDeletionFinalizer)
+	argoutil.LogResourceUpdate(log, argocd, "removing deletion finalizer")
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to remove deletion finalizer from %s: %w", argocd.Name, err)
 	}
@@ -950,6 +952,7 @@ func (r *ReconcileArgoCD) removeDeletionFinalizer(argocd *argoproj.ArgoCD) error
 
 func (r *ReconcileArgoCD) addDeletionFinalizer(argocd *argoproj.ArgoCD) error {
 	argocd.Finalizers = append(argocd.Finalizers, common.ArgoCDDeletionFinalizer)
+	argoutil.LogResourceUpdate(log, argocd, "adding deletion finalizer")
 	if err := r.Client.Update(context.TODO(), argocd); err != nil {
 		return fmt.Errorf("failed to add deletion finalizer for %s: %w", argocd.Name, err)
 	}
@@ -1302,6 +1305,7 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 
 	// Delete all the retrieved roles
 	for _, role := range roles.Items {
+		argoutil.LogResourceDeletion(log, &role)
 		err = k8sClient.RbacV1().Roles(sourceNS).Delete(context.TODO(), role.Name, metav1.DeleteOptions{})
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to delete roles for namespace: %s", sourceNS))
@@ -1317,6 +1321,7 @@ func deleteRBACsForNamespace(sourceNS string, k8sClient kubernetes.Interface) er
 
 	// Delete all the retrieved role bindings
 	for _, roleBinding := range roleBindings.Items {
+		argoutil.LogResourceDeletion(log, &roleBinding)
 		err = k8sClient.RbacV1().RoleBindings(sourceNS).Delete(context.TODO(), roleBinding.Name, metav1.DeleteOptions{})
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to delete role binding for namespace: %s", sourceNS))
@@ -1353,6 +1358,7 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 				secret.Data["namespaces"] = []byte(strings.Join(result, ","))
 			}
 			// Update the secret with the updated list of namespaces
+			argoutil.LogResourceUpdate(log, &secret, "removing managed namespace", sourceNS)
 			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
 				log.Error(err, fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS))
 				return err
@@ -1495,6 +1501,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 	}
 	// Remove managed-by-cluster-argocd from the namespace
 	delete(namespace.Labels, common.ArgoCDManagedByClusterArgoCDLabel)
+	argoutil.LogResourceUpdate(log, &namespace, "removing 'managed-by-cluster-argocd' label from umanaged source namespace")
 	if err := r.Client.Update(context.TODO(), &namespace); err != nil {
 		log.Error(err, fmt.Sprintf("failed to remove label from namespace [%s]", namespace.Name))
 	}
@@ -1508,6 +1515,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	if existingRole.Name != "" {
+		argoutil.LogResourceDeletion(log, &existingRole, "cleaning up unmanaged source namespace")
 		if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 			return err
 		}
@@ -1521,6 +1529,7 @@ func (r *ReconcileArgoCD) cleanupUnmanagedSourceNamespaceResources(cr *argoproj.
 		}
 	}
 	if existingRoleBinding.Name != "" {
+		argoutil.LogResourceDeletion(log, existingRoleBinding, "cleaning up unmanaged source namespace")
 		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}

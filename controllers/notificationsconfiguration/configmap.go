@@ -36,6 +36,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 			return err
 		}
 
+		argoutil.LogResourceCreation(log, NotificationsConfigMap)
 		err := r.Client.Create(context.TODO(), NotificationsConfigMap)
 		if err != nil {
 			return err
@@ -67,6 +68,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 
 	if !reflect.DeepEqual(expectedConfiguration, NotificationsConfigMap.Data) {
 		NotificationsConfigMap.Data = expectedConfiguration
+		argoutil.LogResourceUpdate(log, NotificationsConfigMap, "updating config map data")
 		err := r.Client.Update(context.TODO(), NotificationsConfigMap)
 		if err != nil {
 			return err
