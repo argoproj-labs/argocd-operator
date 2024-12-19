@@ -384,3 +384,64 @@ func clusterResources(argocd *argoproj.ArgoCD) []client.Object {
 		newClusterRoleBindingWithname(common.ArgoCDServerComponent, argocd),
 	}
 }
+
+func TestReconcileArgoCD_Status_Condition(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+		ac.Name = "argo-test-2"
+		ac.Labels = map[string]string{"testfoo": "testbar"}
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	rt := makeTestReconciler(cl, sch)
+	rt.LabelSelector = "foo=bar"
+	assert.NoError(t, createNamespace(rt, a.Namespace, ""))
+
+	// Instance is not reconciled as the label does not match, error is expected
+	reqTest := reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	resTest, err := rt.Reconcile(context.TODO(), reqTest)
+	assert.Error(t, err)
+	if resTest.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Verify condition is updated
+	assert.NoError(t, rt.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
+	assert.Equal(t, a.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, a.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonErrorOccurred)
+	assert.Equal(t, a.Status.Conditions[0].Message, "the ArgoCD instance 'argocd/argo-test-2' does not match the label selector 'foo=bar' and skipping for reconciliation")
+	assert.Equal(t, a.Status.Conditions[0].Status, metav1.ConditionFalse)
+
+	rt.LabelSelector = "testfoo=testbar"
+
+	// Now instance is reconciled as the label is same, no error is expected
+	reqTest = reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      a.Name,
+			Namespace: a.Namespace,
+		},
+	}
+	resTest, err = rt.Reconcile(context.TODO(), reqTest)
+	assert.NoError(t, err)
+	if resTest.Requeue {
+		t.Fatal("reconcile requeued request")
+	}
+
+	// Verify condition is updated
+	assert.NoError(t, rt.Client.Get(context.TODO(), types.NamespacedName{Name: a.Name, Namespace: a.Namespace}, a))
+
+	assert.Equal(t, a.Status.Conditions[0].Type, argoproj.ArgoCDConditionType)
+	assert.Equal(t, a.Status.Conditions[0].Reason, argoproj.ArgoCDConditionReasonSuccess)
+	assert.Equal(t, a.Status.Conditions[0].Message, "")
+	assert.Equal(t, a.Status.Conditions[0].Status, metav1.ConditionTrue)
+}
