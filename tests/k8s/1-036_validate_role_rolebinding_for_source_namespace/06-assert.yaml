@@ -5,4 +5,4 @@ timeout: 60
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: dev-ns-1
+  name: dev-ns-thirtysix-1

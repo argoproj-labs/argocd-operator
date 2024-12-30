@@ -6,15 +6,15 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default
-  name: test-ns-1
+    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
+  name: test-ns-thirtysix-1
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default
-  name: dev-ns-1
+    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
+  name: dev-ns-thirtysix-1
 ---  
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -23,25 +23,25 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_test-ns-1
-  namespace: test-ns-1
+  name: example-argocd_test-ns-thirtysix-1
+  namespace: test-ns-thirtysix-1
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_test-ns-1
-  namespace: test-ns-1
+  name: example-argocd_test-ns-thirtysix-1
+  namespace: test-ns-thirtysix-1
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_test-ns-1
+  name: example-argocd_test-ns-thirtysix-1
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default
+  namespace: default-thirtysix
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default
+  namespace: default-thirtysix
 ---  
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -50,22 +50,22 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_dev-ns-1
-  namespace: dev-ns-1
+  name: example-argocd_dev-ns-thirtysix-1
+  namespace: dev-ns-thirtysix-1
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_dev-ns-1
-  namespace: dev-ns-1
+  name: example-argocd_dev-ns-thirtysix-1
+  namespace: dev-ns-thirtysix-1
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_dev-ns-1
+  name: example-argocd_dev-ns-thirtysix-1
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default
+  namespace: default-thirtysix
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default
+  namespace: default-thirtysix
