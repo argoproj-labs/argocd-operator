@@ -177,11 +177,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 	// check if extra args are present
 	extraArgs := cr.Spec.Controller.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-	cmd = append(cmd, extraArgs...)
+	cmd = appendUniqueArgs(cmd, extraArgs)
 
 	return cmd
 }
