@@ -1833,6 +1833,65 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
+func TestReconcileRedisDeployment_serviceAccountNameUpdate(t *testing.T) {
+	// tests SA update for redis deployment
+
+	tests := []struct {
+		name       string
+		SA         string
+		expectedSA string
+	}{
+		{
+			name:       "serviceAccountName field should reflect the original value",
+			SA:         "argocd-argocd-redis",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with an existing SA modification",
+			SA:         "builder",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with a non-existing SA modification",
+			SA:         "argocd-argocd-redis-new",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value and not left empty",
+			SA:         "",
+			expectedSA: "argocd-argocd-redis",
+		},
+	}
+
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Verify redis deployment
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Verify SA update
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existing := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
+
+			existing.Spec.Template.Spec.ServiceAccountName = test.SA
+			assert.NoError(t, cl.Update(context.TODO(), existing))
+			assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+			newRedis := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
+			assert.Equal(t, newRedis.Spec.Template.Spec.ServiceAccountName, test.expectedSA)
+		})
+	}
+}
+
 func operationProcessors(n int32) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.Processors.Operation = n
