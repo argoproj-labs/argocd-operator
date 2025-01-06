@@ -657,12 +657,13 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
 	}
 	if !cr.Spec.HA.Enabled {
-		// If HA is not enabled, delete the ConfigMap if it exists
 		existingCM := &corev1.ConfigMap{}
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
 		}
-		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
+		return nil // ConfigMap found with nothing changed, move along...
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -696,12 +697,14 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 	}
 
 	if !cr.Spec.HA.Enabled {
-		// If HA is not enabled, delete the ConfigMap if it exists
+
 		existingCM := &corev1.ConfigMap{}
 		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
 		}
-		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
+		return nil // ConfigMap found with nothing changed, move along...
 	}
 
 	// Set the ownership reference
