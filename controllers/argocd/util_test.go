@@ -1331,3 +1331,58 @@ func TestInsertOrUpdateConditionsInSlice_add_another_condition(t *testing.T) {
 	assert.Equal(t, conditions[1].Reason, newCondition.Reason)
 	assert.Equal(t, conditions[1].Message, newCondition.Message)
 }
+
+func TestAppendUniqueArgs(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmd       []string
+		extraArgs []string
+		want      []string
+	}{
+		{
+			name:      "append new flags and values",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--baz", "qux"},
+			want:      []string{"--foo", "bar", "--baz", "qux"},
+		},
+		{
+			name:      "override existing flag value",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--foo", "baz"},
+			want:      []string{"--foo", "baz"},
+		},
+		{
+			name:      "add flag without value",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"--baz"},
+			want:      []string{"--foo", "bar", "--baz"},
+		},
+		{
+			name:      "override flag with no value to have a value",
+			cmd:       []string{"--foo"},
+			extraArgs: []string{"--foo", "baz"},
+			want:      []string{"--foo", "baz"},
+		},
+		{
+			name:      "append non-flag arguments",
+			cmd:       []string{"--foo", "bar"},
+			extraArgs: []string{"extra", "--baz", "qux"},
+			want:      []string{"--foo", "bar", "extra", "--baz", "qux"},
+		},
+		{
+			name:      "ignore duplicate non-flag arguments",
+			cmd:       []string{"arg1", "arg2"},
+			extraArgs: []string{"arg2", "arg3"},
+			want:      []string{"arg1", "arg2", "arg2", "arg3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := appendUniqueArgs(tt.cmd, tt.extraArgs)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("appendUniqueArgs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
