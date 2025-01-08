@@ -2357,6 +2357,17 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"uid_entrypoint.sh",
+		"argocd-repo-server",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -2366,7 +2377,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Repo.ExtraRepoCommandArgs = []string{}
