@@ -2,4 +2,4 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
 - script: |
-    oc patch -n test-1-38-controller-extra-command argocds/example-argocd --type=json --patch '[{"op": "remove", "path": "/spec/controller/extraCommandArgs"}]'
+    kubectl patch -n test-1-38-controller-extra-command argocds/example-argocd --type=json --patch '[{"op": "remove", "path": "/spec/controller/extraCommandArgs"}]'
