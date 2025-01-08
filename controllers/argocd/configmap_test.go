@@ -1154,3 +1154,115 @@ func Test_validateOwnerReferences(t *testing.T) {
 	assert.Equal(t, cm.OwnerReferences[0].Name, "argocd")
 	assert.Equal(t, cm.OwnerReferences[0].UID, uid)
 }
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	initialAnnotations := map[string]string{
+		"installationID": "test-id",
+	}
+	updatedAnnotations := map[string]string{
+		"installationID": "updated-test-id",
+	}
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationTrackingAnnotations = initialAnnotations
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Check initial annotations
+	for k, v := range initialAnnotations {
+		if c := cm.Data[k]; c != v {
+			t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, v)
+		}
+	}
+
+	// Test updating annotations
+	a.Spec.ApplicationTrackingAnnotations = updatedAnnotations
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Check updated annotations
+	for k, v := range updatedAnnotations {
+		if c := cm.Data[k]; c != v {
+			t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, v)
+		}
+	}
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create first ArgoCD instance
+	argocd1 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "argocd-1"
+		a.Namespace = testNamespace
+		a.Spec.ApplicationTrackingAnnotations = map[string]string{
+			"installationID": "instance-1",
+		}
+	})
+
+	// Create second ArgoCD instance
+	argocd2 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "argocd-2"
+		a.Namespace = testNamespace
+		a.Spec.ApplicationTrackingAnnotations = map[string]string{
+			"installationID": "instance-2",
+		}
+	})
+
+	resObjs := []client.Object{argocd1, argocd2}
+	subresObjs := []client.Object{argocd1, argocd2}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Test first instance
+	err := r.reconcileArgoConfigMap(argocd1)
+	assert.NoError(t, err)
+
+	cm1 := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm1)
+	assert.NoError(t, err)
+	assert.Equal(t, "instance-1", cm1.Data["installationID"])
+
+	// Test second instance
+	err = r.reconcileArgoConfigMap(argocd2)
+	assert.NoError(t, err)
+
+	cm2 := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm2)
+	assert.NoError(t, err)
+	assert.Equal(t, "instance-2", cm2.Data["installationID"])
+
+	assert.NotEqual(t, cm1.Data["installationID"], cm2.Data["installationID"])
+}

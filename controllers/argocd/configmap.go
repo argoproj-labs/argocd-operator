@@ -383,6 +383,13 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
+
+	if cr.Spec.ApplicationTrackingAnnotations != nil {
+		for k, v := range cr.Spec.ApplicationTrackingAnnotations {
+			cm.Data[k] = v
+		}
+	}
+
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
