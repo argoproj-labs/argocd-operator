@@ -470,6 +470,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				explanation += fmt.Sprintf("container '%s' security context", container.Name)
 				changed = true
 			}
+
+			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Env, existing.Spec.Template.Spec.Containers[i].Env) {
+				existing.Spec.Template.Spec.Containers[i].Env = ss.Spec.Template.Spec.Containers[i].Env
+				changed = true
+			}
 		}
 
 		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
@@ -487,6 +492,11 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				explanation += ", "
 			}
 			explanation += fmt.Sprintf("init container '%s' security context", existing.Spec.Template.Spec.InitContainers[0].Name)
+			changed = true
+		}
+
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Env, existing.Spec.Template.Spec.InitContainers[0].Env) {
+			existing.Spec.Template.Spec.InitContainers[0].Env = ss.Spec.Template.Spec.InitContainers[0].Env
 			changed = true
 		}
 
