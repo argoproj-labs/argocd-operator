@@ -56,7 +56,6 @@ nav:
     - Notifications: usage/notifications.md
     - Resource Management: usage/resource_management.md
     - Routes: usage/routes.md
-    - Respect RBAC: usage/respect_rbac.md
     - Custom Roles: usage/custom_roles.md
     - Apps in Any Namespace: usage/apps-in-any-namespace.md
     - Appsets in Any Namespace: usage/appsets-in-any-namespace.md

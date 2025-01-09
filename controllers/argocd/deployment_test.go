@@ -1833,65 +1833,6 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
-func TestReconcileRedisDeployment_serviceAccountNameUpdate(t *testing.T) {
-	// tests SA update for redis deployment
-
-	tests := []struct {
-		name       string
-		SA         string
-		expectedSA string
-	}{
-		{
-			name:       "serviceAccountName field should reflect the original value",
-			SA:         "argocd-argocd-redis",
-			expectedSA: "argocd-argocd-redis",
-		},
-		{
-			name:       "serviceAccountName field should be reset to the original value with an existing SA modification",
-			SA:         "builder",
-			expectedSA: "argocd-argocd-redis",
-		},
-		{
-			name:       "serviceAccountName field should be reset to the original value with a non-existing SA modification",
-			SA:         "argocd-argocd-redis-new",
-			expectedSA: "argocd-argocd-redis",
-		},
-		{
-			name:       "serviceAccountName field should be reset to the original value and not left empty",
-			SA:         "",
-			expectedSA: "argocd-argocd-redis",
-		},
-	}
-
-	cr := makeTestArgoCD()
-
-	resObjs := []client.Object{cr}
-	subresObjs := []client.Object{cr}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	// Verify redis deployment
-	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
-
-	// Verify SA update
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			existing := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
-
-			existing.Spec.Template.Spec.ServiceAccountName = test.SA
-			assert.NoError(t, cl.Update(context.TODO(), existing))
-			assert.NoError(t, r.reconcileRedisDeployment(cr, false))
-
-			newRedis := &appsv1.Deployment{}
-			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
-			assert.Equal(t, newRedis.Spec.Template.Spec.ServiceAccountName, test.expectedSA)
-		})
-	}
-}
-
 func operationProcessors(n int32) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.Processors.Operation = n
@@ -1947,21 +1888,13 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 	expectedChange := false
 	actualChange := false
-	explanation := ""
-	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
+	updateNodePlacement(deployment, deployment, &actualChange)
 	if actualChange != expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
-	if explanation != "" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
-	}
-
-	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
+	updateNodePlacement(deployment, deployment2, &actualChange)
 	if actualChange == expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
-	}
-	if explanation != "node selector, tolerations" {
-		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
 	}
 }
 
@@ -2421,51 +2354,6 @@ func TestReconcileArgoCD_reconcileRepoDeployment_serviceAccount(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestReconcileArgoCD_reconcileRepoDeployment_sidecarContainerImage(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Repo.SidecarContainers = []corev1.Container{
-			{
-				Name: "test-sidecar1",
-			},
-			{
-				Name: "test-sidecar2",
-			},
-			{
-				Name:  "test-sidecar3",
-				Image: "test-image",
-			},
-		}
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	deployment := &appsv1.Deployment{}
-	assert.NoError(t, r.reconcileRepoDeployment(a, false))
-
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-repo-server",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	assert.Len(t, deployment.Spec.Template.Spec.Containers, 4)
-	assert.Equal(t, "test-sidecar1", deployment.Spec.Template.Spec.Containers[1].Name)
-	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[1].Image)
-	assert.Equal(t, "test-sidecar2", deployment.Spec.Template.Spec.Containers[2].Name)
-	assert.Equal(t, getRepoServerContainerImage(a), deployment.Spec.Template.Spec.Containers[2].Image)
-	assert.Equal(t, "test-sidecar3", deployment.Spec.Template.Spec.Containers[3].Name)
-	assert.Equal(t, "test-image", deployment.Spec.Template.Spec.Containers[3].Image)
 }
 
 // If `remote` field is used in CR, then the component resources should not be created

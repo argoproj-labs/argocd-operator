@@ -74,7 +74,6 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoC
 				return err
 			}
 			secret.Data[common.ArgoCDKeyBackupKey] = backupKey
-			argoutil.LogResourceUpdate(log, secret, "updating the backup key")
 			return r.Client.Update(context.TODO(), secret)
 		}
 
@@ -93,7 +92,6 @@ func (r *ReconcileArgoCDExport) reconcileExportSecret(cr *argoprojv1alpha1.ArgoC
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 

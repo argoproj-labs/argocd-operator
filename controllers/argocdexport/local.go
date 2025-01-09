@@ -16,6 +16,7 @@ package argocdexport
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -63,11 +64,12 @@ func (r *ReconcileArgoCDExport) reconcilePVC(cr *argoproj.ArgoCDExport) error {
 	}
 
 	// Create PVC
-	argoutil.LogResourceCreation(log, pvc)
+	log.Info(fmt.Sprintf("creating new pvc: %s", pvc.Name))
 	if err := r.Client.Create(context.TODO(), pvc); err != nil {
 		return err
 	}
 
 	// Create event
+	log.Info("creating new event")
 	return argoutil.CreateEvent(r.Client, "Normal", "Exporting", "Created claim for export process.", "PersistentVolumeClaimCreated", cr.ObjectMeta, cr.TypeMeta)
 }

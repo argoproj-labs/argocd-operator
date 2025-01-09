@@ -1012,53 +1012,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withExtraConfig(t *testing.T) {
 
 }
 
-func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
-	logf.SetLogger(ZapLogger(true))
-	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
-		a.Spec.Controller.RespectRBAC = "normal"
-	})
-
-	resObjs := []client.Object{a}
-	subresObjs := []client.Object{a}
-	runtimeObjs := []runtime.Object{}
-	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
-	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
-	r := makeTestReconciler(cl, sch)
-
-	err := r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	cm := &corev1.ConfigMap{}
-
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
-
-	if c := cm.Data["resource.respectRBAC"]; c != "normal" {
-		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
-	}
-
-	// update config
-	a.Spec.Controller.RespectRBAC = "strict"
-
-	err = r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
-	if c := cm.Data["resource.respectRBAC"]; c != "strict" {
-		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
-	}
-
-	// update config
-	a.Spec.Controller.RespectRBAC = ""
-
-	err = r.reconcileArgoConfigMap(a)
-	assert.NoError(t, err)
-
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
-	if c := cm.Data["resource.respectRBAC"]; c != "" {
-		t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, "false")
-	}
-}
-
 func Test_reconcileRBAC(t *testing.T) {
 	a := makeTestArgoCD()
 
@@ -1102,7 +1055,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, a)
 
 	// verify when OwnerReferences is not set
-	_, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+	_, err := validateOwnerReferences(a, cm, r.Scheme)
 	assert.NoError(t, err)
 
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1113,7 +1066,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when APIVersion is changed
 	cm.OwnerReferences[0].APIVersion = "test"
 
-	changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+	changed, err := validateOwnerReferences(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1124,7 +1077,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Kind = "test"
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1135,7 +1088,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Name = "test"
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1146,7 +1099,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when UID is changed
 	cm.OwnerReferences[0].UID = "test"
 
-	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
+	changed, err = validateOwnerReferences(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")

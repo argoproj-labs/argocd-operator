@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: example-argocd
-  namespace: default-thirtysix
+  namespace: default
 spec:
   sourceNamespaces:
-  - test-ns-thirtysix*
+  - test-ns*

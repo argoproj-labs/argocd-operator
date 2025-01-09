@@ -68,7 +68,7 @@ func IsAPIRegistered(group string, version string) (bool, error) {
 	client, err := aggregator.NewForConfig(cfg)
 	if err != nil {
 		log.Error(err, "unable to create a kube-aggregator client")
-		return false, fmt.Errorf("unable to create a kube-aggregator client. error: %w", err)
+		return false, err
 	}
 
 	_, err = client.ApiregistrationV1().APIServices().
@@ -78,9 +78,8 @@ func IsAPIRegistered(group string, version string) (bool, error) {
 			log.Info(fmt.Sprintf("%s/%s API is not registered", group, version))
 			return false, nil
 		} else {
-			message := fmt.Sprintf("%s/%s API registration check failed.", group, version)
-			log.Error(err, message)
-			return false, fmt.Errorf("%s error: %w", message, err)
+			log.Error(err, fmt.Sprintf("%s/%s API registration check failed.", group, version))
+			return false, err
 		}
 	}
 	log.Info(fmt.Sprintf("%s/%s API is registered", group, version))
