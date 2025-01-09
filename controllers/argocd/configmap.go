@@ -663,7 +663,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, u
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
 		}
-		return nil // ConfigMap found with nothing changed, move along...
+		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
 	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
@@ -704,7 +704,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existingCM)
 		}
-		return nil // ConfigMap found with nothing changed, move along...
+		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
 	}
 
 	// Set the ownership reference
