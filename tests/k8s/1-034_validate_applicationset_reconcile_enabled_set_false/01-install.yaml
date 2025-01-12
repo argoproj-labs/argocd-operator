@@ -3,6 +3,7 @@ kind: Namespace
 metadata:
   name: test1
 ---
+
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:

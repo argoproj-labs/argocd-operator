@@ -130,7 +130,6 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Client.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
@@ -154,7 +153,6 @@ func (r *ReconcileArgoCD) reconcileMetricsServiceMonitor(cr *argoproj.ArgoCD) er
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, sm)
 	return r.Client.Create(context.TODO(), sm)
 }
 
@@ -164,12 +162,10 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, prometheus.Name, prometheus) {
 		if !cr.Spec.Prometheus.Enabled {
 			// Prometheus exists but enabled flag has been set to false, delete the Prometheus
-			argoutil.LogResourceDeletion(log, prometheus, "prometheus is disabled")
 			return r.Client.Delete(context.TODO(), prometheus)
 		}
 		if hasPrometheusSpecChanged(prometheus, cr) {
 			prometheus.Spec.Replicas = cr.Spec.Prometheus.Size
-			argoutil.LogResourceUpdate(log, prometheus, "updating replica count")
 			return r.Client.Update(context.TODO(), prometheus)
 		}
 		return nil // Prometheus found, do nothing
@@ -186,7 +182,6 @@ func (r *ReconcileArgoCD) reconcilePrometheus(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, prometheus, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, prometheus)
 	return r.Client.Create(context.TODO(), prometheus)
 }
 
@@ -196,7 +191,6 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Client.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
@@ -220,7 +214,6 @@ func (r *ReconcileArgoCD) reconcileRepoServerServiceMonitor(cr *argoproj.ArgoCD)
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, sm)
 	return r.Client.Create(context.TODO(), sm)
 }
 
@@ -230,7 +223,6 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, sm.Name, sm) {
 		if !cr.Spec.Prometheus.Enabled {
 			// ServiceMonitor exists but enabled flag has been set to false, delete the ServiceMonitor
-			argoutil.LogResourceDeletion(log, sm, "prometheus is disabled")
 			return r.Client.Delete(context.TODO(), sm)
 		}
 		return nil // ServiceMonitor found, do nothing
@@ -254,7 +246,6 @@ func (r *ReconcileArgoCD) reconcileServerMetricsServiceMonitor(cr *argoproj.Argo
 	if err := controllerutil.SetControllerReference(cr, sm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, sm)
 	return r.Client.Create(context.TODO(), sm)
 }
 
@@ -268,7 +259,6 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 		if !cr.Spec.Monitoring.Enabled {
 			// PrometheusRule exists but enabled flag has been set to false, delete the PrometheusRule
 			log.Info("instance monitoring disabled, deleting component status tracking prometheusRule")
-			argoutil.LogResourceDeletion(log, promRule, "instance monitoring is disabled")
 			return r.Client.Delete(context.TODO(), promRule)
 		}
 		return nil // PrometheusRule found, do nothing
@@ -389,7 +379,7 @@ func (r *ReconcileArgoCD) reconcilePrometheusRule(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	argoutil.LogResourceCreation(log, promRule, "for component status tracking, since instance monitoring is enabled")
+	log.Info("instance monitoring enabled, creating component status tracking prometheusRule")
 	return r.Client.Create(context.TODO(), promRule) // Create PrometheusRule
 }
 

@@ -12,87 +12,39 @@ kind: Deployment
 metadata:
   name: argocd-test-redis
   namespace: test
+  
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: argocd-test-repo-server
   namespace: test
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: argocd-test-server
   namespace: test
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: argocd-test-applicationset-controller
-  namespace: test
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: argocd-test-application-controller
-  namespace: test
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: argocd-test-argocd-application-controller
-  namespace: test
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-test-argocd-application-controller
   namespace: test
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-server
-  namespace: test
+
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: argocd-test-argocd-server
   namespace: test
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-redis-ha
-  namespace: test
+
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: argocd-test-argocd-redis-ha
   namespace: test
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-redis
-  namespace: test
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test-argocd-redis
-  namespace: test
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: argocd-test-applicationset-controller
-  namespace: test
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: argocd-test-applicationset-controller
-  namespace: test
+

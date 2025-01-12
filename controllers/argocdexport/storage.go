@@ -19,7 +19,6 @@ import (
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/common"
-	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
 )
 
 // reconcileStorage will ensure that the storage options for the ArgoCDExport are present.
@@ -28,7 +27,6 @@ func (r *ReconcileArgoCDExport) reconcileStorage(cr *argoproj.ArgoCDExport) erro
 		cr.Spec.Storage = &argoproj.ArgoCDExportStorageSpec{
 			Backend: common.ArgoCDExportStorageBackendLocal,
 		}
-		argoutil.LogResourceUpdate(log, cr, "updating the storage backend to", common.ArgoCDExportStorageBackendLocal)
 		return r.Client.Update(context.TODO(), cr)
 	}
 

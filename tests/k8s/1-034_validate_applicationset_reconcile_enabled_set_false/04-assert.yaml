@@ -5,59 +5,38 @@ metadata:
   namespace: test1
 status:
   phase: Available
-
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: argocd-test1-redis
   namespace: test1
+  
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: argocd-test1-repo-server
   namespace: test1
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: argocd-test1-application-controller
-  namespace: test1
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: argocd-test1-argocd-application-controller
-  namespace: test1
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: argocd-test1-argocd-application-controller
   namespace: test1
+
 ---
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
 metadata:
-  name: argocd-test1-argocd-redis-ha
+  name: argocd-test1-argocd-server
   namespace: test1
+
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: argocd-test1-argocd-redis-ha
   namespace: test1
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: argocd-test1-argocd-redis
-  namespace: test1
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: argocd-test1-argocd-redis
-  namespace: test1
+

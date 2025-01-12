@@ -2,8 +2,7 @@
 
 See the [upstream documentation](https://argo-cd.readthedocs.io/en/stable/user-guide/config-management-plugins/#configure-plugin-via-sidecar) for more information.
 
-Plugin sidecar containers can be added to the repo server using the `ArgoCD` custom resource. If the image field for a sidecar container is omitted, the image for the repo server will be used.
-
+Plugin sidecare containers can be added to the repo server using the `ArgoCD` custom resource.
 If you want to specify the ConfigManagementPlugin manifest by specifying a config map,
 the config map should be specified separately.
 

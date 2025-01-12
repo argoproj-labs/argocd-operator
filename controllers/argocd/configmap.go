@@ -42,7 +42,6 @@ func (r *ReconcileArgoCD) createRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
@@ -53,15 +52,6 @@ func getApplicationInstanceLabelKey(cr *argoproj.ArgoCD) string {
 		key = cr.Spec.ApplicationInstanceLabelKey
 	}
 	return key
-}
-
-// setRespectRBAC configures RespectRBAC key and value for ConfigMap.
-func setRespectRBAC(cr *argoproj.ArgoCD, data map[string]string) map[string]string {
-	if cr.Spec.Controller.RespectRBAC != "" &&
-		(cr.Spec.Controller.RespectRBAC == common.ArgoCDValueRespectRBACStrict || cr.Spec.Controller.RespectRBAC == common.ArgoCDValueRespectRBACNormal) {
-		data[common.ArgoCDKeyRespectRBAC] = cr.Spec.Controller.RespectRBAC
-	}
-	return data
 }
 
 // getCAConfigMapName will return the CA ConfigMap name for the given ArgoCD.
@@ -372,7 +362,6 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
@@ -381,7 +370,7 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
 
 	cm.Data = make(map[string]string)
-	cm.Data = setRespectRBAC(cr, cm.Data)
+
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
@@ -483,10 +472,10 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 			changed = true
 		}
 
-		// Check OwnerReferences
+		// Compare OwnerReferences
 		var refChanged bool
 		var err error
-		if refChanged, err = modifyOwnerReferenceIfNeeded(cr, existingCM, r.Scheme); err != nil {
+		if refChanged, err = validateOwnerReferences(cr, existingCM, r.Scheme); err != nil {
 			return err
 		}
 
@@ -495,16 +484,10 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		}
 
 		if changed {
-			explanation := "updating data"
-			if refChanged {
-				explanation += ", owner reference"
-			}
-			argoutil.LogResourceUpdate(log, existingCM, explanation)
 			return r.Client.Update(context.TODO(), existingCM)
 		}
 		return nil // Do nothing as there is no change in the configmap.
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 
 }
@@ -545,56 +528,39 @@ func (r *ReconcileArgoCD) reconcileRBAC(cr *argoproj.ArgoCD) error {
 // reconcileRBACConfigMap will ensure that the RBAC ConfigMap is syncronized with the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRBACConfigMap(cm *corev1.ConfigMap, cr *argoproj.ArgoCD) error {
 	changed := false
-	explanation := ""
 	// Policy CSV
 	if cr.Spec.RBAC.Policy != nil && cm.Data[common.ArgoCDKeyRBACPolicyCSV] != *cr.Spec.RBAC.Policy {
 		cm.Data[common.ArgoCDKeyRBACPolicyCSV] = *cr.Spec.RBAC.Policy
-		explanation = "rbac policy"
 		changed = true
 	}
 
 	// Default Policy
 	if cr.Spec.RBAC.DefaultPolicy != nil && cm.Data[common.ArgoCDKeyRBACPolicyDefault] != *cr.Spec.RBAC.DefaultPolicy {
 		cm.Data[common.ArgoCDKeyRBACPolicyDefault] = *cr.Spec.RBAC.DefaultPolicy
-		if changed {
-			explanation += ", "
-		}
-		explanation += " rbac default policy"
 		changed = true
 	}
 
 	// Default Policy Matcher Mode
 	if cr.Spec.RBAC.PolicyMatcherMode != nil && cm.Data[common.ArgoCDPolicyMatcherMode] != *cr.Spec.RBAC.PolicyMatcherMode {
 		cm.Data[common.ArgoCDPolicyMatcherMode] = *cr.Spec.RBAC.PolicyMatcherMode
-		if changed {
-			explanation += ", "
-		}
-		explanation += "rbac policy matcher mode"
 		changed = true
 	}
 
 	// Scopes
 	if cr.Spec.RBAC.Scopes != nil && cm.Data[common.ArgoCDKeyRBACScopes] != *cr.Spec.RBAC.Scopes {
 		cm.Data[common.ArgoCDKeyRBACScopes] = *cr.Spec.RBAC.Scopes
-		if changed {
-			explanation += ", "
-		}
-		explanation += "rbac scopes"
 		changed = true
 	}
 
 	if changed {
-		argoutil.LogResourceUpdate(log, cm, "updating", explanation)
 		// TODO: Reload server (and dex?) if RBAC settings change?
 		return r.Client.Update(context.TODO(), cm)
 	}
 	return nil // ConfigMap exists and nothing to do, move along...
 }
 
-// modifyOwnerReferenceIfNeeded reverts any changes to the OwnerReference of the
-// given config map. Returns true if the owner reference was modified, false if
-// not.
-func modifyOwnerReferenceIfNeeded(cr *argoproj.ArgoCD, cm *corev1.ConfigMap, scheme *runtime.Scheme) (bool, error) {
+// validateOwnerReferences checks if OwnerReferences is changed
+func validateOwnerReferences(cr *argoproj.ArgoCD, cm *corev1.ConfigMap, scheme *runtime.Scheme) (bool, error) {
 	changed := false
 
 	if cm.OwnerReferences != nil {
@@ -651,43 +617,45 @@ func (r *ReconcileArgoCD) reconcileRedisConfiguration(cr *argoproj.ArgoCD, useTL
 // reconcileRedisHAConfigMap will ensure that the Redis HA Health ConfigMap is present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.Client.Delete(context.TODO(), cm)
+		}
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
 	cm.Data = map[string]string{
 		"redis_liveness.sh":    getRedisLivenessScript(useTLSForRedis),
 		"redis_readiness.sh":   getRedisReadinessScript(useTLSForRedis),
 		"sentinel_liveness.sh": getSentinelLivenessScript(useTLSForRedis),
 	}
-	if !cr.Spec.HA.Enabled {
-		existingCM := &corev1.ConfigMap{}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
-			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
-			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
-			return r.Client.Delete(context.TODO(), existingCM)
-		}
-		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
-	}
 
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-
-	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
-		// Check if the data has changed
-		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
-			existingCM.Data = cm.Data
-			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA Health ConfigMap")
-			return r.Client.Update(context.TODO(), existingCM)
-		}
-		return nil // No changes detected
-	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
 // reconcileRedisHAConfigMap will ensure that the Redis HA ConfigMap is present for the given ArgoCD.
 func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
-	// Create or update the ConfigMap if HA is enabled
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
+	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
+		if !cr.Spec.HA.Enabled {
+			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
+			return r.Client.Delete(context.TODO(), cm)
+		}
+		return nil // ConfigMap found with nothing changed, move along...
+	}
+
+	if !cr.Spec.HA.Enabled {
+		return nil // HA not enabled, do nothing.
+	}
+
 	cm.Data = map[string]string{
 		"haproxy.cfg":     getRedisHAProxyConfig(cr, useTLSForRedis),
 		"haproxy_init.sh": getRedisHAProxyScript(cr),
@@ -696,41 +664,15 @@ func (r *ReconcileArgoCD) reconcileRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSF
 		"sentinel.conf":   getRedisSentinelConf(useTLSForRedis),
 	}
 
-	if !cr.Spec.HA.Enabled {
-
-		existingCM := &corev1.ConfigMap{}
-		if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
-			// ConfigMap exists but HA enabled flag has been set to false, delete the ConfigMap
-			argoutil.LogResourceDeletion(log, cm, "redis ha is disabled")
-			return r.Client.Delete(context.TODO(), existingCM)
-		}
-		return nil // Nothing to do since HA is not enabled and ConfigMap does not exist
-	}
-
-	// Set the ownership reference
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-
-	existingCM := &corev1.ConfigMap{}
-	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, existingCM) {
-		// Check if the data has changed
-		if !reflect.DeepEqual(cm.Data, existingCM.Data) {
-			existingCM.Data = cm.Data
-			argoutil.LogResourceUpdate(log, existingCM, "updating", "Redis HA ConfigMap")
-			return r.Client.Update(context.TODO(), existingCM)
-		}
-		return nil // No changes detected
-	}
-	argoutil.LogResourceCreation(log, cm)
-	// Create the ConfigMap if it does not exist
 	return r.Client.Create(context.TODO(), cm)
 }
 
 func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
 			return err
 		}
@@ -741,7 +683,6 @@ func (r *ReconcileArgoCD) recreateRedisHAConfigMap(cr *argoproj.ArgoCD, useTLSFo
 func (r *ReconcileArgoCD) recreateRedisHAHealthConfigMap(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	cm := newConfigMapWithName(common.ArgoCDRedisHAHealthConfigMapName, cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, cm.Name, cm) {
-		argoutil.LogResourceDeletion(log, cm, "deleting config map in order to recreate it")
 		if err := r.Client.Delete(context.TODO(), cm); err != nil {
 			return err
 		}
@@ -763,7 +704,6 @@ func (r *ReconcileArgoCD) reconcileSSHKnownHosts(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
@@ -779,7 +719,6 @@ func (r *ReconcileArgoCD) reconcileTLSCerts(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
 
@@ -792,6 +731,5 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, cm, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }

@@ -2,11 +2,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: argocd-test1-applicationset-controller
+  name: argocd-test1-server
   namespace: test1
+
 ---
-kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: argocd-test1-applicationset-controller
-  namespace: test1 
+  name: argocd-test1-application-controller
+  namespace: test1

@@ -196,7 +196,6 @@ func (r *ReconcileArgoCD) reconcileArgoSecret(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 
@@ -219,7 +218,6 @@ func (r *ReconcileArgoCD) reconcileClusterMainSecret(cr *argoproj.ArgoCD) error 
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 
@@ -255,7 +253,6 @@ func (r *ReconcileArgoCD) reconcileClusterTLSSecret(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 
@@ -274,7 +271,6 @@ func (r *ReconcileArgoCD) reconcileClusterCASecret(cr *argoproj.ArgoCD) error {
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 
@@ -310,7 +306,6 @@ func (r *ReconcileArgoCD) reconcileClusterSecrets(cr *argoproj.ArgoCD) error {
 // reconcileExistingArgoSecret will ensure that the Argo CD Secret is up to date.
 func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secret *corev1.Secret, clusterSecret *corev1.Secret, tlsSecret *corev1.Secret) error {
 	changed := false
-	explanation := ""
 
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
@@ -335,7 +330,6 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 
 			secret.Data[common.ArgoCDKeyAdminPassword] = []byte(hashedPassword)
 			secret.Data[common.ArgoCDKeyAdminPasswordMTime] = nowBytes()
-			explanation = "argo admin password"
 			changed = true
 		}
 	}
@@ -343,10 +337,6 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 	if hasArgoTLSChanged(secret, tlsSecret) {
 		secret.Data[common.ArgoCDKeyTLSCert] = tlsSecret.Data[common.ArgoCDKeyTLSCert]
 		secret.Data[common.ArgoCDKeyTLSPrivateKey] = tlsSecret.Data[common.ArgoCDKeyTLSPrivateKey]
-		if changed {
-			explanation += ", "
-		}
-		explanation += "argo tls secret"
 		changed = true
 	}
 
@@ -360,17 +350,13 @@ func (r *ReconcileArgoCD) reconcileExistingArgoSecret(cr *argoproj.ArgoCD, secre
 			expected := *dexOIDCClientSecret
 			if actual != expected {
 				secret.Data[common.ArgoCDDexSecretKey] = []byte(*dexOIDCClientSecret)
-				if changed {
-					explanation += ", "
-				}
-				explanation += "argo dex secret"
 				changed = true
 			}
 		}
 	}
 
 	if changed {
-		argoutil.LogResourceUpdate(log, secret, "updating", explanation)
+		log.Info("updating argo secret")
 		if err := r.Client.Update(context.TODO(), secret); err != nil {
 			return err
 		}
@@ -442,10 +428,8 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 			// if the cluster belongs to cluster config namespace,
 			// remove all namespaces from cluster secret,
 			// else update the list of namespaces if value differs.
-			var explanation string
 			if clusterConfigInstance {
 				delete(s.Data, "namespaces")
-				explanation = "removing namespaces from cluster secret"
 			} else {
 				ns := strings.Split(string(s.Data["namespaces"]), ",")
 				for _, n := range namespaces {
@@ -455,9 +439,7 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 				}
 				sort.Strings(ns)
 				s.Data["namespaces"] = []byte(strings.Join(ns, ","))
-				explanation = "updating namespaces in cluster secret"
 			}
-			argoutil.LogResourceUpdate(log, &s, explanation)
 			return r.Client.Update(context.TODO(), &s)
 		}
 	}
@@ -470,7 +452,6 @@ func (r *ReconcileArgoCD) reconcileClusterPermissionsSecret(cr *argoproj.ArgoCD)
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }
 
@@ -606,7 +587,6 @@ func (r *ReconcileArgoCD) reconcileRedisTLSSecret(cr *argoproj.ArgoCD, useTLSFor
 			// So instead we delete the stateful set, which will delete all the pods.
 			redisSts := newStatefulSetWithSuffix("redis-ha-server", "redis", cr)
 			if argoutil.IsObjectFound(r.Client, redisSts.Namespace, redisSts.Name, redisSts) {
-				argoutil.LogResourceDeletion(log, redisSts, "to trigger pods to restart")
 				err = r.Client.Delete(context.TODO(), redisSts)
 				if err != nil {
 					return err
@@ -695,6 +675,5 @@ func (r *ReconcileArgoCD) reconcileRedisInitialPasswordSecret(cr *argoproj.ArgoC
 	if err := controllerutil.SetControllerReference(cr, secret, r.Scheme); err != nil {
 		return err
 	}
-	argoutil.LogResourceCreation(log, secret)
 	return r.Client.Create(context.TODO(), secret)
 }

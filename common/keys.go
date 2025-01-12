@@ -19,17 +19,7 @@ import (
 )
 
 const (
-
-	// ArgoCDKeyRespectRBAC is the configuration key for the respectRBAC setting.
-	ArgoCDKeyRespectRBAC = "resource.respectRBAC"
-
-	// ArgoCDValueRespectRBACStrict is the configuration value for the respectRBAC setting.
-	ArgoCDValueRespectRBACStrict = "strict"
-
-	// ArgoCDValueRespectRBACStrict is the configuration value for the respectRBAC setting.
-	ArgoCDValueRespectRBACNormal = "normal"
-
-	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting.
+	// ArgoCDKeyAdminEnabled is the configuration key for the admin enabled setting..
 	ArgoCDKeyAdminEnabled = "admin.enabled"
 
 	// ArgoCDKeyApplicationInstanceLabelKey is the configuration key for the application instance label.

@@ -10,11 +10,6 @@ metadata:
   name: example-argocd
 status:
   phase: Available
-  conditions:
-  - message: ""
-    reason: Success
-    status: "True"
-    type: Reconciled
 ---
 apiVersion: apps/v1
 kind: StatefulSet

@@ -5,6 +5,3 @@ delete:
 - apiVersion: v1
   kind: Namespace
   name: test-1-17-custom
-- apiVersion: v1
-  kind: Namespace
-  name: test-2-17-custom

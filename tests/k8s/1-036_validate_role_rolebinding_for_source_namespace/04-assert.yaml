@@ -6,29 +6,29 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
-  name: test-thirtysix
+    argocd.argoproj.io/managed-by-cluster-argocd: default
+  name: test
 --- 
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
-  name: test-thirtysix-1
+    argocd.argoproj.io/managed-by-cluster-argocd: default
+  name: test-1
 --- 
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
-  name: test-thirtysix-2
+    argocd.argoproj.io/managed-by-cluster-argocd: default
+  name: test-2
 --- 
 apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    argocd.argoproj.io/managed-by-cluster-argocd: default-thirtysix
-  name: dev-thirtysix
+    argocd.argoproj.io/managed-by-cluster-argocd: default
+  name: dev
 --- 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -37,25 +37,26 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_test-thirtysix
-  namespace: test-thirtysix
+  name: example-argocd_test
+  namespace: test
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_test-thirtysix
-  namespace: test-thirtysix
+  name: example-argocd_test
+  namespace: test
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_test-thirtysix
+  name: example-argocd_test
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default-thirtysix
+  namespace: default
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default-thirtysix
+  namespace: default
+---
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -64,25 +65,25 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_test-thirtysix-1
-  namespace: test-thirtysix-1
+  name: example-argocd_test-1
+  namespace: test-1
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_test-thirtysix-1
-  namespace: test-thirtysix-1
+  name: example-argocd_test-1
+  namespace: test-1
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_test-thirtysix-1
+  name: example-argocd_test-1
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default-thirtysix
+  namespace: default
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default-thirtysix
+  namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -91,25 +92,25 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_test-thirtysix-2
-  namespace: test-thirtysix-2
+  name: example-argocd_test-2
+  namespace: test-2
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_test-thirtysix-2
-  namespace: test-thirtysix-2
+  name: example-argocd_test-2
+  namespace: test-2
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_test-thirtysix-2
+  name: example-argocd_test-2
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default-thirtysix
+  namespace: default
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default-thirtysix
+  namespace: default
 --- 
 apiVersion: rbac.authorization.k8s.io/v1 
 kind: Role
@@ -118,22 +119,22 @@ metadata:
     app.kubernetes.io/managed-by: example-argocd
     app.kubernetes.io/name: example-argocd
     app.kubernetes.io/part-of: argocd
-  name: example-argocd_dev-thirtysix
-  namespace: dev-thirtysix
+  name: example-argocd_dev
+  namespace: dev
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: example-argocd_dev-thirtysix
-  namespace: dev-thirtysix
+  name: example-argocd_dev
+  namespace: dev
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: example-argocd_dev-thirtysix
+  name: example-argocd_dev
 subjects:
 - kind: ServiceAccount
   name: example-argocd-argocd-server
-  namespace: default-thirtysix
+  namespace: default
 - kind: ServiceAccount
   name: example-argocd-argocd-application-controller
-  namespace: default-thirtysix
+  namespace: default

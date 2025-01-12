@@ -109,7 +109,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		if namespace.DeletionTimestamp != nil {
 			if _, ok := namespace.Labels[common.ArgoCDManagedByLabel]; ok {
 				delete(namespace.Labels, common.ArgoCDManagedByLabel)
-				argoutil.LogResourceUpdate(log, &namespace, "namespace is terminating, removing 'managed-by' label")
 				_ = r.Client.Update(context.TODO(), &namespace)
 			}
 			continue
@@ -145,9 +144,9 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 			}
 			roles = append(roles, role)
 
-			if (name == common.ArgoCDDexServerComponent && !UseDex(cr)) ||
-				!UseApplicationController(name, cr) || !UseRedis(name, cr) || !UseServer(name, cr) {
-				continue // Component installation is not requested, do nothing
+			if name == common.ArgoCDDexServerComponent && !UseDex(cr) {
+
+				continue // Dex installation not requested, do nothing
 			}
 
 			// Only set ownerReferences for roles in same namespace as ArgoCD CR
@@ -157,30 +156,11 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 				}
 			}
 
-			argoutil.LogResourceCreation(log, role)
+			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, cr.Namespace))
 			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return nil, err
 			}
 			continue
-		} else {
-			shouldDelete := false
-			explanation := ""
-			if !UseApplicationController(name, cr) {
-				shouldDelete = true
-				explanation = "application controller is disabled"
-			} else if !UseRedis(name, cr) {
-				shouldDelete = true
-				explanation = "redis is disabled"
-			} else if !UseServer(name, cr) {
-				shouldDelete = true
-				explanation = "server is disabled"
-			}
-			if shouldDelete {
-				argoutil.LogResourceDeletion(log, role, explanation)
-				if err := r.Client.Delete(context.TODO(), role); err != nil {
-					return nil, err
-				}
-			}
 		}
 
 		// Delete the existing default role if custom role is specified
@@ -188,13 +168,7 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		if customRole != "" ||
 			(name == common.ArgoCDDexServerComponent && !UseDex(cr)) {
 
-			var explanation string
-			if customRole != "" {
-				explanation = "custom cluster role is provided"
-			} else {
-				explanation = "dex is disabled or not configured"
-			}
-			argoutil.LogResourceDeletion(log, &existingRole, explanation)
+			log.Info("deleting the existing Dex role because dex is not configured")
 			if err := r.Client.Delete(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}
@@ -204,7 +178,6 @@ func (r *ReconcileArgoCD) reconcileRole(name string, policyRules []v1.PolicyRule
 		// if the Rules differ, update the Role
 		if !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules
-			argoutil.LogResourceUpdate(log, &existingRole, "updating policy rules")
 			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
 				return nil, err
 			}
@@ -268,7 +241,7 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 				return fmt.Errorf("failed to reconcile the role for the service account associated with %s : %s", name, err)
 			}
 
-			argoutil.LogResourceCreation(log, role)
+			log.Info(fmt.Sprintf("creating role %s for Argo CD instance %s in namespace %s", role.Name, cr.Name, namespace))
 			if err := r.Client.Create(context.TODO(), role); err != nil {
 				return err
 			}
@@ -284,7 +257,6 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 			namespace.Labels = make(map[string]string)
 		}
 		namespace.Labels[common.ArgoCDManagedByClusterArgoCDLabel] = cr.Namespace
-		argoutil.LogResourceUpdate(log, namespace, fmt.Sprintf("adding label '%s=%s'", common.ArgoCDManagedByClusterArgoCDLabel, cr.Namespace))
 		if err := r.Client.Update(context.TODO(), namespace); err != nil {
 			log.Error(err, fmt.Sprintf("failed to add label from namespace [%s]", namespace.Name))
 		}
@@ -292,7 +264,6 @@ func (r *ReconcileArgoCD) reconcileRoleForApplicationSourceNamespaces(name strin
 		// if the Rules differ, update the Role
 		if !created && !reflect.DeepEqual(existingRole.Rules, role.Rules) {
 			existingRole.Rules = role.Rules
-			argoutil.LogResourceUpdate(log, &existingRole, "updating policy rules")
 			if err := r.Client.Update(context.TODO(), &existingRole); err != nil {
 				return err
 			}
@@ -343,7 +314,6 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 		// if current mode is default mode, but last one was aggregated mode, then delete ClusterRoles for View and Admin permissions
 		if componentName == common.ArgoCDApplicationControllerComponentView || componentName == common.ArgoCDApplicationControllerComponentAdmin {
 			if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: expectedClusterRole.Name}, expectedClusterRole); err == nil {
-				argoutil.LogResourceDeletion(log, expectedClusterRole, "aggregated cluster role mode is not enabled")
 				if err := r.Client.Delete(context.TODO(), expectedClusterRole); err != nil {
 					return nil, fmt.Errorf("failed to delete aggregated ClusterRoles: %s", expectedClusterRole.Name)
 				}
@@ -377,28 +347,24 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 			return nil, nil
 		}
 
-		argoutil.LogResourceCreation(log, expectedClusterRole)
 		return expectedClusterRole, r.Client.Create(context.TODO(), expectedClusterRole)
 	}
 
 	if !allowed {
 		// delete existing ClusterRole as namespace can not host cluster-scoped Argo CD instance
-		argoutil.LogResourceDeletion(log, existingClusterRole, fmt.Sprintf("namespace '%s' cannot host cluster-scoped argocd instance", cr.Namespace))
 		return nil, r.Client.Delete(context.TODO(), existingClusterRole)
 	}
 
 	changed := false
-	var explanation string
 
 	// if existing ClusterRole field values differ from expected values then update them
 	if cr.Spec.AggregatedClusterRoles {
-		changed, explanation = matchAggregatedClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+		changed = matchAggregatedClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
 	} else {
-		changed, explanation = matchDefaultClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
+		changed = matchDefaultClusterRoleFields(expectedClusterRole, existingClusterRole, componentName)
 	}
 
 	if changed {
-		argoutil.LogResourceUpdate(log, existingClusterRole, "updating", explanation)
 		if err := r.Client.Update(context.TODO(), existingClusterRole); err != nil {
 			return nil, err
 		}
@@ -409,7 +375,6 @@ func (r *ReconcileArgoCD) reconcileClusterRole(componentName string, policyRules
 
 func deleteClusterRoles(c client.Client, clusterRoleList *v1.ClusterRoleList) error {
 	for _, clusterRole := range clusterRoleList.Items {
-		argoutil.LogResourceDeletion(log, &clusterRole, "cleaning up cluster resources")
 		if err := c.Delete(context.TODO(), &clusterRole); err != nil {
 			return fmt.Errorf("failed to delete ClusterRole %q during cleanup: %w", clusterRole.Name, err)
 		}
@@ -426,7 +391,6 @@ func checkCustomClusterRoleMode(r *ReconcileArgoCD, cr *argoproj.ArgoCD, compone
 		existingClusterRole := &v1.ClusterRole{}
 		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: GenerateUniqueResourceName(componentName, cr)}, existingClusterRole); err == nil {
 			// default ClusterRole exists, now delete it
-			argoutil.LogResourceDeletion(log, existingClusterRole, "custom clusterrole mode is enabled, deleting default cluster role")
 			if err := r.Client.Delete(context.TODO(), existingClusterRole); err != nil {
 				return true, fmt.Errorf("failed to delete existing cluster role for the service account associated with %s : %s", componentName, err)
 			}
@@ -486,10 +450,9 @@ func configureAggregatedClusterRole(cr *argoproj.ArgoCD, clusterRole *v1.Cluster
 }
 
 // matchAggregatedClusterRoleFields compares field values of expected and existing ClusterRoles for aggregated ClusterRole
-func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (bool, string) {
+func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) bool {
 	changed := false
 	aggregatedClusterRoleExists := true
-	var explanation string
 
 	// if it is base ClusterRole then compare AggregationRule, Annotations and Rules
 	if name == common.ArgoCDApplicationControllerComponent {
@@ -497,16 +460,11 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			aggregatedClusterRoleExists = false
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			explanation = "aggregation rule"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
 			existingClusterRole.Annotations = expectedClusterRole.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
 			changed = true
 		}
 
@@ -520,10 +478,6 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 	if name == common.ArgoCDApplicationControllerComponentView {
 		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
 			existingClusterRole.Labels = expectedClusterRole.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
 			changed = true
 		}
 	}
@@ -532,45 +486,31 @@ func matchAggregatedClusterRoleFields(expectedClusterRole *v1.ClusterRole, exist
 	if name == common.ArgoCDApplicationControllerComponentAdmin {
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			if changed {
-				explanation += ", "
-			}
-			explanation += "aggregation rule"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Labels, expectedClusterRole.Labels) {
 			existingClusterRole.Labels = expectedClusterRole.Labels
-			if changed {
-				explanation += ", "
-			}
-			explanation += "labels"
 			changed = true
 		}
 	}
 
-	return changed, explanation
+	return changed
 }
 
 // matchDefaultClusterRoleFields compares field values of expected and existing ClusterRoles for default ClusterRole
-func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) (bool, string) {
+func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existingClusterRole *v1.ClusterRole, name string) bool {
 	changed := false
-	var explanation string
 
 	// if it is base ClusterRole then compare AggregationRule and Annotations
 	if name == common.ArgoCDApplicationControllerComponent {
 		if !reflect.DeepEqual(existingClusterRole.AggregationRule, expectedClusterRole.AggregationRule) {
 			existingClusterRole.AggregationRule = expectedClusterRole.AggregationRule
-			explanation = "aggregation rule"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existingClusterRole.Annotations, expectedClusterRole.Annotations) {
 			existingClusterRole.Annotations = expectedClusterRole.Annotations
-			if changed {
-				explanation += ", "
-			}
-			explanation += "annotations"
 			changed = true
 		}
 	}
@@ -578,14 +518,10 @@ func matchDefaultClusterRoleFields(expectedClusterRole *v1.ClusterRole, existing
 	// for all default ClusterRoles compare Rules
 	if !reflect.DeepEqual(existingClusterRole.Rules, expectedClusterRole.Rules) {
 		existingClusterRole.Rules = expectedClusterRole.Rules
-		if changed {
-			explanation += ", "
-		}
-		explanation += "policy rules"
 		changed = true
 	}
 
-	return changed, explanation
+	return changed
 }
 
 func verifyInstallationMode(cr *argoproj.ArgoCD, allowed bool) error {
