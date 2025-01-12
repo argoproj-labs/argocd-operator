@@ -10,4 +10,5 @@ metadata:
   namespace: default-thirtysix
 spec:
   sourceNamespaces:
-  - '*'
+  - '*thirtysix*'
+  # Previously this test used '*', however, this will cause intermittent failures in this test: when this test is run, other namespaces on the cluster may still be in the process of being deleted (e.g. they have non-nil '.metadata.deletionTimestamp'), and the operator code will fail on those namespaces if we use '*'.
