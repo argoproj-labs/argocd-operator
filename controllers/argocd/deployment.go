@@ -256,12 +256,8 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	// *** NOTE ***
 	// Do Not add any new default command line arguments below this.
 	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
+	cmd = appendUniqueArgs(cmd, extraArgs)
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -288,11 +284,9 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
 
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
+	cmd = append(cmd, "--staticassets", "/shared/app")
 
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, getDexServerAddress(cr))
+	cmd = append(cmd, "--dex-server", getDexServerAddress(cr))
 
 	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
@@ -315,22 +309,17 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		}
 	}
 
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--loglevel", getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--logformat", getLogFormat(cr.Spec.Server.LogFormat))
 
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
-
+	// Merge extraArgs while ignoring duplicates
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
+	cmd = appendUniqueArgs(cmd, extraArgs)
+
 	if len(cr.Spec.SourceNamespaces) > 0 {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 

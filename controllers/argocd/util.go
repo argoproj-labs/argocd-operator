@@ -177,11 +177,7 @@ func getArgoApplicationControllerCommand(cr *argoproj.ArgoCD, useTLSForRedis boo
 
 	// check if extra args are present
 	extraArgs := cr.Spec.Controller.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
-	cmd = append(cmd, extraArgs...)
+	cmd = appendUniqueArgs(cmd, extraArgs)
 
 	return cmd
 }
@@ -1802,4 +1798,57 @@ func createCondition(message string) metav1.Condition {
 		Message: message,
 		Status:  metav1.ConditionFalse,
 	}
+}
+
+// appendUniqueArgs appends extraArgs to cmd while ignoring any duplicate flags.
+func appendUniqueArgs(cmd []string, extraArgs []string) []string {
+	// Parse cmd into a map to track flags and their indices
+	existingArgs := make(map[string]int) // Map to track index of each flag in cmd
+	for i := 0; i < len(cmd); i++ {
+		arg := cmd[i]
+		if strings.HasPrefix(arg, "--") {
+			// Check if the next item is a value (not another flag)
+			if i+1 < len(cmd) && !strings.HasPrefix(cmd[i+1], "--") {
+				existingArgs[arg] = i
+				i++ // Skip the value
+			} else {
+				existingArgs[arg] = i
+			}
+		}
+	}
+
+	// Iterate over extraArgs to append or override existing flags
+	for i := 0; i < len(extraArgs); i++ {
+		arg := extraArgs[i]
+		if strings.HasPrefix(arg, "--") {
+			if index, exists := existingArgs[arg]; exists {
+				// If the flag exists, check if we need to override its value
+				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+					// If the flag has a value in extraArgs,update it in cmd
+					if index+1 < len(cmd) && !strings.HasPrefix(cmd[index+1], "--") {
+						cmd[index+1] = extraArgs[i+1] // Override the existing value
+					} else {
+						// Insert the new value if it didn't previously have one
+						cmd = append(cmd[:index+1], append([]string{extraArgs[i+1]}, cmd[index+1:]...)...)
+					}
+					i++ // Skip the value in extraArgs
+				}
+			} else {
+				// Append the new flag and its value if not present
+				cmd = append(cmd, arg)
+				if i+1 < len(extraArgs) && !strings.HasPrefix(extraArgs[i+1], "--") {
+					cmd = append(cmd, extraArgs[i+1])
+					existingArgs[arg] = len(cmd) - 2 // Update index tracking
+					i++                              // Skip the value
+				} else {
+					existingArgs[arg] = len(cmd) - 1 // Update index tracking
+				}
+			}
+		} else {
+			// Append non-flag arguments directly
+			cmd = append(cmd, arg)
+		}
+	}
+
+	return cmd
 }
