@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -379,15 +380,22 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
 
+	// Set tracking method if specified
+	if cr.Spec.ResourceTrackingMethod != "" {
+		cm.Data["resource.tracking.method"] = cr.Spec.ResourceTrackingMethod
+	}
+
+	// Set tracking annotations and handle installationID
 	if cr.Spec.ApplicationTrackingAnnotations != nil {
-		for k, v := range cr.Spec.ApplicationTrackingAnnotations {
-			cm.Data[k] = v
+		trackingAnnotations, err := json.Marshal(cr.Spec.ApplicationTrackingAnnotations)
+		if err != nil {
+			return err
 		}
+		cm.Data["resource.tracking.annotations"] = string(trackingAnnotations)
 	}
 
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)

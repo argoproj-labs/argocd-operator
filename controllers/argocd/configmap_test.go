@@ -16,6 +16,7 @@ package argocd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -687,7 +688,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withResourceTrackingMethod(t *te
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-
 	t.Run("Check default tracking method", func(t *testing.T) {
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      common.ArgoCDConfigMapName,
@@ -1029,7 +1029,6 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withRespectRBAC(t *testing.T) {
 	assert.NoError(t, err)
 
 	cm := &corev1.ConfigMap{}
-
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: common.ArgoCDConfigMapName, Namespace: testNamespace}, cm))
 
 	if c := cm.Data["resource.respectRBAC"]; c != "normal" {
@@ -1187,11 +1186,10 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 	assert.NoError(t, err)
 
 	// Check initial annotations
-	for k, v := range initialAnnotations {
-		if c := cm.Data[k]; c != v {
-			t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, v)
-		}
-	}
+	var actualAnnotations map[string]string
+	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
+	assert.NoError(t, err)
+	assert.Equal(t, initialAnnotations, actualAnnotations)
 
 	// Test updating annotations
 	a.Spec.ApplicationTrackingAnnotations = updatedAnnotations
@@ -1205,11 +1203,9 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 	assert.NoError(t, err)
 
 	// Check updated annotations
-	for k, v := range updatedAnnotations {
-		if c := cm.Data[k]; c != v {
-			t.Fatalf("reconcileArgoConfigMap failed got %q, want %q", c, v)
-		}
-	}
+	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
+	assert.NoError(t, err)
+	assert.Equal(t, updatedAnnotations, actualAnnotations)
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
@@ -1250,7 +1246,11 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 		Namespace: testNamespace,
 	}, cm1)
 	assert.NoError(t, err)
-	assert.Equal(t, "instance-1", cm1.Data["installationID"])
+
+	var actualAnnotations1 map[string]string
+	err = json.Unmarshal([]byte(cm1.Data["resource.tracking.annotations"]), &actualAnnotations1)
+	assert.NoError(t, err)
+	assert.Equal(t, "instance-1", actualAnnotations1["installationID"])
 
 	// Test second instance
 	err = r.reconcileArgoConfigMap(argocd2)
@@ -1262,7 +1262,130 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 		Namespace: testNamespace,
 	}, cm2)
 	assert.NoError(t, err)
-	assert.Equal(t, "instance-2", cm2.Data["installationID"])
 
-	assert.NotEqual(t, cm1.Data["installationID"], cm2.Data["installationID"])
+	var actualAnnotations2 map[string]string
+	err = json.Unmarshal([]byte(cm2.Data["resource.tracking.annotations"]), &actualAnnotations2)
+	assert.NoError(t, err)
+	assert.Equal(t, "instance-2", actualAnnotations2["installationID"])
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_emptyAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Test with nil annotations
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationTrackingAnnotations = nil
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify default behavior without annotations
+	assert.NotContains(t, cm.Data, "resource.tracking.annotations")
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_removeAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Start with annotations
+	initialAnnotations := map[string]string{
+		"installationID": "test-id",
+		"customKey":      "value",
+	}
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.ApplicationTrackingAnnotations = initialAnnotations
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// First create with annotations
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	// Remove annotations
+	a.Spec.ApplicationTrackingAnnotations = nil
+	err = r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify annotations were removed
+	assert.NotContains(t, cm.Data, "resource.tracking.annotations")
+}
+
+func TestReconcileArgoCD_reconcileArgoConfigMap_multipleAnnotations(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Test multiple annotation types
+	annotations := map[string]string{
+		"installationID": "test-id",
+		"environment":    "production",
+		"team":           "platform",
+		"empty":          "", // Test empty value
+	}
+
+	// Create single ArgoCD instance
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Name = "argocd"
+		a.Namespace = testNamespace
+		a.Spec.ApplicationTrackingAnnotations = annotations
+		a.Spec.ResourceTrackingMethod = "annotation"
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// When
+	err := r.reconcileArgoConfigMap(a)
+	assert.NoError(t, err)
+
+	// Then
+	cm := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      common.ArgoCDConfigMapName,
+		Namespace: testNamespace,
+	}, cm)
+	assert.NoError(t, err)
+
+	// Verify annotations are set correctly in the ConfigMap
+	var actualAnnotations map[string]string
+	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
+	assert.NoError(t, err)
+	assert.Equal(t, annotations, actualAnnotations)
+	assert.Equal(t, "annotation", cm.Data["resource.tracking.method"])
+
+	// Verify each annotation individually
+	for key, expectedValue := range annotations {
+		assert.Equal(t, expectedValue, actualAnnotations[key],
+			"Annotation %s should have value %s", key, expectedValue)
+	}
 }
