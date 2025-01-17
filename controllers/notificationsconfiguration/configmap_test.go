@@ -226,3 +226,38 @@ func TestReconcileNotifications_DeleteConfigMap(t *testing.T) {
 	assert.Equal(t, testCM.Data["trigger.on-sync-status-test"],
 		"- when: app.status.sync.status == 'Unknown' \n send: [my-custom-template]")
 }
+
+func Test_checkIfContextEquals(t *testing.T) {
+	a := makeTestNotificationsConfiguration(func(a *v1alpha1.NotificationsConfiguration) {})
+	a.Spec = v1alpha1.NotificationsConfigurationSpec{
+		Context: map[string]string{"key1": "value1",
+			"key2": "value2",
+			"key4": "value4",
+			"key3": "value3",
+			"key6": "value6"},
+	}
+
+	var testmap = []struct {
+		testcase string
+		cm       corev1.ConfigMap
+		result   bool
+	}{
+		{"equal context",
+			corev1.ConfigMap{Data: map[string]string{"context": "key1: value1\nkey2: value2\nkey4: value4\nkey3: value3\nkey6: value6\n"}},
+			false,
+		},
+		{"context is not equal",
+			corev1.ConfigMap{Data: map[string]string{"context": "key1: value1\nkey4: value4\nkey9: value9\nkey6: value6\n"}},
+			true,
+		},
+		{"context of same length but not equal",
+			corev1.ConfigMap{Data: map[string]string{"context": "key2: value2\nkey1: value1\nkey4: value4\nkey9: value9\nkey6: value6\n"}},
+			true,
+		},
+	}
+	for _, tt := range testmap {
+		t.Run(tt.testcase, func(t *testing.T) {
+			assert.Equal(t, tt.result, checkIfContextChanged(a, &tt.cm))
+		})
+	}
+}

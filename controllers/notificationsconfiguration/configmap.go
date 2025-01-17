@@ -67,7 +67,7 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 	}
 
 	// check context separately as converting context map to string produce different string due to random serialization of map value
-	changed := checkIfContextEquals(cr, NotificationsConfigMap)
+	changed := checkIfContextChanged(cr, NotificationsConfigMap)
 
 	for k, _ := range expectedConfiguration {
 		if !reflect.DeepEqual(expectedConfiguration[k], NotificationsConfigMap.Data[k]) && k != "context" {
@@ -95,9 +95,9 @@ func mapToString(m map[string]string) string {
 	return result
 }
 
-// checkIfContextEquals checks if context value in NotificationConfiguration and notificationConfigMap context have same value
+// checkIfContextChanged checks if context value in NotificationConfiguration and notificationConfigMap context have same value
 // return true if there is difference, and false if no changes observed
-func checkIfContextEquals(cr *v1alpha1.NotificationsConfiguration, notificationConfigMap *corev1.ConfigMap) bool {
+func checkIfContextChanged(cr *v1alpha1.NotificationsConfiguration, notificationConfigMap *corev1.ConfigMap) bool {
 	cmContext := strings.Split(strings.TrimSuffix(notificationConfigMap.Data["context"], "\n"), "\n")
 	if len(cmContext) == len(cr.Spec.Context) {
 		// Create a map for quick lookups
