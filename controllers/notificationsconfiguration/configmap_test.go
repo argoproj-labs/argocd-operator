@@ -243,7 +243,7 @@ func Test_checkIfContextEquals(t *testing.T) {
 		result   bool
 	}{
 		{"equal context",
-			corev1.ConfigMap{Data: map[string]string{"context": "key1: value1\nkey2: value2\nkey4: value4\nkey3: value3\nkey6: value6\n"}},
+			corev1.ConfigMap{Data: map[string]string{"context": "key4: value4\nkey2: value2\nkey6: value6\nkey1: value1\nkey3: value3\n"}},
 			false,
 		},
 		{"context is not equal",
