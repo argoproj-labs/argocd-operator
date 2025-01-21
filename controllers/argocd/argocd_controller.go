@@ -130,6 +130,13 @@ func (r *ReconcileArgoCD) internalReconcile(ctx context.Context, request ctrl.Re
 		return reconcile.Result{}, argocd, err
 	}
 
+	// If the number of notification replicas is greater than 1, return an error
+	if argocd.Spec.Notifications.Replicas != nil && *argocd.Spec.Notifications.Replicas > 1 {
+		message := "Argo CD Notification controller does not support multiple replicas. Notification replicas cannot be greater than 1."
+		reqLogger.Info(message)
+		return reconcile.Result{}, argocd, fmt.Errorf("%s", message)
+	}
+
 	// Fetch labelSelector from r.LabelSelector (command-line option)
 	labelSelector, err := labels.Parse(r.LabelSelector)
 	if err != nil {
