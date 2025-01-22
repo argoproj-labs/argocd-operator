@@ -532,7 +532,6 @@ type ArgoCDRepoSpec struct {
 	Version string `json:"version,omitempty"`
 
 	// ExecTimeout specifies the timeout in seconds for tool execution
-	//ExecTimeout *int `json:"execTimeout,omitempty"`
 	ExecTimeout string `json:"execTimeout,omitempty"`
 
 	// Env lets you specify environment for repo server pods

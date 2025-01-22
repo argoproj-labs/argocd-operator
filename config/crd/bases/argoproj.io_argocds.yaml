@@ -1855,9 +1855,8 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: |-
-                      ExecTimeout specifies the timeout in seconds for tool execution
-                      ExecTimeout *int `json:"execTimeout,omitempty"`
+                    description: ExecTimeout specifies the timeout in seconds for
+                      tool execution
                     type: string
                   extraRepoCommandArgs:
                     description: |-
@@ -15009,9 +15008,8 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: |-
-                      ExecTimeout specifies the timeout in seconds for tool execution
-                      ExecTimeout *int `json:"execTimeout,omitempty"`
+                    description: ExecTimeout specifies the timeout in seconds for
+                      tool execution
                     type: string
                   extraRepoCommandArgs:
                     description: |-
