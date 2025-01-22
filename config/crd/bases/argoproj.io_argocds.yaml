@@ -1855,9 +1855,10 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
-                      tool execution
-                    type: integer
+                    description: |-
+                      ExecTimeout specifies the timeout in seconds for tool execution
+                      ExecTimeout *int `json:"execTimeout,omitempty"`
+                    type: string
                   extraRepoCommandArgs:
                     description: |-
                       Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided
@@ -15008,9 +15009,10 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
-                      tool execution
-                    type: integer
+                    description: |-
+                      ExecTimeout specifies the timeout in seconds for tool execution
+                      ExecTimeout *int `json:"execTimeout,omitempty"`
+                    type: string
                   extraRepoCommandArgs:
                     description: |-
                       Extra Command arguments allows users to pass command line arguments to repo server workload. They get added to default command line arguments provided
