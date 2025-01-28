@@ -918,8 +918,10 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	})
 	// Environment specified in the CR take precedence over everything else
 	repoEnv = argoutil.EnvMerge(repoEnv, proxyEnvVars(), false)
-	if cr.Spec.Repo.ExecTimeout != nil {
-		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: fmt.Sprintf("%ds", *cr.Spec.Repo.ExecTimeout)}}, true)
+	if _, err := time.ParseDuration(cr.Spec.Repo.ExecTimeout); err != nil {
+		log.Info(fmt.Sprintf("unable to found the correct string value for execTimeout: %s", cr.Spec.Repo.ExecTimeout))
+	} else {
+		repoEnv = argoutil.EnvMerge(repoEnv, []corev1.EnvVar{{Name: "ARGOCD_EXEC_TIMEOUT", Value: cr.Spec.Repo.ExecTimeout}}, true)
 	}
 
 	AddSeccompProfileForOpenShift(r.Client, &deploy.Spec.Template.Spec)
