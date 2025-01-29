@@ -336,7 +336,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 				Value: "FOO",
 			},
 		}
-		timeout := "600m"
+		timeout := "600s"
 		a.Spec.Repo.ExecTimeout = timeout
 
 		resObjs := []client.Object{a}
@@ -359,13 +359,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 4)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "FOO", Value: "BAR"})
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "BAR", Value: "FOO"})
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600m"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
-		timeout := "600m"
+		timeout := "600s"
 		a.Spec.Repo.ExecTimeout = timeout
 
 		resObjs := []client.Object{a}
@@ -386,13 +386,13 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 
 		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600m"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 
 	t.Run("ExecTimeout set with env set explicitly", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
-		timeout := "600m"
+		timeout := "600s"
 		a.Spec.Repo.ExecTimeout = timeout
 		a.Spec.Repo.Env = []corev1.EnvVar{
 			{
@@ -419,7 +419,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 
 		// Check that the env vars are set, Count is 2 because of the default REDIS_PASSWORD env var
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
-		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600m"})
+		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
 	t.Run("ExecTimeout not set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
