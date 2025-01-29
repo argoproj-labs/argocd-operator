@@ -1,4 +1,4 @@
-# This creates an application with a destination in the other managed namespace
+# Application in first ArgoCD instance
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,13 +9,14 @@ spec:
   source:
     repoURL: https://github.com/redhat-developer/gitops-operator
     path: test/examples/nginx
-    targetRevision: "HEAD"
+    targetRevision: HEAD
   destination:
-    server: "https://kubernetes.default.svc"
+    server: https://kubernetes.default.svc
     namespace: source-ns-1
   syncPolicy:
     automated: {}
 ---
+# Application in second ArgoCD instance
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -26,9 +27,9 @@ spec:
   source:
     repoURL: https://github.com/redhat-developer/gitops-operator
     path: test/examples/nginx
-    targetRevision: "HEAD"
+    targetRevision: HEAD
   destination:
-    server: "https://kubernetes.default.svc"
+    server: https://kubernetes.default.svc
     namespace: source-ns-2
   syncPolicy:
     automated: {}
