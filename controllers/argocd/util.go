@@ -1344,32 +1344,55 @@ func deleteManagedNamespaceFromClusterSecret(ownerNS, sourceNS string, k8sClient
 		log.Error(err, message)
 		return fmt.Errorf("%s error: %w", message, err)
 	}
-	for _, secret := range secrets.Items {
-		if string(secret.Data["server"]) != common.ArgoCDDefaultServer {
-			continue
-		}
-		if namespaces, ok := secret.Data["namespaces"]; ok {
-			namespaceList := strings.Split(string(namespaces), ",")
-			var result []string
 
-			for _, n := range namespaceList {
-				// remove the namespace from the list of namespaces
-				if strings.TrimSpace(n) == sourceNS {
-					continue
-				}
-				result = append(result, strings.TrimSpace(n))
-				sort.Strings(result)
-				secret.Data["namespaces"] = []byte(strings.Join(result, ","))
-			}
-			// Update the secret with the updated list of namespaces
-			argoutil.LogResourceUpdate(log, &secret, "removing managed namespace", sourceNS)
-			if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
-				message := fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS)
-				log.Error(err, message)
-				return fmt.Errorf("%s error: %w", message, err)
-			}
+	// Find the cluster secret in the list that points to  common.ArgoCDDefaultServer (default server address)
+	var localClusterSecret *corev1.Secret
+	for x, clusterSecret := range secrets.Items {
+
+		// check if cluster secret with default server address exists
+		if string(clusterSecret.Data["server"]) == common.ArgoCDDefaultServer {
+			localClusterSecret = &secrets.Items[x]
 		}
 	}
+
+	if localClusterSecret == nil {
+		// The Secret doesn't exist: no more work to do.
+		return nil
+	}
+
+	// If the Secret doesn't even have a 'namespaces' field, we are done.
+	oldNamespacesFromClusterSecret, ok := localClusterSecret.Data["namespaces"]
+	if !ok {
+		return nil
+	}
+
+	oldNamespaceListFromClusterSecret := strings.Split(string(oldNamespacesFromClusterSecret), ",")
+	var newNamespaceList []string
+
+	for _, n := range oldNamespaceListFromClusterSecret {
+		// remove the namespace from the list of namespaces
+		if strings.TrimSpace(n) == sourceNS {
+			continue
+		}
+		newNamespaceList = append(newNamespaceList, strings.TrimSpace(n))
+	}
+	sort.Strings(newNamespaceList)
+	newNamespaceListString := strings.Join(newNamespaceList, ",")
+
+	// If the namespace list has changed, update the cluster secret
+	if string(oldNamespacesFromClusterSecret) != newNamespaceListString {
+
+		localClusterSecret.Data["namespaces"] = []byte(newNamespaceListString)
+
+		// Update the secret with the updated list of namespaces
+		argoutil.LogResourceUpdate(log, localClusterSecret, "removing managed namespace", sourceNS)
+		if _, err = k8sClient.CoreV1().Secrets(ownerNS).Update(context.TODO(), localClusterSecret, metav1.UpdateOptions{}); err != nil {
+			message := fmt.Sprintf("failed to update cluster permission secret for namespace: %s", ownerNS)
+			log.Error(err, message)
+			return fmt.Errorf("%s error: %w", message, err)
+		}
+	}
+
 	return nil
 }
 
