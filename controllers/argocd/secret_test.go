@@ -551,3 +551,103 @@ func Test_ReconcileArgoCD_ClusterPermissionsSecret(t *testing.T) {
 	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 	assert.Nil(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: testSecret.Name, Namespace: testSecret.Namespace}, testSecret))
 }
+
+func TestGenerateSortedManagedNamespaceListForArgoCDCR(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	// 1) The result of call should include both 'my-managed-namespace' and a.Namespace
+	managedByNamespace := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "my-managed-namespace",
+			Labels: map[string]string{common.ArgoCDManagedByLabel: a.Namespace},
+		},
+	}
+	err := cl.Create(context.Background(), &managedByNamespace)
+	assert.NoError(t, err)
+
+	res, err := generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+	assert.NoError(t, err)
+	assert.Equal(t, res, []string{a.Namespace, managedByNamespace.Name})
+
+	// 2) Ensure that results returned by this function are sorted by namespace name
+	err = cl.Delete(context.Background(), &managedByNamespace)
+	assert.NoError(t, err)
+
+	managedByNamespace = corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "aaaa-first-when-sorted",
+			Labels: map[string]string{common.ArgoCDManagedByLabel: a.Namespace},
+		},
+	}
+	err = cl.Create(context.Background(), &managedByNamespace)
+	assert.NoError(t, err)
+
+	res, err = generateSortedManagedNamespaceListForArgoCDCR(a, r.Client)
+	assert.NoError(t, err)
+	assert.Equal(t, res, []string{managedByNamespace.Name, a.Namespace})
+}
+
+func TestCombineClusterSecretNamespacesWithManagedNamespaces(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+	a := makeTestArgoCD()
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, createNamespace(r, a.Namespace, ""))
+
+	// 1) Namespaces already listed in the cluster secret should be preserved
+	res := combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": ([]byte)("a,b"),
+		},
+	}, []string{})
+	assert.Equal(t, "a,b", res)
+
+	// 2) Duplicates between managed namespaces and existing namespaces should be removed
+	res = combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": ([]byte)("a,b"),
+		},
+	}, []string{"b", "c"})
+	assert.Equal(t, "a,b,c", res)
+
+	// 3) Namespace list should be fully sorted by name
+	res = combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": ([]byte)("b,a"),
+		},
+	}, []string{"a", "d", "c", "b"})
+	assert.Equal(t, "a,b,c,d", res)
+
+	// 4) Remove duplicates in Secret
+	res = combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": ([]byte)("b,a,b,a"),
+		},
+	}, []string{"c", "d"})
+	assert.Equal(t, "a,b,c,d", res)
+
+	// 5) Remove duplicates in string list
+	res = combineClusterSecretNamespacesWithManagedNamespaces(corev1.Secret{
+		Data: map[string][]byte{
+			"namespaces": ([]byte)("a,b"),
+		},
+	}, []string{"c", "d", "e", "c", "d"})
+	assert.Equal(t, "a,b,c,d,e", res)
+
+}
