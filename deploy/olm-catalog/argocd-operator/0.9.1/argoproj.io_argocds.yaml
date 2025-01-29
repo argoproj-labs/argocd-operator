@@ -1672,8 +1672,7 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
-                      tool execution
+                    description: ExecTimeout specifies the timeout in seconds, minutes or hours based on the suffix user provides.
                     type: integer
                   extraRepoCommandArgs:
                     description: Extra Command arguments allows users to pass command
@@ -8557,8 +8556,7 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
-                      tool execution
+                    description: ExecTimeout specifies the timeout in seconds, minutes or hours based on the suffix user provides.
                     type: integer
                   extraRepoCommandArgs:
                     description: Extra Command arguments allows users to pass command
