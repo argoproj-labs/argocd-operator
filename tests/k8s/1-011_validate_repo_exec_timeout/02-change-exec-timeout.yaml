@@ -4,4 +4,4 @@ metadata:
   name: argocd
 spec:
   repo:
-    execTimeout: 300
+    execTimeout: 300s
