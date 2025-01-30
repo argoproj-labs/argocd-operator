@@ -727,7 +727,7 @@ func TestRemoveManagedNamespaceFromClusterSecretAfterDeletion(t *testing.T) {
 	// secret should still exists with updated list of namespaces
 	s, err := testClient.CoreV1().Secrets(a.Namespace).Get(context.TODO(), secret.Name, metav1.GetOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, string(s.Data["namespaces"]), "testNamespace2")
+	assert.Equal(t, "testNamespace2", string(s.Data["namespaces"]))
 
 }
 
