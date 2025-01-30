@@ -56,7 +56,14 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 	}
 
 	if tokenSecret == nil {
-		// This change of creating secret for dex service account,is due to change of reduction of secret-based service account tokens in k8s v1.24 so from k8s v1.24 no default secret for service account is created, but for dex to work we need to provide token of secret used by dex service account as a oauth token, this change helps to achieve it, in long run we should see do dex really requires a secret or it manages to create one using TokenRequest API or may be change how dex is used or configured by operator
+		// This change of creating secret for dex service account,is due to
+		// change of reduction of secret-based service account tokens in k8s
+		// v1.24 so from k8s v1.24 no default secret for service account is
+		// created, but for dex to work we need to provide token of secret used
+		// by dex service account as a oauth token, this change helps to achieve
+		// it, in long run we should see do dex really requires a secret or it
+		// manages to create one using TokenRequest API or may be change how dex
+		// is used or configured by operator
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "argocd-dex-server-token-",
@@ -67,6 +74,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 			},
 			Type: corev1.SecretTypeServiceAccountToken,
 		}
+		argoutil.LogResourceCreation(log, secret)
 		err := r.Client.Create(context.TODO(), secret)
 		if err != nil {
 			return nil, e.New("unable to locate and create ServiceAccount token for OAuth client secret")
@@ -80,6 +88,7 @@ func (r *ReconcileArgoCD) getDexOAuthClientSecret(cr *argoproj.ArgoCD) (*string,
 			Namespace: cr.Namespace,
 		}
 		sa.Secrets = append(sa.Secrets, *tokenSecret)
+		argoutil.LogResourceUpdate(log, sa, "adding ServiceAccount token for OAuth client secret")
 		err = r.Client.Update(context.TODO(), sa)
 		if err != nil {
 			return nil, e.New("failed to add ServiceAccount token for OAuth client secret")
@@ -113,6 +122,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 	if actual != desired {
 		// Update ConfigMap with desired configuration.
 		cm.Data[common.ArgoCDKeyDexConfig] = desired
+		argoutil.LogResourceUpdate(log, cm, "updating dex configuration")
 		if err := r.Client.Update(context.TODO(), cm); err != nil {
 			return err
 		}
@@ -125,6 +135,7 @@ func (r *ReconcileArgoCD) reconcileDexConfiguration(cm *corev1.ConfigMap, cr *ar
 		}
 
 		deploy.Spec.Template.ObjectMeta.Labels["dex.config.changed"] = time.Now().UTC().Format("01022006-150406-MST")
+		argoutil.LogResourceUpdate(log, deploy, "to trigger dex deployment rollout")
 		return r.Client.Update(context.TODO(), deploy)
 	}
 	return nil
@@ -218,6 +229,7 @@ func (r *ReconcileArgoCD) reconcileDexServiceAccount(cr *argoproj.ArgoCD) error 
 	ann[common.ArgoCDKeyDexOAuthRedirectURI] = uri
 	sa.ObjectMeta.Annotations = ann
 
+	argoutil.LogResourceUpdate(log, sa, "updating redirect uri")
 	return r.Client.Update(context.TODO(), sa)
 }
 
@@ -324,16 +336,18 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
-			log.Info("deleting the existing dex deployment because dex uninstallation has been requested")
+			argoutil.LogResourceDeletion(log, existing, "dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), existing)
 		}
 		changed := false
+		explanation := ""
 
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getDexContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
 
@@ -342,37 +356,62 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.InitContainers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].Env,
 			deploy.Spec.Template.Spec.InitContainers[0].Env) {
 			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container env"
 			changed = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.InitContainers[0].SecurityContext,
 			deploy.Spec.Template.Spec.InitContainers[0].SecurityContext) {
 			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = deploy.Spec.Template.Spec.InitContainers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container security context"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -387,7 +426,7 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("creating deployment %s for Argo CD instance %s in namespace %s", deploy.Name, cr.Name, cr.Namespace))
+	argoutil.LogResourceCreation(log, deploy)
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -398,7 +437,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 
 		// dex uninstallation requested
 		if !UseDex(cr) {
-			log.Info("deleting the existing Dex service because dex uninstallation has been requested")
+			argoutil.LogResourceDeletion(log, svc, "dex uninstallation has been requested")
 			return r.Client.Delete(context.TODO(), svc)
 		}
 		return nil
@@ -431,7 +470,7 @@ func (r *ReconcileArgoCD) reconcileDexService(cr *argoproj.ArgoCD) error {
 		return err
 	}
 
-	log.Info(fmt.Sprintf("creating service %s for Argo CD instance %s in namespace %s", svc.Name, cr.Name, cr.Namespace))
+	argoutil.LogResourceCreation(log, svc)
 	return r.Client.Create(context.TODO(), svc)
 }
 

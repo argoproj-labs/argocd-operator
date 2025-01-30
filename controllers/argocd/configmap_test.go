@@ -110,6 +110,80 @@ func TestReconcileArgoCD_reconcileTLSCerts_configMapUpdate(t *testing.T) {
 	}
 }
 
+// TestReconcileArgoCD_reconcileRedisHAHealthConfigMap tests the reconcileRedisHAHealthConfigMap function.
+func TestReconcileArgoCD_reconcileRedisHAHealthConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create a test ArgoCD resource with HA enabled
+	cr := makeTestArgoCD()
+	cr.Spec.HA.Enabled = true
+
+	// Initialize test objects
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Perform initial reconciliation
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+
+	// Modify ConfigMap data to simulate external changes
+	existingCM := &corev1.ConfigMap{}
+	assert.True(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCM))
+	existingCM.Data["redis_liveness.sh"] = "modified_script_content"
+	assert.NoError(t, cl.Update(context.TODO(), existingCM))
+
+	// Reconcile again and verify changes are reverted
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+	existingCMAfter := &corev1.ConfigMap{}
+	assert.True(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCMAfter))
+	assert.Equal(t, getRedisLivenessScript(false), existingCMAfter.Data["redis_liveness.sh"])
+
+	// Disable HA and ensure ConfigMap is deleted
+	cr.Spec.HA.Enabled = false
+	assert.NoError(t, r.reconcileRedisHAHealthConfigMap(cr, false))
+	assert.False(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAHealthConfigMapName, existingCM))
+}
+
+// TestReconcileArgoCD_reconcileRedisHAConfigMap tests the reconcileRedisHAConfigMap function.
+func TestReconcileArgoCD_reconcileRedisHAConfigMap(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	// Create a test ArgoCD resource with HA enabled
+	cr := makeTestArgoCD()
+	cr.Spec.HA.Enabled = true
+
+	// Initialize test objects
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Perform initial reconciliation
+	assert.NoError(t, r.reconcileRedisHAConfigMap(cr, false))
+
+	// Modify ConfigMap data to simulate external changes
+	existingCM := &corev1.ConfigMap{}
+	assert.True(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCM))
+	existingCM.Data["haproxy.cfg"] = "modified_config_content"
+	assert.NoError(t, cl.Update(context.TODO(), existingCM))
+
+	// Reconcile again and verify changes are reverted
+	assert.NoError(t, r.reconcileRedisHAConfigMap(cr, false))
+	existingCMAfter := &corev1.ConfigMap{}
+	assert.True(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCMAfter))
+	assert.Equal(t, getRedisHAProxyConfig(cr, false), existingCMAfter.Data["haproxy.cfg"])
+
+	// Disable HA and ensure ConfigMap is deleted
+	cr.Spec.HA.Enabled = false
+	assert.NoError(t, r.reconcileRedisHAConfigMap(cr, false))
+	assert.False(t, argoutil.IsObjectFound(cl, cr.Namespace, common.ArgoCDRedisHAConfigMapName, existingCM))
+}
+
 func TestReconcileArgoCD_reconcileTLSCerts_withInitialCertsUpdate(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
 	a := makeTestArgoCD()
@@ -1102,7 +1176,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, a)
 
 	// verify when OwnerReferences is not set
-	_, err := validateOwnerReferences(a, cm, r.Scheme)
+	_, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1113,7 +1187,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when APIVersion is changed
 	cm.OwnerReferences[0].APIVersion = "test"
 
-	changed, err := validateOwnerReferences(a, cm, r.Scheme)
+	changed, err := modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1124,7 +1198,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Kind = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1135,7 +1209,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when Kind is changed
 	cm.OwnerReferences[0].Name = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")
@@ -1146,7 +1220,7 @@ func Test_validateOwnerReferences(t *testing.T) {
 	// verify when UID is changed
 	cm.OwnerReferences[0].UID = "test"
 
-	changed, err = validateOwnerReferences(a, cm, r.Scheme)
+	changed, err = modifyOwnerReferenceIfNeeded(a, cm, r.Scheme)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, cm.OwnerReferences[0].APIVersion, "argoproj.io/v1beta1")

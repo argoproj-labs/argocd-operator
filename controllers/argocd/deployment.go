@@ -256,12 +256,8 @@ func getArgoRepoCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 	// *** NOTE ***
 	// Do Not add any new default command line arguments below this.
 	extraArgs := cr.Spec.Repo.ExtraRepoCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
+	cmd = appendUniqueArgs(cmd, extraArgs)
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -288,11 +284,9 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		cmd = append(cmd, "--repo-server-strict-tls")
 	}
 
-	cmd = append(cmd, "--staticassets")
-	cmd = append(cmd, "/shared/app")
+	cmd = append(cmd, "--staticassets", "/shared/app")
 
-	cmd = append(cmd, "--dex-server")
-	cmd = append(cmd, getDexServerAddress(cr))
+	cmd = append(cmd, "--dex-server", getDexServerAddress(cr))
 
 	if cr.Spec.Repo.IsEnabled() {
 		cmd = append(cmd, "--repo-server", getRepoServerAddress(cr))
@@ -315,22 +309,17 @@ func getArgoServerCommand(cr *argoproj.ArgoCD, useTLSForRedis bool) []string {
 		}
 	}
 
-	cmd = append(cmd, "--loglevel")
-	cmd = append(cmd, getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--loglevel", getLogLevel(cr.Spec.Server.LogLevel))
+	cmd = append(cmd, "--logformat", getLogFormat(cr.Spec.Server.LogFormat))
 
-	cmd = append(cmd, "--logformat")
-	cmd = append(cmd, getLogFormat(cr.Spec.Server.LogFormat))
-
+	// Merge extraArgs while ignoring duplicates
 	extraArgs := cr.Spec.Server.ExtraCommandArgs
-	err := isMergable(extraArgs, cmd)
-	if err != nil {
-		return cmd
-	}
+	cmd = appendUniqueArgs(cmd, extraArgs)
+
 	if len(cr.Spec.SourceNamespaces) > 0 {
 		cmd = append(cmd, "--application-namespaces", fmt.Sprint(strings.Join(cr.Spec.SourceNamespaces, ",")))
 	}
 
-	cmd = append(cmd, extraArgs...)
 	return cmd
 }
 
@@ -532,48 +521,77 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Redis.IsEnabled() {
 			// Deployment exists but component enabled flag has been set to false, delete the Deployment
-			log.Info("Redis exists but should be disabled. Deleting existing redis.")
+			argoutil.LogResourceDeletion(log, deploy, "redis is disabled but deployment exists")
 			return r.Client.Delete(context.TODO(), deploy)
 		} else if cr.Spec.Redis.IsRemote() {
-			log.Info("Redis remote exists but redis deployment should be disabled. Deleting existing redis.")
+			argoutil.LogResourceDeletion(log, deploy, "remote redis is configured")
 			return r.Client.Delete(context.TODO(), deploy)
 		}
 		if cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to true, delete the Deployment
+			argoutil.LogResourceDeletion(log, deploy, "redis ha is enabled but non-ha deployment exists")
 			return r.Client.Delete(context.TODO(), deploy)
 		}
 		changed := false
+		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisContainerImage(cr)
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Args, existing.Spec.Template.Spec.Containers[0].Args) {
 			existing.Spec.Template.Spec.Containers[0].Args = deploy.Spec.Template.Spec.Containers[0].Args
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container args"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
+			changed = true
+		}
+
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.ServiceAccountName, existing.Spec.Template.Spec.ServiceAccountName) {
+			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
+			if changed {
+				explanation += ", "
+			}
+			explanation += "serviceAccountName"
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -595,6 +613,7 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, deploy)
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -800,40 +819,60 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.HA.Enabled {
 			// Deployment exists but HA enabled flag has been set to false, delete the Deployment
+			argoutil.LogResourceDeletion(log, existing, "redis ha is disabled")
 			return r.Client.Delete(context.TODO(), existing)
 		}
 		changed := false
+		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRedisHAProxyContainerImage(cr)
 
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
 			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container resources"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].SecurityContext, existing.Spec.Template.Spec.InitContainers[0].SecurityContext) {
 			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = deploy.Spec.Template.Spec.InitContainers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init container security context"
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found, do nothing
@@ -846,6 +885,7 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, deploy)
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -1140,15 +1180,16 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		if !cr.Spec.Repo.IsEnabled() {
-			log.Info("Existing ArgoCD Repo Server found but should be disabled. Deleting Repo Server")
 			// Delete existing deployment for ArgoCD Repo Server, if any ..
+			argoutil.LogResourceDeletion(log, existing, "repo server is disabled")
 			return r.Client.Delete(context.TODO(), existing)
 		} else if cr.Spec.Repo.IsRemote() {
-			log.Info("Repo Server remote field exists, Repo Server deployment should be disabled. Deleting Repo Server.")
+			argoutil.LogResourceDeletion(log, deploy, "remote repo server is configured")
 			return r.Client.Delete(context.TODO(), deploy)
 		}
 
 		changed := false
+		explanation := ""
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getRepoServerContainerImage(cr)
 		if actualImage != desiredImage {
@@ -1159,58 +1200,103 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 				}
 			}
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
 			existing.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources, existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Command, existing.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container command"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext, existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				deploy.Spec.Template.Spec.Containers[1:]...)
+			if changed {
+				explanation += ", "
+			}
+			explanation += "additional containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			existing.Spec.Replicas = deploy.Spec.Replicas
+			if changed {
+				explanation += ", "
+			}
+			explanation += "replicas"
 			changed = true
 		}
 
 		if deploy.Spec.Template.Spec.AutomountServiceAccountToken != existing.Spec.Template.Spec.AutomountServiceAccountToken {
 			existing.Spec.Template.Spec.AutomountServiceAccountToken = deploy.Spec.Template.Spec.AutomountServiceAccountToken
+			if changed {
+				explanation += ", "
+			}
+			explanation += "auto-mount service account token"
 			changed = true
 		}
 
 		if deploy.Spec.Template.Spec.ServiceAccountName != existing.Spec.Template.Spec.ServiceAccountName {
 			existing.Spec.Template.Spec.ServiceAccountName = deploy.Spec.Template.Spec.ServiceAccountName
 			existing.Spec.Template.Spec.DeprecatedServiceAccount = deploy.Spec.Template.Spec.ServiceAccountName
+			if changed {
+				explanation += ", "
+			}
+			explanation += "service account name"
 			changed = true
 		}
 
@@ -1220,15 +1306,24 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "annotations"
 			changed = true
 		}
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			if changed {
+				explanation += ", "
+			}
+			explanation += "labels"
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -1247,6 +1342,7 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, deploy)
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -1439,61 +1535,99 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	existing := newDeploymentWithSuffix("server", "server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 		if !cr.Spec.Server.IsEnabled() {
-			log.Info("Existing ArgoCD Server found but should be disabled. Deleting ArgoCD Server")
 			// Delete existing deployment for ArgoCD Server, if any ..
+			argoutil.LogResourceDeletion(log, existing, "argocd server is disabled")
 			return r.Client.Delete(context.TODO(), existing)
 		}
 		actualImage := existing.Spec.Template.Spec.Containers[0].Image
 		desiredImage := getArgoContainerImage(cr)
 		changed := false
+		explanation := ""
 		if actualImage != desiredImage {
 			existing.Spec.Template.Spec.Containers[0].Image = desiredImage
 			existing.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+			explanation = "container image"
 			changed = true
 		}
-		updateNodePlacement(existing, deploy, &changed)
+		updateNodePlacement(existing, deploy, &changed, &explanation)
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Env,
 			deploy.Spec.Template.Spec.Containers[0].Env) {
 			existing.Spec.Template.Spec.Containers[0].Env = deploy.Spec.Template.Spec.Containers[0].Env
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container env"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
 			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+			if changed {
+				explanation += ", "
+			}
+			explanation += "init containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Template.Spec.Containers[0].Command,
 			deploy.Spec.Template.Spec.Containers[0].Command) {
 			existing.Spec.Template.Spec.Containers[0].Command = deploy.Spec.Template.Spec.Containers[0].Command
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container command"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
 			existing.Spec.Template.Spec.Volumes = deploy.Spec.Template.Spec.Volumes
+			if changed {
+				explanation += ", "
+			}
+			explanation += "volumes"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].VolumeMounts,
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts) {
 			existing.Spec.Template.Spec.Containers[0].VolumeMounts = deploy.Spec.Template.Spec.Containers[0].VolumeMounts
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container volume mounts"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Resources,
 			existing.Spec.Template.Spec.Containers[0].Resources) {
 			existing.Spec.Template.Spec.Containers[0].Resources = deploy.Spec.Template.Spec.Containers[0].Resources
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container resources"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].SecurityContext,
 			existing.Spec.Template.Spec.Containers[0].SecurityContext) {
 			existing.Spec.Template.Spec.Containers[0].SecurityContext = deploy.Spec.Template.Spec.Containers[0].SecurityContext
+			if changed {
+				explanation += ", "
+			}
+			explanation += "container security context"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[1:],
 			existing.Spec.Template.Spec.Containers[1:]) {
 			existing.Spec.Template.Spec.Containers = append(existing.Spec.Template.Spec.Containers[0:1],
 				deploy.Spec.Template.Spec.Containers[1:]...)
+			if changed {
+				explanation += ", "
+			}
+			explanation += "additional containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Replicas, existing.Spec.Replicas) {
 			if !cr.Spec.Server.Autoscale.Enabled {
 				existing.Spec.Replicas = deploy.Spec.Replicas
+				if changed {
+					explanation += ", "
+				}
+				explanation += "replicas"
 				changed = true
 			}
 		}
@@ -1504,14 +1638,23 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 
 		if !reflect.DeepEqual(deploy.Spec.Template.Annotations, existing.Spec.Template.Annotations) {
 			existing.Spec.Template.Annotations = deploy.Spec.Template.Annotations
+			if changed {
+				explanation += ", "
+			}
+			explanation += "annotations"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Labels, existing.Spec.Template.Labels) {
 			existing.Spec.Template.Labels = deploy.Spec.Template.Labels
+			if changed {
+				explanation += ", "
+			}
+			explanation += "labels"
 			changed = true
 		}
 
 		if changed {
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
 		}
 		return nil // Deployment found with nothing to do, move along...
@@ -1525,6 +1668,7 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 	if err := controllerutil.SetControllerReference(cr, deploy, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, deploy)
 	return r.Client.Create(context.TODO(), deploy)
 }
 
@@ -1536,6 +1680,7 @@ func (r *ReconcileArgoCD) triggerDeploymentRollout(deployment *appsv1.Deployment
 	}
 
 	deployment.Spec.Template.ObjectMeta.Labels[key] = nowNano()
+	argoutil.LogResourceUpdate(log, deployment, "to trigger rollout")
 	return r.Client.Update(context.TODO(), deployment)
 }
 
@@ -1570,13 +1715,21 @@ func isRemoveManagedByLabelOnArgoCDDeletion() bool {
 }
 
 // to update nodeSelector and tolerations in reconciler
-func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool) {
+func updateNodePlacement(existing *appsv1.Deployment, deploy *appsv1.Deployment, changed *bool, explanation *string) {
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.NodeSelector, deploy.Spec.Template.Spec.NodeSelector) {
 		existing.Spec.Template.Spec.NodeSelector = deploy.Spec.Template.Spec.NodeSelector
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "node selector"
 		*changed = true
 	}
 	if !reflect.DeepEqual(existing.Spec.Template.Spec.Tolerations, deploy.Spec.Template.Spec.Tolerations) {
 		existing.Spec.Template.Spec.Tolerations = deploy.Spec.Template.Spec.Tolerations
+		if *changed {
+			*explanation += ", "
+		}
+		*explanation += "tolerations"
 		*changed = true
 	}
 }

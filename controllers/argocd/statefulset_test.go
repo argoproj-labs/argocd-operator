@@ -621,13 +621,20 @@ func Test_UpdateNodePlacementStateful(t *testing.T) {
 	}
 	expectedChange := false
 	actualChange := false
-	updateNodePlacementStateful(ss, ss, &actualChange)
+	explanation := ""
+	updateNodePlacementStateful(ss, ss, &actualChange, &explanation)
 	if actualChange != expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
 	}
-	updateNodePlacementStateful(ss, ss2, &actualChange)
+	if explanation != "" {
+		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
+	}
+	updateNodePlacementStateful(ss, ss2, &actualChange, &explanation)
 	if actualChange == expectedChange {
-		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+		t.Fatalf("updateNodePlacementStateful failed, value of changed: %t", actualChange)
+	}
+	if explanation != "node selector, tolerations" {
+		t.Fatalf("updateNodePlacementStateful returned unexpected explanation: '%s'", explanation)
 	}
 }
 
