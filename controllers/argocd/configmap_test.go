@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
@@ -1166,6 +1165,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 
 	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Spec.ApplicationTrackingAnnotations = initialAnnotations
+		a.Spec.ResourceTrackingMethod = "annotation"
 	})
 
 	resObjs := []client.Object{a}
@@ -1175,6 +1175,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
 	r := makeTestReconciler(cl, sch)
 
+	// Test initial annotations
 	err := r.reconcileArgoConfigMap(a)
 	assert.NoError(t, err)
 
@@ -1185,11 +1186,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 	}, cm)
 	assert.NoError(t, err)
 
-	// Check initial annotations
-	var actualAnnotations map[string]string
-	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
-	assert.NoError(t, err)
-	assert.Equal(t, initialAnnotations, actualAnnotations)
+	// Verify initial state
+	assert.Equal(t, "annotation", cm.Data["application.resourceTrackingMethod"])
+	assert.Equal(t, "annotation", cm.Data["resource.tracking.method"])
+	assert.Equal(t, initialAnnotations["installationID"], cm.Data["installationID"])
+
+	// Verify resource.tracking.annotations doesn't exist
+	_, hasTrackingAnnotations := cm.Data["resource.tracking.annotations"]
+	assert.False(t, hasTrackingAnnotations)
 
 	// Test updating annotations
 	a.Spec.ApplicationTrackingAnnotations = updatedAnnotations
@@ -1202,10 +1206,14 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withApplicationTrackingAnnotatio
 	}, cm)
 	assert.NoError(t, err)
 
-	// Check updated annotations
-	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
-	assert.NoError(t, err)
-	assert.Equal(t, updatedAnnotations, actualAnnotations)
+	// Verify updated state
+	assert.Equal(t, "annotation", cm.Data["application.resourceTrackingMethod"])
+	assert.Equal(t, "annotation", cm.Data["resource.tracking.method"])
+	assert.Equal(t, updatedAnnotations["installationID"], cm.Data["installationID"])
+
+	// Verify resource.tracking.annotations still doesn't exist
+	_, hasTrackingAnnotations = cm.Data["resource.tracking.annotations"]
+	assert.False(t, hasTrackingAnnotations)
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing.T) {
@@ -1215,6 +1223,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	argocd1 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Name = "argocd-1"
 		a.Namespace = testNamespace
+		a.Spec.ResourceTrackingMethod = "annotation"
 		a.Spec.ApplicationTrackingAnnotations = map[string]string{
 			"installationID": "instance-1",
 		}
@@ -1224,6 +1233,7 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	argocd2 := makeTestArgoCD(func(a *argoproj.ArgoCD) {
 		a.Name = "argocd-2"
 		a.Namespace = testNamespace
+		a.Spec.ResourceTrackingMethod = "annotation"
 		a.Spec.ApplicationTrackingAnnotations = map[string]string{
 			"installationID": "instance-2",
 		}
@@ -1247,10 +1257,10 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	}, cm1)
 	assert.NoError(t, err)
 
-	var actualAnnotations1 map[string]string
-	err = json.Unmarshal([]byte(cm1.Data["resource.tracking.annotations"]), &actualAnnotations1)
-	assert.NoError(t, err)
-	assert.Equal(t, "instance-1", actualAnnotations1["installationID"])
+	// Verify first instance's tracking method and annotations
+	assert.Equal(t, "annotation", cm1.Data["application.resourceTrackingMethod"])
+	assert.Equal(t, "annotation", cm1.Data["resource.tracking.method"])
+	assert.Equal(t, "instance-1", cm1.Data["installationID"])
 
 	// Test second instance
 	err = r.reconcileArgoConfigMap(argocd2)
@@ -1263,10 +1273,16 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_withMultipleInstances(t *testing
 	}, cm2)
 	assert.NoError(t, err)
 
-	var actualAnnotations2 map[string]string
-	err = json.Unmarshal([]byte(cm2.Data["resource.tracking.annotations"]), &actualAnnotations2)
-	assert.NoError(t, err)
-	assert.Equal(t, "instance-2", actualAnnotations2["installationID"])
+	// Verify second instance's tracking method and annotations
+	assert.Equal(t, "annotation", cm2.Data["application.resourceTrackingMethod"])
+	assert.Equal(t, "annotation", cm2.Data["resource.tracking.method"])
+	assert.Equal(t, "instance-2", cm2.Data["installationID"])
+
+	// Verify resource.tracking.annotations doesn't exist in either ConfigMap
+	_, hasTrackingAnnotations1 := cm1.Data["resource.tracking.annotations"]
+	assert.False(t, hasTrackingAnnotations1)
+	_, hasTrackingAnnotations2 := cm2.Data["resource.tracking.annotations"]
+	assert.False(t, hasTrackingAnnotations2)
 }
 
 func TestReconcileArgoCD_reconcileArgoConfigMap_emptyAnnotations(t *testing.T) {
@@ -1376,16 +1392,18 @@ func TestReconcileArgoCD_reconcileArgoConfigMap_multipleAnnotations(t *testing.T
 	}, cm)
 	assert.NoError(t, err)
 
-	// Verify annotations are set correctly in the ConfigMap
-	var actualAnnotations map[string]string
-	err = json.Unmarshal([]byte(cm.Data["resource.tracking.annotations"]), &actualAnnotations)
-	assert.NoError(t, err)
-	assert.Equal(t, annotations, actualAnnotations)
+	// Verify tracking method is set correctly
+	assert.Equal(t, "annotation", cm.Data["application.resourceTrackingMethod"])
 	assert.Equal(t, "annotation", cm.Data["resource.tracking.method"])
 
-	// Verify each annotation individually
+	// Verify annotations are set directly as key-value pairs
 	for key, expectedValue := range annotations {
-		assert.Equal(t, expectedValue, actualAnnotations[key],
+		assert.Equal(t, expectedValue, cm.Data[key],
 			"Annotation %s should have value %s", key, expectedValue)
 	}
+
+	// Verify resource.tracking.annotations doesn't exist
+	_, hasTrackingAnnotations := cm.Data["resource.tracking.annotations"]
+	assert.False(t, hasTrackingAnnotations,
+		"resource.tracking.annotations should not exist in ConfigMap")
 }
