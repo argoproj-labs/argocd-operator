@@ -27,7 +27,8 @@ metadata:
   name: argocd-cm
   namespace: test-1-046-argocd-1
 data:
-  resource.tracking.annotations: '{"installationID":"instance-1"}'
+  installationID: "instance-1"
+  resource.tracking.method: "annotation"
 ---
 # Check second ArgoCD ConfigMap
 apiVersion: v1
@@ -36,4 +37,23 @@ metadata:
   name: argocd-cm
   namespace: test-1-046-argocd-2
 data:
-  resource.tracking.annotations: '{"installationID":"instance-2"}'
+  installationID: "instance-2"
+  resource.tracking.method: "annotation"
+---
+# Check first namespace labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-1
+  labels:
+    argocd.argoproj.io/managed-by: test-1-046-argocd-1
+    argocd.argoproj.io/tracking-id: instance-1
+---
+# Check second namespace labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-2
+  labels:
+    argocd.argoproj.io/managed-by: test-1-046-argocd-2
+    argocd.argoproj.io/tracking-id: instance-2

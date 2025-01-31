@@ -25,3 +25,21 @@ status:
     status: Healthy
   sync:
     status: Synced
+---
+# Check resources in first namespace have correct annotation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: source-ns-1
+  annotations:
+    argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-1/nginx-deployment
+---
+# Check resources in second namespace have correct annotation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: source-ns-2
+  annotations:
+    argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-2/nginx-deployment

@@ -27,6 +27,7 @@ metadata:
 spec:
   applicationTrackingAnnotations:
     installationID: instance-1
+  resourceTrackingMethod: "annotation"
 ---
 # Second ArgoCD instance
 apiVersion: argoproj.io/v1beta1
@@ -37,3 +38,4 @@ metadata:
 spec:
   applicationTrackingAnnotations:
     installationID: instance-2
+  resourceTrackingMethod: "annotation"

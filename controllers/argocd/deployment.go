@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -1362,30 +1361,6 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSForRedis bool) error {
 	deploy := newDeploymentWithSuffix("server", "server", cr)
 	serverEnv := cr.Spec.Server.Env
-
-	// Add tracking method if specified
-	if cr.Spec.ResourceTrackingMethod != "" {
-		trackingMethod := argoproj.ParseResourceTrackingMethod(cr.Spec.ResourceTrackingMethod)
-		if trackingMethod != argoproj.ResourceTrackingMethodInvalid {
-			serverEnv = append(serverEnv, corev1.EnvVar{
-				Name:  "ARGOCD_RESOURCE_TRACKING_METHOD",
-				Value: trackingMethod.String(),
-			})
-		}
-	}
-
-	// Add tracking annotations if specified
-	if len(cr.Spec.ApplicationTrackingAnnotations) > 0 {
-		trackingAnnotations, err := json.Marshal(cr.Spec.ApplicationTrackingAnnotations)
-		if err != nil {
-			return fmt.Errorf("failed to marshal tracking annotations: %w", err)
-		}
-		serverEnv = append(serverEnv, corev1.EnvVar{
-			Name:  "ARGOCD_RESOURCE_TRACKING_ANNOTATIONS",
-			Value: string(trackingAnnotations),
-		})
-	}
-
 	serverEnv = append(serverEnv, corev1.EnvVar{
 		Name: "REDIS_PASSWORD",
 		ValueFrom: &corev1.EnvVarSource{

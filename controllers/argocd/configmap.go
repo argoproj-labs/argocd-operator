@@ -16,7 +16,6 @@ package argocd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -389,13 +388,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		cm.Data["resource.tracking.method"] = cr.Spec.ResourceTrackingMethod
 	}
 
-	// Set tracking annotations and handle installationID
+	// Set tracking annotations directly in the ConfigMap
 	if cr.Spec.ApplicationTrackingAnnotations != nil {
-		trackingAnnotations, err := json.Marshal(cr.Spec.ApplicationTrackingAnnotations)
-		if err != nil {
-			return err
+		for key, value := range cr.Spec.ApplicationTrackingAnnotations {
+			cm.Data[key] = value
 		}
-		cm.Data["resource.tracking.annotations"] = string(trackingAnnotations)
 	}
 
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
