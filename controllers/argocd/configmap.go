@@ -379,10 +379,22 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
+
+	// Set tracking method if specified
+	if cr.Spec.ResourceTrackingMethod != "" {
+		cm.Data["resource.tracking.method"] = cr.Spec.ResourceTrackingMethod
+	}
+
+	// Set tracking annotations directly in the ConfigMap
+	if cr.Spec.ApplicationTrackingAnnotations != nil {
+		for key, value := range cr.Spec.ApplicationTrackingAnnotations {
+			cm.Data[key] = value
+		}
+	}
+
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)

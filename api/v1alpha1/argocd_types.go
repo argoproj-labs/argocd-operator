@@ -682,6 +682,16 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Instance Label Key'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
 
+	// ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
+	// ArgoCD instances managing the same cluster resources. For example:
+	// applicationTrackingAnnotations:
+	//   installationID: "my-unique-id"
+	//   otherAnnotation: "value"
+	// These annotations will be added to the argocd-cm ConfigMap.
+	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Tracking Annotations",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	ApplicationTrackingAnnotations map[string]string `json:"applicationTrackingAnnotations,omitempty"`
+
 	// ConfigManagementPlugins is used to specify additional config management plugins.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Config Management Plugins'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ConfigManagementPlugins string `json:"configManagementPlugins,omitempty"`

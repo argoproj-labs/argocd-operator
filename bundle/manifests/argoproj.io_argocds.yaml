@@ -431,6 +431,17 @@ spec:
                         type: object
                     type: object
                 type: object
+              applicationTrackingAnnotations:
+                additionalProperties:
+                  type: string
+                description: |-
+                  ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
+                  ArgoCD instances managing the same cluster resources. For example:
+                  applicationTrackingAnnotations:
+                    installationID: "my-unique-id"
+                    otherAnnotation: "value"
+                  These annotations will be added to the argocd-cm ConfigMap.
+                type: object
               banner:
                 description: Banner defines an additional banner to be displayed in
                   Argo CD UI
@@ -9395,6 +9406,17 @@ spec:
                         - enabled
                         type: object
                     type: object
+                type: object
+              applicationTrackingAnnotations:
+                additionalProperties:
+                  type: string
+                description: |-
+                  ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
+                  ArgoCD instances managing the same cluster resources. For example:
+                  applicationTrackingAnnotations:
+                    installationID: "my-unique-id"
+                    otherAnnotation: "value"
+                  These annotations will be added to the argocd-cm ConfigMap.
                 type: object
               banner:
                 description: Banner defines an additional banner to be displayed in

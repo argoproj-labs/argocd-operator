@@ -289,6 +289,16 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: 'ApplicationTrackingAnnotations defines a map of annotations
+          that will be used to support multiple ArgoCD instances managing the same
+          cluster resources. For example: applicationTrackingAnnotations: installationID:
+          "my-unique-id" otherAnnotation: "value" These annotations will be added
+          to the argocd-cm ConfigMap.'
+        displayName: Application Tracking Annotations
+        path: applicationTrackingAnnotations
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
@@ -858,6 +868,16 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+      - description: 'ApplicationTrackingAnnotations defines a map of annotations
+          that will be used to support multiple ArgoCD instances managing the same
+          cluster resources. For example: applicationTrackingAnnotations: installationID:
+          "my-unique-id" otherAnnotation: "value" These annotations will be added
+          to the argocd-cm ConfigMap.'
+        displayName: Application Tracking Annotations
+        path: applicationTrackingAnnotations
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
