@@ -40,20 +40,14 @@ data:
   installationID: "instance-2"
   resource.tracking.method: "annotation"
 ---
-# Check first namespace labels
+# Check first namespace
 apiVersion: v1
 kind: Namespace
 metadata:
   name: source-ns-1
-  labels:
-    argocd.argoproj.io/managed-by: test-1-046-argocd-1
-    argocd.argoproj.io/tracking-id: instance-1
 ---
-# Check second namespace labels
+# Check second namespace
 apiVersion: v1
 kind: Namespace
 metadata:
   name: source-ns-2
-  labels:
-    argocd.argoproj.io/managed-by: test-1-046-argocd-2
-    argocd.argoproj.io/tracking-id: instance-2
