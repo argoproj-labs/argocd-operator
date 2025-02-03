@@ -875,16 +875,6 @@ func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testin
 	}
 	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
 
-	// Modify the container environment variable
-	s.Spec.Template.Spec.Containers[0].Command = append(s.Spec.Template.Spec.Containers[0].Command, "new-command")
-	assert.NoError(t, r.Client.Update(context.TODO(), s))
-
-	// Reconcile again and check if the environment variable is reverted
-	assert.NoError(t, r.reconcileRedisStatefulSet(a))
-	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
-
-	assert.NotContains(t, s.Spec.Template.Spec.Containers[0].Command, "new-command")
-
 	// Modify the initcontainer environment variable
 	s.Spec.Template.Spec.Containers[0].Env = append(s.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
 		Name:  "NEW_ENV_VAR",
