@@ -851,12 +851,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			explanation += "container volume mounts"
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Env, existing.Spec.Template.Spec.InitContainers[0].Env) {
-			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
 			if changed {
 				explanation += ", "
 			}
-			explanation += "init containers env"
+			explanation += "init containers"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,
@@ -882,22 +882,6 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 				explanation += ", "
 			}
 			explanation += "container security context"
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = deploy.Spec.Template.Spec.InitContainers[0].Resources
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init container resources"
-			changed = true
-		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].SecurityContext, existing.Spec.Template.Spec.InitContainers[0].SecurityContext) {
-			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = deploy.Spec.Template.Spec.InitContainers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += "init container security context"
 			changed = true
 		}
 		if changed {

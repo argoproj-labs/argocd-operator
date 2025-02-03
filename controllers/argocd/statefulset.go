@@ -496,33 +496,14 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 			explanation += "volumes"
 			changed = true
 		}
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = ss.Spec.Template.Spec.InitContainers[0].Resources
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
 			if changed {
 				explanation += ", "
 			}
-			explanation += fmt.Sprintf("init container '%s' resources", existing.Spec.Template.Spec.InitContainers[0].Name)
+			explanation += "init containers"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].SecurityContext, existing.Spec.Template.Spec.InitContainers[0].SecurityContext) {
-			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = ss.Spec.Template.Spec.InitContainers[0].SecurityContext
-			if changed {
-				explanation += ", "
-			}
-			explanation += fmt.Sprintf("init container '%s' security context", existing.Spec.Template.Spec.InitContainers[0].Name)
-			changed = true
-		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Env, existing.Spec.Template.Spec.InitContainers[0].Env) {
-			existing.Spec.Template.Spec.InitContainers[0].Env = ss.Spec.Template.Spec.InitContainers[0].Env
-			if changed {
-				explanation += ", "
-			}
-			explanation += fmt.Sprintf("init container '%s' env", existing.Spec.Template.Spec.InitContainers[0].Name)
-			changed = true
-		}
-
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
