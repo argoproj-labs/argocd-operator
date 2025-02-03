@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+- script: |
+    error_message=$(oc get app guestbook -n argocd-test-impersonation -o jsonpath='{.status.operationState.message}')
+    expected_error="Namespace auto creation failed: namespaces \"guestbook\" is forbidden: User \"system:serviceaccount:guestbook:guestbook-deployer\""
+
+    if ! [[ ${error_message} =~ ${expected_error} ]]; then
+      exit 1
+    fi
