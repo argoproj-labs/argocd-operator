@@ -851,12 +851,12 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 			explanation += "container volume mounts"
 			changed = true
 		}
-		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
-			existing.Spec.Template.Spec.InitContainers = deploy.Spec.Template.Spec.InitContainers
+		if !reflect.DeepEqual(deploy.Spec.Template.Spec.InitContainers[0].Env, existing.Spec.Template.Spec.InitContainers[0].Env) {
+			existing.Spec.Template.Spec.InitContainers[0].Env = deploy.Spec.Template.Spec.InitContainers[0].Env
 			if changed {
 				explanation += ", "
 			}
-			explanation += "init containers"
+			explanation += "init containers env"
 			changed = true
 		}
 		if !reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env,

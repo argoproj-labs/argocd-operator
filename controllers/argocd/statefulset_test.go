@@ -836,3 +836,106 @@ func TestReconcileArgoCD_sidecarcontainer(t *testing.T) {
 
 	assert.Equal(t, 1, len(ss.Spec.Template.Spec.Containers))
 }
+func TestReconcileArgoCD_reconcileRedisStatefulSet_ModifyContainerSpec(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD()
+	a.Spec.HA.Enabled = true
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Initial reconciliation to create the StatefulSet
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+
+	s := newStatefulSetWithSuffix("redis-ha-server", "redis", a)
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	// Modify the container environment variable
+	s.Spec.Template.Spec.Containers[0].Env = append(s.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "NEW_ENV_VAR",
+		Value: "new-value",
+	})
+	assert.NoError(t, r.Client.Update(context.TODO(), s))
+
+	// Reconcile again and check if the environment variable is reverted
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	envVarFound := false
+	for _, env := range s.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "NEW_ENV_VAR" {
+			envVarFound = true
+			break
+		}
+	}
+	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
+
+	// Modify the container environment variable
+	s.Spec.Template.Spec.Containers[0].Command = append(s.Spec.Template.Spec.Containers[0].Command, "new-command")
+	assert.NoError(t, r.Client.Update(context.TODO(), s))
+
+	// Reconcile again and check if the environment variable is reverted
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	assert.NotContains(t, s.Spec.Template.Spec.Containers[0].Command, "new-command")
+
+	// Modify the initcontainer environment variable
+	s.Spec.Template.Spec.Containers[0].Env = append(s.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "NEW_ENV_VAR",
+		Value: "new-value",
+	})
+	assert.NoError(t, r.Client.Update(context.TODO(), s))
+
+	// Reconcile again and check if the environment variable is reverted
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	envVarFound = false
+	for _, env := range s.Spec.Template.Spec.InitContainers[0].Env {
+		if env.Name == "NEW_ENV_VAR" {
+			envVarFound = true
+			break
+		}
+	}
+	assert.False(t, envVarFound, "NEW_ENV_VAR should not be present")
+
+	// Modify the container  volume and volume mount
+	s.Spec.Template.Spec.Containers[0].VolumeMounts = append(s.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "new-volume",
+		MountPath: "/new/path",
+	})
+	s.Spec.Template.Spec.Volumes = append(s.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "new-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	assert.NoError(t, r.Client.Update(context.TODO(), s))
+	// Reconcile again and check if the volume mount is reverted
+	assert.NoError(t, r.reconcileRedisStatefulSet(a))
+	assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: a.Namespace}, s))
+
+	volumeMountFound := false
+	for _, vm := range s.Spec.Template.Spec.Containers[0].VolumeMounts {
+		if vm.Name == "new-volume" {
+			volumeMountFound = true
+			break
+		}
+	}
+	assert.False(t, volumeMountFound, "new-volume should not be present in volume mounts")
+
+	volumeFound := false
+	for _, v := range s.Spec.Template.Spec.Volumes {
+		if v.Name == "new-volume" {
+			volumeFound = true
+			break
+		}
+	}
+	assert.False(t, volumeFound, "new-volume should not be present in volumes")
+}
