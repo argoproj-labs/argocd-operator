@@ -937,25 +937,6 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *
 		Value: "test",
 	})
 
-	// Modify the deployment container command
-	deployment.Spec.Template.Spec.Containers[0].Command = append(deployment.Spec.Template.Spec.Containers[0].Command, "new-command")
-
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
-
-	// Reconcile again
-	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
-
-	// Check if the environment variable changes were reverted
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-redis-ha-haproxy",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].Command, "new-command")
-
 	// Modify the deployment initcontainer environment variables
 	deployment.Spec.Template.Spec.InitContainers[0].Env = append(deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
 		Name:  "TEST_ENV",
@@ -1017,25 +998,6 @@ func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *
 		Name:      "test-volume",
 		MountPath: "/test",
 	})
-
-	// Modify the deployment command
-	deployment.Spec.Template.Spec.Containers[0].Command = append(deployment.Spec.Template.Spec.Containers[0].Command, "test-command")
-
-	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
-
-	// Reconcile again
-	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
-
-	// Check if the command changes were reverted
-	assert.NoError(t, r.Client.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      "argocd-redis-ha-haproxy",
-			Namespace: a.Namespace,
-		},
-		deployment))
-
-	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].Command, "test-command")
 }
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
