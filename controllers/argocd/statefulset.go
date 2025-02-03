@@ -452,6 +452,14 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 				explanation += fmt.Sprintf("container '%s' image", container.Name)
 				changed = true
 			}
+			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].VolumeMounts, existing.Spec.Template.Spec.Containers[i].VolumeMounts) {
+				existing.Spec.Template.Spec.Containers[i].VolumeMounts = ss.Spec.Template.Spec.Containers[i].VolumeMounts
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' VolumeMounts", container.Name)
+				changed = true
+			}
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Resources, existing.Spec.Template.Spec.Containers[i].Resources) {
 				existing.Spec.Template.Spec.Containers[i].Resources = ss.Spec.Template.Spec.Containers[i].Resources
@@ -473,33 +481,29 @@ func (r *ReconcileArgoCD) reconcileRedisStatefulSet(cr *argoproj.ArgoCD) error {
 
 			if !reflect.DeepEqual(ss.Spec.Template.Spec.Containers[i].Env, existing.Spec.Template.Spec.Containers[i].Env) {
 				existing.Spec.Template.Spec.Containers[i].Env = ss.Spec.Template.Spec.Containers[i].Env
+				if changed {
+					explanation += ", "
+				}
+				explanation += fmt.Sprintf("container '%s' env", container.Name)
 				changed = true
 			}
 		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Resources, existing.Spec.Template.Spec.InitContainers[0].Resources) {
-			existing.Spec.Template.Spec.InitContainers[0].Resources = ss.Spec.Template.Spec.InitContainers[0].Resources
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.Volumes, existing.Spec.Template.Spec.Volumes) {
+			existing.Spec.Template.Spec.Volumes = ss.Spec.Template.Spec.Volumes
 			if changed {
 				explanation += ", "
 			}
-			explanation += fmt.Sprintf("init container '%s' resources", existing.Spec.Template.Spec.InitContainers[0].Name)
+			explanation += "volumes"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].SecurityContext, existing.Spec.Template.Spec.InitContainers[0].SecurityContext) {
-			existing.Spec.Template.Spec.InitContainers[0].SecurityContext = ss.Spec.Template.Spec.InitContainers[0].SecurityContext
+		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers, existing.Spec.Template.Spec.InitContainers) {
+			existing.Spec.Template.Spec.InitContainers = ss.Spec.Template.Spec.InitContainers
 			if changed {
 				explanation += ", "
 			}
-			explanation += fmt.Sprintf("init container '%s' security context", existing.Spec.Template.Spec.InitContainers[0].Name)
+			explanation += "init containers"
 			changed = true
 		}
-
-		if !reflect.DeepEqual(ss.Spec.Template.Spec.InitContainers[0].Env, existing.Spec.Template.Spec.InitContainers[0].Env) {
-			existing.Spec.Template.Spec.InitContainers[0].Env = ss.Spec.Template.Spec.InitContainers[0].Env
-			changed = true
-		}
-
 		if changed {
 			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			return r.Client.Update(context.TODO(), existing)
