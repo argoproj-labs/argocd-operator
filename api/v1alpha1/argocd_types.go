@@ -39,6 +39,9 @@ func init() {
 // +kubebuilder:deprecatedversion:warning="ArgoCD v1alpha1 version is deprecated and will be converted to v1beta1 automatically. Moving forward, please use v1beta1 as the ArgoCD API version."
 //+kubebuilder:object:root=true
 
+// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+type Duration string
+
 // ArgoCD is the Schema for the argocds API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
