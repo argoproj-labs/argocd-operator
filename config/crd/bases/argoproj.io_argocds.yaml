@@ -424,12 +424,12 @@ spec:
                 additionalProperties:
                   type: string
                 description: |-
-                  ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
-                  ArgoCD instances managing the same cluster resources. For example:
+                  ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
+                  advanced resource tracking scenarios, such as custom tracking formats. For example:
                   applicationTrackingAnnotations:
-                    installationID: "my-unique-id"
-                    otherAnnotation: "value"
-                  These annotations will be added to the argocd-cm ConfigMap.
+                    resource.tracking.format: "custom-format"
+                    otherKey: "value"
+                  These keys will be added to the argocd-cm ConfigMap.
                 type: object
               banner:
                 description: Banner defines an additional banner to be displayed in
@@ -1166,6 +1166,10 @@ spec:
                       have included in your ArgoCD server.
                     type: string
                 type: object
+              installationID:
+                description: InstallationID uniquely identifies an Argo CD instance
+                  in multi-instance clusters.
+                type: string
               kustomizeBuildOptions:
                 description: KustomizeBuildOptions is used to specify build options/parameters
                   to use with `kustomize build`.
@@ -9400,12 +9404,12 @@ spec:
                 additionalProperties:
                   type: string
                 description: |-
-                  ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
-                  ArgoCD instances managing the same cluster resources. For example:
+                  ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
+                  advanced resource tracking scenarios, such as custom tracking formats. For example:
                   applicationTrackingAnnotations:
-                    installationID: "my-unique-id"
-                    otherAnnotation: "value"
-                  These annotations will be added to the argocd-cm ConfigMap.
+                    resource.tracking.format: "custom-format"
+                    otherKey: "value"
+                  These keys will be added to the argocd-cm ConfigMap.
                 type: object
               banner:
                 description: Banner defines an additional banner to be displayed in
@@ -14382,6 +14386,10 @@ spec:
                       have included in your ArgoCD server.
                     type: string
                 type: object
+              installationID:
+                description: InstallationID uniquely identifies an Argo CD instance
+                  in multi-instance clusters.
+                type: string
               kustomizeBuildOptions:
                 description: KustomizeBuildOptions is used to specify build options/parameters
                   to use with `kustomize build`.

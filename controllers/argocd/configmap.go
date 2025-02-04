@@ -382,19 +382,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
-
-	// Set tracking method if specified
-	if cr.Spec.ResourceTrackingMethod != "" {
-		cm.Data["resource.tracking.method"] = cr.Spec.ResourceTrackingMethod
-	}
-
-	// Set tracking annotations directly in the ConfigMap
-	if cr.Spec.ApplicationTrackingAnnotations != nil {
-		for key, value := range cr.Spec.ApplicationTrackingAnnotations {
-			cm.Data[key] = value
-		}
-	}
-
 	cm.Data[common.ArgoCDKeyConfigManagementPlugins] = getConfigManagementPlugins(cr)
 	cm.Data[common.ArgoCDKeyAdminEnabled] = fmt.Sprintf("%t", !cr.Spec.DisableAdmin)
 	cm.Data[common.ArgoCDKeyGATrackingID] = getGATrackingID(cr)
@@ -402,6 +389,18 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
+
+	// Set installationID as a top-level key
+	if cr.Spec.InstallationID != "" {
+		cm.Data[common.ArgoCDKeyInstallationID] = cr.Spec.InstallationID
+	}
+
+	// Set annotations from the map (for future use, e.g., resource.tracking.format)
+	if cr.Spec.ApplicationTrackingAnnotations != nil {
+		for key, value := range cr.Spec.ApplicationTrackingAnnotations {
+			cm.Data[key] = value
+		}
+	}
 
 	if len(cr.Spec.KustomizeVersions) > 0 {
 		for _, kv := range cr.Spec.KustomizeVersions {
@@ -787,4 +786,13 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	}
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
+}
+
+func validateApplicationTrackingAnnotations(annotations map[string]string) error {
+	if id, exists := annotations["installationID"]; exists {
+		if id == "" {
+			return fmt.Errorf("installationID cannot be empty")
+		}
+	}
+	return nil
 }

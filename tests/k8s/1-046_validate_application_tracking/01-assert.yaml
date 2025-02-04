@@ -28,7 +28,7 @@ metadata:
   namespace: test-1-046-argocd-1
 data:
   installationID: "instance-1"
-  resource.tracking.method: "annotation"
+  application.resourceTrackingMethod: "annotation"
 ---
 # Check second ArgoCD ConfigMap
 apiVersion: v1
@@ -38,7 +38,7 @@ metadata:
   namespace: test-1-046-argocd-2
 data:
   installationID: "instance-2"
-  resource.tracking.method: "annotation"
+  application.resourceTrackingMethod: "annotation"
 ---
 # Check first namespace
 apiVersion: v1

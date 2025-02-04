@@ -25,8 +25,7 @@ metadata:
   name: argocd-1
   namespace: test-1-046-argocd-1
 spec:
-  applicationTrackingAnnotations:
-    installationID: instance-1
+  installationID: "instance-1"
   resourceTrackingMethod: "annotation"
 ---
 # Second ArgoCD instance
@@ -36,6 +35,5 @@ metadata:
   name: argocd-2
   namespace: test-1-046-argocd-2
 spec:
-  applicationTrackingAnnotations:
-    installationID: instance-2
+  installationID: "instance-2"
   resourceTrackingMethod: "annotation"

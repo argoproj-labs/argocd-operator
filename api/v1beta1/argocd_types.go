@@ -792,12 +792,16 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Instance Label Key'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ApplicationInstanceLabelKey string `json:"applicationInstanceLabelKey,omitempty"`
 
-	// ApplicationTrackingAnnotations defines a map of annotations that will be used to support multiple
-	// ArgoCD instances managing the same cluster resources. For example:
+	// InstallationID uniquely identifies an Argo CD instance in multi-instance clusters.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Installation ID",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
+	InstallationID string `json:"installationID,omitempty"`
+
+	// ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
+	// advanced resource tracking scenarios, such as custom tracking formats. For example:
 	// applicationTrackingAnnotations:
-	//   installationID: "my-unique-id"
-	//   otherAnnotation: "value"
-	// These annotations will be added to the argocd-cm ConfigMap.
+	//   resource.tracking.format: "custom-format"
+	//   otherKey: "value"
+	// These keys will be added to the argocd-cm ConfigMap.
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Tracking Annotations",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ApplicationTrackingAnnotations map[string]string `json:"applicationTrackingAnnotations,omitempty"`
