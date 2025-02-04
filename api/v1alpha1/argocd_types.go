@@ -686,16 +686,6 @@ type ArgoCDSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Installation ID",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	InstallationID string `json:"installationID,omitempty"`
 
-	// ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
-	// advanced resource tracking scenarios, such as custom tracking formats. For example:
-	// applicationTrackingAnnotations:
-	//   resource.tracking.format: "custom-format"
-	//   otherKey: "value"
-	// These keys will be added to the argocd-cm ConfigMap.
-	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Application Tracking Annotations",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
-	ApplicationTrackingAnnotations map[string]string `json:"applicationTrackingAnnotations,omitempty"`
-
 	// ConfigManagementPlugins is used to specify additional config management plugins.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Config Management Plugins'",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text","urn:alm:descriptor:com.tectonic.ui:advanced"}
 	ConfigManagementPlugins string `json:"configManagementPlugins,omitempty"`

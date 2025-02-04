@@ -420,17 +420,6 @@ spec:
                         type: object
                     type: object
                 type: object
-              applicationTrackingAnnotations:
-                additionalProperties:
-                  type: string
-                description: |-
-                  ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
-                  advanced resource tracking scenarios, such as custom tracking formats. For example:
-                  applicationTrackingAnnotations:
-                    resource.tracking.format: "custom-format"
-                    otherKey: "value"
-                  These keys will be added to the argocd-cm ConfigMap.
-                type: object
               banner:
                 description: Banner defines an additional banner to be displayed in
                   Argo CD UI
@@ -9399,17 +9388,6 @@ spec:
                         - enabled
                         type: object
                     type: object
-                type: object
-              applicationTrackingAnnotations:
-                additionalProperties:
-                  type: string
-                description: |-
-                  ApplicationTrackingAnnotations defines a map of additional ConfigMap keys that will be used to support
-                  advanced resource tracking scenarios, such as custom tracking formats. For example:
-                  applicationTrackingAnnotations:
-                    resource.tracking.format: "custom-format"
-                    otherKey: "value"
-                  These keys will be added to the argocd-cm ConfigMap.
                 type: object
               banner:
                 description: Banner defines an additional banner to be displayed in

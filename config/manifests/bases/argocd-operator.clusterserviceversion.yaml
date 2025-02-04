@@ -289,16 +289,6 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'ApplicationTrackingAnnotations defines a map of additional ConfigMap
-          keys that will be used to support advanced resource tracking scenarios,
-          such as custom tracking formats. For example: applicationTrackingAnnotations:
-          resource.tracking.format: "custom-format" otherKey: "value" These keys will
-          be added to the argocd-cm ConfigMap.'
-        displayName: Application Tracking Annotations
-        path: applicationTrackingAnnotations
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'
@@ -875,16 +865,6 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'ApplicationTrackingAnnotations defines a map of additional ConfigMap
-          keys that will be used to support advanced resource tracking scenarios,
-          such as custom tracking formats. For example: applicationTrackingAnnotations:
-          resource.tracking.format: "custom-format" otherKey: "value" These keys will
-          be added to the argocd-cm ConfigMap.'
-        displayName: Application Tracking Annotations
-        path: applicationTrackingAnnotations
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:text
-        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: ConfigManagementPlugins is used to specify additional config
           management plugins.
         displayName: Config Management Plugins'

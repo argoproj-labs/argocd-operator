@@ -395,13 +395,6 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 		cm.Data[common.ArgoCDKeyInstallationID] = cr.Spec.InstallationID
 	}
 
-	// Set annotations from the map (for future use, e.g., resource.tracking.format)
-	if cr.Spec.ApplicationTrackingAnnotations != nil {
-		for key, value := range cr.Spec.ApplicationTrackingAnnotations {
-			cm.Data[key] = value
-		}
-	}
-
 	if len(cr.Spec.KustomizeVersions) > 0 {
 		for _, kv := range cr.Spec.KustomizeVersions {
 			cm.Data["kustomize.version."+kv.Version] = kv.Path

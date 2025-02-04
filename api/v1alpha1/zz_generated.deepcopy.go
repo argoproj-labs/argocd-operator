@@ -893,13 +893,6 @@ func (in *ArgoCDSpec) DeepCopyInto(out *ArgoCDSpec) {
 		*out = new(ArgoCDApplicationSet)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ApplicationTrackingAnnotations != nil {
-		in, out := &in.ApplicationTrackingAnnotations, &out.ApplicationTrackingAnnotations
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	in.Controller.DeepCopyInto(&out.Controller)
 	if in.ExtraConfig != nil {
 		in, out := &in.ExtraConfig, &out.ExtraConfig
