@@ -421,6 +421,7 @@ func TestReconcileArgoCD_reconcileRepoDeployment_env(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers[0].Env, 2)
 		assert.Contains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{Name: "ARGOCD_EXEC_TIMEOUT", Value: "600s"})
 	})
+
 	t.Run("ExecTimeout not set", func(t *testing.T) {
 		logf.SetLogger(ZapLogger(true))
 		a := makeTestArgoCD()
