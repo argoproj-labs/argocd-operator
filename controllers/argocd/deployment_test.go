@@ -887,6 +887,118 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 }
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.HA.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Modify the deployment container environment variables
+	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment initcontainer environment variables
+	deployment.Spec.Template.Spec.InitContainers[0].Env = append(deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment volumes
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the volume changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+}
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
