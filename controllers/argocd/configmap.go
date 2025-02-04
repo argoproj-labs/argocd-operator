@@ -780,12 +780,3 @@ func (r *ReconcileArgoCD) reconcileGPGKeysConfigMap(cr *argoproj.ArgoCD) error {
 	argoutil.LogResourceCreation(log, cm)
 	return r.Client.Create(context.TODO(), cm)
 }
-
-func validateApplicationTrackingAnnotations(annotations map[string]string) error {
-	if id, exists := annotations["installationID"]; exists {
-		if id == "" {
-			return fmt.Errorf("installationID cannot be empty")
-		}
-	}
-	return nil
-}
