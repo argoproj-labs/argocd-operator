@@ -289,11 +289,11 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'ApplicationTrackingAnnotations defines a map of annotations
-          that will be used to support multiple ArgoCD instances managing the same
-          cluster resources. For example: applicationTrackingAnnotations: installationID:
-          "my-unique-id" otherAnnotation: "value" These annotations will be added
-          to the argocd-cm ConfigMap.'
+      - description: 'ApplicationTrackingAnnotations defines a map of additional ConfigMap
+          keys that will be used to support advanced resource tracking scenarios,
+          such as custom tracking formats. For example: applicationTrackingAnnotations:
+          resource.tracking.format: "custom-format" otherKey: "value" These keys will
+          be added to the argocd-cm ConfigMap.'
         displayName: Application Tracking Annotations
         path: applicationTrackingAnnotations
         x-descriptors:
@@ -434,6 +434,13 @@ spec:
           the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
@@ -868,11 +875,11 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Prometheus
         - urn:alm:descriptor:com.tectonic.ui:fieldGroup:Server
         - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
-      - description: 'ApplicationTrackingAnnotations defines a map of annotations
-          that will be used to support multiple ArgoCD instances managing the same
-          cluster resources. For example: applicationTrackingAnnotations: installationID:
-          "my-unique-id" otherAnnotation: "value" These annotations will be added
-          to the argocd-cm ConfigMap.'
+      - description: 'ApplicationTrackingAnnotations defines a map of additional ConfigMap
+          keys that will be used to support advanced resource tracking scenarios,
+          such as custom tracking formats. For example: applicationTrackingAnnotations:
+          resource.tracking.format: "custom-format" otherKey: "value" These keys will
+          be added to the argocd-cm ConfigMap.'
         displayName: Application Tracking Annotations
         path: applicationTrackingAnnotations
         x-descriptors:
@@ -1045,6 +1052,13 @@ spec:
           the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
