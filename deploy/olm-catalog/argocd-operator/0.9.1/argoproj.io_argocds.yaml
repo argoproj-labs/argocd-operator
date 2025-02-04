@@ -1673,7 +1673,7 @@ spec:
                     type: array
                   execTimeout:
                     description: ExecTimeout specifies the timeout in seconds, minutes or hours based on the suffix user provides.
-                    type: integer
+                    type: string
                   extraRepoCommandArgs:
                     description: Extra Command arguments allows users to pass command
                       line arguments to repo server workload. They get added to default
@@ -8557,7 +8557,7 @@ spec:
                     type: array
                   execTimeout:
                     description: ExecTimeout specifies the timeout in seconds, minutes or hours based on the suffix user provides.
-                    type: integer
+                    type: string
                   extraRepoCommandArgs:
                     description: Extra Command arguments allows users to pass command
                       line arguments to repo server workload. They get added to default
