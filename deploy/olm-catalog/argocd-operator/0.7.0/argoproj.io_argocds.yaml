@@ -1474,9 +1474,9 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
+                    description: ExecTimeout specifies the timeout in seconds, minutes or hours for
                       tool execution
-                    type: integer
+                    type: string
                   extraRepoCommandArgs:
                     description: Extra Command arguments allows users to pass command
                       line arguments to repo server workload. They get added to default

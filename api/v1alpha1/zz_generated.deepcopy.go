@@ -666,11 +666,6 @@ func (in *ArgoCDRepoSpec) DeepCopyInto(out *ArgoCDRepoSpec) {
 		*out = new(v1.ResourceRequirements)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ExecTimeout != nil {
-		in, out := &in.ExecTimeout, &out.ExecTimeout
-		*out = new(int)
-		**out = **in
-	}
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env
 		*out = make([]v1.EnvVar, len(*in))

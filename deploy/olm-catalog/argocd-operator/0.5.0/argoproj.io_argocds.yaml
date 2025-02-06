@@ -1343,9 +1343,9 @@ spec:
                       type: object
                     type: array
                   execTimeout:
-                    description: ExecTimeout specifies the timeout in seconds for
+                    description: ExecTimeout specifies the timeout in seconds, minutes or hours for
                       tool execution
-                    type: integer
+                    type: string
                   image:
                     description: Image is the ArgoCD Repo Server container image.
                     type: string
