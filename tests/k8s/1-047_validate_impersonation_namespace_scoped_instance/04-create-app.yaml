@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: guestbook
-  namespace: test-impersonation-ns
+  namespace: argocd-test-ns-scoped
 spec:
   destination:
     namespace: guestbook
@@ -18,4 +18,3 @@ spec:
     automated: {}
     syncOptions:
       - ServerSideApply=true
-      - CreateNamespace=true

@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: guestbook-proj
-  namespace: test-impersonation-ns
+  namespace: argocd-test-ns-scoped
 spec:
   clusterResourceWhitelist:
     - group: '*'

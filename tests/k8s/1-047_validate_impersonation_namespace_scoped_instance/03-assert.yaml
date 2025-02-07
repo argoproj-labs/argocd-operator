@@ -1,26 +1,26 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+apiVersion: v1
+kind: Namespace
 metadata:
   name: guestbook
-  namespace: test-impersonation-ns
-spec:
-  destination:
-    namespace: guestbook
-    server: 'https://kubernetes.default.svc'
-  project: guestbook-proj
-  source:
-    directory:
-      jsonnet: {}
-      recurse: true
-    path: guestbook
-    repoURL: 'https://github.com/argoproj/argocd-example-apps'
-  syncPolicy:
-    automated: {}
-    syncOptions:
-      - ServerSideApply=true
-      - CreateNamespace=true
-status:
-  health:
-    status: Missing
-  sync:
-    status: Unknown
+  labels:
+    argocd.argoproj.io/managed-by: argocd-test-ns-scoped
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guestbook-deployer
+  namespace: guestbook
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: guestbook-deployer-rb
+  namespace: guestbook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: guestbook-deployer
+  namespace: guestbook

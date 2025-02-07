@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: guestbook
   labels:
-    argocd.argoproj.io/managed-by: openshift-gitops
+    argocd.argoproj.io/managed-by: argocd-test-ns-scoped
 ---
 apiVersion: v1
 kind: ServiceAccount

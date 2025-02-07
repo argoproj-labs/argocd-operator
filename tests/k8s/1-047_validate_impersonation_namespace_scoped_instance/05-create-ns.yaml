@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: guestbook-proj
-  namespace: test-impersonation-ns
+  namespace: argocd-test-ns-scoped
 spec:
   clusterResourceWhitelist:
     - group: '*'
@@ -19,23 +19,9 @@ spec:
   sourceRepos:
     - 'https://github.com/argoproj/argocd-example-apps.git'
 ---
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+apiVersion: v1
+kind: Namespace
 metadata:
   name: guestbook-dev
-  namespace: test-impersonation-ns
-spec:
-  destination:
-    namespace: guestbook-dev
-    server: 'https://kubernetes.default.svc'
-  project: guestbook-proj
-  source:
-    directory:
-      jsonnet: {}
-      recurse: true
-    path: guestbook
-    repoURL: 'https://github.com/argoproj/argocd-example-apps'
-  syncPolicy:
-    automated: {}
-    syncOptions:
-      - ServerSideApply=true
+  labels:
+    argocd.argoproj.io/managed-by: argocd-test-ns-scoped

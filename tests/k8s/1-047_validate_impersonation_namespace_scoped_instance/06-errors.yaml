@@ -2,4 +2,4 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: guestbook-deployer
-  namespace: test-impersonation-ns
+  namespace: argocd-test-ns-scoped
