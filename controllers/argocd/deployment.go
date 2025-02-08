@@ -486,8 +486,9 @@ func (r *ReconcileArgoCD) reconcileRedisDeployment(cr *argoproj.ArgoCD, useTLS b
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
-			RunAsUser:    int64Ptr(999),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
+			RunAsUser:              int64Ptr(999),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -690,7 +691,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -730,7 +732,8 @@ func (r *ReconcileArgoCD) reconcileRedisHAProxyDeployment(cr *argoproj.ArgoCD) e
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -951,7 +954,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -1062,7 +1066,8 @@ func (r *ReconcileArgoCD) reconcileRepoDeployment(cr *argoproj.ArgoCD, useTLSFor
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -1444,7 +1449,8 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -1764,6 +1770,8 @@ func getRolloutInitContainer() []corev1.Container {
 						"ALL",
 					},
 				},
+				ReadOnlyRootFilesystem: boolPtr(true),
+				RunAsNonRoot:           boolPtr(true),
 				SeccompProfile: &corev1.SeccompProfile{
 					Type: "RuntimeDefault",
 				},

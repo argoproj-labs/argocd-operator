@@ -282,7 +282,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
@@ -312,7 +313,8 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 					"ALL",
 				},
 			},
-			RunAsNonRoot: boolPtr(true),
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
