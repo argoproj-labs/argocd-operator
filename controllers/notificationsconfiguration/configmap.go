@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/argoproj-labs/argocd-operator/api/v1alpha1"
 	"github.com/argoproj-labs/argocd-operator/controllers/argoutil"
@@ -64,7 +65,16 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 		expectedConfiguration["context"] = mapToString(cr.Spec.Context)
 	}
 
-	if !reflect.DeepEqual(expectedConfiguration, NotificationsConfigMap.Data) {
+	// check context separately as converting context map to string produce different string due to random serialization of map value
+	changed := checkIfContextChanged(cr, NotificationsConfigMap)
+
+	for k, _ := range expectedConfiguration {
+		if !reflect.DeepEqual(expectedConfiguration[k], NotificationsConfigMap.Data[k]) && k != "context" {
+			changed = true
+		}
+	}
+
+	if changed {
 		NotificationsConfigMap.Data = expectedConfiguration
 		err := r.Client.Update(context.TODO(), NotificationsConfigMap)
 		if err != nil {
@@ -75,10 +85,34 @@ func (r *NotificationsConfigurationReconciler) reconcileNotificationsConfigmap(c
 	// Do nothing
 	return nil
 }
+
 func mapToString(m map[string]string) string {
 	result := ""
 	for key, value := range m {
 		result += fmt.Sprintf("%s: %s\n", key, value)
 	}
 	return result
+}
+
+// checkIfContextChanged checks if context value in NotificationConfiguration and notificationConfigMap context have same value
+// return true if there is difference, and false if no changes observed
+func checkIfContextChanged(cr *v1alpha1.NotificationsConfiguration, notificationConfigMap *corev1.ConfigMap) bool {
+	cmContext := strings.Split(strings.TrimSuffix(notificationConfigMap.Data["context"], "\n"), "\n")
+	if len(cmContext) != len(cr.Spec.Context) {
+		return true
+	} else {
+		// Create a map for quick lookups
+		stringMap := make(map[string]bool)
+		for _, item := range cmContext {
+			stringMap[item] = true
+		}
+
+		// Check for each item in array1
+		for key, value := range cr.Spec.Context {
+			if !stringMap[fmt.Sprintf("%s: %s", key, value)] {
+				return true
+			}
+		}
+	}
+	return false
 }
