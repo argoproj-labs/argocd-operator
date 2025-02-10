@@ -99,7 +99,9 @@ func mapToString(m map[string]string) string {
 // return true if there is difference, and false if no changes observed
 func checkIfContextChanged(cr *v1alpha1.NotificationsConfiguration, notificationConfigMap *corev1.ConfigMap) bool {
 	cmContext := strings.Split(strings.TrimSuffix(notificationConfigMap.Data["context"], "\n"), "\n")
-	if len(cmContext) == len(cr.Spec.Context) {
+	if len(cmContext) != len(cr.Spec.Context) {
+		return true
+	} else {
 		// Create a map for quick lookups
 		stringMap := make(map[string]bool)
 		for _, item := range cmContext {
@@ -112,8 +114,6 @@ func checkIfContextChanged(cr *v1alpha1.NotificationsConfiguration, notification
 				return true
 			}
 		}
-	} else {
-		return true
 	}
 	return false
 }
