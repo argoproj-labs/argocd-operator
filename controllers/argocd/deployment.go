@@ -1402,6 +1402,18 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/server/tls/redis",
 		},
+		{
+			Name:      "plugins-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
+		},
 	}
 
 	if cr.Spec.Server.VolumeMounts != nil {
@@ -1496,6 +1508,34 @@ func (r *ReconcileArgoCD) reconcileServerDeployment(cr *argoproj.ArgoCD, useTLSF
 					SecretName: common.ArgoCDRedisServerTLSSecretName,
 					Optional:   boolPtr(true),
 				},
+			},
+		},
+		{
+			Name: "plugins-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "server.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
