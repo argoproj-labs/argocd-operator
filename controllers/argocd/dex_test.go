@@ -279,7 +279,8 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -332,7 +333,8 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -406,7 +408,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
@@ -459,7 +462,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
@@ -525,7 +529,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
@@ -591,7 +596,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},

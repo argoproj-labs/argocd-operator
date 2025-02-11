@@ -181,6 +181,8 @@ func TestReconcileNotifications_CreateDeployments(t *testing.T) {
 					"ALL",
 				},
 			},
+			ReadOnlyRootFilesystem: boolPtr(true),
+			RunAsNonRoot:           boolPtr(true),
 			SeccompProfile: &corev1.SeccompProfile{
 				Type: "RuntimeDefault",
 			},
