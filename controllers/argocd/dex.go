@@ -288,10 +288,16 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "static-files",
-			MountPath: "/shared",
-		}},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "static-files",
+				MountPath: "/shared",
+			},
+			{
+				Name:      "dexconfig",
+				MountPath: "/tmp",
+			},
+		},
 	}}
 
 	deploy.Spec.Template.Spec.InitContainers = []corev1.Container{{
@@ -326,12 +332,20 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 	}}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
-	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{{
-		Name: "static-files",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
+	deploy.Spec.Template.Spec.Volumes = []corev1.Volume{
+		{
+			Name: "static-files",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
 		},
-	}}
+		{
+			Name: "dexconfig",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
 
 	existing := newDeploymentWithSuffix("dex-server", "dex-server", cr)
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
