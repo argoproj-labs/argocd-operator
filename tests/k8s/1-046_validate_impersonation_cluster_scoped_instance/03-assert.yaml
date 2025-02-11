@@ -20,5 +20,5 @@ spec:
       - ServerSideApply=true
       - CreateNamespace=true
 status:
-  health:
-    status: Missing
+  sync:
+    status: OutOfSync

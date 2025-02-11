@@ -2,7 +2,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
 - script: |
-    error_message=$(oc get app guestbook-dev -n argocd-test-impersonation -o jsonpath='{.status.operationState.message}')
+    error_message=$(kubectl get app guestbook-dev -n argocd-test-impersonation -o jsonpath='{.status.operationState.message}')
     expected_error="failed to find a matching service account to impersonate: no matching service account found for destination server https://kubernetes.default.svc and namespace guestbook-dev"
 
     if ! [[ ${error_message} =~ ${expected_error} ]]; then
