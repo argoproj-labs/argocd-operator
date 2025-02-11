@@ -2,4 +2,4 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: guestbook-deployer
-  namespace: argocd-test-ns-scoped
+  namespace: guestbook-dev

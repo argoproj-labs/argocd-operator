@@ -1,24 +1,44 @@
-apiVersion: v1
-kind: Namespace
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
 metadata:
-  name: guestbook
+  name: guestbook-proj
+  namespace: argocd-test-impersonation
+spec:
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  destinationServiceAccounts:
+    - defaultServiceAccount: guestbook-deployer
+      namespace: guestbook
+      server: 'https://kubernetes.default.svc'
+  destinations:
+    - namespace: guestbook
+      server: 'https://kubernetes.default.svc'
+    - namespace: guestbook-dev
+      server: 'https://kubernetes.default.svc'
+  sourceRepos:
+    - 'https://github.com/argoproj/argocd-example-apps.git'
 ---
-apiVersion: v1
-kind: ServiceAccount
+apiVersion: argoproj.io/v1alpha1
+kind: Application
 metadata:
-  name: guestbook-deployer
-  namespace: guestbook
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: guestbook-deployer-rb
-  namespace: guestbook
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: guestbook-deployer
-  namespace: guestbook
+  name: guestbook-dev
+  namespace: argocd-test-impersonation
+spec:
+  destination:
+    namespace: guestbook-dev
+    server: 'https://kubernetes.default.svc'
+  project: guestbook-proj
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: guestbook
+    repoURL: 'https://github.com/argoproj/argocd-example-apps'
+  syncPolicy:
+    automated: {}
+    syncOptions:
+      - ServerSideApply=true
+status:
+  health:
+    status: Missing
