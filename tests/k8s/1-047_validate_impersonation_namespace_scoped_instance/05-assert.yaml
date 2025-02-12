@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: guestbook-proj
+  namespace: argocd-test-ns-scoped
+spec:
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  destinationServiceAccounts:
+    - defaultServiceAccount: guestbook-deployer
+      namespace: guestbook
+      server: 'https://kubernetes.default.svc'
+  destinations:
+    - namespace: guestbook
+      server: 'https://kubernetes.default.svc'
+    - namespace: guestbook-dev
+      server: 'https://kubernetes.default.svc'
+  sourceRepos:
+    - 'https://github.com/argoproj/argocd-example-apps.git'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guestbook-dev
+  labels:
+    argocd.argoproj.io/managed-by: argocd-test-ns-scoped
