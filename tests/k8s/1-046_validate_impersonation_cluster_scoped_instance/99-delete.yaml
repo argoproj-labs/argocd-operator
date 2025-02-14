@@ -1,0 +1,13 @@
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+delete:
+- apiVersion: argoproj.io/v1beta1
+  kind: ArgoCD
+  name: argocd-test
+- apiVersion: v1
+  kind: Namespace
+  name: argocd-test-impersonation
+- apiVersion: v1
+  kind: Namespace
+  name: guestbook

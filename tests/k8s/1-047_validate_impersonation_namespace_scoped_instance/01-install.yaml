@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd-test-ns-scoped
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-test
+  namespace: argocd-test-ns-scoped
+spec:
+  extraConfig:
+    application.sync.impersonation.enabled: "true"
+  server:
+    route:
+      enabled: true
