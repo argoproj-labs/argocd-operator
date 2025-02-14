@@ -379,7 +379,6 @@ func (r *ReconcileArgoCD) reconcileCAConfigMap(cr *argoproj.ArgoCD) error {
 // reconcileConfiguration will ensure that the main ConfigMap for ArgoCD is present.
 func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm := newConfigMapWithName(common.ArgoCDConfigMapName, cr)
-
 	cm.Data = make(map[string]string)
 	cm.Data = setRespectRBAC(cr, cm.Data)
 	cm.Data[common.ArgoCDKeyApplicationInstanceLabelKey] = getApplicationInstanceLabelKey(cr)
@@ -390,6 +389,11 @@ func (r *ReconcileArgoCD) reconcileArgoConfigMap(cr *argoproj.ArgoCD) error {
 	cm.Data[common.ArgoCDKeyHelpChatURL] = getHelpChatURL(cr)
 	cm.Data[common.ArgoCDKeyHelpChatText] = getHelpChatText(cr)
 	cm.Data[common.ArgoCDKeyKustomizeBuildOptions] = getKustomizeBuildOptions(cr)
+
+	// Set installationID as a top-level key
+	if cr.Spec.InstallationID != "" {
+		cm.Data[common.ArgoCDKeyInstallationID] = cr.Spec.InstallationID
+	}
 
 	if len(cr.Spec.KustomizeVersions) > 0 {
 		for _, kv := range cr.Spec.KustomizeVersions {
