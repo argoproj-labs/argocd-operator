@@ -325,10 +325,15 @@ func (r *ReconcileArgoCD) reconcileDexDeployment(cr *argoproj.ArgoCD) error {
 				Type: "RuntimeDefault",
 			},
 		},
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "static-files",
-			MountPath: "/shared",
-		}},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "static-files",
+				MountPath: "/shared",
+			},
+			{
+				Name:      "dexconfig",
+				MountPath: "/tmp",
+			}},
 	}}
 
 	deploy.Spec.Template.Spec.ServiceAccountName = fmt.Sprintf("%s-%s", cr.Name, common.ArgoCDDefaultDexServiceAccountName)
