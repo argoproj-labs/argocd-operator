@@ -887,6 +887,118 @@ func TestReconcileArgoCD_reconcileDeployments_HA_proxy_with_resources(t *testing
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Resources, newResources)
 	assert.Equal(t, deployment.Spec.Template.Spec.InitContainers[0].Resources, newResources)
 }
+func TestReconcileArgoCD_reconcileRedisHAProxyDeployment_ModifyContainerSpec(t *testing.T) {
+	logf.SetLogger(ZapLogger(true))
+
+	a := makeTestArgoCD(func(a *argoproj.ArgoCD) {
+		a.Spec.HA.Enabled = true
+	})
+
+	resObjs := []client.Object{a}
+	subresObjs := []client.Object{a}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	deployment := &appsv1.Deployment{}
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Modify the deployment container environment variables
+	deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment initcontainer environment variables
+	deployment.Spec.Template.Spec.InitContainers[0].Env = append(deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the environment variable changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.InitContainers[0].Env, corev1.EnvVar{
+		Name:  "TEST_ENV",
+		Value: "test",
+	})
+
+	// Modify the deployment volumes
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+
+	assert.NoError(t, r.Client.Update(context.TODO(), deployment))
+
+	// Reconcile again
+	assert.NoError(t, r.reconcileRedisHAProxyDeployment(a))
+
+	// Check if the volume changes were reverted
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-redis-ha-haproxy",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	assert.NotContains(t, deployment.Spec.Template.Spec.Volumes, corev1.Volume{
+		Name: "test-volume",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+	assert.NotContains(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "test-volume",
+		MountPath: "/test",
+	})
+}
 
 func TestReconcileArgoCD_reconcileRepoDeployment_updatesVolumeMounts(t *testing.T) {
 	logf.SetLogger(ZapLogger(true))
@@ -1307,6 +1419,22 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"argocd-server",
+		"--staticassets",
+		"/shared/app",
+		"--dex-server",
+		"https://argocd-dex-server.argocd.svc.cluster.local:5556",
+		"--repo-server",
+		"argocd-repo-server.argocd.svc.cluster.local:8081",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
 	assert.NoError(t, r.reconcileServerDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -1316,7 +1444,35 @@ func TestArgoCDServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
+
+	// When ExtraCommandArgs contains a non-duplicate argument along with a duplicate
+	a.Spec.Server.ExtraCommandArgs = []string{
+		"--rootpath",
+		"/argocd",
+		"--foo",
+		"bar",
+		"test",
+		"--logformat", // Duplicate flag and value
+		"text",
+		"--newarg", // Non-duplicate argument
+		"newvalue",
+		"--newarg", // Duplicate argument passing at once
+		"newvalue",
+	}
+
+	assert.NoError(t, r.reconcileServerDeployment(a, false))
+	assert.NoError(t, r.Client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      "argocd-server",
+			Namespace: a.Namespace,
+		},
+		deployment))
+
+	// Non-duplicate argument "--newarg" should be added, duplicate "--newarg" which is added twice is ignored
+	cmd = append(cmd, "--newarg", "newvalue")
+	assert.Equal(t, cmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Server.ExtraCommandArgs = []string{}
@@ -1833,6 +1989,65 @@ func TestReconcileArgoCD_reconcileRedisDeployment_with_error(t *testing.T) {
 	assert.Error(t, r.reconcileRedisDeployment(cr, false), "this is a test error")
 }
 
+func TestReconcileRedisDeployment_serviceAccountNameUpdate(t *testing.T) {
+	// tests SA update for redis deployment
+
+	tests := []struct {
+		name       string
+		SA         string
+		expectedSA string
+	}{
+		{
+			name:       "serviceAccountName field should reflect the original value",
+			SA:         "argocd-argocd-redis",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with an existing SA modification",
+			SA:         "builder",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value with a non-existing SA modification",
+			SA:         "argocd-argocd-redis-new",
+			expectedSA: "argocd-argocd-redis",
+		},
+		{
+			name:       "serviceAccountName field should be reset to the original value and not left empty",
+			SA:         "",
+			expectedSA: "argocd-argocd-redis",
+		},
+	}
+
+	cr := makeTestArgoCD()
+
+	resObjs := []client.Object{cr}
+	subresObjs := []client.Object{cr}
+	runtimeObjs := []runtime.Object{}
+	sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+	cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+	r := makeTestReconciler(cl, sch)
+
+	// Verify redis deployment
+	assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+	// Verify SA update
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			existing := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, existing))
+
+			existing.Spec.Template.Spec.ServiceAccountName = test.SA
+			assert.NoError(t, cl.Update(context.TODO(), existing))
+			assert.NoError(t, r.reconcileRedisDeployment(cr, false))
+
+			newRedis := &appsv1.Deployment{}
+			assert.NoError(t, r.Client.Get(context.TODO(), types.NamespacedName{Name: cr.Name + "-redis", Namespace: cr.Namespace}, newRedis))
+			assert.Equal(t, newRedis.Spec.Template.Spec.ServiceAccountName, test.expectedSA)
+		})
+	}
+}
+
 func operationProcessors(n int32) argoCDOpt {
 	return func(a *argoproj.ArgoCD) {
 		a.Spec.Controller.Processors.Operation = n
@@ -1888,13 +2103,21 @@ func Test_UpdateNodePlacement(t *testing.T) {
 	}
 	expectedChange := false
 	actualChange := false
-	updateNodePlacement(deployment, deployment, &actualChange)
+	explanation := ""
+	updateNodePlacement(deployment, deployment, &actualChange, &explanation)
 	if actualChange != expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
 	}
-	updateNodePlacement(deployment, deployment2, &actualChange)
+	if explanation != "" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
+	}
+
+	updateNodePlacement(deployment, deployment2, &actualChange, &explanation)
 	if actualChange == expectedChange {
 		t.Fatalf("updateNodePlacement failed, value of changed: %t", actualChange)
+	}
+	if explanation != "node selector, tolerations" {
+		t.Fatalf("updateNodePlacement returned unexpected explanation: '%s'", explanation)
 	}
 }
 
@@ -2246,6 +2469,17 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		"foo.scv.cluster.local:6379",
 	}
 
+	wantCmd := []string{
+		"uid_entrypoint.sh",
+		"argocd-repo-server",
+		"--redis",
+		"foo.scv.cluster.local:6379",
+		"--loglevel",
+		"info",
+		"--logformat",
+		"text",
+	}
+
 	assert.NoError(t, r.reconcileRepoDeployment(a, false))
 	assert.NoError(t, r.Client.Get(
 		context.TODO(),
@@ -2255,7 +2489,7 @@ func TestArgoCDRepoServerDeploymentCommand(t *testing.T) {
 		},
 		deployment))
 
-	assert.Equal(t, baseCommand, deployment.Spec.Template.Spec.Containers[0].Command)
+	assert.Equal(t, wantCmd, deployment.Spec.Template.Spec.Containers[0].Command)
 
 	// Remove all the command arguments that were added.
 	a.Spec.Repo.ExtraRepoCommandArgs = []string{}

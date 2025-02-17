@@ -1,7 +1,5 @@
 package argocd
 
-import argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
-
 // getDefaultNotificationsContext returns an empty map for context
 func getDefaultNotificationsContext() map[string]string {
 	notificationContext := make(map[string]string)
@@ -526,8 +524,8 @@ func getDefaultNotificationsTriggers() map[string]string {
   oncePer: app.status.operationState.syncResult.revision
   send:
   - app-deployed
-  when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status
-      == 'Healthy'`
+  when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status
+      == 'Healthy' and !time.Parse(app.status.health.lastTransitionTime).Before(time.Parse(app.status.operationState.finishedAt))`
 
 	notificationsTriggers["trigger.on-health-degraded"] = `- description: Application has degraded
   send:
@@ -556,15 +554,4 @@ func getDefaultNotificationsTriggers() map[string]string {
 
 	return notificationsTriggers
 
-}
-
-// getArgoCDNotificationsControllerReplicas will return the size value for the argocd-notifications-controller replica count if it
-// has been set in argocd CR. Otherwise, nil is returned if the replicas is not set in the argocd CR or
-// replicas value is < 0.
-func getArgoCDNotificationsControllerReplicas(cr *argoproj.ArgoCD) *int32 {
-	if cr.Spec.Notifications.Replicas != nil && *cr.Spec.Notifications.Replicas >= 0 {
-		return cr.Spec.Notifications.Replicas
-	}
-
-	return nil
 }

@@ -90,7 +90,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 	}
 
 	if !cr.Spec.Notifications.Enabled {
-		log.Info("Deleting NotificationsConfiguration as notifications is disabled")
+		argoutil.LogResourceDeletion(log, defaultNotificationsConfigurationCR, "notifications are disabled")
 		return r.Client.Delete(context.TODO(), defaultNotificationsConfigurationCR)
 	}
 
@@ -107,6 +107,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsConfigurationCR(cr *argoproj.Arg
 			return nil
 		}
 
+		argoutil.LogResourceCreation(log, defaultNotificationsConfigurationCR)
 		err := r.Client.Create(context.TODO(), defaultNotificationsConfigurationCR)
 		if err != nil {
 			return err
@@ -202,7 +203,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 			return nil, err
 		}
 
-		log.Info(fmt.Sprintf("Creating serviceaccount %s", sa.Name))
+		argoutil.LogResourceCreation(log, sa)
 		err := r.Client.Create(context.TODO(), sa)
 		if err != nil {
 			return nil, err
@@ -211,7 +212,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceAccount(cr *argoproj.Argo
 
 	// SA exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting serviceaccount %s as notifications is disabled", sa.Name))
+		argoutil.LogResourceDeletion(log, sa, "notifications are disabled")
 		return nil, r.Client.Delete(context.TODO(), sa)
 	}
 
@@ -239,7 +240,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 			return nil, err
 		}
 
-		log.Info(fmt.Sprintf("Creating role %s", desiredRole.Name))
+		argoutil.LogResourceCreation(log, desiredRole)
 		err := r.Client.Create(context.TODO(), desiredRole)
 		if err != nil {
 			return nil, err
@@ -249,7 +250,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 
 	// role exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting role %s as notifications is disabled", existingRole.Name))
+		argoutil.LogResourceDeletion(log, existingRole, "notifications are disabled")
 		return nil, r.Client.Delete(context.TODO(), existingRole)
 	}
 
@@ -259,6 +260,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRole(cr *argoproj.ArgoCD) (*rbac
 		if err := controllerutil.SetControllerReference(cr, existingRole, r.Scheme); err != nil {
 			return nil, err
 		}
+		argoutil.LogResourceUpdate(log, existingRole, "updating policy rules")
 		return existingRole, r.Client.Update(context.TODO(), existingRole)
 	}
 
@@ -299,19 +301,20 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 			return err
 		}
 
-		log.Info(fmt.Sprintf("Creating roleBinding %s", desiredRoleBinding.Name))
+		argoutil.LogResourceCreation(log, desiredRoleBinding)
 		return r.Client.Create(context.TODO(), desiredRoleBinding)
 	}
 
 	// roleBinding exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting roleBinding %s as notifications is disabled", existingRoleBinding.Name))
+		argoutil.LogResourceDeletion(log, existingRoleBinding, "notifications are disabled")
 		return r.Client.Delete(context.TODO(), existingRoleBinding)
 	}
 
 	// roleBinding exists and should. Reconcile roleBinding if changed
 	if !reflect.DeepEqual(existingRoleBinding.RoleRef, desiredRoleBinding.RoleRef) {
 		// if the RoleRef changes, delete the existing role binding and create a new one
+		argoutil.LogResourceDeletion(log, existingRoleBinding, "roleref changed, deleting rolebinding in order to recreate it")
 		if err := r.Client.Delete(context.TODO(), existingRoleBinding); err != nil {
 			return err
 		}
@@ -320,6 +323,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsRoleBinding(cr *argoproj.ArgoCD,
 		if err := controllerutil.SetControllerReference(cr, existingRoleBinding, r.Scheme); err != nil {
 			return err
 		}
+		argoutil.LogResourceUpdate(log, existingRoleBinding, "updating subjects")
 		return r.Client.Update(context.TODO(), existingRoleBinding)
 	}
 
@@ -332,10 +336,6 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 	desiredDeployment.Spec.Strategy = appsv1.DeploymentStrategy{
 		Type: appsv1.RecreateDeploymentStrategyType,
-	}
-
-	if replicas := getArgoCDNotificationsControllerReplicas(cr); replicas != nil {
-		desiredDeployment.Spec.Replicas = replicas
 	}
 
 	notificationEnv := cr.Spec.Notifications.Env
@@ -412,6 +412,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 
 	// fetch existing deployment by name
 	deploymentChanged := false
+	explanation := ""
 	existingDeployment := &appsv1.Deployment{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: desiredDeployment.Name, Namespace: cr.Namespace}, existingDeployment); err != nil {
 		if !errors.IsNotFound(err) {
@@ -428,82 +429,131 @@ func (r *ReconcileArgoCD) reconcileNotificationsDeployment(cr *argoproj.ArgoCD, 
 			return err
 		}
 
-		log.Info(fmt.Sprintf("Creating deployment %s", desiredDeployment.Name))
+		argoutil.LogResourceCreation(log, desiredDeployment)
 		return r.Client.Create(context.TODO(), desiredDeployment)
 	}
 
 	// deployment exists but shouldn't, so it should be deleted
 	if !cr.Spec.Notifications.Enabled {
-		log.Info(fmt.Sprintf("Deleting deployment %s as notifications is disabled", existingDeployment.Name))
+		argoutil.LogResourceDeletion(log, existingDeployment, "notifications are disabled")
 		return r.Client.Delete(context.TODO(), existingDeployment)
 	}
 
 	// deployment exists and should. Reconcile deployment if changed
-	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged)
+	updateNodePlacement(existingDeployment, desiredDeployment, &deploymentChanged, &explanation)
 
 	if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 		existingDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
 		existingDeployment.Spec.Template.ObjectMeta.Labels["image.upgraded"] = time.Now().UTC().Format("01022006-150406-MST")
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container image"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Command, desiredDeployment.Spec.Template.Spec.Containers[0].Command) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Command = desiredDeployment.Spec.Template.Spec.Containers[0].Command
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container command"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Env,
 		desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Env = desiredDeployment.Spec.Template.Spec.Containers[0].Env
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container env"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Volumes, desiredDeployment.Spec.Template.Spec.Volumes) {
 		existingDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "volumes"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Replicas, desiredDeployment.Spec.Replicas) {
 		existingDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "replicas"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
 		existingDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container volume mounts"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].Resources, desiredDeployment.Spec.Template.Spec.Containers[0].Resources) {
 		existingDeployment.Spec.Template.Spec.Containers[0].Resources = desiredDeployment.Spec.Template.Spec.Containers[0].Resources
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container resources"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext, desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext) {
 		existingDeployment.Spec.Template.Spec.Containers[0].SecurityContext = desiredDeployment.Spec.Template.Spec.Containers[0].SecurityContext
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "container security context"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Spec.ServiceAccountName, desiredDeployment.Spec.Template.Spec.ServiceAccountName) {
 		existingDeployment.Spec.Template.Spec.ServiceAccountName = desiredDeployment.Spec.Template.Spec.ServiceAccountName
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "service account name"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Labels, desiredDeployment.Labels) {
 		existingDeployment.Labels = desiredDeployment.Labels
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "labels"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Template.Labels, desiredDeployment.Spec.Template.Labels) {
 		existingDeployment.Spec.Template.Labels = desiredDeployment.Spec.Template.Labels
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "pod labels"
 		deploymentChanged = true
 	}
 
 	if !reflect.DeepEqual(existingDeployment.Spec.Selector, desiredDeployment.Spec.Selector) {
 		existingDeployment.Spec.Selector = desiredDeployment.Spec.Selector
+		if deploymentChanged {
+			explanation = ", "
+		}
+		explanation += "selector"
 		deploymentChanged = true
 	}
 
 	if deploymentChanged {
+		argoutil.LogResourceUpdate(log, existingDeployment, "updating", explanation)
 		return r.Client.Update(context.TODO(), existingDeployment)
 	}
 
@@ -539,6 +589,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsMetricsService(cr *argoproj.Argo
 	if err := controllerutil.SetControllerReference(cr, svc, r.Scheme); err != nil {
 		return err
 	}
+	argoutil.LogResourceCreation(log, svc)
 	return r.Client.Create(context.TODO(), svc)
 }
 
@@ -566,6 +617,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsServiceMonitor(cr *argoproj.Argo
 		},
 	}
 
+	argoutil.LogResourceCreation(log, serviceMonitor)
 	return r.Client.Create(context.TODO(), serviceMonitor)
 }
 
@@ -587,7 +639,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 	if secretExists {
 		// secret exists but shouldn't, so it should be deleted
 		if !cr.Spec.Notifications.Enabled {
-			log.Info(fmt.Sprintf("Deleting secret %s as notifications is disabled", existingSecret.Name))
+			argoutil.LogResourceDeletion(log, existingSecret, "notifications are disabled")
 			return r.Client.Delete(context.TODO(), existingSecret)
 		}
 
@@ -605,7 +657,7 @@ func (r *ReconcileArgoCD) reconcileNotificationsSecret(cr *argoproj.ArgoCD) erro
 		return err
 	}
 
-	log.Info(fmt.Sprintf("Creating secret %s", desiredSecret.Name))
+	argoutil.LogResourceCreation(log, desiredSecret)
 	err := r.Client.Create(context.TODO(), desiredSecret)
 	if err != nil {
 		return err

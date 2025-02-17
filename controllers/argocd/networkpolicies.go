@@ -108,25 +108,35 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		modified := false
+		explanation := ""
 		if !reflect.DeepEqual(existing.Spec.PodSelector, networkPolicy.Spec.PodSelector) {
 			existing.Spec.PodSelector = networkPolicy.Spec.PodSelector
+			explanation = "pod selector"
 			modified = true
 		}
 		if !reflect.DeepEqual(existing.Spec.PolicyTypes, networkPolicy.Spec.PolicyTypes) {
 			existing.Spec.PolicyTypes = networkPolicy.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
 			modified = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Ingress, networkPolicy.Spec.Ingress) {
 			existing.Spec.Ingress = networkPolicy.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
 			modified = true
 		}
 
 		if modified {
-			log.Info("Updating redis network policy", "namespace", networkPolicy.Namespace, "name", networkPolicy.Name)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			err := r.Client.Update(context.TODO(), existing)
 			if err != nil {
 				log.Error(err, "Failed to update redis network policy")
-				return err
+				return fmt.Errorf("Failed to update redis network policy. error: %w", err)
 			}
 		}
 
@@ -138,14 +148,14 @@ func (r *ReconcileArgoCD) ReconcileRedisNetworkPolicy(cr *argoproj.ArgoCD) error
 	// Set the ArgoCD instance as the owner and controller
 	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
 		log.Error(err, "Failed to set controller reference on redis network policy")
-		return err
+		return fmt.Errorf("Failed to set controller reference on redis network policy. error: %w", err)
 	}
 
-	log.Info("Creating redis network policy", "namespace", networkPolicy.Namespace, "name", networkPolicy.Name)
+	argoutil.LogResourceCreation(log, networkPolicy)
 	err := r.Client.Create(context.TODO(), networkPolicy)
 	if err != nil {
 		log.Error(err, "Failed to create redis network policy")
-		return err
+		return fmt.Errorf("Failed to create redis network policy. error: %w", err)
 	}
 
 	return nil
@@ -220,25 +230,35 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 	if argoutil.IsObjectFound(r.Client, cr.Namespace, existing.Name, existing) {
 
 		modified := false
+		explanation := ""
 		if !reflect.DeepEqual(existing.Spec.PodSelector, networkPolicy.Spec.PodSelector) {
 			existing.Spec.PodSelector = networkPolicy.Spec.PodSelector
+			explanation = "pod selector"
 			modified = true
 		}
 		if !reflect.DeepEqual(existing.Spec.PolicyTypes, networkPolicy.Spec.PolicyTypes) {
 			existing.Spec.PolicyTypes = networkPolicy.Spec.PolicyTypes
+			if modified {
+				explanation += ", "
+			}
+			explanation += "policy types"
 			modified = true
 		}
 		if !reflect.DeepEqual(existing.Spec.Ingress, networkPolicy.Spec.Ingress) {
 			existing.Spec.Ingress = networkPolicy.Spec.Ingress
+			if modified {
+				explanation += ", "
+			}
+			explanation += "ingress rules"
 			modified = true
 		}
 
 		if modified {
-			log.Info("Updating redis ha network policy", "namespace", networkPolicy.Namespace, "name", networkPolicy.Name)
+			argoutil.LogResourceUpdate(log, existing, "updating", explanation)
 			err := r.Client.Update(context.TODO(), existing)
 			if err != nil {
 				log.Error(err, "Failed to update redis ha network policy")
-				return err
+				return fmt.Errorf("Failed to update redis ha network policy. error: %w", err)
 			}
 		}
 
@@ -250,14 +270,14 @@ func (r *ReconcileArgoCD) ReconcileRedisHANetworkPolicy(cr *argoproj.ArgoCD) err
 	// Set the ArgoCD instance as the owner and controller
 	if err := controllerutil.SetControllerReference(cr, networkPolicy, r.Scheme); err != nil {
 		log.Error(err, "Failed to set controller reference on redis ha network policy")
-		return err
+		return fmt.Errorf("Failed to set controller reference on redis ha network policy. error: %w", err)
 	}
 
-	log.Info("Creating redis ha network policy", "namespace", networkPolicy.Namespace, "name", networkPolicy.Name)
+	argoutil.LogResourceCreation(log, networkPolicy)
 	err := r.Client.Create(context.TODO(), networkPolicy)
 	if err != nil {
 		log.Error(err, "Failed to create redis ha network policy")
-		return err
+		return fmt.Errorf("Failed to create redis ha network policy. error: %w", err)
 	}
 
 	return nil

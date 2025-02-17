@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd-test-impersonation
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-test
+  namespace: argocd-test-impersonation
+spec:
+  extraConfig:
+    application.sync.impersonation.enabled: "true"
+  server:
+    route:
+      enabled: true
+status:
+  phase: Available
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: argocd-cm
+  namespace: argocd-test-impersonation
+data:
+  application.sync.impersonation.enabled: 'true'
