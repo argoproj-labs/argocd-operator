@@ -1,13 +1,7 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-# Set managed-by labels
-- script: |
-    kubectl label ns source-ns-1 argocd.argoproj.io/managed-by=test-1-046-argocd-1
-    kubectl label ns source-ns-2 argocd.argoproj.io/managed-by=test-1-046-argocd-2
-    sleep 30
-# Set tracking-id labels
-- script: |
-    kubectl label ns source-ns-1 argocd.argoproj.io/tracking-id=instance-1
-    kubectl label ns source-ns-2 argocd.argoproj.io/tracking-id=instance-2
-    sleep 30
+  - script: |
+        kubectl label ns source-ns-1 argocd.argoproj.io/managed-by=test-1-046-argocd-1
+        kubectl label ns source-ns-2 argocd.argoproj.io/managed-by=test-1-046-argocd-2
+        sleep 30

@@ -26,7 +26,7 @@ metadata:
   namespace: test-1-046-argocd-1
 spec:
   installationID: "instance-1"
-  resourceTrackingMethod: "annotation"
+  resourceTrackingMethod: "annotation+label"
 ---
 # Second ArgoCD instance
 apiVersion: argoproj.io/v1beta1
@@ -36,4 +36,4 @@ metadata:
   namespace: test-1-046-argocd-2
 spec:
   installationID: "instance-2"
-  resourceTrackingMethod: "annotation"
+  resourceTrackingMethod: "annotation+label"

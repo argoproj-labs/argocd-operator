@@ -33,7 +33,10 @@ metadata:
   name: nginx-deployment
   namespace: source-ns-1
   annotations:
+    argocd.argoproj.io/installation-id: instance-1
     argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-1/nginx-deployment
+  labels:
+    app.kubernetes.io/instance: test-app
 ---
 # Check resources in second namespace have correct annotation
 apiVersion: apps/v1
@@ -42,4 +45,7 @@ metadata:
   name: nginx-deployment
   namespace: source-ns-2
   annotations:
+    argocd.argoproj.io/installation-id: instance-2
     argocd.argoproj.io/tracking-id: test-app:apps/Deployment:source-ns-2/nginx-deployment
+  labels:
+    app.kubernetes.io/instance: test-app
