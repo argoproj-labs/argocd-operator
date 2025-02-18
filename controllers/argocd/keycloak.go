@@ -1090,8 +1090,19 @@ func (r *ReconcileArgoCD) updateArgoCDConfiguration(cr *argoproj.ArgoCD, kRouteU
 		log.Error(err, message)
 		return fmt.Errorf("%s error: %w", message, err)
 	}
-
-	argoRBACCM.Data["scopes"] = "[groups,email]"
+	if cr.Spec.RBAC.Scopes != nil && *cr.Spec.RBAC.Scopes != "" {
+		argoRBACCM.Data["scopes"] = *cr.Spec.RBAC.Scopes
+	} else {
+		argoRBACCM.Data["scopes"] = "[groups,email]"
+		scopes := argoRBACCM.Data["scopes"]
+		cr.Spec.RBAC.Scopes = &scopes
+		err = r.Client.Update(context.TODO(), cr) // Update the Spec.RBAC.Scopes with the default scopes added by keycloak.
+		if err != nil {
+			message := fmt.Sprintf("Error updating ArgoCD RBAC scopes %s in namespace %s", cr.Name, cr.Namespace)
+			log.Error(err, message)
+			return fmt.Errorf("%s error: %w", message, err)
+		}
+	}
 	argoutil.LogResourceUpdate(log, argoRBACCM, "updating rbac scopes for keycloak")
 	err = r.Client.Update(context.TODO(), argoRBACCM)
 	if err != nil {

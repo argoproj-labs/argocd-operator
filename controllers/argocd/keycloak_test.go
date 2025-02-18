@@ -27,6 +27,7 @@ import (
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	argoproj "github.com/argoproj-labs/argocd-operator/api/v1beta1"
@@ -531,4 +532,78 @@ func TestKeycloak_NodeLabelSelector(t *testing.T) {
 func removeTemplateAPI() {
 	templateAPIFound = false
 	deploymentConfigAPIFound = false
+}
+
+func TestKeycloakRBACReconciliation(t *testing.T) {
+	tests := []struct {
+		name          string
+		argoCD        *argoproj.ArgoCD
+		previousScope string
+		expectedScope string
+	}{
+		{
+			name: "spec.RBAC.scopes defined",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+						RootCA: "",
+					},
+				}
+			}),
+			previousScope: "[groups]",
+			expectedScope: "[groups]",
+		},
+		{
+			name: "spec.RBAC.scopes undefined",
+			argoCD: makeTestArgoCD(func(ac *argoproj.ArgoCD) {
+				ac.Spec.SSO = &argoproj.ArgoCDSSOSpec{
+					Provider: argoproj.SSOProviderTypeKeycloak,
+					Keycloak: &argoproj.ArgoCDKeycloakSpec{
+						RootCA: "",
+					},
+				}
+			}),
+			previousScope: "",
+			expectedScope: "[groups,email]",
+		},
+	}
+
+	for _, test := range tests {
+		test.argoCD.Spec.RBAC = argoproj.ArgoCDRBACSpec{
+			Scopes: &test.previousScope,
+		}
+		secret := argoutil.NewSecretWithName(test.argoCD, common.ArgoCDSecretName)
+		secret.Data = map[string][]byte{"oidc.keycloak.clientSecret": []byte("")}
+
+		configMap := newConfigMapWithName(common.ArgoCDConfigMapName, test.argoCD)
+		configMap.Data = map[string]string{"oidc.config": ""}
+
+		configRBACmap := newConfigMapWithName(common.ArgoCDRBACConfigMapName, test.argoCD)
+		configRBACmap.Data = map[string]string{"scopes": ""}
+		resObjs := []client.Object{test.argoCD}
+		subresObjs := []client.Object{test.argoCD}
+		runtimeObjs := []runtime.Object{}
+		sch := makeTestReconcilerScheme(argoproj.AddToScheme)
+		cl := makeTestReconcilerClient(sch, resObjs, subresObjs, runtimeObjs)
+		r := makeTestReconciler(cl, sch)
+
+		// Add the needed resources to execute the updateArgoCDConfiguration
+		r.Client.Create(context.TODO(), secret)
+		r.Client.Create(context.TODO(), configMap)
+		r.Client.Create(context.TODO(), configRBACmap)
+
+		r.updateArgoCDConfiguration(test.argoCD, "test_keycloak_url")
+
+		argoRBACCM := newConfigMapWithName(common.ArgoCDRBACConfigMapName, test.argoCD)
+		assert.NoError(t, r.Client.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      argoRBACCM.Name,
+				Namespace: argoRBACCM.Namespace,
+			},
+			argoRBACCM))
+		assert.Equal(t, test.expectedScope, argoRBACCM.Data["scopes"])
+		assert.Equal(t, test.expectedScope, *test.argoCD.Spec.RBAC.Scopes)
+	}
 }
