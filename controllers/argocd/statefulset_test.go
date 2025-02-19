@@ -65,6 +65,7 @@ func controllerDefaultVolumes() []corev1.Volume {
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "argocd-cmd-params-cm",
 					},
+					Optional: boolPtr(true),
 					Items: []corev1.KeyToPath{
 						{
 							Key:  "controller.profile.enabled",
