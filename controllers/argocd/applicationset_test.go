@@ -159,6 +159,19 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: v1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+				SecretName: common.ArgoCDRepoServerTLSSecretName,
+				Optional:   boolPtr(true),
+				Items: []v1.KeyToPath{
+					{Key: "tls.crt", Path: "tls.crt"},
+					{Key: "tls.key", Path: "tls.key"},
+					{Key: "ca.crt", Path: "ca.crt"},
+				},
+			},
+			},
+		},
 	}
 
 	if a.Spec.ApplicationSet.SCMRootCAConfigMap != "" && argoutil.IsObjectFound(r.Client, a.Namespace, common.ArgoCDAppSetGitlabSCMTLSCertsConfigMapName, a) {
@@ -202,6 +215,10 @@ func checkExpectedDeploymentValues(t *testing.T, r *ReconcileArgoCD, deployment 
 		{
 			Name:      "tmp",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/reposerver/tls",
 		},
 	}
 
@@ -422,7 +439,63 @@ func TestReconcileApplicationSet_Deployments_resourceRequirements(t *testing.T) 
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)
 	}
 
-	volumesWant := applicationSetDefaultVolumes()
+	volumesWant := []corev1.Volume{
+		{
+			Name: "ssh-known-hosts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDKnownHostsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "tls-certs",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDTLSCertsConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keys",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: common.ArgoCDGPGKeysConfigMapName,
+					},
+				},
+			},
+		},
+		{
+			Name: "gpg-keyring",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: v1.VolumeSource{Secret: &corev1.SecretVolumeSource{
+				SecretName: common.ArgoCDRepoServerTLSSecretName,
+				Optional:   boolPtr(true),
+				Items: []v1.KeyToPath{
+					{Key: "tls.crt", Path: "tls.crt"},
+					{Key: "tls.key", Path: "tls.key"},
+					{Key: "ca.crt", Path: "ca.crt"},
+				},
+			},
+			},
+		},
+	}
 
 	if diff := cmp.Diff(volumesWant, deployment.Spec.Template.Spec.Volumes); diff != "" {
 		t.Fatalf("failed to reconcile argocd-server deployment:\n%s", diff)

@@ -225,6 +225,20 @@ func (r *ReconcileArgoCD) reconcileApplicationSetDeployment(cr *argoproj.ArgoCD,
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		{
+			Name: "argocd-repo-server-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: common.ArgoCDRepoServerTLSSecretName,
+					Optional:   boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{Key: "tls.crt", Path: "tls.crt"},
+						{Key: "tls.key", Path: "tls.key"},
+						{Key: "ca.crt", Path: "ca.crt"},
+					},
+				},
+			},
+		},
 	}
 	if cr.Spec.ApplicationSet.Volumes != nil {
 		serverVolumes = append(serverVolumes, cr.Spec.ApplicationSet.Volumes...)
@@ -391,6 +405,10 @@ func (r *ReconcileArgoCD) applicationSetContainer(cr *argoproj.ArgoCD, addSCMGit
 		{
 			Name:      "tmp",
 			MountPath: "/tmp",
+		},
+		{
+			Name:      "argocd-repo-server-tls",
+			MountPath: "/app/config/reposerver/tls",
 		},
 	}
 

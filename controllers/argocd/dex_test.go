@@ -261,6 +261,12 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			},
+			{
+				Name: "dexconfig",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
 		},
 		InitContainers: []corev1.Container{
 			{
@@ -279,7 +285,8 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -288,6 +295,10 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 					{
 						Name:      "static-files",
 						MountPath: "/shared",
+					},
+					{
+						Name:      "dexconfig",
+						MountPath: "/tmp",
 					},
 				},
 				ImagePullPolicy: corev1.PullAlways,
@@ -332,13 +343,15 @@ func TestReconcileArgoCD_reconcileDexDeployment(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
 				},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "static-files", MountPath: "/shared"},
+					{Name: "dexconfig", MountPath: "/tmp"},
 				},
 			},
 		},
@@ -388,6 +401,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "dexconfig",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				InitContainers: []corev1.Container{
 					{
@@ -406,7 +425,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
@@ -415,6 +435,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							{
 								Name:      "static-files",
 								MountPath: "/shared",
+							},
+							{
+								Name:      "dexconfig",
+								MountPath: "/tmp",
 							},
 						},
 						ImagePullPolicy: corev1.PullAlways,
@@ -459,13 +483,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
+							{Name: "dexconfig", MountPath: "/tmp"},
 						},
 					},
 				},
@@ -507,6 +533,12 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
 					},
+					{
+						Name: "dexconfig",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
 				},
 				InitContainers: []corev1.Container{
 					{
@@ -525,7 +557,8 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
@@ -534,6 +567,10 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 							{
 								Name:      "static-files",
 								MountPath: "/shared",
+							},
+							{
+								Name:      "dexconfig",
+								MountPath: "/tmp",
 							},
 						},
 						ImagePullPolicy: corev1.PullAlways,
@@ -591,13 +628,15 @@ func TestReconcileArgoCD_reconcileDexDeployment_withUpdate(t *testing.T) {
 									"ALL",
 								},
 							},
-							RunAsNonRoot: boolPtr(true),
+							ReadOnlyRootFilesystem: boolPtr(true),
+							RunAsNonRoot:           boolPtr(true),
 							SeccompProfile: &corev1.SeccompProfile{
 								Type: "RuntimeDefault",
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{
 							{Name: "static-files", MountPath: "/shared"},
+							{Name: "dexconfig", MountPath: "/tmp"},
 						},
 					},
 				},

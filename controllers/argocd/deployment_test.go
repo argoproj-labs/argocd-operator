@@ -1301,7 +1301,8 @@ func TestReconcileArgoCD_reconcileServerDeployment(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -1745,7 +1746,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentWithInsecure(t *testing.T) {
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -1852,7 +1854,8 @@ func TestReconcileArgoCD_reconcileServerDeploymentChangedToInsecure(t *testing.T
 							"ALL",
 						},
 					},
-					RunAsNonRoot: boolPtr(true),
+					ReadOnlyRootFilesystem: boolPtr(true),
+					RunAsNonRoot:           boolPtr(true),
 					SeccompProfile: &corev1.SeccompProfile{
 						Type: "RuntimeDefault",
 					},
@@ -2317,6 +2320,35 @@ func serverDefaultVolumes() []corev1.Volume {
 				},
 			},
 		},
+		{
+			Name: "plugins-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Optional: boolPtr(true),
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "server.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	return volumes
 }
@@ -2335,6 +2367,18 @@ func serverDefaultVolumeMounts() []corev1.VolumeMount {
 		}, {
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/server/tls/redis",
+		},
+		{
+			Name:      "plugins-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "tmp",
+			MountPath: "/tmp",
 		},
 	}
 	return mounts

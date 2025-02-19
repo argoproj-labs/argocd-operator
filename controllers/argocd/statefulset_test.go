@@ -52,6 +52,34 @@ func controllerDefaultVolumes() []corev1.Volume {
 				},
 			},
 		},
+		{
+			Name: "argocd-home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "argocd-cmd-params-cm",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "argocd-cmd-params-cm",
+					},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  "controller.profile.enabled",
+							Path: "profiler.enabled",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "argocd-application-controller-tmp",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 	return volumes
 }
@@ -65,6 +93,18 @@ func controllerDefaultVolumeMounts() []corev1.VolumeMount {
 		{
 			Name:      common.ArgoCDRedisServerTLSSecretName,
 			MountPath: "/app/config/controller/tls/redis",
+		},
+		{
+			Name:      "argocd-home",
+			MountPath: "/home/argocd",
+		},
+		{
+			Name:      "argocd-cmd-params-cm",
+			MountPath: "/home/argocd/params",
+		},
+		{
+			Name:      "argocd-application-controller-tmp",
+			MountPath: "/tmp",
 		},
 	}
 	return mounts
