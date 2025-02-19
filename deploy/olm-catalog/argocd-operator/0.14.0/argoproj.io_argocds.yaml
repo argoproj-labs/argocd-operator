@@ -1166,6 +1166,10 @@ spec:
                       have included in your ArgoCD server.
                     type: string
                 type: object
+              installationID:
+                description: InstallationID uniquely identifies an Argo CD instance
+                  in multi-instance clusters.
+                type: string
               kustomizeBuildOptions:
                 description: KustomizeBuildOptions is used to specify build options/parameters
                   to use with `kustomize build`.
@@ -14371,6 +14375,10 @@ spec:
                       have included in your ArgoCD server.
                     type: string
                 type: object
+              installationID:
+                description: InstallationID uniquely identifies an Argo CD instance
+                  in multi-instance clusters.
+                type: string
               kustomizeBuildOptions:
                 description: KustomizeBuildOptions is used to specify build options/parameters
                   to use with `kustomize build`.

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-046-argocd-1
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-1-046-argocd-2
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-1
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-2
+---
+# First ArgoCD instance
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-1
+  namespace: test-1-046-argocd-1
+spec:
+  installationID: "instance-1"
+  resourceTrackingMethod: "annotation+label"
+---
+# Second ArgoCD instance
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-2
+  namespace: test-1-046-argocd-2
+spec:
+  installationID: "instance-2"
+  resourceTrackingMethod: "annotation+label"

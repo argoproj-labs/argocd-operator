@@ -1,0 +1,33 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 300
+---
+# Check first namespace labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-1
+  labels:
+    argocd.argoproj.io/managed-by: test-1-046-argocd-1
+---
+# Check second namespace labels
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-2
+  labels:
+    argocd.argoproj.io/managed-by: test-1-046-argocd-2
+---
+# Verify RBAC is set up for first namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-1-argocd-application-controller
+  namespace: source-ns-1
+---
+# Verify RBAC is set up for second namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-2-argocd-application-controller
+  namespace: source-ns-2

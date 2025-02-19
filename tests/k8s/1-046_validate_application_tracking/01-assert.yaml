@@ -1,0 +1,53 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 720
+---
+# Check first ArgoCD instance is available
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-1
+  namespace: test-1-046-argocd-1
+status:
+  phase: Available
+---
+# Check second ArgoCD instance is available
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd-2
+  namespace: test-1-046-argocd-2
+status:
+  phase: Available
+---
+# Check first ArgoCD ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: test-1-046-argocd-1
+data:
+  installationID: "instance-1"
+  application.resourceTrackingMethod: "annotation+label"
+---
+# Check second ArgoCD ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: test-1-046-argocd-2
+data:
+  installationID: "instance-2"
+  application.resourceTrackingMethod: "annotation+label"
+---
+# Check first namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-1
+---
+# Check second namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-ns-2

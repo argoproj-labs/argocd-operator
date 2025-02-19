@@ -247,7 +247,7 @@ metadata:
     capabilities: Deep Insights
     categories: Integration & Delivery
     certified: "false"
-    createdAt: "2024-12-20T09:48:39Z"
+    createdAt: "2025-02-04T21:18:01Z"
     description: Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -608,6 +608,13 @@ spec:
           the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
@@ -1186,6 +1193,13 @@ spec:
           the cluster.
         displayName: Initial Repositories'
         path: initialRepositories
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - description: InstallationID uniquely identifies an Argo CD instance in multi-instance
+          clusters.
+        displayName: Installation ID
+        path: installationID
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
         - urn:alm:descriptor:com.tectonic.ui:advanced
